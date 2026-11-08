@@ -57,22 +57,27 @@
       <div class="flex items-start space-x-3">
         <div class="text-2xl">🤝</div>
         <div>
-          <h2 class="font-bold text-base md:text-lg text-gray-900">ファン同士で安心・安全に直接トレカ交換</h2>
+          <h2 class="font-bold text-base md:text-lg text-gray-900">ファン同士で安心・安全に直接トレカ・シリアル交換</h2>
           <p class="text-xs md:text-sm text-gray-600 mt-1">
-            申込・チャット・発送確認・評価まで、すべてサイト内で完結。手数料0円の交換プラットフォームです。
+            写真付き出品・申込・チャット・発送／コード確認・評価まで、すべてサイト内で完結。手数料0円の交換プラットフォームです。
           </p>
         </div>
       </div>
     </section>
 
-    <section class="bg-gradient-to-r from-purple-500 to-illit-accent p-4 md:p-6 rounded-2xl text-white shadow-sm flex justify-between items-center">
+    <section class="bg-gradient-to-r from-purple-500 to-illit-accent p-4 md:p-6 rounded-2xl text-white shadow-sm space-y-3">
       <div>
-        <h3 class="font-bold text-base md:text-lg">トレカやシリアルコードを交換に出す</h3>
+        <h3 class="font-bold text-base md:text-lg">交換に出す</h3>
         <p class="text-xs text-purple-100 mt-0.5">手数料完全無料！ファン同士でスムーズにトレード</p>
       </div>
-      <button onclick="openPostModal()" class="bg-white text-illit-darkPurple font-bold text-xs md:text-sm px-4 py-2.5 rounded-xl shadow hover:bg-purple-50 transition whitespace-nowrap">
-        ＋ 新規出品する
-      </button>
+      <div class="flex space-x-2">
+        <button onclick="openPostModal()" class="flex-1 bg-white text-illit-darkPurple font-bold text-xs md:text-sm px-3 py-2.5 rounded-xl shadow hover:bg-purple-50 transition">
+          🃏 トレカを出品
+        </button>
+        <button onclick="openSerialPostModal()" class="flex-1 bg-yellow-300 text-yellow-900 font-bold text-xs md:text-sm px-3 py-2.5 rounded-xl shadow hover:bg-yellow-200 transition">
+          🎫 シリアルを出品
+        </button>
+      </div>
     </section>
 
     <section class="space-y-4">
@@ -83,6 +88,7 @@
 
       <div class="space-y-2">
         <input type="text" id="search-input" oninput="setSearch(this.value)" placeholder="🔍 譲・求・出品者名で検索" class="w-full border border-purple-100 rounded-xl p-2.5 bg-white text-xs md:text-sm">
+        <div id="kind-filters" class="flex gap-2"></div>
         <div id="member-filters" class="flex flex-wrap gap-2"></div>
       </div>
 
@@ -92,11 +98,11 @@
     </section>
   </main>
 
-  <!-- 新規出品モーダル -->
+  <!-- トレカ出品モーダル -->
   <div id="post-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
-    <div class="bg-white w-full max-w-md rounded-2xl p-6 space-y-4 shadow-xl">
+    <div class="bg-white w-full max-w-md rounded-2xl p-6 space-y-4 shadow-xl max-h-[92vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b pb-3">
-        <h3 class="font-bold text-base text-gray-800">新規トレカ交換の出品</h3>
+        <h3 class="font-bold text-base text-gray-800">🃏 トレカ交換の出品</h3>
         <button onclick="closePostModal()" class="text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
       </div>
       <div class="space-y-3 text-xs md:text-sm">
@@ -116,36 +122,92 @@
         </div>
         <div>
           <label class="block font-semibold text-gray-700 mb-1">【求】（希望するもの）</label>
-          <input type="text" id="input-want" maxlength="100" placeholder="例: 同種 ウォニ または シリアル" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+          <input type="text" id="input-want" maxlength="100" placeholder="例: 同種 ウォニ" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+        </div>
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">
+            📷 写真 <span class="text-red-500">（必須・最大3枚）</span>
+          </label>
+          <p class="text-[11px] text-gray-500 mb-2">表・裏、傷や角の状態がわかる写真を添付してください。状態が確認できない出品は敬遠されます。</p>
+          <input id="post-photo-input" type="file" accept="image/*" multiple class="hidden" onchange="addPostPhotos(this)">
+          <div id="post-photo-preview" class="flex flex-wrap gap-2"></div>
         </div>
       </div>
       <div class="flex space-x-2 pt-2">
         <button onclick="closePostModal()" class="flex-1 bg-gray-100 text-gray-600 font-bold py-2.5 rounded-xl hover:bg-gray-200 transition">キャンセル</button>
-        <button onclick="submitPost()" class="flex-1 bg-illit-purple text-white font-bold py-2.5 rounded-xl hover:bg-illit-darkPurple transition">出品する</button>
+        <button id="post-submit-btn" onclick="submitPost()" class="flex-1 bg-illit-purple text-white font-bold py-2.5 rounded-xl hover:bg-illit-darkPurple transition">出品する</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- シリアル出品モーダル -->
+  <div id="serial-post-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-md rounded-2xl p-6 space-y-4 shadow-xl max-h-[92vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b pb-3">
+        <h3 class="font-bold text-base text-gray-800">🎫 シリアル交換の出品</h3>
+        <button onclick="closeSerialPostModal()" class="text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
+      </div>
+      <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-3 text-[11px] text-yellow-800 space-y-1">
+        <p class="font-bold">⚠️ 出品前にご確認ください</p>
+        <p>・<b>実際のシリアルコードは出品に書かないでください。</b>成立後、取引ルーム内でのみ相手に送ります。</p>
+        <p>・シリアルの譲渡・交換が配布元の規約で禁止されている場合があります。ご自身で確認してください。</p>
+      </div>
+      <div class="space-y-3 text-xs md:text-sm">
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">対象メンバー</label>
+          <select id="serial-member" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+            <option value="指定なし">指定なし</option>
+            <option value="ウォニ (Wonhee)">ウォニ (Wonhee)</option>
+            <option value="ミンジュ (Minju)">ミンジュ (Minju)</option>
+            <option value="イロハ (Iroha)">イロハ (Iroha)</option>
+            <option value="モカ (Moka)">モカ (Moka)</option>
+            <option value="ユナ (Yuna)">ユナ (Yuna)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">【譲】シリアルの種類</label>
+          <input type="text" id="serial-give" maxlength="100" placeholder="例: 〇〇盤 応募シリアル 1枚" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+        </div>
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">【求】希望するシリアル</label>
+          <input type="text" id="serial-want" maxlength="100" placeholder="例: △△盤 応募シリアル 1枚" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+        </div>
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">有効期限（任意）</label>
+          <input type="date" id="serial-deadline" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+        </div>
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">備考（任意）</label>
+          <textarea id="serial-note" maxlength="200" rows="2" placeholder="例: 応募先・用途、未使用であることなど" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50"></textarea>
+        </div>
+      </div>
+      <div class="flex space-x-2 pt-2">
+        <button onclick="closeSerialPostModal()" class="flex-1 bg-gray-100 text-gray-600 font-bold py-2.5 rounded-xl hover:bg-gray-200 transition">キャンセル</button>
+        <button onclick="submitSerialPost()" class="flex-1 bg-yellow-400 text-yellow-900 font-bold py-2.5 rounded-xl hover:bg-yellow-300 transition">出品する</button>
       </div>
     </div>
   </div>
 
   <!-- 詳細モーダル -->
   <div id="detail-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
-    <div class="bg-white w-full max-w-md rounded-2xl p-6 space-y-4 shadow-xl">
+    <div class="bg-white w-full max-w-md rounded-2xl p-6 space-y-4 shadow-xl max-h-[92vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b pb-3">
-        <h3 class="font-bold text-base text-gray-800">交換募集の詳細</h3>
+        <h3 id="detail-title" class="font-bold text-base text-gray-800">交換募集の詳細</h3>
         <button onclick="closeDetailModal()" class="text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
       </div>
       <div class="space-y-3 text-xs md:text-sm">
+        <div id="detail-photos"></div>
         <div class="bg-purple-50 p-3 rounded-xl space-y-2">
           <div><span class="font-bold text-gray-500">メンバー:</span> <span id="detail-member" class="font-semibold text-gray-800"></span></div>
           <div><span class="bg-pink-100 text-pink-700 text-xs font-bold px-2 py-0.5 rounded">譲</span> <span id="detail-give" class="font-bold text-gray-800 ml-1"></span></div>
           <div><span class="bg-purple-100 text-illit-darkPurple text-xs font-bold px-2 py-0.5 rounded">求</span> <span id="detail-want" class="font-bold text-gray-800 ml-1"></span></div>
+          <div id="detail-extra" class="text-xs text-gray-600 space-y-1"></div>
         </div>
         <div>
           <span class="font-semibold text-gray-700">出品者:</span> <span id="detail-user" class="text-gray-600"></span>
           <span id="detail-rating" class="ml-2 text-yellow-500 font-bold"></span>
         </div>
-        <p class="text-gray-500 text-xs bg-gray-50 p-3 rounded-xl">
-          💡 申し込むと専用のチャットルームが作られます。トレカの状態や発送方法をよく確認してから合意してください。
-        </p>
+        <p id="detail-tip" class="text-gray-500 text-xs bg-gray-50 p-3 rounded-xl"></p>
       </div>
       <div id="detail-actions" class="space-y-2"></div>
       <button onclick="closeDetailModal()" class="w-full bg-gray-100 text-gray-600 font-bold py-2.5 rounded-xl hover:bg-gray-200 transition text-sm">閉じる</button>
@@ -173,17 +235,46 @@
 
       <div class="p-4 space-y-3 border-b bg-purple-50/50 overflow-y-auto shrink-0 max-h-[45%]">
         <div id="room-info"></div>
+        <div id="room-photos"></div>
         <div id="room-steps"></div>
         <div id="room-actions" class="space-y-2"></div>
       </div>
 
       <div id="room-messages" class="flex-1 overflow-y-auto p-4 space-y-2 bg-white"></div>
 
-      <div class="p-3 border-t flex space-x-2 shrink-0">
-        <input id="room-input" type="text" maxlength="1000" placeholder="メッセージを入力" onkeydown="if(event.key==='Enter'&&!event.isComposing){sendMessage();}" class="flex-1 border border-gray-200 rounded-xl p-2.5 bg-gray-50 text-sm">
-        <button id="room-send" onclick="sendMessage()" class="bg-illit-purple text-white font-bold text-sm px-4 rounded-xl hover:bg-illit-darkPurple transition">送信</button>
+      <div class="p-3 border-t flex items-center space-x-2 shrink-0">
+        <input id="image-input" type="file" accept="image/*" class="hidden" onchange="sendImage(this)">
+        <button id="room-photo" onclick="document.getElementById('image-input').click()" class="text-xl px-2 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 transition" title="写真を送る">📷</button>
+        <input id="room-input" type="text" maxlength="1000" placeholder="メッセージを入力" onkeydown="if(event.key==='Enter'&&!event.isComposing){sendMessage();}" class="flex-1 min-w-0 border border-gray-200 rounded-xl p-2.5 bg-gray-50 text-sm">
+        <button id="room-send" onclick="sendMessage()" class="bg-illit-purple text-white font-bold text-sm px-4 py-2.5 rounded-xl hover:bg-illit-darkPurple transition">送信</button>
       </div>
     </div>
+  </div>
+
+  <!-- シリアルコード送信モーダル -->
+  <div id="serial-send-modal" class="fixed inset-0 bg-black/60 hidden z-[55] flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-sm rounded-2xl p-6 space-y-4 shadow-xl">
+      <div class="flex justify-between items-center border-b pb-3">
+        <h3 class="font-bold text-base text-gray-800">🎫 シリアルコードを送る</h3>
+        <button onclick="closeSerialSendModal()" class="text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
+      </div>
+      <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-3 text-[11px] text-yellow-800 space-y-1">
+        <p>・コードはこの取引の相手にだけ届きます。</p>
+        <p>・<b>送信後は取り消せません。</b>未使用で有効なコードか、もう一度確認してから送ってください。</p>
+        <p>・送ったコードを、自分で使わないでください。</p>
+      </div>
+      <input id="serial-code-input" type="text" maxlength="100" autocomplete="off" placeholder="シリアルコードを入力" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50 text-sm font-mono">
+      <div class="flex space-x-2">
+        <button onclick="closeSerialSendModal()" class="flex-1 bg-gray-100 text-gray-600 font-bold py-2.5 rounded-xl hover:bg-gray-200 transition text-sm">キャンセル</button>
+        <button id="serial-send-btn" onclick="sendSerial()" class="flex-1 bg-yellow-400 text-yellow-900 font-bold py-2.5 rounded-xl hover:bg-yellow-300 transition text-sm">送信する</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 画像拡大ビューア -->
+  <div id="image-viewer" class="fixed inset-0 bg-black/90 hidden z-[60] flex items-center justify-center p-2" onclick="closeImageViewer()">
+    <img id="image-viewer-img" src="" alt="" class="max-w-full max-h-full object-contain">
+    <button class="absolute top-4 right-4 text-white text-3xl font-bold" onclick="closeImageViewer()">×</button>
   </div>
 
   <script type="module">
@@ -208,11 +299,32 @@
 
     // ===== 状態 =====
     const MEMBERS = ["すべて", "ウォニ (Wonhee)", "ミンジュ (Minju)", "イロハ (Iroha)", "モカ (Moka)", "ユナ (Yuna)"];
+    const KINDS = [
+      { key: "all", label: "すべて" },
+      { key: "card", label: "🃏 トレカ" },
+      { key: "serial", label: "🎫 シリアル" }
+    ];
+    const IMAGE_PREFIX = "data:image/jpeg;base64,";
+    const CHAT_IMAGE_MAX = 600000;
+    const PHOTO_FULL = { maxSide: 900, quality: 0.72, maxChars: 380000 };
+    const PHOTO_THUMB = { maxSide: 260, quality: 0.6, maxChars: 40000 };
+    const CHAT_PHOTO = { maxSide: 1000, quality: 0.75, maxChars: CHAT_IMAGE_MAX };
+    const MAX_POST_PHOTOS = 3;
+
     let currentUser = null;
     let allPosts = [];
     let selectedMember = "すべて";
+    let kindFilter = "all";
     let searchText = "";
     let currentDetailIndex = -1;
+
+    let postPhotos = [];            // { full, thumb }
+    let processingPhotos = false;
+    let submittingPost = false;
+    const photoCache = {};          // postId -> [dataUrl,...]
+    let detailPhotos = [];
+    let roomPhotos = [];
+    let roomPhotosFor = null;
 
     let myTrades = [];
     let unsubTrades = null;
@@ -223,10 +335,19 @@
     let unsubMsgs = null;
     let reviewState = { tradeId: null, done: null };
     let selectedRating = 0;
+    let sendingImage = false;
+    let sendingSerial = false;
+    let revealedSerial = new Set();
 
     const STATUS_LABEL = {
       negotiating: "交渉中",
       shipping: "発送・受取中",
+      completed: "完了",
+      cancelled: "キャンセル"
+    };
+    const STATUS_LABEL_SERIAL = {
+      negotiating: "交渉中",
+      shipping: "コード交換中",
       completed: "完了",
       cancelled: "キャンセル"
     };
@@ -251,6 +372,61 @@
     }
     function tsValue(ts) {
       return ts && ts.toMillis ? ts.toMillis() : Number.MAX_SAFE_INTEGER;
+    }
+    function todayStr() {
+      const d = new Date();
+      return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+    }
+    function isExpired(p) {
+      return !!(p && p.deadline && p.deadline < todayStr());
+    }
+    function kindOf(x) {
+      return x && x.kind === "serial" ? "serial" : "card";
+    }
+    function isJpegData(s) {
+      return typeof s === "string" && s.startsWith(IMAGE_PREFIX);
+    }
+
+    // ===== 画像処理 =====
+    function loadImageFromFile(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = reject;
+        reader.onload = () => {
+          const img = new Image();
+          img.onerror = () => reject(new Error("画像を読み込めません"));
+          img.onload = () => resolve(img);
+          img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function compressFromImage(img, opt) {
+      let maxSide = opt.maxSide;
+      let quality = opt.quality;
+      for (let i = 0; i < 7; i++) {
+        const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+        const w = Math.max(1, Math.round(img.width * scale));
+        const h = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
+        const out = canvas.toDataURL("image/jpeg", quality);
+        if (out.length < opt.maxChars) return out;
+        maxSide = Math.round(maxSide * 0.8);
+        quality = Math.max(0.4, quality - 0.07);
+      }
+      throw new Error("画像が大きすぎます");
+    }
+
+    async function compressImage(file, opt) {
+      const img = await loadImageFromFile(file);
+      return compressFromImage(img, opt);
     }
 
     // ===== 認証 =====
@@ -286,19 +462,82 @@
       renderPosts();
     });
 
-    // ===== 出品 =====
+    // ===== 出品（トレカ） =====
     window.openPostModal = function() {
       if (!currentUser) {
         alert("出品するにはGoogleログインが必要です。");
         return;
       }
+      renderPostPhotoPreview();
       document.getElementById("post-modal").classList.remove("hidden");
     };
     window.closePostModal = function() {
       document.getElementById("post-modal").classList.add("hidden");
     };
 
+    function renderPostPhotoPreview() {
+      const el = document.getElementById("post-photo-preview");
+      let html = postPhotos.map((p, i) => `
+        <div class="relative w-20 h-20">
+          <img src="${p.thumb}" alt="" class="w-20 h-20 object-cover rounded-xl border border-purple-100">
+          <button onclick="removePostPhoto(${i})" class="absolute -top-1.5 -right-1.5 bg-gray-700 text-white text-xs font-bold w-5 h-5 rounded-full leading-none">×</button>
+        </div>`).join("");
+      if (processingPhotos) {
+        html += '<div class="w-20 h-20 rounded-xl bg-gray-100 flex items-center justify-center text-xl">⏳</div>';
+      } else if (postPhotos.length < MAX_POST_PHOTOS) {
+        html += `<button onclick="document.getElementById('post-photo-input').click()" class="w-20 h-20 rounded-xl border-2 border-dashed border-purple-200 text-illit-purple text-xs font-bold flex flex-col items-center justify-center hover:bg-purple-50">
+                   <span class="text-2xl leading-none">＋</span>写真を追加
+                 </button>`;
+      }
+      el.innerHTML = html;
+    }
+
+    window.addPostPhotos = async function(inputEl) {
+      const files = Array.from(inputEl.files || []);
+      inputEl.value = "";
+      if (files.length === 0 || processingPhotos) return;
+      const room = MAX_POST_PHOTOS - postPhotos.length;
+      const targets = files.filter((f) => f.type.startsWith("image/")).slice(0, room);
+      if (targets.length === 0) return;
+      if (files.length > room) alert("写真は最大" + MAX_POST_PHOTOS + "枚までです。先頭の" + room + "枚だけ追加します。");
+
+      processingPhotos = true;
+      renderPostPhotoPreview();
+      try {
+        for (const f of targets) {
+          const img = await loadImageFromFile(f);
+          postPhotos.push({
+            full: compressFromImage(img, PHOTO_FULL),
+            thumb: compressFromImage(img, PHOTO_THUMB)
+          });
+        }
+      } catch (e) {
+        console.error(e);
+        alert("写真の読み込みに失敗しました。別の写真でお試しください。");
+      } finally {
+        processingPhotos = false;
+        renderPostPhotoPreview();
+      }
+    };
+
+    window.removePostPhoto = function(i) {
+      postPhotos.splice(i, 1);
+      renderPostPhotoPreview();
+    };
+
+    async function deletePostWithPhotos(postId) {
+      try {
+        const snap = await getDocs(collection(db, "posts", postId, "photos"));
+        await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
+      } catch (e) {
+        console.error(e);
+      }
+      await deleteDoc(doc(db, "posts", postId));
+      delete photoCache[postId];
+    }
+
     window.submitPost = async function() {
+      if (submittingPost || processingPhotos) return;
       const member = document.getElementById("input-member").value;
       const give = document.getElementById("input-give").value.trim();
       const want = document.getElementById("input-want").value.trim();
@@ -307,17 +546,93 @@
         alert("「譲」と「求」の内容を入力してください。");
         return;
       }
+      if (postPhotos.length < 1) {
+        alert("カードの状態がわかる写真を1枚以上添付してください。");
+        return;
+      }
+
+      submittingPost = true;
+      const btn = document.getElementById("post-submit-btn");
+      btn.disabled = true;
+      btn.innerText = "投稿中…";
+      let postRef = null;
       try {
-        await addDoc(collection(db, "posts"), {
+        postRef = await addDoc(collection(db, "posts"), {
+          kind: "card",
           member, give, want,
+          photoCount: postPhotos.length,
+          thumb: postPhotos[0].thumb,
           userId: currentUser.uid,
           userName: currentUser.displayName || "匿名ファン",
           createdAt: serverTimestamp()
         });
+        for (let i = 0; i < postPhotos.length; i++) {
+          await addDoc(collection(db, "posts", postRef.id, "photos"), {
+            data: postPhotos[i].full,
+            order: i,
+            createdAt: serverTimestamp()
+          });
+        }
         alert("出品が完了しました！");
         closePostModal();
         document.getElementById("input-give").value = "";
         document.getElementById("input-want").value = "";
+        postPhotos = [];
+        renderPostPhotoPreview();
+        loadPosts();
+      } catch (e) {
+        console.error("出品エラー: ", e);
+        if (postRef) {
+          try { await deletePostWithPhotos(postRef.id); } catch (e2) { console.error(e2); }
+        }
+        alert("出品に失敗しました。写真を減らすか、もう一度お試しください。");
+      } finally {
+        submittingPost = false;
+        btn.disabled = false;
+        btn.innerText = "出品する";
+      }
+    };
+
+    // ===== 出品（シリアル） =====
+    window.openSerialPostModal = function() {
+      if (!currentUser) {
+        alert("出品するにはGoogleログインが必要です。");
+        return;
+      }
+      document.getElementById("serial-post-modal").classList.remove("hidden");
+    };
+    window.closeSerialPostModal = function() {
+      document.getElementById("serial-post-modal").classList.add("hidden");
+    };
+
+    window.submitSerialPost = async function() {
+      const member = document.getElementById("serial-member").value;
+      const give = document.getElementById("serial-give").value.trim();
+      const want = document.getElementById("serial-want").value.trim();
+      const deadline = document.getElementById("serial-deadline").value;
+      const note = document.getElementById("serial-note").value.trim().slice(0, 200);
+
+      if (!give || !want) {
+        alert("「譲」と「求」の内容を入力してください。");
+        return;
+      }
+      if (deadline && deadline < todayStr()) {
+        alert("有効期限が過去の日付になっています。");
+        return;
+      }
+      try {
+        await addDoc(collection(db, "posts"), {
+          kind: "serial",
+          member, give, want, deadline, note,
+          userId: currentUser.uid,
+          userName: currentUser.displayName || "匿名ファン",
+          createdAt: serverTimestamp()
+        });
+        alert("シリアルの出品が完了しました！");
+        closeSerialPostModal();
+        ["serial-give", "serial-want", "serial-deadline", "serial-note"].forEach((id) => {
+          document.getElementById(id).value = "";
+        });
         loadPosts();
       } catch (e) {
         console.error("出品エラー: ", e);
@@ -333,9 +648,21 @@
           : "bg-white text-gray-600 border border-purple-100";
         return `<button onclick="setMember(${i})" class="${cls} text-xs font-bold px-3 py-1.5 rounded-full transition">${m.split(" ")[0]}</button>`;
       }).join("");
+
+      document.getElementById("kind-filters").innerHTML = KINDS.map((k) => {
+        const cls = k.key === kindFilter
+          ? "bg-gray-800 text-white"
+          : "bg-white text-gray-600 border border-gray-200";
+        return `<button onclick="setKind('${k.key}')" class="${cls} text-xs font-bold px-3 py-1.5 rounded-full transition">${k.label}</button>`;
+      }).join("");
     }
     window.setMember = function(i) {
       selectedMember = MEMBERS[i];
+      renderFilters();
+      renderPosts();
+    };
+    window.setKind = function(k) {
+      kindFilter = k;
       renderFilters();
       renderPosts();
     };
@@ -349,17 +676,43 @@
       const cards = [];
 
       allPosts.forEach((p, index) => {
+        const kind = kindOf(p);
+        const okKind = kindFilter === "all" || kindFilter === kind;
         const okMember = selectedMember === "すべて" || p.member === selectedMember;
         const okText = !searchText ||
           (p.give + " " + p.want + " " + p.userName).toLowerCase().includes(searchText);
-        if (!okMember || !okText) return;
+        if (!okKind || !okMember || !okText) return;
 
         const mine = currentUser && p.userId === currentUser.uid;
+        const expired = isExpired(p);
+        const serialHead = kind === "serial"
+          ? `<div class="flex items-center space-x-2 text-[11px]">
+               <span class="bg-yellow-100 text-yellow-700 font-bold px-2 py-0.5 rounded">🎫 シリアル</span>
+               ${p.deadline ? `<span class="${expired ? 'text-red-500 font-bold' : 'text-gray-400'}">${expired ? '期限切れ ' : '期限 '}${escapeHtml(p.deadline)}</span>` : ''}
+             </div>`
+          : "";
+        const memberLabel = p.member && p.member !== "指定なし"
+          ? ` <span class="text-xs text-gray-400 font-normal">(${escapeHtml(p.member)})</span>` : "";
+
+        let photoHtml = "";
+        if (kind === "card") {
+          if (isJpegData(p.thumb)) {
+            photoHtml = `<div class="relative">
+              <img src="${p.thumb}" alt="" onclick="openDetailModal(${index})" class="w-full h-36 object-cover rounded-xl cursor-pointer">
+              ${p.photoCount > 1 ? `<span class="absolute bottom-1.5 right-1.5 bg-black/60 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">📷 ${p.photoCount}</span>` : ''}
+            </div>`;
+          } else {
+            photoHtml = `<div class="text-[11px] text-orange-500 bg-orange-50 rounded-lg px-2 py-1">⚠️ 写真なし</div>`;
+          }
+        }
+
         cards.push(`
-          <div class="bg-white p-4 rounded-2xl border border-purple-100 shadow-sm flex flex-col justify-between space-y-3">
+          <div class="bg-white p-4 rounded-2xl border ${kind === 'serial' ? 'border-yellow-200' : 'border-purple-100'} shadow-sm flex flex-col justify-between space-y-3 ${expired ? 'opacity-60' : ''}">
+            ${serialHead}
+            ${photoHtml}
             <div class="flex items-center space-x-2">
               <span class="bg-pink-100 text-pink-700 text-xs font-bold px-2 py-0.5 rounded">譲</span>
-              <span class="font-bold text-sm text-gray-800">${escapeHtml(p.give)} <span class="text-xs text-gray-400 font-normal">(${escapeHtml(p.member)})</span></span>
+              <span class="font-bold text-sm text-gray-800">${escapeHtml(p.give)}${memberLabel}</span>
             </div>
             <div class="flex items-center space-x-2">
               <span class="bg-purple-100 text-illit-darkPurple text-xs font-bold px-2 py-0.5 rounded">求</span>
@@ -374,7 +727,7 @@
       });
 
       if (allPosts.length === 0) {
-        container.innerHTML = '<p class="text-xs text-gray-400 col-span-2 text-center py-4">現在、出品されているカードはありません。</p>';
+        container.innerHTML = '<p class="text-xs text-gray-400 col-span-2 text-center py-4">現在、出品されているものはありません。</p>';
       } else if (cards.length === 0) {
         container.innerHTML = '<p class="text-xs text-gray-400 col-span-2 text-center py-4">条件に合う出品はありません。</p>';
       } else {
@@ -396,17 +749,83 @@
       }
     }
 
+    // ===== 写真の取得・表示 =====
+    async function getPhotos(postId) {
+      if (photoCache[postId]) return photoCache[postId];
+      const snap = await getDocs(collection(db, "posts", postId, "photos"));
+      const list = snap.docs.map((d) => d.data())
+        .sort((a, b) => (a.order || 0) - (b.order || 0))
+        .map((d) => d.data)
+        .filter(isJpegData);
+      photoCache[postId] = list;
+      return list;
+    }
+
+    window.viewPhoto = function(kind, i) {
+      const arr = kind === "room" ? roomPhotos : detailPhotos;
+      const src = arr[i];
+      if (!isJpegData(src)) return;
+      document.getElementById("image-viewer-img").src = src;
+      document.getElementById("image-viewer").classList.remove("hidden");
+    };
+
+    async function loadDetailPhotos(p, index) {
+      const el = document.getElementById("detail-photos");
+      detailPhotos = [];
+      if (kindOf(p) !== "card") { el.innerHTML = ""; return; }
+      if (!p.photoCount) {
+        el.innerHTML = '<div class="text-xs text-orange-600 bg-orange-50 border border-orange-200 rounded-xl p-3">⚠️ この出品には写真が添付されていません。申し込む前に、チャットで状態の写真を必ず確認してください。</div>';
+        return;
+      }
+      el.innerHTML = isJpegData(p.thumb)
+        ? `<img src="${p.thumb}" alt="" class="w-full h-44 object-cover rounded-xl opacity-60">`
+        : '<p class="text-xs text-gray-400 text-center">写真を読み込み中…</p>';
+      try {
+        const list = await getPhotos(p.id);
+        if (currentDetailIndex !== index) return;
+        detailPhotos = list;
+        if (list.length === 0) {
+          el.innerHTML = '<p class="text-xs text-gray-400 text-center">写真を読み込めませんでした。</p>';
+          return;
+        }
+        el.innerHTML = `
+          <div class="grid ${list.length === 1 ? 'grid-cols-1' : list.length === 2 ? 'grid-cols-2' : 'grid-cols-3'} gap-2">
+            ${list.map((src, i) => `<img src="${src}" alt="出品写真${i + 1}" onclick="viewPhoto('detail', ${i})" class="w-full ${list.length === 1 ? 'h-56' : 'h-28'} object-cover rounded-xl cursor-pointer border border-purple-100">`).join("")}
+          </div>
+          <p class="text-[11px] text-gray-400 mt-1">タップで拡大できます</p>`;
+      } catch (e) {
+        console.error(e);
+        if (currentDetailIndex === index) {
+          el.innerHTML = '<p class="text-xs text-red-400 text-center">写真の読み込みに失敗しました。</p>';
+        }
+      }
+    }
+
     // ===== 詳細モーダル =====
     window.openDetailModal = function(index) {
       const p = allPosts[index];
       if (!p) return;
       currentDetailIndex = index;
+      const kind = kindOf(p);
+      const expired = isExpired(p);
 
+      document.getElementById("detail-title").innerText = kind === "serial" ? "🎫 シリアル交換の詳細" : "交換募集の詳細";
       document.getElementById("detail-give").innerText = p.give;
       document.getElementById("detail-want").innerText = p.want;
-      document.getElementById("detail-member").innerText = p.member;
+      document.getElementById("detail-member").innerText = p.member || "指定なし";
       document.getElementById("detail-user").innerText = p.userName;
       document.getElementById("detail-rating").innerText = "";
+
+      let extra = "";
+      if (kind === "serial") {
+        if (p.deadline) extra += `<div>有効期限: <b class="${expired ? 'text-red-500' : ''}">${escapeHtml(p.deadline)}${expired ? '（期限切れ）' : ''}</b></div>`;
+        if (p.note) extra += `<div>備考: ${escapeHtml(p.note)}</div>`;
+      }
+      document.getElementById("detail-extra").innerHTML = extra;
+
+      document.getElementById("detail-tip").innerText = kind === "serial"
+        ? "💡 申し込むと専用の取引ルームが作られます。シリアルコードは合意後、ルーム内でお互いに送り合います。相手の評価も確認してから進めましょう。"
+        : "💡 添付写真でカードの状態を確認してください。申し込むと専用のチャットルームが作られ、追加の写真も送り合えます。";
 
       const actions = document.getElementById("detail-actions");
       if (!currentUser) {
@@ -417,11 +836,14 @@
           <button onclick="deletePost(${index})" class="w-full bg-red-50 text-red-500 font-bold py-2.5 rounded-xl hover:bg-red-100 transition text-sm">この募集を削除する</button>`;
       } else if (!p.userId) {
         actions.innerHTML = `<p class="text-xs text-gray-400 text-center">この出品は旧バージョンで作られたため、申込できません。</p>`;
+      } else if (expired) {
+        actions.innerHTML = `<p class="text-xs text-red-400 text-center">有効期限が切れているため、申込できません。</p>`;
       } else {
         actions.innerHTML = `<button onclick="applyToPost(${index})" class="w-full bg-gradient-to-r from-purple-500 to-illit-accent text-white font-bold py-2.5 rounded-xl hover:opacity-90 transition text-sm">この募集に申し込む</button>`;
       }
 
       document.getElementById("detail-modal").classList.remove("hidden");
+      loadDetailPhotos(p, index);
       if (p.userId) loadRating(p.userId, index);
     };
 
@@ -453,7 +875,7 @@
       const p = allPosts[index];
       if (!p || !confirm("この募集を削除しますか？")) return;
       try {
-        await deleteDoc(doc(db, "posts", p.id));
+        await deletePostWithPhotos(p.id);
         closeDetailModal();
         loadPosts();
       } catch (e) {
@@ -466,6 +888,10 @@
     window.applyToPost = async function(index) {
       const p = allPosts[index];
       if (!currentUser || !p || !p.userId) return;
+      if (isExpired(p)) {
+        alert("有効期限が切れています。");
+        return;
+      }
 
       const existing = myTrades.find((t) =>
         t.postId === p.id && t.applicantId === currentUser.uid &&
@@ -477,10 +903,13 @@
 
       try {
         const ref = await addDoc(collection(db, "trades"), {
+          kind: kindOf(p),
           postId: p.id,
           postGive: p.give,
           postWant: p.want,
-          postMember: p.member,
+          postMember: p.member || "指定なし",
+          postDeadline: p.deadline || "",
+          postPhotoCount: p.photoCount || 0,
           ownerId: p.userId,
           ownerName: p.userName,
           applicantId: currentUser.uid,
@@ -490,6 +919,7 @@
           agreed: {},
           shipped: {},
           received: {},
+          disputed: {},
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
         });
@@ -537,11 +967,13 @@
         const iAmOwner = currentUser.uid === t.ownerId;
         const otherName = iAmOwner ? t.applicantName : t.ownerName;
         const role = iAmOwner ? "申込が届きました" : "あなたが申込";
+        const serial = kindOf(t) === "serial";
+        const label = (serial ? STATUS_LABEL_SERIAL : STATUS_LABEL)[t.status] || "";
         return `
-          <button onclick="openTrade('${t.id}')" class="w-full text-left bg-white border border-purple-100 rounded-xl p-3 hover:bg-purple-50 transition space-y-1">
+          <button onclick="openTrade('${t.id}')" class="w-full text-left bg-white border ${serial ? 'border-yellow-200' : 'border-purple-100'} rounded-xl p-3 hover:bg-purple-50 transition space-y-1">
             <div class="flex justify-between items-center">
-              <span class="text-xs text-gray-500">${escapeHtml(otherName)} さん ・ ${role}</span>
-              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_CLASS[t.status] || ''}">${STATUS_LABEL[t.status] || ''}</span>
+              <span class="text-xs text-gray-500">${serial ? '🎫 ' : ''}${escapeHtml(otherName)} さん ・ ${role}</span>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_CLASS[t.status] || ''}">${label}</span>
             </div>
             <div class="text-sm font-bold text-gray-800">譲 ${escapeHtml(t.postGive)} <span class="text-gray-400 font-normal">⇄</span> 求 ${escapeHtml(t.postWant)}</div>
           </button>`;
@@ -554,13 +986,40 @@
       if (unsubMsgs) { unsubMsgs(); unsubMsgs = null; }
       currentTrade = null;
       roomMessages = [];
+      roomPhotos = [];
+      roomPhotosFor = null;
       reviewState = { tradeId: null, done: null };
       selectedRating = 0;
+      revealedSerial = new Set();
+      const rp = document.getElementById("room-photos");
+      if (rp) rp.innerHTML = "";
+    }
+
+    async function loadRoomPhotos(t) {
+      const el = document.getElementById("room-photos");
+      if (kindOf(t) !== "card" || !t.postPhotoCount) { el.innerHTML = ""; return; }
+      try {
+        const list = await getPhotos(t.postId);
+        if (!currentTrade || currentTrade.id !== t.id) return;
+        roomPhotos = list;
+        if (list.length === 0) { el.innerHTML = ""; return; }
+        el.innerHTML = `
+          <div>
+            <div class="text-[11px] font-bold text-gray-500 mb-1">📷 出品時の写真（タップで拡大）</div>
+            <div class="flex gap-2 overflow-x-auto">
+              ${list.map((src, i) => `<img src="${src}" alt="" onclick="viewPhoto('room', ${i})" class="w-20 h-20 object-cover rounded-lg border border-purple-100 cursor-pointer shrink-0">`).join("")}
+            </div>
+          </div>`;
+      } catch (e) {
+        console.error(e);
+        el.innerHTML = "";
+      }
     }
 
     window.openTrade = function(id) {
       closeTradesModal();
       closeDetailModal();
+      closeSerialSendModal();
       cleanupRoom();
       document.getElementById("room-messages").innerHTML = "";
       document.getElementById("room-modal").classList.remove("hidden");
@@ -569,6 +1028,10 @@
         if (!snap.exists()) { closeRoom(); return; }
         currentTrade = { id: snap.id, ...snap.data() };
         renderRoom();
+        if (roomPhotosFor !== currentTrade.id) {
+          roomPhotosFor = currentTrade.id;
+          loadRoomPhotos(currentTrade);
+        }
         advanceIfNeeded();
         checkReview();
       }, (err) => {
@@ -589,6 +1052,8 @@
 
     window.closeRoom = function() {
       document.getElementById("room-modal").classList.add("hidden");
+      closeImageViewer();
+      closeSerialSendModal();
       cleanupRoom();
     };
 
@@ -623,15 +1088,16 @@
         .catch((e) => console.error(e));
     }
 
-    function stepsHtml(status) {
+    function stepsHtml(status, serial) {
       if (status === "cancelled") {
         return '<div class="text-xs font-bold text-gray-500 bg-gray-100 rounded-lg p-2 text-center">この取引はキャンセルされました</div>';
       }
       const order = ["negotiating", "shipping", "completed"];
-      const labels = ["① 交渉", "② 発送・受取", "③ 完了"];
+      const labels = serial ? ["① 交渉", "② コード交換", "③ 完了"] : ["① 交渉", "② 発送・受取", "③ 完了"];
       const idx = order.indexOf(status);
+      const on = serial ? "bg-yellow-400 text-yellow-900" : "bg-illit-purple text-white";
       return '<div class="flex space-x-1">' + labels.map((l, i) => {
-        const cls = i <= idx ? "bg-illit-purple text-white" : "bg-gray-100 text-gray-400";
+        const cls = i <= idx ? on : "bg-gray-100 text-gray-400";
         return `<div class="flex-1 text-center text-[11px] font-bold py-1.5 rounded-lg ${cls}">${l}</div>`;
       }).join("") + "</div>";
     }
@@ -643,31 +1109,63 @@
       const iAmOwner = uid === t.ownerId;
       const otherId = iAmOwner ? t.applicantId : t.ownerId;
       const otherName = iAmOwner ? t.applicantName : t.ownerName;
+      const serial = kindOf(t) === "serial";
 
-      document.getElementById("room-title").innerText = otherName + " さんとの交換";
+      document.getElementById("room-title").innerText = (serial ? "🎫 " : "") + otherName + " さんとの交換";
 
+      const memberLine = t.postMember && t.postMember !== "指定なし"
+        ? `<div class="text-gray-500">${escapeHtml(t.postMember)}</div>` : "";
+      const deadlineLine = serial && t.postDeadline
+        ? `<div class="text-gray-400">有効期限: ${escapeHtml(t.postDeadline)}</div>` : "";
       document.getElementById("room-info").innerHTML = `
-        <div class="bg-white rounded-xl p-3 text-xs space-y-1 border border-purple-100">
-          <div class="text-gray-500">${escapeHtml(t.postMember)}</div>
+        <div class="bg-white rounded-xl p-3 text-xs space-y-1 border ${serial ? 'border-yellow-200' : 'border-purple-100'}">
+          ${serial ? '<div class="text-yellow-700 font-bold">🎫 シリアル交換</div>' : ''}
+          ${memberLine}
           <div><span class="bg-pink-100 text-pink-700 font-bold px-2 py-0.5 rounded">譲</span> <span class="font-bold">${escapeHtml(t.postGive)}</span></div>
           <div><span class="bg-purple-100 text-illit-darkPurple font-bold px-2 py-0.5 rounded">求</span> <span class="font-bold">${escapeHtml(t.postWant)}</span></div>
+          ${deadlineLine}
           <div class="text-gray-400">出品者: ${escapeHtml(t.ownerName)}</div>
         </div>`;
 
-      document.getElementById("room-steps").innerHTML = stepsHtml(t.status);
+      document.getElementById("room-steps").innerHTML = stepsHtml(t.status, serial);
 
       const mark = (b) => b ? "✅" : "⏳";
       const btn = "w-full font-bold py-2.5 rounded-xl text-sm transition ";
       const primary = btn + "bg-illit-purple text-white hover:bg-illit-darkPurple";
+      const yellow = btn + "bg-yellow-400 text-yellow-900 hover:bg-yellow-300";
       let html = "";
 
       if (t.status === "negotiating") {
         const my = flag(t, "agreed", uid), other = flag(t, "agreed", otherId);
         html = `
-          <p class="text-xs text-gray-600">チャットで条件を確認し、納得できたら「成立に合意」を押してください。双方が押すと取引が確定します。</p>
+          <p class="text-xs text-gray-600">${serial
+            ? "チャットで内容・期限・未使用かどうかを確認し、納得できたら「成立に合意」を押してください。双方が押すとコード交換に進みます。"
+            : "出品写真やチャットの写真でカードの状態を確認し、納得できたら「成立に合意」を押してください。双方が押すと取引が確定します。"}</p>
           <div class="text-xs text-gray-600">合意: あなた ${mark(my)} ／ 相手 ${mark(other)}</div>
-          ${my ? '<p class="text-xs text-gray-400 text-center">相手の合意を待っています…</p>' : `<button onclick="tradeAction('agreed')" class="${primary}">成立に合意する</button>`}
+          ${my ? '<p class="text-xs text-gray-400 text-center">相手の合意を待っています…</p>' : `<button onclick="tradeAction('agreed')" class="${serial ? yellow : primary}">成立に合意する</button>`}
           <button onclick="cancelTrade()" class="${btn} bg-white text-gray-400 border border-gray-200 hover:bg-gray-50">この取引をキャンセル</button>`;
+      } else if (t.status === "shipping" && serial) {
+        const myS = flag(t, "shipped", uid), otherS = flag(t, "shipped", otherId);
+        const myR = flag(t, "received", uid), otherR = flag(t, "received", otherId);
+        const myD = flag(t, "disputed", uid), otherD = flag(t, "disputed", otherId);
+        html = `
+          ${otherD ? '<div class="text-xs bg-red-50 border border-red-200 text-red-600 rounded-lg p-2 font-bold">⚠️ 相手が「コードが使えない」と報告しています。チャットで状況を確認してください。</div>' : ''}
+          <p class="text-xs text-gray-600">お互いにシリアルコードを送り合い、受け取ったコードが使えたら「確認OK」を押してください。送ったコードは自分で使わないでください。</p>
+          <div class="text-xs text-gray-600 space-y-0.5">
+            <div>コード送信: あなた ${mark(myS)} ／ 相手 ${mark(otherS)}</div>
+            <div>確認OK: あなた ${mark(myR)} ／ 相手 ${mark(otherR)}</div>
+          </div>
+          ${!myS ? `<button onclick="openSerialSendModal()" class="${yellow}">🎫 シリアルコードを送る</button>` : ''}
+          ${otherS && !myR ? `
+            <div class="flex space-x-2">
+              <button onclick="tradeAction('received')" class="flex-1 ${btn} bg-green-500 text-white hover:bg-green-600">確認OK（使えた）</button>
+              ${myD
+                ? '<div class="flex-1 text-center text-xs text-red-500 font-bold self-center">報告済み</div>'
+                : `<button onclick="reportSerialProblem()" class="flex-1 ${btn} bg-white text-red-500 border border-red-200 hover:bg-red-50">使えない</button>`}
+            </div>` : ''}
+          ${!otherS && myS ? '<p class="text-xs text-gray-400 text-center">相手のコード送信を待っています…</p>' : ''}
+          ${myR && !otherR ? '<p class="text-xs text-gray-400 text-center">相手の確認を待っています…</p>' : ''}
+          ${(myD || otherD) ? `<button onclick="cancelTrade()" class="${btn} bg-white text-gray-400 border border-gray-200 hover:bg-gray-50">この取引をキャンセル</button>` : ''}`;
       } else if (t.status === "shipping") {
         const myS = flag(t, "shipped", uid), otherS = flag(t, "shipped", otherId);
         const myR = flag(t, "received", uid), otherR = flag(t, "received", otherId);
@@ -708,6 +1206,7 @@
       const disabled = t.status === "cancelled";
       document.getElementById("room-input").disabled = disabled;
       document.getElementById("room-send").disabled = disabled;
+      document.getElementById("room-photo").disabled = disabled;
       document.getElementById("room-input").placeholder = disabled ? "キャンセルされたためチャットできません" : "メッセージを入力";
     }
 
@@ -718,17 +1217,57 @@
         el.innerHTML = '<p class="text-xs text-gray-400 text-center py-6">まだメッセージはありません。<br>まずは挨拶してみましょう 👋</p>';
         return;
       }
-      el.innerHTML = roomMessages.map((m) => {
+      el.innerHTML = roomMessages.map((m, i) => {
         const mine = m.senderId === currentUser.uid;
+        const time = `<div class="text-[10px] text-gray-300 mt-0.5">${fmtTime(m.createdAt)}</div>`;
+        const nameHtml = mine ? '' : `<div class="text-[10px] text-gray-400 mb-0.5">${escapeHtml(m.senderName)}</div>`;
+
+        if (m.kind === "serial") {
+          let inner;
+          if (mine) {
+            inner = `
+              <div class="text-[11px] font-bold text-yellow-700">🎫 あなたが送信したシリアルコード</div>
+              <div class="font-mono text-sm break-all text-gray-800">${escapeHtml(m.text)}</div>`;
+          } else if (revealedSerial.has(i)) {
+            inner = `
+              <div class="text-[11px] font-bold text-yellow-700">🎫 受け取ったシリアルコード</div>
+              <div class="font-mono text-sm break-all text-gray-800">${escapeHtml(m.text)}</div>
+              <div class="flex space-x-3 pt-1">
+                <button onclick="copySerial(${i})" class="text-[11px] text-illit-darkPurple underline">コピー</button>
+                <button onclick="toggleSerial(${i})" class="text-[11px] text-gray-400 underline">隠す</button>
+              </div>`;
+          } else {
+            inner = `
+              <div class="text-[11px] font-bold text-yellow-700">🎫 シリアルコードが届いています</div>
+              <button onclick="toggleSerial(${i})" class="text-sm text-gray-600 font-mono">●●●●●●●●　<span class="text-[11px] font-sans underline text-illit-darkPurple">タップして表示</span></button>`;
+          }
+          return `
+            <div class="flex ${mine ? 'justify-end' : 'justify-start'}">
+              <div class="max-w-[85%] ${mine ? 'flex flex-col items-end' : ''}">
+                ${nameHtml}
+                <div class="bg-yellow-50 border border-yellow-200 rounded-2xl px-3 py-2 space-y-0.5">${inner}</div>
+                ${time}
+              </div>
+            </div>`;
+        }
+
         const bubble = mine
           ? "bg-illit-purple text-white rounded-2xl rounded-br-sm"
           : "bg-gray-100 text-gray-800 rounded-2xl rounded-bl-sm";
+        const hasImage = isJpegData(m.image);
+        const imgHtml = hasImage
+          ? `<img src="${m.image}" alt="送信された写真" onclick="viewImage(${i})" class="rounded-xl max-h-60 w-auto cursor-pointer ${m.text ? 'mb-1' : ''}">`
+          : "";
+        const textHtml = m.text
+          ? `<div class="${bubble} px-3 py-2 text-sm whitespace-pre-wrap break-words">${escapeHtml(m.text)}</div>`
+          : "";
         return `
           <div class="flex ${mine ? 'justify-end' : 'justify-start'}">
-            <div class="max-w-[80%]">
-              ${mine ? '' : `<div class="text-[10px] text-gray-400 mb-0.5">${escapeHtml(m.senderName)}</div>`}
-              <div class="${bubble} px-3 py-2 text-sm whitespace-pre-wrap break-words">${escapeHtml(m.text)}</div>
-              <div class="text-[10px] text-gray-300 mt-0.5 ${mine ? 'text-right' : ''}">${fmtTime(m.createdAt)}</div>
+            <div class="max-w-[80%] ${mine ? 'flex flex-col items-end' : ''}">
+              ${nameHtml}
+              ${imgHtml}
+              ${textHtml}
+              ${time}
             </div>
           </div>`;
       }).join("");
@@ -754,6 +1293,123 @@
       }
     };
 
+    // ===== シリアルコードの送受信 =====
+    window.openSerialSendModal = function() {
+      if (!currentTrade || currentTrade.status !== "shipping") return;
+      document.getElementById("serial-code-input").value = "";
+      document.getElementById("serial-send-modal").classList.remove("hidden");
+    };
+    window.closeSerialSendModal = function() {
+      document.getElementById("serial-send-modal").classList.add("hidden");
+      const inp = document.getElementById("serial-code-input");
+      if (inp) inp.value = "";
+    };
+
+    window.sendSerial = async function() {
+      const t = currentTrade;
+      if (!t || sendingSerial) return;
+      const code = document.getElementById("serial-code-input").value.trim();
+      if (code.length < 4) {
+        alert("シリアルコードを正しく入力してください。");
+        return;
+      }
+      if (!confirm("このコードを相手に送信します。送信後は取り消せません。よろしいですか？")) return;
+
+      sendingSerial = true;
+      const sendBtn = document.getElementById("serial-send-btn");
+      sendBtn.disabled = true;
+      sendBtn.innerText = "送信中…";
+      try {
+        await addDoc(collection(db, "trades", t.id, "messages"), {
+          senderId: currentUser.uid,
+          senderName: currentUser.displayName || "匿名ファン",
+          kind: "serial",
+          text: code,
+          createdAt: serverTimestamp()
+        });
+        await updateDoc(doc(db, "trades", t.id), {
+          ["shipped." + currentUser.uid]: true,
+          updatedAt: serverTimestamp()
+        });
+        closeSerialSendModal();
+      } catch (e) {
+        console.error(e);
+        alert("送信に失敗しました。もう一度お試しください。");
+      } finally {
+        sendingSerial = false;
+        sendBtn.disabled = false;
+        sendBtn.innerText = "送信する";
+      }
+    };
+
+    window.toggleSerial = function(i) {
+      if (revealedSerial.has(i)) revealedSerial.delete(i);
+      else revealedSerial.add(i);
+      renderMessages();
+    };
+
+    window.copySerial = async function(i) {
+      const m = roomMessages[i];
+      if (!m || m.kind !== "serial") return;
+      try {
+        await navigator.clipboard.writeText(m.text);
+        alert("コピーしました。");
+      } catch (e) {
+        alert("コピーできませんでした。コードを長押しして手動でコピーしてください。");
+      }
+    };
+
+    window.reportSerialProblem = async function() {
+      if (!currentTrade) return;
+      if (!confirm("「コードが使えない」と相手に報告します。よろしいですか？\n（報告後もチャットで相手とやり取りできます）")) return;
+      await window.tradeAction("disputed");
+    };
+
+    // ===== チャットの写真送信 =====
+    window.sendImage = async function(inputEl) {
+      const file = inputEl.files && inputEl.files[0];
+      inputEl.value = "";
+      if (!file || !currentTrade || currentTrade.status === "cancelled" || sendingImage) return;
+      if (!file.type.startsWith("image/")) {
+        alert("画像ファイルを選んでください。");
+        return;
+      }
+      sendingImage = true;
+      const photoBtn = document.getElementById("room-photo");
+      photoBtn.disabled = true;
+      photoBtn.innerText = "⏳";
+      try {
+        const dataUrl = await compressImage(file, CHAT_PHOTO);
+        await addDoc(collection(db, "trades", currentTrade.id, "messages"), {
+          senderId: currentUser.uid,
+          senderName: currentUser.displayName || "匿名ファン",
+          text: "",
+          image: dataUrl,
+          createdAt: serverTimestamp()
+        });
+      } catch (e) {
+        console.error(e);
+        alert("写真の送信に失敗しました。別の写真でもう一度お試しください。");
+      } finally {
+        sendingImage = false;
+        photoBtn.innerText = "📷";
+        photoBtn.disabled = !currentTrade || currentTrade.status === "cancelled";
+      }
+    };
+
+    window.viewImage = function(i) {
+      const m = roomMessages[i];
+      if (!m || !isJpegData(m.image)) return;
+      document.getElementById("image-viewer-img").src = m.image;
+      document.getElementById("image-viewer").classList.remove("hidden");
+    };
+
+    window.closeImageViewer = function() {
+      document.getElementById("image-viewer").classList.add("hidden");
+      document.getElementById("image-viewer-img").src = "";
+    };
+
+    // ===== 取引操作 =====
     window.tradeAction = async function(field) {
       if (!currentTrade) return;
       try {
@@ -783,7 +1439,7 @@
     window.deleteRoomPost = async function() {
       if (!currentTrade || !confirm("この募集を削除しますか？")) return;
       try {
-        await deleteDoc(doc(db, "posts", currentTrade.postId));
+        await deletePostWithPhotos(currentTrade.postId);
         alert("募集を削除しました。");
         loadPosts();
       } catch (e) {
