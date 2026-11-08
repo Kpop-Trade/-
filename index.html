@@ -746,7 +746,7 @@
         let badgeHtml = "";
         if (isBuy && isSerial) badgeHtml = `<span class="bg-yellow-100 text-yellow-800 font-bold px-2 py-0.5 rounded text-[11px]">💳 シリアル買取（希望: ¥${Number(p.price || 0).toLocaleString()}）</span>`;
         else if (isBuy) badgeHtml = `<span class="bg-pink-100 text-pink-700 font-bold px-2 py-0.5 rounded text-[11px]">💳 買取希望（¥${Number(p.price || 0).toLocaleString()}）</span>`;
-        else if (isSerial) badgeHtml = `<span class="bg-yellow-100 text-yellow-700 font-bold px-2 py-0.5 rounded text-[11px]">🎫 シリアルでトレカ求む</span>`;
+        else if (isSerial) badgeHtml = `<span class="bg-yellow-100 text-yellow-800 font-bold px-2 py-0.5 rounded text-[11px]">🎫 シリアルでトレカ求む</span>`;
         else badgeHtml = `<span class="bg-purple-100 text-purple-700 font-bold px-2 py-0.5 rounded text-[11px]">🃏 トレカ交換</span>`;
 
         let photoHtml = "";
@@ -988,7 +988,12 @@
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
         });
+
+        // 申込完了時に元の募集を一覧から削除
+        await deletePostWithPhotos(p.id);
+
         closeDetailModal();
+        loadPosts();
         openTrade(ref.id);
       } catch (e) {
         console.error(e);
@@ -1407,3 +1412,4 @@
   </script>
 </body>
 </html>
+8
