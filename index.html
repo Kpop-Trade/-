@@ -392,6 +392,7 @@
 
     let currentUser = null;
     let allPosts = [];
+    let unsubPosts = null;
     let selectedMember = "すべて";
     let kindFilter = "all";
     let searchText = "";
@@ -479,7 +480,7 @@
       }
       alert("ブロックしました。");
       closeDetailModal();
-      loadPosts();
+      renderPosts();
     };
     window.clearBlockedUsers = function() {
       if (!currentUser) return;
@@ -487,7 +488,7 @@
       localStorage.removeItem("illit_blocked_" + currentUser.uid);
       alert("ブロックをすべて解除しました。");
       renderBlockedBox();
-      loadPosts();
+      renderPosts();
     };
     function renderBlockedBox() {
       const list = getBlockedUsers();
@@ -678,7 +679,7 @@
         myTrades = [];
         updateBadge();
       }
-      loadPosts();
+      subscribePosts();
     });
 
     // ===== 出品（トレカ） =====
@@ -828,7 +829,6 @@
         document.getElementById("input-price").value = "";
         document.getElementById("input-desc").value = "";
         postPhotos = [];
-        loadPosts();
       } catch (e) {
         console.error(e);
         if (postRef) {
@@ -916,7 +916,6 @@
         });
         alert("出品が完了しました！");
         closeSerialPostModal();
-        loadPosts();
       } catch (e) {
         console.error(e);
         alert("出品に失敗しました。");
@@ -961,6 +960,7 @@
       const cards = [];
 
       allPosts.forEach((p, index) => {
+        // 取引中（traded）のものは非表示
         if (blocked.includes(p.userId) || p.status === "traded") return;
 
         const type = getPostType(p);
@@ -1032,18 +1032,17 @@
       }
     }
 
-    async function loadPosts() {
-      const container = document.getElementById("posts-container");
-      container.innerHTML = '<p class="text-xs text-gray-400 col-span-2 text-center py-4">読み込み中...</p>';
-      try {
-        const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
-        const snapshot = await getDocs(q);
+    // 募集一覧のリアルタイム監視（onSnapshot）
+    function subscribePosts() {
+      if (unsubPosts) unsubPosts();
+      const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
+      unsubPosts = onSnapshot(q, (snapshot) => {
         allPosts = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
         renderPosts();
-      } catch (e) {
+      }, (e) => {
         console.error(e);
-        container.innerHTML = '<p class="text-xs text-red-400 col-span-2 text-center py-4">読み込みに失敗しました。</p>';
-      }
+        document.getElementById("posts-container").innerHTML = '<p class="text-xs text-red-400 col-span-2 text-center py-4">読み込みに失敗しました。</p>';
+      });
     }
 
     // ===== 写真 =====
@@ -1189,7 +1188,6 @@
       try {
         await deletePostWithPhotos(p.id);
         closeDetailModal();
-        loadPosts();
       } catch (e) {
         alert("削除に失敗しました。");
       }
@@ -1253,15 +1251,14 @@
           updatedAt: serverTimestamp()
         });
 
-        // 募集を「取引中(traded)」に更新して一覧から非表示にする
+        // 募集のステータスをtraded（取引中）に更新（これでリアルタイム監視により自動的に消えます）
         try {
           await updateDoc(doc(db, "posts", p.id), { status: "traded" });
         } catch (delErr) {
-          console.error("募集の更新に失敗しましたが取引は継続します:", delErr);
+          console.error("募集の更新エラー:", delErr);
         }
 
         closeDetailModal();
-        loadPosts();
         openTrade(ref.id);
       } catch (e) {
         console.error("申込エラー詳細:", e);
@@ -1677,7 +1674,6 @@
           status: "cancelled",
           updatedAt: serverTimestamp()
         });
-        loadPosts();
       } catch (e) {}
     };
 
@@ -1716,7 +1712,7 @@
 
     // ===== 初期化 =====
     renderFilters();
-    loadPosts();
+    subscribePosts();
   </script>
 </body>
 </html>
