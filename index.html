@@ -159,6 +159,13 @@
         </div>
         <hr class="border-purple-100 my-1">
         <div>
+          <label class="block font-semibold text-gray-700 mb-1">📱 電話番号認証</label>
+          <p id="phone-status" class="text-[11px] text-gray-500 mb-1"></p>
+          <button id="phone-open-btn" onclick="openPhoneModal()" class="w-full bg-purple-100 text-illit-darkPurple font-bold py-2 rounded-xl hover:bg-purple-200 transition">電話番号を認証する</button>
+          <p class="text-[10px] text-gray-400 mt-1">※出品・申込に必要です。番号は他のユーザーには表示されません。</p>
+        </div>
+        <hr class="border-purple-100 my-1">
+        <div>
           <label class="block font-semibold text-gray-700 mb-1">🔔 プッシュ通知</label>
           <p id="push-status" class="text-[11px] text-gray-500 mb-1"></p>
           <button id="push-on-btn" onclick="enablePush()" class="w-full bg-purple-100 text-illit-darkPurple font-bold py-2 rounded-xl hover:bg-purple-200 transition">🔔 この端末で通知をオンにする</button>
@@ -281,6 +288,71 @@
     </div>
   </div>
 
+  <!-- 電話番号認証モーダル -->
+  <div id="phone-modal" class="fixed inset-0 bg-black/50 hidden z-[55] flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-md rounded-2xl p-6 space-y-4 shadow-xl max-h-[92vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b pb-3">
+        <h3 class="font-bold text-base text-gray-800">📱 電話番号認証</h3>
+        <button onclick="closePhoneModal()" class="text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
+      </div>
+      <p class="text-xs text-gray-600 leading-relaxed">出品・申込をするには、電話番号の認証が必要です（初回のみ）。安心して取引できるよう、複数アカウントでの悪用を防ぐために行っています。電話番号は他のユーザーには公開されません。</p>
+      <div id="phone-step1" class="space-y-3 text-xs md:text-sm">
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">携帯電話番号</label>
+          <input type="tel" id="phone-input" maxlength="20" placeholder="例: 090-1234-5678" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+        </div>
+        <button id="phone-send-btn" onclick="sendPhoneCode()" class="w-full bg-illit-purple text-white font-bold py-2.5 rounded-xl hover:bg-illit-darkPurple transition">認証コードをSMSで送る</button>
+      </div>
+      <div id="phone-step2" class="hidden space-y-3 text-xs md:text-sm">
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">SMSに届いた6桁のコード</label>
+          <input type="text" id="phone-code-input" inputmode="numeric" maxlength="6" placeholder="123456" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50 tracking-widest text-center text-lg">
+        </div>
+        <button id="phone-verify-btn" onclick="verifyPhoneCode()" class="w-full bg-illit-purple text-white font-bold py-2.5 rounded-xl hover:bg-illit-darkPurple transition">認証する</button>
+        <button onclick="backToPhoneStep1()" class="w-full text-xs text-gray-400 underline">番号を入力し直す</button>
+      </div>
+      <div id="recaptcha-container"></div>
+      <button onclick="closePhoneModal()" class="w-full bg-gray-100 text-gray-600 font-bold py-2.5 rounded-xl hover:bg-gray-200 transition text-sm">キャンセル</button>
+    </div>
+  </div>
+
+  <!-- 出品編集モーダル -->
+  <div id="edit-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-md rounded-2xl p-6 space-y-4 shadow-xl max-h-[92vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b pb-3">
+        <h3 class="font-bold text-base text-gray-800">✏️ 募集の編集</h3>
+        <button onclick="closeEditModal()" class="text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
+      </div>
+      <div class="space-y-3 text-xs md:text-sm">
+        <div>
+          <label id="edit-label-give" class="block font-semibold text-gray-700 mb-1">【譲】</label>
+          <input type="text" id="edit-give" maxlength="100" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+        </div>
+        <div id="edit-want-container">
+          <label class="block font-semibold text-gray-700 mb-1">【求】</label>
+          <input type="text" id="edit-want" maxlength="100" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+        </div>
+        <div id="edit-price-container" class="hidden">
+          <label class="block font-semibold text-gray-700 mb-1">希望価格（円・PayPay送金）</label>
+          <input type="number" id="edit-price" min="1" max="100000" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+        </div>
+        <div id="edit-deadline-container" class="hidden">
+          <label class="block font-semibold text-gray-700 mb-1">有効期限（任意）</label>
+          <input type="date" id="edit-deadline" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+        </div>
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">説明文・備考（任意）</label>
+          <textarea id="edit-desc" maxlength="200" rows="3" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50"></textarea>
+        </div>
+        <p class="text-[11px] text-gray-400">※写真を変えたい場合は、一度削除して出品し直してください。</p>
+      </div>
+      <div class="flex space-x-2 pt-2">
+        <button onclick="closeEditModal()" class="flex-1 bg-gray-100 text-gray-600 font-bold py-2.5 rounded-xl hover:bg-gray-200 transition">キャンセル</button>
+        <button onclick="submitEditPost()" class="flex-1 bg-illit-purple text-white font-bold py-2.5 rounded-xl hover:bg-illit-darkPurple transition">保存する</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 詳細モーダル -->
   <div id="detail-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
     <div class="bg-white w-full max-w-md rounded-2xl p-6 space-y-4 shadow-xl max-h-[92vh] overflow-y-auto">
@@ -373,7 +445,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, RecaptchaVerifier, linkWithPhoneNumber } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { getFirestore, collection, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, where, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getMessaging, getToken, deleteToken } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js";
 
@@ -391,6 +463,7 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
     const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" }); // 毎回アカウント選択画面を出す
 
     // Firebaseコンソール > プロジェクト設定 > Cloud Messaging > ウェブプッシュ証明書 の「キーペア」
     const VAPID_KEY = "ここにVAPIDキーを貼る";
@@ -439,6 +512,11 @@
     let reviewState = { tradeId: null, done: null };
     let selectedRating = 0;
     let sendingImage = false;
+    let roomBoxKey = null;
+    let userData = { profile: {}, blocked: [], likes: [], reads: {} };
+    let unsubUser = null;
+    let migratingLocal = false;
+    let editingPostId = null;
 
     const STATUS_LABEL = {
       negotiating: "交渉中",
@@ -483,31 +561,115 @@
       return typeof s === "string" && s.startsWith(IMAGE_PREFIX);
     }
 
+    // ===== ユーザーデータ（Firestore保存） =====
+    function saveUserData(data) {
+      return setDoc(doc(db, "users", currentUser.uid), data, { merge: true });
+    }
+
+    function subscribeUserData() {
+      if (unsubUser) unsubUser();
+      const ref = doc(db, "users", currentUser.uid);
+      unsubUser = onSnapshot(ref, (snap) => {
+        const d = snap.exists() ? snap.data() : {};
+        if (!d.migrated) migrateLocalData(ref);
+        userData = {
+          profile: d.profile || {},
+          blocked: d.blocked || [],
+          likes: d.likes || [],
+          reads: d.reads || {}
+        };
+        const nm = document.getElementById("user-name");
+        if (nm && currentUser) nm.innerText = getMyDisplayName();
+        renderPosts();
+        renderBlockedBox();
+        updateBadge();
+        if (!document.getElementById("trades-modal").classList.contains("hidden")) renderTradesList();
+      }, (e) => console.error("ユーザーデータ読み込みエラー:", e));
+    }
+
+    // 以前localStorageに保存していたデータを一度だけFirestoreへ移す
+    async function migrateLocalData(ref) {
+      if (migratingLocal || !currentUser) return;
+      migratingLocal = true;
+      const uid = currentUser.uid;
+      const read = (k, def) => {
+        try { const v = JSON.parse(localStorage.getItem(k + uid)); return v ?? def; } catch (e) { return def; }
+      };
+      try {
+        await setDoc(ref, {
+          migrated: true,
+          profile: read("illit_profile_", {}),
+          blocked: read("illit_blocked_", []),
+          likes: read("illit_likes_", [])
+        }, { merge: true });
+      } catch (e) {
+        console.error(e);
+      } finally {
+        migratingLocal = false;
+      }
+    }
+
+    // ===== 未読管理・メッセージ送信 =====
+    function tsMillis(ts) {
+      return ts && ts.toMillis ? ts.toMillis() : 0;
+    }
+    function isUnread(t) {
+      if (!currentUser || !t || !t.lastMessageAt || t.lastSenderId === currentUser.uid) return false;
+      return tsMillis(t.lastMessageAt) > ((userData.reads || {})[t.id] || 0);
+    }
+    function markTradeRead(t) {
+      if (!currentUser || !t || !isUnread(t)) return;
+      const ms = tsMillis(t.lastMessageAt);
+      userData.reads = { ...(userData.reads || {}), [t.id]: ms };
+      saveUserData({ reads: { [t.id]: ms } }).catch((e) => console.error(e));
+    }
+
+    async function postMessage(data) {
+      const t = currentTrade;
+      if (!t || !currentUser) throw new Error("取引が選択されていません");
+      await addDoc(collection(db, "trades", t.id, "messages"), {
+        ...data,
+        senderId: currentUser.uid,
+        senderName: getMyDisplayName(),
+        createdAt: serverTimestamp()
+      });
+      try {
+        await updateDoc(doc(db, "trades", t.id), {
+          lastMessageAt: serverTimestamp(),
+          lastSenderId: currentUser.uid
+        });
+      } catch (e) { console.error(e); }
+    }
+
     // ===== ブロック管理 =====
     function getBlockedUsers() {
       if (!currentUser) return [];
-      try {
-        return JSON.parse(localStorage.getItem("illit_blocked_" + currentUser.uid) || "[]");
-      } catch (e) {
-        return [];
-      }
+      return userData.blocked || [];
     }
-    window.blockUser = function(userId, userName) {
+    window.blockUser = async function(userId, userName) {
       if (!currentUser || !userId) return;
       if (!confirm(`「${userName}」さんをブロックしますか？\nブロックした相手の出品やメッセージは非表示になります。`)) return;
-      const list = getBlockedUsers();
+      const list = [...getBlockedUsers()];
       if (!list.includes(userId)) {
         list.push(userId);
-        localStorage.setItem("illit_blocked_" + currentUser.uid, JSON.stringify(list));
+        userData.blocked = list;
+        try {
+          await saveUserData({ blocked: list });
+        } catch (e) {
+          console.error(e);
+          alert("ブロックの保存に失敗しました。");
+          return;
+        }
       }
       alert("ブロックしました。");
       closeDetailModal();
       renderPosts();
     };
-    window.clearBlockedUsers = function() {
+    window.clearBlockedUsers = async function() {
       if (!currentUser) return;
       if (!confirm("ブロックリストをすべてクリアしますか？")) return;
-      localStorage.removeItem("illit_blocked_" + currentUser.uid);
+      userData.blocked = [];
+      try { await saveUserData({ blocked: [] }); } catch (e) { console.error(e); }
       alert("ブロックをすべて解除しました。");
       renderBlockedBox();
       renderPosts();
@@ -522,11 +684,7 @@
     // ===== いいね管理 =====
     function getMyLikes() {
       if (!currentUser) return [];
-      try {
-        return JSON.parse(localStorage.getItem("illit_likes_" + currentUser.uid) || "[]");
-      } catch (e) {
-        return [];
-      }
+      return userData.likes || [];
     }
     window.toggleDetailLike = function() {
       if (!currentUser) {
@@ -535,14 +693,15 @@
       }
       const p = allPosts[currentDetailIndex];
       if (!p) return;
-      let likes = getMyLikes();
+      let likes = [...getMyLikes()];
       const idx = likes.indexOf(p.id);
       if (idx >= 0) {
         likes.splice(idx, 1);
       } else {
         likes.push(p.id);
       }
-      localStorage.setItem("illit_likes_" + currentUser.uid, JSON.stringify(likes));
+      userData.likes = likes;
+      saveUserData({ likes }).catch((e) => console.error(e));
       updateDetailLikeUI(p.id);
       renderPosts();
     };
@@ -560,7 +719,7 @@
     // ===== プロフィール・設定（PayPay ID対応） =====
     window.openProfileModal = function() {
       if (!currentUser) return;
-      const saved = JSON.parse(localStorage.getItem("illit_profile_" + currentUser.uid) || "{}");
+      const saved = userData.profile || {};
       document.getElementById("profile-nickname").value = saved.nickname || "";
       document.getElementById("profile-paypay").value = saved.paypay || "";
       document.getElementById("profile-name").value = saved.name || currentUser.displayName || "";
@@ -570,12 +729,13 @@
       document.getElementById("profile-phone").value = saved.phone || "";
       renderBlockedBox();
       updatePushUI();
+      updatePhoneUI();
       document.getElementById("profile-modal").classList.remove("hidden");
     };
     window.closeProfileModal = function() {
       document.getElementById("profile-modal").classList.add("hidden");
     };
-    window.saveProfile = function() {
+    window.saveProfile = async function() {
       if (!currentUser) return;
       const profile = {
         nickname: document.getElementById("profile-nickname").value.trim(),
@@ -586,7 +746,14 @@
         address2: document.getElementById("profile-address2").value.trim(),
         phone: document.getElementById("profile-phone").value.trim()
       };
-      localStorage.setItem("illit_profile_" + currentUser.uid, JSON.stringify(profile));
+      userData.profile = profile;
+      try {
+        await saveUserData({ profile });
+      } catch (e) {
+        console.error(e);
+        alert("保存に失敗しました。");
+        return;
+      }
       alert("設定を保存しました！");
       closeProfileModal();
       if (currentUser) {
@@ -600,11 +767,8 @@
 
     function getMyProfile() {
       if (!currentUser) return null;
-      try {
-        return JSON.parse(localStorage.getItem("illit_profile_" + currentUser.uid));
-      } catch (e) {
-        return null;
-      }
+      const p = userData.profile;
+      return p && Object.keys(p).length ? p : null;
     }
 
     function getMyDisplayName() {
@@ -624,7 +788,7 @@
       }
       const addressText = `【配送先情報】\nお名前: ${p.name}\n郵便番号: 〒${p.zip}\n住所: ${p.address1} ${p.address2 || ''}\n電話番号: ${p.phone || 'なし'}`;
       try {
-        await addDoc(collection(db, "trades", currentTrade.id, "messages"), {
+        await postMessage({
           senderId: currentUser.uid,
           senderName: getMyDisplayName(),
           text: addressText,
@@ -759,6 +923,130 @@
       try { await saveToken(); } catch (e) { console.error(e); }
     }
 
+    // ===== 電話番号認証（出品・申込の前に必要） =====
+    let phoneConfirmation = null;
+    let recaptchaVerifier = null;
+    let afterPhoneVerified = null;
+
+    function hasPhone() {
+      return !!(auth.currentUser && auth.currentUser.phoneNumber);
+    }
+
+    // 認証済みなら true。未認証なら認証画面を開き、成功後に next を実行して false を返す
+    function requirePhone(next) {
+      if (hasPhone()) return true;
+      afterPhoneVerified = next || null;
+      openPhoneModal();
+      return false;
+    }
+
+    function normalizeJpPhone(raw) {
+      let v = String(raw || "").trim().replace(/[\s\-()（）ー－]/g, "");
+      v = v.replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+      if (/^\+\d{10,15}$/.test(v)) return v;
+      if (/^0\d{9,10}$/.test(v)) return "+81" + v.slice(1);
+      if (/^81\d{9,10}$/.test(v)) return "+" + v;
+      return null;
+    }
+
+    function updatePhoneUI() {
+      const status = document.getElementById("phone-status");
+      const btn = document.getElementById("phone-open-btn");
+      if (!status || !currentUser) return;
+      const ok = hasPhone();
+      status.innerText = ok ? "認証済み ✅" : "未認証（出品・申込の前に認証が必要です）";
+      btn.classList.toggle("hidden", ok);
+    }
+
+    function resetRecaptcha() {
+      if (recaptchaVerifier) {
+        try { recaptchaVerifier.clear(); } catch (e) {}
+        recaptchaVerifier = null;
+      }
+      const c = document.getElementById("recaptcha-container");
+      if (c) c.innerHTML = "";
+    }
+
+    window.openPhoneModal = function() {
+      if (!currentUser) { alert("ログインしてください。"); return; }
+      if (hasPhone()) { alert("すでに電話番号認証が完了しています。"); return; }
+      phoneConfirmation = null;
+      document.getElementById("phone-input").value = "";
+      document.getElementById("phone-code-input").value = "";
+      document.getElementById("phone-step1").classList.remove("hidden");
+      document.getElementById("phone-step2").classList.add("hidden");
+      document.getElementById("phone-modal").classList.remove("hidden");
+    };
+    window.closePhoneModal = function() {
+      document.getElementById("phone-modal").classList.add("hidden");
+      afterPhoneVerified = null;
+      resetRecaptcha();
+    };
+    window.backToPhoneStep1 = function() {
+      phoneConfirmation = null;
+      document.getElementById("phone-step1").classList.remove("hidden");
+      document.getElementById("phone-step2").classList.add("hidden");
+    };
+
+    window.sendPhoneCode = async function() {
+      if (!auth.currentUser) return;
+      const phone = normalizeJpPhone(document.getElementById("phone-input").value);
+      if (!phone) { alert("電話番号の形式が正しくありません。（例: 090-1234-5678）"); return; }
+      const btn = document.getElementById("phone-send-btn");
+      btn.disabled = true;
+      btn.innerText = "送信中…";
+      try {
+        resetRecaptcha();
+        recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", { size: "invisible" });
+        phoneConfirmation = await linkWithPhoneNumber(auth.currentUser, phone, recaptchaVerifier);
+        document.getElementById("phone-step1").classList.add("hidden");
+        document.getElementById("phone-step2").classList.remove("hidden");
+      } catch (e) {
+        console.error(e);
+        resetRecaptcha();
+        const code = e && e.code || "";
+        if (code === "auth/invalid-phone-number") alert("電話番号が正しくありません。");
+        else if (code === "auth/too-many-requests") alert("リクエストが多すぎます。しばらく待ってからお試しください。");
+        else if (code === "auth/provider-already-linked") alert("すでに電話番号が登録されています。");
+        else if (code === "auth/operation-not-allowed") alert("この地域への送信は許可されていません。");
+        else alert("認証コードの送信に失敗しました。");
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "認証コードをSMSで送る";
+      }
+    };
+
+    window.verifyPhoneCode = async function() {
+      const code = document.getElementById("phone-code-input").value.trim();
+      if (!phoneConfirmation) return;
+      if (!/^\d{6}$/.test(code)) { alert("6桁のコードを入力してください。"); return; }
+      const btn = document.getElementById("phone-verify-btn");
+      btn.disabled = true;
+      btn.innerText = "確認中…";
+      try {
+        await phoneConfirmation.confirm(code);
+        await auth.currentUser.reload();
+        await auth.currentUser.getIdToken(true); // ルール側で使うトークンを更新
+        const next = afterPhoneVerified;
+        afterPhoneVerified = null;
+        document.getElementById("phone-modal").classList.add("hidden");
+        resetRecaptcha();
+        updatePhoneUI();
+        alert("電話番号認証が完了しました！");
+        if (next) next();
+      } catch (e) {
+        console.error(e);
+        const c = e && e.code || "";
+        if (c === "auth/invalid-verification-code") alert("コードが正しくありません。");
+        else if (c === "auth/code-expired") alert("コードの有効期限が切れました。もう一度送信してください。");
+        else if (c === "auth/credential-already-in-use" || c === "auth/account-exists-with-different-credential") alert("この電話番号は、別のアカウントですでに使われています。");
+        else alert("認証に失敗しました。");
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "認証する";
+      }
+    };
+
     // ===== 認証 =====
     window.loginWithGoogle = function() {
       signInWithPopup(auth, provider).catch((error) => {
@@ -782,12 +1070,15 @@
         loginBtn.classList.add("hidden");
         userProfile.classList.remove("hidden");
         userName.innerText = getMyDisplayName();
+        subscribeUserData();
         subscribeTrades();
         refreshPushToken();
       } else {
         loginBtn.classList.remove("hidden");
         userProfile.classList.add("hidden");
         if (unsubTrades) { unsubTrades(); unsubTrades = null; }
+        if (unsubUser) { unsubUser(); unsubUser = null; }
+        userData = { profile: {}, blocked: [], likes: [], reads: {} };
         myTrades = [];
         updateBadge();
       }
@@ -800,6 +1091,7 @@
         alert("出品するにはGoogleログインが必要です。");
         return;
       }
+      if (!requirePhone(() => openPostModal(mode))) return;
       postMode = mode;
       document.getElementById("post-modal-title").innerText = mode === "buy" ? "💳 トレカの買取（購入希望）" : "🃏 トレカ交換の出品";
       document.getElementById("label-give").innerText = mode === "buy" ? "【求】（買いたいトレカ）" : "【譲】（出すもの）";
@@ -960,6 +1252,7 @@
         alert("出品するにはGoogleログインが必要です。");
         return;
       }
+      if (!requirePhone(() => openSerialPostModal(mode))) return;
       postMode = mode;
       if (mode === "buy") {
         document.getElementById("serial-modal-title").innerText = "💳 シリアルの買取（購入希望）";
@@ -1260,6 +1553,7 @@
       } else if (p.userId && p.userId === currentUser.uid) {
         actions.innerHTML = `
           <p class="text-xs text-gray-500 text-center">あなたの出品です。</p>
+          <button onclick="openEditPost(${index})" class="w-full bg-purple-100 text-illit-darkPurple font-bold py-2.5 rounded-xl hover:bg-purple-200 transition text-sm">✏️ この募集を編集する</button>
           <button onclick="deletePost(${index})" class="w-full bg-red-50 text-red-500 font-bold py-2.5 rounded-xl hover:bg-red-100 transition text-sm">この募集を削除する</button>`;
       } else if (isExpired(p)) {
         actions.innerHTML = `<p class="text-xs text-red-400 text-center">有効期限が切れています。</p>`;
@@ -1303,6 +1597,63 @@
       }
     };
 
+    // ===== 出品の編集 =====
+    window.openEditPost = function(index) {
+      const p = allPosts[index];
+      if (!p || !currentUser || p.userId !== currentUser.uid) return;
+      closeDetailModal();
+      editingPostId = p.id;
+      const isBuy = !!p.isBuy;
+      const isSerial = p.kind === "serial";
+      document.getElementById("edit-label-give").innerText = isBuy ? "【求】（買いたいもの）" : "【譲】（出すもの）";
+      document.getElementById("edit-give").value = p.give || "";
+      document.getElementById("edit-want").value = p.want || "";
+      document.getElementById("edit-price").value = p.price || "";
+      document.getElementById("edit-deadline").value = p.deadline || "";
+      document.getElementById("edit-desc").value = p.description || "";
+      document.getElementById("edit-want-container").classList.toggle("hidden", isBuy);
+      document.getElementById("edit-price-container").classList.toggle("hidden", !isBuy);
+      document.getElementById("edit-deadline-container").classList.toggle("hidden", !isSerial);
+      document.getElementById("edit-modal").classList.remove("hidden");
+    };
+    window.closeEditModal = function() {
+      document.getElementById("edit-modal").classList.add("hidden");
+      editingPostId = null;
+    };
+    window.submitEditPost = async function() {
+      const p = allPosts.find((x) => x.id === editingPostId);
+      if (!p || !currentUser || p.userId !== currentUser.uid) return;
+      const isBuy = !!p.isBuy;
+      const isSerial = p.kind === "serial";
+      const give = document.getElementById("edit-give").value.trim();
+      const want = document.getElementById("edit-want").value.trim();
+      const price = Number(document.getElementById("edit-price").value);
+      const deadline = document.getElementById("edit-deadline").value;
+      const description = document.getElementById("edit-desc").value.trim().slice(0, 200);
+
+      if (!give) { alert("内容を入力してください。"); return; }
+      if (!isBuy && !want) { alert("「求」の内容を入力してください。"); return; }
+      if (isBuy && (!price || price <= 0)) { alert("有効な希望価格を入力してください。"); return; }
+      if (isSerial && deadline && deadline < todayStr()) { alert("有効期限が過去の日付になっています。"); return; }
+
+      const data = {
+        give,
+        want: isBuy ? "" : want,
+        price: isBuy ? price : 0,
+        description,
+        editedAt: serverTimestamp()
+      };
+      if (isSerial) data.deadline = deadline;
+      try {
+        await updateDoc(doc(db, "posts", p.id), data);
+        alert("募集を更新しました！");
+        closeEditModal();
+      } catch (e) {
+        console.error(e);
+        alert("更新に失敗しました。");
+      }
+    };
+
     // ===== 通報機能 =====
     window.reportPost = async function(postId, giveText) {
       if (!currentUser) {
@@ -1336,6 +1687,7 @@
     window.applyToPost = async function(index) {
       const p = allPosts[index];
       if (!currentUser || !p || !p.userId) return;
+      if (!requirePhone(() => applyToPost(index))) return;
       try {
         const ref = await addDoc(collection(db, "trades"), {
           kind: p.kind,
@@ -1357,6 +1709,8 @@
           shipped: {},
           received: {},
           disputed: {},
+          lastMessageAt: serverTimestamp(),
+          lastSenderId: currentUser.uid,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
         });
@@ -1381,17 +1735,21 @@
       const q = query(collection(db, "trades"), where("participants", "array-contains", currentUser.uid));
       unsubTrades = onSnapshot(q, (snap) => {
         myTrades = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        myTrades.sort((a, b) => tsValue(b.updatedAt) - tsValue(a.updatedAt));
+        const lastAct = (t) => Math.max(tsValue(t.updatedAt), tsMillis(t.lastMessageAt));
+        myTrades.sort((a, b) => lastAct(b) - lastAct(a));
         updateBadge();
         if (!document.getElementById("trades-modal").classList.contains("hidden")) renderTradesList();
       });
     }
 
     function updateBadge() {
-      const n = myTrades.filter((t) => t.status === "negotiating" || t.status === "shipping").length;
+      const unread = myTrades.filter((t) => isUnread(t)).length;
+      const active = myTrades.filter((t) => t.status === "negotiating" || t.status === "shipping").length;
+      const n = unread > 0 ? unread : active;
       const badge = document.getElementById("trades-badge");
       badge.innerText = n;
-      badge.classList.toggle("hidden", n === 0);
+      badge.className = "absolute -top-1.5 -right-1.5 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 " +
+        (unread > 0 ? "bg-pink-500" : "bg-gray-400") + (n === 0 ? " hidden" : "");
     }
 
     window.openTradesModal = function() {
@@ -1419,7 +1777,7 @@
           <button onclick="openTrade('${t.id}')" class="w-full text-left bg-white border ${isBuy ? 'border-pink-200' : 'border-purple-100'} rounded-xl p-3 hover:bg-purple-50 transition space-y-1">
             <div class="flex justify-between items-center">
               <span class="text-xs text-gray-500">${escapeHtml(otherName)} さん ・ ${role}</span>
-              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_CLASS[t.status] || ''}">${label}</span>
+              <span class="flex items-center gap-1">${isUnread(t) ? '<span class="bg-pink-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">新着</span>' : ''}<span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_CLASS[t.status] || ''}">${label}</span></span>
             </div>
             <div class="text-sm font-bold text-gray-800">${escapeHtml(titleText)}</div>
           </button>`;
@@ -1434,6 +1792,7 @@
       roomMessages = [];
       roomPhotos = [];
       roomPhotosFor = null;
+      roomBoxKey = null;
       reviewState = { tradeId: null, done: null };
       selectedRating = 0;
     }
@@ -1499,8 +1858,52 @@
             </button>
           </div>
           <p class="text-[10px] text-pink-600">※ボタンを押すと、あなたのPayPay IDがチャットに送信され、相手がワンタップでコピーできるようになります。</p>
+          ${currentTrade.isBuy ? `
+          <div class="border-t border-pink-200 pt-2 space-y-1.5">
+            <div class="text-[11px] font-bold text-pink-800">⚡ ワンタップ送金（受け取る側）</div>
+            <p class="text-[10px] text-pink-600">PayPayアプリで「￥${Number(currentTrade.postPrice || 0).toLocaleString()}」の請求（受取）リンクを作り、貼り付けて送ると、相手はタップだけで支払い画面に進めます。</p>
+            <div class="flex items-center space-x-2">
+              <input type="text" id="chat-paypay-link" placeholder="https://pay.paypay.ne.jp/..." class="flex-1 min-w-0 border border-pink-200 rounded-lg p-2 text-xs bg-white">
+              <button onclick="sendPayPayLink()" class="bg-pink-500 hover:bg-pink-600 text-white font-bold text-xs px-3 py-2 rounded-lg transition shrink-0">リンクを送る</button>
+            </div>
+          </div>` : ''}
         </div>`;
     }
+
+    // PayPay請求リンクをチャットに送る（買取金額つき）
+    const PAYPAY_LINK_RE = /^https:\/\/(pay\.)?paypay\.ne\.jp\/[^\s]+$/;
+    window.sendPayPayLink = async function() {
+      if (!currentTrade || !currentUser) return;
+      const input = document.getElementById("chat-paypay-link");
+      const url = input ? input.value.trim() : "";
+      if (!PAYPAY_LINK_RE.test(url)) {
+        alert("PayPayのリンク（https://pay.paypay.ne.jp/ から始まるもの）を貼り付けてください。");
+        return;
+      }
+      const price = Number(currentTrade.postPrice || 0);
+      const text = `【PayPay請求リンク】\n${url}\n金額: ￥${price.toLocaleString()}`;
+      try {
+        await postMessage({
+          senderId: currentUser.uid,
+          senderName: getMyDisplayName(),
+          text,
+          createdAt: serverTimestamp()
+        });
+        input.value = "";
+        alert("請求リンクを送信しました！");
+      } catch (e) {
+        alert("送信に失敗しました。");
+      }
+    };
+
+    // 金額コピー
+    window.copyAmount = function(amount) {
+      navigator.clipboard.writeText(String(amount)).then(() => {
+        alert(`金額「${Number(amount).toLocaleString()}」をコピーしました！\nPayPayの送金画面で貼り付けてください。`);
+      }).catch(() => {
+        alert("コピーに失敗しました。");
+      });
+    };
 
     window.sendMyPayPayId = async function() {
       if (!currentTrade || !currentUser) return;
@@ -1512,7 +1915,7 @@
       }
       const text = `【PayPay受取用 ID】\n${idVal}\n（タップしてコピーしてください）`;
       try {
-        await addDoc(collection(db, "trades", currentTrade.id, "messages"), {
+        await postMessage({
           senderId: currentUser.uid,
           senderName: getMyDisplayName(),
           text: text,
@@ -1535,8 +1938,13 @@
         if (!snap.exists()) { closeRoom(); return; }
         currentTrade = { id: snap.id, ...snap.data() };
         renderRoom();
-        renderRoomAddressBox();
-        renderRoomPayPayBox();
+        const boxKey = currentTrade.id + ":" + currentTrade.status;
+        if (boxKey !== roomBoxKey) {
+          roomBoxKey = boxKey;
+          renderRoomAddressBox();
+          renderRoomPayPayBox();
+        }
+        markTradeRead(currentTrade);
         if (roomPhotosFor !== currentTrade.id) {
           roomPhotosFor = currentTrade.id;
           loadRoomPhotos(currentTrade);
@@ -1733,7 +2141,25 @@
           const lines = m.text.split("\n");
           const paypayId = lines[1] ? lines[1].trim() : "";
           if (paypayId) {
-            textContent = `【PayPay受取用 ID】<br><b class="text-pink-600">${escapeHtml(paypayId)}</b><br><button onclick="copyPayPayId('${escapeHtml(paypayId)}')" class="mt-1 bg-pink-500 hover:bg-pink-600 text-white font-bold text-[10px] px-2.5 py-1 rounded-lg transition">📋 このIDをコピーする</button>`;
+            const price = currentTrade && currentTrade.isBuy ? Number(currentTrade.postPrice || 0) : 0;
+            const amountBtn = price > 0
+              ? `<button onclick="copyAmount(${price})" class="mt-1 bg-white border border-pink-300 text-pink-600 font-bold text-[10px] px-2.5 py-1 rounded-lg transition">💰 ￥${price.toLocaleString()} をコピー</button>`
+              : "";
+            textContent = `【PayPay受取用 ID】<br><b class="text-pink-600">${escapeHtml(paypayId)}</b><br>
+              <div class="flex flex-wrap gap-1">
+                <button onclick="copyPayPayId('${escapeHtml(paypayId)}')" class="mt-1 bg-pink-500 hover:bg-pink-600 text-white font-bold text-[10px] px-2.5 py-1 rounded-lg transition">📋 IDをコピー</button>
+                ${amountBtn}
+                <a href="paypay://" class="mt-1 bg-white border border-pink-300 text-pink-600 font-bold text-[10px] px-2.5 py-1 rounded-lg transition">📱 PayPayを開く</a>
+              </div>`;
+          }
+        } else if (m.text && m.text.startsWith("【PayPay請求リンク】")) {
+          const lines = m.text.split("\n");
+          const url = (lines[1] || "").trim();
+          const amountLine = lines[2] || "";
+          if (PAYPAY_LINK_RE.test(url)) {
+            textContent = `【PayPay請求リンク】<br><b class="text-pink-600">${escapeHtml(amountLine)}</b><br>
+              <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="inline-block mt-1 bg-pink-500 hover:bg-pink-600 text-white font-bold text-xs px-3 py-2 rounded-lg transition no-underline">⚡ PayPayで支払う（タップ）</a>
+              <div class="text-[10px] mt-1 opacity-70">開いたら金額と相手を確認してから送金してください。</div>`;
           }
         }
 
@@ -1759,7 +2185,7 @@
       if (!text || !currentTrade || currentTrade.status === "cancelled") return;
       input.value = "";
       try {
-        await addDoc(collection(db, "trades", currentTrade.id, "messages"), {
+        await postMessage({
           senderId: currentUser.uid,
           senderName: getMyDisplayName(),
           text: text.slice(0, 1000),
@@ -1773,7 +2199,7 @@
     window.sendQuickMsg = async function(text) {
       if (!currentTrade || currentTrade.status === "cancelled") return;
       try {
-        await addDoc(collection(db, "trades", currentTrade.id, "messages"), {
+        await postMessage({
           senderId: currentUser.uid,
           senderName: getMyDisplayName(),
           text: text,
@@ -1791,7 +2217,7 @@
       sendingImage = true;
       try {
         const dataUrl = await compressImage(file, CHAT_PHOTO);
-        await addDoc(collection(db, "trades", currentTrade.id, "messages"), {
+        await postMessage({
           senderId: currentUser.uid,
           senderName: getMyDisplayName(),
           text: "",
