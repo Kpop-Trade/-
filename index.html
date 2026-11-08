@@ -34,7 +34,7 @@
         <h1 class="text-xl font-bold bg-gradient-to-r from-illit-darkPurple to-illit-accent bg-clip-text text-transparent">ILLIT Trade</h1>
       </div>
 
-      <div id="auth-container" class="flex items-center space-x-3">
+      <div id="auth-container" class="flex items-center space-x-2">
         <button id="login-btn" onclick="loginWithGoogle()" class="bg-illit-purple hover:bg-illit-darkPurple text-white text-xs md:text-sm font-bold py-2 px-4 rounded-full transition shadow-sm">
           Googleでログイン
         </button>
@@ -43,7 +43,10 @@
             💬 取引
             <span id="trades-badge" class="hidden absolute -top-1.5 -right-1.5 bg-pink-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">0</span>
           </button>
-          <span id="user-name" class="text-xs md:text-sm font-semibold text-gray-700 max-w-[80px] truncate"></span>
+          <button onclick="openProfileModal()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold px-2.5 py-1.5 rounded-full transition" title="プロフィール・住所設定">
+            ⚙️ 設定
+          </button>
+          <span id="user-name" class="text-xs md:text-sm font-semibold text-gray-700 max-w-[70px] truncate"></span>
           <button onclick="logout()" class="text-xs text-gray-400 hover:text-gray-600 underline">ログアウト</button>
         </div>
       </div>
@@ -110,6 +113,49 @@
       </div>
     </section>
   </main>
+
+  <!-- プロフィール（ニックネーム・住所）設定モーダル -->
+  <div id="profile-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-md rounded-2xl p-6 space-y-4 shadow-xl max-h-[92vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b pb-3">
+        <h3 class="font-bold text-base text-gray-800">⚙️ プロフィール・配送先設定</h3>
+        <button onclick="closeProfileModal()" class="text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
+      </div>
+      <p class="text-xs text-gray-500">サイト内で表示されるニックネームと、郵送取引用の配送先を設定できます。</p>
+      <div class="space-y-3 text-xs md:text-sm">
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">サイト内ニックネーム</label>
+          <input type="text" id="profile-nickname" maxlength="30" placeholder="例: 芋けんぴ推し" class="w-full border border-purple-200 rounded-xl p-2.5 bg-purple-50/50">
+          <p class="text-[10px] text-gray-400 mt-0.5">※未入力の場合はGoogleアカウントの名前が使われます</p>
+        </div>
+        <hr class="border-purple-100 my-1">
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">お名前（郵送時の宛名）</label>
+          <input type="text" id="profile-name" maxlength="50" placeholder="例: 山田 花子" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+        </div>
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">郵便番号</label>
+          <input type="text" id="profile-zip" maxlength="10" placeholder="例: 123-4567" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+        </div>
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">都道府県・市区町村・番地</label>
+          <input type="text" id="profile-address1" maxlength="100" placeholder="例: 東京都渋谷区神宮前1-2-3" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+        </div>
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">建物名・部屋番号（任意）</label>
+          <input type="text" id="profile-address2" maxlength="100" placeholder="例: イルーシブ原宿 101号室" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+        </div>
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">電話番号（任意・伝票用）</label>
+          <input type="text" id="profile-phone" maxlength="20" placeholder="例: 090-1234-5678" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+        </div>
+      </div>
+      <div class="flex space-x-2 pt-2">
+        <button onclick="closeProfileModal()" class="flex-1 bg-gray-100 text-gray-600 font-bold py-2.5 rounded-xl hover:bg-gray-200 transition">キャンセル</button>
+        <button onclick="saveProfile()" class="flex-1 bg-illit-purple text-white font-bold py-2.5 rounded-xl hover:bg-illit-darkPurple transition">保存する</button>
+      </div>
+    </div>
+  </div>
 
   <!-- トレカ出品モーダル -->
   <div id="post-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
@@ -254,9 +300,10 @@
         <button onclick="closeRoom()" class="text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
       </div>
 
-      <div class="p-4 space-y-3 border-b bg-purple-50/50 overflow-y-auto shrink-0 max-h-[45%]">
+      <div class="p-4 space-y-3 border-b bg-purple-50/50 overflow-y-auto shrink-0 max-h-[48%]">
         <div id="room-info"></div>
         <div id="room-photos"></div>
+        <div id="room-address-box"></div>
         <div id="room-steps"></div>
         <div id="room-actions" class="space-y-2"></div>
       </div>
@@ -384,6 +431,77 @@
       return typeof s === "string" && s.startsWith(IMAGE_PREFIX);
     }
 
+    // ===== プロフィール（ニックネーム・住所）設定 =====
+    window.openProfileModal = function() {
+      if (!currentUser) return;
+      const saved = JSON.parse(localStorage.getItem("illit_profile_" + currentUser.uid) || "{}");
+      document.getElementById("profile-nickname").value = saved.nickname || "";
+      document.getElementById("profile-name").value = saved.name || currentUser.displayName || "";
+      document.getElementById("profile-zip").value = saved.zip || "";
+      document.getElementById("profile-address1").value = saved.address1 || "";
+      document.getElementById("profile-address2").value = saved.address2 || "";
+      document.getElementById("profile-phone").value = saved.phone || "";
+      document.getElementById("profile-modal").classList.remove("hidden");
+    };
+    window.closeProfileModal = function() {
+      document.getElementById("profile-modal").classList.add("hidden");
+    };
+    window.saveProfile = function() {
+      if (!currentUser) return;
+      const profile = {
+        nickname: document.getElementById("profile-nickname").value.trim(),
+        name: document.getElementById("profile-name").value.trim(),
+        zip: document.getElementById("profile-zip").value.trim(),
+        address1: document.getElementById("profile-address1").value.trim(),
+        address2: document.getElementById("profile-address2").value.trim(),
+        phone: document.getElementById("profile-phone").value.trim()
+      };
+      localStorage.setItem("illit_profile_" + currentUser.uid, JSON.stringify(profile));
+      alert("設定を保存しました！");
+      closeProfileModal();
+      if (currentUser) {
+        document.getElementById("user-name").innerText = profile.nickname || currentUser.displayName || "ユーザー";
+      }
+      if (currentTrade) renderRoomAddressBox();
+    };
+
+    function getMyProfile() {
+      if (!currentUser) return null;
+      try {
+        return JSON.parse(localStorage.getItem("illit_profile_" + currentUser.uid));
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function getMyDisplayName() {
+      if (!currentUser) return "匿名ファン";
+      const p = getMyProfile();
+      if (p && p.nickname) return p.nickname;
+      return currentUser.displayName || "匿名ファン";
+    }
+
+    window.sendMyAddress = async function() {
+      if (!currentTrade || !currentUser) return;
+      const p = getMyProfile();
+      if (!p || !p.zip || !p.address1 || !p.name) {
+        alert("先に設定画面から「お名前」「郵便番号」「住所」を入力してください。");
+        openProfileModal();
+        return;
+      }
+      const addressText = `【配送先情報】\nお名前: ${p.name}\n郵便番号: 〒${p.zip}\n住所: ${p.address1} ${p.address2 || ''}\n電話番号: ${p.phone || 'なし'}`;
+      try {
+        await addDoc(collection(db, "trades", currentTrade.id, "messages"), {
+          senderId: currentUser.uid,
+          senderName: getMyDisplayName(),
+          text: addressText,
+          createdAt: serverTimestamp()
+        });
+      } catch (e) {
+        alert("住所の送信に失敗しました。");
+      }
+    };
+
     // ===== 画像処理 =====
     function loadImageFromFile(file) {
       return new Promise((resolve, reject) => {
@@ -447,7 +565,7 @@
       if (user) {
         loginBtn.classList.add("hidden");
         userProfile.classList.remove("hidden");
-        userName.innerText = user.displayName || "ユーザー";
+        userName.innerText = getMyDisplayName();
         subscribeTrades();
       } else {
         loginBtn.classList.remove("hidden");
@@ -585,7 +703,7 @@
           photoCount: postPhotos.length,
           thumb: postPhotos.length > 0 ? postPhotos[0].thumb : "",
           userId: currentUser.uid,
-          userName: currentUser.displayName || "匿名ファン",
+          userName: getMyDisplayName(),
           createdAt: serverTimestamp()
         });
         for (let i = 0; i < postPhotos.length; i++) {
@@ -683,7 +801,7 @@
           deadline,
           note,
           userId: currentUser.uid,
-          userName: currentUser.displayName || "匿名ファン",
+          userName: getMyDisplayName(),
           createdAt: serverTimestamp()
         });
         alert("出品が完了しました！");
@@ -746,7 +864,7 @@
         let badgeHtml = "";
         if (isBuy && isSerial) badgeHtml = `<span class="bg-yellow-100 text-yellow-800 font-bold px-2 py-0.5 rounded text-[11px]">💳 シリアル買取（希望: ¥${Number(p.price || 0).toLocaleString()}）</span>`;
         else if (isBuy) badgeHtml = `<span class="bg-pink-100 text-pink-700 font-bold px-2 py-0.5 rounded text-[11px]">💳 買取希望（¥${Number(p.price || 0).toLocaleString()}）</span>`;
-        else if (isSerial) badgeHtml = `<span class="bg-yellow-100 text-yellow-800 font-bold px-2 py-0.5 rounded text-[11px]">🎫 シリアルでトレカ求む</span>`;
+        else if (isSerial) badgeHtml = `<span class="bg-yellow-100 text-yellow-700 font-bold px-2 py-0.5 rounded text-[11px]">🎫 シリアルでトレカ求む</span>`;
         else badgeHtml = `<span class="bg-purple-100 text-purple-700 font-bold px-2 py-0.5 rounded text-[11px]">🃏 トレカ交換</span>`;
 
         let photoHtml = "";
@@ -949,7 +1067,7 @@
           postId: postId,
           postGive: giveText,
           reporterId: currentUser.uid,
-          reporterName: currentUser.displayName || "匿名ファン",
+          reporterName: getMyDisplayName(),
           reason: reason.trim(),
           createdAt: serverTimestamp()
         });
@@ -978,7 +1096,7 @@
           ownerId: p.userId,
           ownerName: p.userName,
           applicantId: currentUser.uid,
-          applicantName: currentUser.displayName || "匿名ファン",
+          applicantName: getMyDisplayName(),
           participants: [p.userId, currentUser.uid],
           status: "negotiating",
           agreed: {},
@@ -989,7 +1107,6 @@
           updatedAt: serverTimestamp()
         });
 
-        // 申込完了時に元の募集を一覧から削除
         await deletePostWithPhotos(p.id);
 
         closeDetailModal();
@@ -1084,6 +1201,24 @@
       }
     }
 
+    function renderRoomAddressBox() {
+      const el = document.getElementById("room-address-box");
+      if (!currentTrade || currentTrade.status === "cancelled") {
+        el.innerHTML = "";
+        return;
+      }
+      el.innerHTML = `
+        <div class="bg-white rounded-xl p-3 border border-purple-200 flex items-center justify-between">
+          <div class="text-xs">
+            <span class="font-bold text-gray-700">📦 配送先の共有</span>
+            <p class="text-[11px] text-gray-500">登録済みの住所をチャットに送信します</p>
+          </div>
+          <button onclick="sendMyAddress()" class="bg-purple-100 hover:bg-purple-200 text-illit-darkPurple font-bold text-xs px-3 py-2 rounded-lg transition">
+            住所を送る
+          </button>
+        </div>`;
+    }
+
     window.openTrade = function(id) {
       closeTradesModal();
       closeDetailModal();
@@ -1095,6 +1230,7 @@
         if (!snap.exists()) { closeRoom(); return; }
         currentTrade = { id: snap.id, ...snap.data() };
         renderRoom();
+        renderRoomAddressBox();
         if (roomPhotosFor !== currentTrade.id) {
           roomPhotosFor = currentTrade.id;
           loadRoomPhotos(currentTrade);
@@ -1309,7 +1445,7 @@
       try {
         await addDoc(collection(db, "trades", currentTrade.id, "messages"), {
           senderId: currentUser.uid,
-          senderName: currentUser.displayName || "匿名ファン",
+          senderName: getMyDisplayName(),
           text: text.slice(0, 1000),
           createdAt: serverTimestamp()
         });
@@ -1327,7 +1463,7 @@
         const dataUrl = await compressImage(file, CHAT_PHOTO);
         await addDoc(collection(db, "trades", currentTrade.id, "messages"), {
           senderId: currentUser.uid,
-          senderName: currentUser.displayName || "匿名ファン",
+          senderName: getMyDisplayName(),
           text: "",
           image: dataUrl,
           createdAt: serverTimestamp()
@@ -1412,3 +1548,4 @@
   </script>
 </body>
 </html>
+6
