@@ -2058,59 +2058,83 @@
         blockBtn.classList.add("hidden");
       }
 
+      // ==========================================
+      // 👇 ここから下がボタン表示の修正箇所 👇
+      // ==========================================
       const actions = document.getElementById("detail-actions");
+      
       if (!currentUser) {
         actions.innerHTML = `<button onclick="loginWithGoogle()" class="w-full bg-illit-purple text-white font-bold py-2.5 rounded-xl hover:bg-illit-darkPurple transition text-sm">ログインして${isGroup ? '参加する' : '申し込む'}</button>`;
-      } else if (p.userId && (p.userId === currentUser.uid || isAdmin())) {
-        const adminDelete = isAdmin() && p.userId !== currentUser.uid ? `<button onclick="adminDeletePost('${p.id}')" class="w-full bg-red-600 text-white font-bold py-2.5 rounded-xl hover:bg-red-700 transition text-sm">👑 [管理者] この募集を強制削除</button><button onclick="adminSuspendUser('${p.userId}', '')" class="w-full bg-gray-800 text-white font-bold py-2.5 rounded-xl hover:bg-black transition text-sm">👑 [管理者] この出品者のアカウントを停止</button>` : '';
-        const closeBtn = isGroup && p.userId === currentUser.uid
+      
+      } else if (p.userId === currentUser.uid) { 
+        // 自分の出品
+        const closeBtn = isGroup
           ? `<button onclick="toggleGroupClosed(${index})" class="w-full bg-teal-50 text-teal-700 font-bold py-2.5 rounded-xl hover:bg-teal-100 transition text-sm">${closed ? '🔓 募集を再開する' : '🔒 募集を締め切る'}</button>`
           : '';
         actions.innerHTML = `
-          <p class="text-xs text-gray-500 text-center">${p.userId === currentUser.uid ? (isGroup ? 'あなたが主催する共同購入です。' : 'あなたの出品です。') : '👑 管理者権限での操作'}</p>
-          ${p.userId === currentUser.uid ? `${closeBtn}<button onclick="openEditPost(${index})" class="w-full bg-purple-100 text-illit-darkPurple font-bold py-2.5 rounded-xl hover:bg-purple-200 transition text-sm">✏️ この募集を編集する</button>
-          <button onclick="deletePost(${index})" class="w-full bg-red-50 text-red-500 font-bold py-2.5 rounded-xl hover:bg-red-100 transition text-sm">この募集を削除する</button>` : ''}
-          ${adminDelete}`;
-      } else if (isGroup && joined) {
-        actions.innerHTML = `
-          <p class="text-xs text-teal-600 text-center font-bold">✅ この共同購入に参加済みです。</p>
-          <button onclick="openMyGroupTrade(${index})" class="w-full bg-teal-500 text-white font-bold py-2.5 rounded-xl hover:bg-teal-600 transition text-sm">💬 取引ルームを開く</button>`;
-      } else if (isGroup && closed) {
-        actions.innerHTML = `<p class="text-xs text-gray-500 text-center">この共同購入は募集を終了しました。</p>`;
-      } else if (isExpired(p)) {
-        actions.innerHTML = `<p class="text-xs text-red-400 text-center">${isGroup ? '募集期限が切れています。' : '有効期限が切れています。'}</p>`;
-      } else if (isGroup && full) {
-        actions.innerHTML = `<p class="text-xs text-green-600 text-center font-bold">🎉 目標人数に達したため満員です。</p>`;
-      } else if (isGroup) {
-        let bundleForm;
-        if (p.bundle === "ng") {
-          bundleForm = `<p class="text-[11px] text-gray-500">この共同購入は単品のみ（抱き合わせ不可）です。</p>`;
-        } else if (p.bundle === "only") {
-          bundleForm = `<div class="bg-purple-50 border border-purple-200 rounded-xl p-3 space-y-1 text-xs">
-               <p class="font-bold text-purple-800">🔒 抱き合わせ限定</p>
-               <p class="text-[11px] text-purple-700">この共同購入は抱き合わせ込みでのみ参加できます。${p.bundleNote ? '内容: <b>' + escapeHtml(p.bundleNote) + '</b>。' : ''}参加すると、抱き合わせに同意したものとして扱われます。</p>
-             </div>`;
-        } else {
-          const defWant = p.bundle === "prefer";
-          const noteText = p.bundle === "prefer"
-            ? "※抱き合わせを希望する人が優先されます（単品でも参加できますが、枠が埋まる場合があります）。"
-            : (p.bundle === "ask" ? "※主催者と相談のうえ決定します。取引ルームで詳細を確認してください。" : "※抱き合わせの有無はどちらでも参加できます。");
-          bundleForm = `<div class="bg-teal-50 border border-teal-200 rounded-xl p-3 space-y-1.5 text-xs">
-               <p class="font-bold text-teal-800">🔗 抱き合わせの希望</p>
-               <label class="flex items-center space-x-2"><input type="radio" name="join-bundle" value="want" ${defWant ? 'checked' : ''}> <span>抱き合わせを希望する</span></label>
-               <label class="flex items-center space-x-2"><input type="radio" name="join-bundle" value="none" ${defWant ? '' : 'checked'}> <span>希望しない（単品で参加）</span></label>
-               <p class="text-[10px] text-teal-700">${noteText}</p>
-             </div>`;
-        }
-        actions.innerHTML = `
-          ${bundleForm}
-          <button onclick="joinGroup(${index})" class="w-full bg-gradient-to-r from-teal-500 to-emerald-500 text-white font-bold py-2.5 rounded-xl hover:opacity-90 transition text-sm">🛍 この共同購入に参加する（￥${Number(p.price || 0).toLocaleString()}）</button>
-          <button onclick="reportPost('${p.id}', '${escapeHtml(p.give)}')" class="w-full text-xs text-gray-400 hover:text-red-500 py-1 underline text-center block">🚨 この募集を通報する</button>`;
-      } else {
-        actions.innerHTML = `
-          <button onclick="applyToPost(${index})" class="w-full bg-gradient-to-r from-purple-500 to-illit-accent text-white font-bold py-2.5 rounded-xl hover:opacity-90 transition text-sm">${p.isSell ? 'このシリアルを購入申込する' : 'この募集に申し込む'}</button>
-          <button onclick="reportPost('${p.id}', '${escapeHtml(p.give)}')" class="w-full text-xs text-gray-400 hover:text-red-500 py-1 underline text-center block">🚨 この募集を通報する</button>
+          <p class="text-xs text-gray-500 text-center">${isGroup ? 'あなたが主催する共同購入です。' : 'あなたの出品です。'}</p>
+          ${closeBtn}
+          <button onclick="openEditPost(${index})" class="w-full bg-purple-100 text-illit-darkPurple font-bold py-2.5 rounded-xl hover:bg-purple-200 transition text-sm">✏️ この募集を編集する</button>
+          <button onclick="deletePost(${index})" class="w-full bg-red-50 text-red-500 font-bold py-2.5 rounded-xl hover:bg-red-100 transition text-sm">この募集を削除する</button>
         `;
+      
+      } else {
+        // 他人の出品（管理者であってもまずは購入・申込ボタンを表示する）
+        let userHtml = "";
+        if (isGroup && joined) {
+          userHtml = `
+            <p class="text-xs text-teal-600 text-center font-bold">✅ この共同購入に参加済みです。</p>
+            <button onclick="openMyGroupTrade(${index})" class="w-full bg-teal-500 text-white font-bold py-2.5 rounded-xl hover:bg-teal-600 transition text-sm">💬 取引ルームを開く</button>`;
+        } else if (isGroup && closed) {
+          userHtml = `<p class="text-xs text-gray-500 text-center">この共同購入は募集を終了しました。</p>`;
+        } else if (isExpired(p)) {
+          userHtml = `<p class="text-xs text-red-400 text-center">${isGroup ? '募集期限が切れています。' : '有効期限が切れています。'}</p>`;
+        } else if (isGroup && full) {
+          userHtml = `<p class="text-xs text-green-600 text-center font-bold">🎉 目標人数に達したため満員です。</p>`;
+        } else if (isGroup) {
+          let bundleForm;
+          if (p.bundle === "ng") {
+            bundleForm = `<p class="text-[11px] text-gray-500">この共同購入は単品のみ（抱き合わせ不可）です。</p>`;
+          } else if (p.bundle === "only") {
+            bundleForm = `<div class="bg-purple-50 border border-purple-200 rounded-xl p-3 space-y-1 text-xs">
+                 <p class="font-bold text-purple-800">🔒 抱き合わせ限定</p>
+                 <p class="text-[11px] text-purple-700">この共同購入は抱き合わせ込みでのみ参加できます。${p.bundleNote ? '内容: <b>' + escapeHtml(p.bundleNote) + '</b>。' : ''}参加すると、抱き合わせに同意したものとして扱われます。</p>
+               </div>`;
+          } else {
+            const defWant = p.bundle === "prefer";
+            const noteText = p.bundle === "prefer"
+              ? "※抱き合わせを希望する人が優先されます（単品でも参加できますが、枠が埋まる場合があります）。"
+              : (p.bundle === "ask" ? "※主催者と相談のうえ決定します。取引ルームで詳細を確認してください。" : "※抱き合わせの有無はどちらでも参加できます。");
+            bundleForm = `<div class="bg-teal-50 border border-teal-200 rounded-xl p-3 space-y-1.5 text-xs">
+                 <p class="font-bold text-teal-800">🔗 抱き合わせの希望</p>
+                 <label class="flex items-center space-x-2"><input type="radio" name="join-bundle" value="want" ${defWant ? 'checked' : ''}> <span>抱き合わせを希望する</span></label>
+                 <label class="flex items-center space-x-2"><input type="radio" name="join-bundle" value="none" ${defWant ? '' : 'checked'}> <span>希望しない（単品で参加）</span></label>
+                 <p class="text-[10px] text-teal-700">${noteText}</p>
+               </div>`;
+          }
+          userHtml = `
+            ${bundleForm}
+            <button onclick="joinGroup(${index})" class="w-full bg-gradient-to-r from-teal-500 to-emerald-500 text-white font-bold py-2.5 rounded-xl hover:opacity-90 transition text-sm">🛍 この共同購入に参加する（￥${Number(p.price || 0).toLocaleString()}）</button>
+            <button onclick="reportPost('${p.id}', '${escapeHtml(p.give)}')" class="w-full text-xs text-gray-400 hover:text-red-500 py-1 underline text-center block">🚨 この募集を通報する</button>`;
+        } else {
+          userHtml = `
+            <button onclick="applyToPost(${index})" class="w-full bg-gradient-to-r from-purple-500 to-illit-accent text-white font-bold py-2.5 rounded-xl hover:opacity-90 transition text-sm">${p.isSell ? 'このシリアルを購入申込する' : 'この募集に申し込む'}</button>
+            <button onclick="reportPost('${p.id}', '${escapeHtml(p.give)}')" class="w-full text-xs text-gray-400 hover:text-red-500 py-1 underline text-center block">🚨 この募集を通報する</button>
+          `;
+        }
+
+        // さらに管理者の場合のみ、強制削除などのメニューを「追加で」下に表示する
+        if (isAdmin()) {
+          userHtml += `
+            <div class="mt-4 pt-3 border-t border-red-200 space-y-2">
+              <p class="text-xs text-red-500 font-bold text-center">👑 管理者専用メニュー</p>
+              <button onclick="adminDeletePost('${p.id}')" class="w-full bg-red-600 text-white font-bold py-2.5 rounded-xl hover:bg-red-700 transition text-sm">👑 この募集を強制削除</button>
+              <button onclick="adminSuspendUser('${p.userId}', '')" class="w-full bg-gray-800 text-white font-bold py-2.5 rounded-xl hover:bg-black transition text-sm">👑 この出品者のアカウントを停止</button>
+            </div>
+          `;
+        }
+        
+        actions.innerHTML = userHtml;
       }
 
       document.getElementById("detail-modal").classList.remove("hidden");
