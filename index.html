@@ -93,7 +93,7 @@
 
   </main>
 
-  <!-- 出品モーダル（ポップアップ画面） -->
+  <!-- 新規出品モーダル -->
   <div id="post-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
     <div class="bg-white w-full max-w-md rounded-2xl p-6 space-y-4 shadow-xl">
       <div class="flex justify-between items-center border-b pb-3">
@@ -131,22 +131,50 @@
     </div>
   </div>
 
+  <!-- 詳細・連絡モーダル -->
+  <div id="detail-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-md rounded-2xl p-6 space-y-4 shadow-xl">
+      <div class="flex justify-between items-center border-b pb-3">
+        <h3 class="font-bold text-base text-gray-800">交換募集の詳細</h3>
+        <button onclick="closeDetailModal()" class="text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
+      </div>
+      
+      <div class="space-y-3 text-xs md:text-sm">
+        <div class="bg-purple-50 p-3 rounded-xl space-y-2">
+          <div><span class="font-bold text-gray-500">メンバー:</span> <span id="detail-member" class="font-semibold text-gray-800"></span></div>
+          <div><span class="bg-pink-100 text-pink-700 text-xs font-bold px-2 py-0.5 rounded">譲</span> <span id="detail-give" class="font-bold text-gray-800 ml-1"></span></div>
+          <div><span class="bg-purple-100 text-illit-darkPurple text-xs font-bold px-2 py-0.5 rounded">求</span> <span id="detail-want" class="font-bold text-gray-800 ml-1"></span></div>
+        </div>
+        <div>
+          <span class="font-semibold text-gray-700">出品者:</span> <span id="detail-user" class="text-gray-600"></span>
+        </div>
+        <p class="text-gray-500 text-xs bg-gray-50 p-3 rounded-xl">
+          💡 交換を行う際は、お互いのトレカの状態や発送方法（スリーブ・硬質ケース・防水対策など）をよく確認してから進めてください。
+        </p>
+      </div>
+
+      <div class="pt-2">
+        <button onclick="closeDetailModal()" class="w-full bg-illit-purple text-white font-bold py-2.5 rounded-xl hover:bg-illit-darkPurple transition">閉じる</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Firebase & アプリケーションロジック -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { getFirestore, collection, addDoc, getDocs, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // ★ 新しいFirebaseプロジェクトの設定値に書き換えてください
+    // 組み込み済みのFirebase設定
     const firebaseConfig = {
-  apiKey: "AIzaSyBB1_QTcXpF0Ap72tDaf5_CCUtNBwSlXCs",
-  authDomain: "illit-7ecd4.firebaseapp.com",
-  projectId: "illit-7ecd4",
-  storageBucket: "illit-7ecd4.firebasestorage.app",
-  messagingSenderId: "1060277997826",
-  appId: "1:1060277997826:web:e47d21d9edc538bb86321b",
-  measurementId: "G-4GYW6WCS6J"
-};
+      apiKey: "AIzaSyBB1_QTcXpF0Ap72tDaf5_CCUtNBwSlXCs",
+      authDomain: "illit-7ecd4.firebaseapp.com",
+      projectId: "illit-7ecd4",
+      storageBucket: "illit-7ecd4.firebasestorage.app",
+      messagingSenderId: "1060277997826",
+      appId: "1:1060277997826:web:e47d21d9edc538bb86321b",
+      measurementId: "G-4GYW6WCS6J"
+    };
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
@@ -184,7 +212,7 @@
       }
     });
 
-    // モダル開閉
+    // 新規出品モーダルの開閉
     window.openPostModal = function() {
       if (!currentUser) {
         alert("出品するにはGoogleログインが必要です。");
@@ -195,6 +223,19 @@
 
     window.closePostModal = function() {
       document.getElementById("post-modal").classList.add("hidden");
+    };
+
+    // 詳細モーダルの開閉
+    window.openDetailModal = function(give, want, member, userName) {
+      document.getElementById("detail-give").innerText = give;
+      document.getElementById("detail-want").innerText = want;
+      document.getElementById("detail-member").innerText = member;
+      document.getElementById("detail-user").innerText = userName;
+      document.getElementById("detail-modal").classList.remove("hidden");
+    };
+
+    window.closeDetailModal = function() {
+      document.getElementById("detail-modal").classList.add("hidden");
     };
 
     // 出品データをFirestoreに保存する関数
@@ -257,7 +298,7 @@
               </div>
               <div class="pt-2 border-t border-gray-100 flex justify-between items-center text-xs text-gray-500">
                 <span>出品者: ${escapeHtml(data.userName)} <span class="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">新規</span></span>
-                <button class="bg-illit-purple text-white font-bold px-3 py-1.5 rounded-lg hover:bg-illit-darkPurple transition">詳細・連絡</button>
+                <button onclick="openDetailModal('${escapeHtml(data.give).replace(/'/g, "\\'")}', '${escapeHtml(data.want).replace(/'/g, "\\'")}', '${escapeHtml(data.member).replace(/'/g, "\\'")}', '${escapeHtml(data.userName).replace(/'/g, "\\'")}')" class="bg-illit-purple text-white font-bold px-3 py-1.5 rounded-lg hover:bg-illit-darkPurple transition">詳細・連絡</button>
               </div>
             </div>
           `;
@@ -281,3 +322,4 @@
   </script>
 </body>
 </html>
+
