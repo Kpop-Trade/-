@@ -43,7 +43,7 @@
           Googleでログイン
         </button>
         <div id="user-profile" class="hidden flex items-center space-x-2">
-          <!-- 管理者用パネルボタン（管理者だけに表示されます） -->
+          <!-- 管理者用パネルボタン -->
           <button id="admin-panel-btn" onclick="openAdminModal()" class="hidden bg-red-100 text-red-700 text-xs font-bold px-2.5 py-1.5 rounded-full hover:bg-red-200 transition" title="管理者パネル">
             👑 管理
           </button>
@@ -409,7 +409,7 @@
       <!-- チャット定型文ボタン -->
       <div class="px-3 py-1.5 bg-purple-50 border-b flex gap-1.5 overflow-x-auto shrink-0 text-[11px]">
         <button onclick="sendQuickMsg('よろしくおねがいします！')" class="bg-white border border-purple-200 px-2.5 py-1 rounded-full text-purple-700 font-bold shrink-0 hover:bg-purple-100">👋 よろしくお願いします</button>
-        <button onclick="sendQuickMsg('PayPayで送金しますので、リンクまたはPayPay IDを教えてください！')" class="bg-white border border-pink-200 px-2.5 py-1 rounded-full text-pink-700 font-bold shrink-0 hover:bg-pink-100">💳 PayPay送金案内</button>
+        <button onclick="sendQuickMsg('PayPayで送金しますので、リンクまたはPayPay IDを教えてください！')" class="bg-white border border-pink-200 px-2.5 py-1 rounded-full text-pink-700 font-bold shrink-0 hover:bg-purple-100">💳 PayPay送金案内</button>
         <button onclick="sendQuickMsg('水濡れ・折れ防止をして発送いたします！')" class="bg-white border border-purple-200 px-2.5 py-1 rounded-full text-purple-700 font-bold shrink-0 hover:bg-purple-100">📦 梱包して発送します</button>
         <button onclick="sendQuickMsg('本日発送いたしました！到着までお待ちください。')" class="bg-white border border-purple-200 px-2.5 py-1 rounded-full text-purple-700 font-bold shrink-0 hover:bg-purple-100">📮 発送完了</button>
         <button onclick="sendQuickMsg('無事に受け取りました！丁寧な取引ありがとうございました✨')" class="bg-white border border-purple-200 px-2.5 py-1 rounded-full text-purple-700 font-bold shrink-0 hover:bg-purple-100">✨ 受取完了</button>
@@ -470,10 +470,9 @@
 
     const VAPID_KEY = "ここにVAPIDキーを貼る";
 
-    // 👑 【重要】あなたのGoogleアカウントのFirebase UIDをここに登録してください！
-    // ※ログインした状態でブラウザのコンソールやFirebaseコンソールで自分のUIDを確認してここに入れます。
+    // 👑 あなたのFirebase UIDを設定済み！
     const ADMIN_UIDS = [
-      "ここにあなたのFirebase_UIDを貼る" // 例: "abc123XYZ..."
+      "Ay6VCS8HTgM3RqjDYZ0wKdHrSKz1"
     ];
 
     function isAdmin() {
@@ -586,7 +585,6 @@
 
     async function checkDeviceLock() {
       if (!currentUser) return true;
-      // 👑 管理者なら複数アカウント（別Googleアカ）でのテストを完全許可！
       if (isAdmin()) return true;
 
       const deviceId = getOrCreateDeviceId();
@@ -630,7 +628,6 @@
         const nm = document.getElementById("user-name");
         if (nm && currentUser) nm.innerText = getMyDisplayName();
         
-        // 管理者ボタンの表示・非表示を切替
         const adminBtn = document.getElementById("admin-panel-btn");
         if (adminBtn) adminBtn.classList.toggle("hidden", !isAdmin());
 
@@ -1570,7 +1567,6 @@
       if (!currentUser) {
         actions.innerHTML = `<button onclick="loginWithGoogle()" class="w-full bg-illit-purple text-white font-bold py-2.5 rounded-xl hover:bg-illit-darkPurple transition text-sm">ログインして申し込む</button>`;
       } else if (p.userId && (p.userId === currentUser.uid || isAdmin())) {
-        // 👑 管理者なら他人の出品でも削除・編集・管理ができる
         const adminDelete = isAdmin() && p.userId !== currentUser.uid ? `<button onclick="adminDeletePost('${p.id}')" class="w-full bg-red-600 text-white font-bold py-2.5 rounded-xl hover:bg-red-700 transition text-sm">👑 [管理者] この募集を強制削除</button>` : '';
         actions.innerHTML = `
           <p class="text-xs text-gray-500 text-center">${p.userId === currentUser.uid ? 'あなたの出品です。' : '👑 管理者権限での操作'}</p>
