@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ILLIT Trade (ILLIT交換) - 手数料0円のファン専用安心トレカ・シリアル交換</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        illit: {
+                            purple: '#b794f4',
+                            pink: '#fbb6ce',
+                            darkPurple: '#6b46c1',
+                            accent: '#9f7aea',
+                            bg: '#faf5ff',
+                            softPink: '#fff5f7'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: #fcfaff;
+        }
+        .gradient-text {
+            background: linear-gradient(135deg, #805ad5, #d53f8c);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+        .member-btn-active {
+            background: linear-gradient(135deg, #9f7aea, #ed64a6);
+            color: white;
+            box-shadow: 0 4px 12px rgba(159, 122, 234, 0.35);
+        }
+    </style>
+</head>
+<body class="text-slate-800 min-h-screen flex flex-col">
+
+    <!-- ヘッダー -->
+    <header class="sticky top-0 z-30 glass-panel border-b border-purple-100 shadow-sm">
+        <div class="max-w-5xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="resetFilters()">
+                <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-500 to-pink-400 flex items-center justify-center text-white font-bold text-xl shadow-md">
+                    ✨
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight">
+                        <span class="gradient-text">ILLIT Trade</span>
+                        <span class="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium ml-1">ILLIT交換</span>
+                    </h1>
+                    <p class="text-[10px] text-slate-500 font-medium">手数料0円・安心の2段階認証システム</p>
+                </div>
+            </div>
+            
+            <button onclick="openNewPostModal()" class="bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600 text-white font-bold px-4 py-2 rounded-xl text-sm shadow-md transition-all duration-200 flex items-center space-x-1.5 active:scale-95">
+                <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                <span>募集を投稿する</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- メインコンテンツ -->
+    <main class="flex-grow max-w-5xl w-full mx-auto px-4 py-6">
+
+        <!-- 注意喚起バナー -->
+        <div class="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-2xl p-4 mb-6 shadow-sm">
+            <div class="flex items-start space-x-3">
+                <div class="p-2 bg-purple-100 text-purple-600 rounded-xl mt-0.5">
+                    <i data-lucide="shield-check" class="w-5 h-5"></i>
+                </div>
+                <div class="flex-grow text-xs leading-relaxed text-slate-600">
+                    <p class="font-bold text-slate-800 text-sm mb-1">安心・安全なトレカ交換のために</p>
+                    <p>・当サイトは<strong class="text-purple-700">手数料完全0円</strong>でご利用いただけます。</p>
+                    <p>・発送は「<strong class="text-purple-700">発送完了 ➔ 受取確認</strong>」の2段階相互確認で行われます。</p>
+                    <p>・取引経験の少ないユーザーには「<span class="bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-bold text-[11px]">新規</span>」バッジが表示されます。実績数の多いユーザーとの優先的な取引を推奨します。</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- メンバー選択フィルター（ボタン形式） -->
+        <div class="mb-6">
+            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center">
+                <i data-lucide="heart" class="w-3.5 h-3.5 text-pink-500 mr-1"></i> メンバーで絞り込み
+            </label>
+            <div class="flex flex-wrap gap-2" id="member-filter-buttons">
+                <!-- JSで動的に作成および更新 -->
+            </div>
+        </div>
+
+        <!-- カテゴリ・検索フィルター -->
+        <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm mb-6 flex flex-col md:flex-row gap-3 items-center justify-between">
+            <!-- 種別タブ -->
+            <div class="flex bg-slate-100 p-1 rounded-xl w-full md:w-auto text-xs font-medium">
+                <button onclick="setCategoryFilter('all')" id="cat-btn-all" class="flex-1 md:flex-none px-4 py-1.5 rounded-lg transition-all text-slate-700 font-bold bg-white shadow-sm">すべて</button>
+                <button onclick="setCategoryFilter('photocard')" id="cat-btn-photocard" class="flex-1 md:flex-none px-4 py-1.5 rounded-lg transition-all text-slate-600 hover:text-slate-900">フォトカード</button>
+                <button onclick="setCategoryFilter('serial')" id="cat-btn-serial" class="flex-1 md:flex-none px-4 py-1.5 rounded-lg transition-all text-slate-600 hover:text-slate-900">シリアルコード</button>
+            </div>
+
+            <!-- アルバム・特典フィルター -->
+            <div class="flex gap-2 w-full md:w-auto">
+                <select id="album-filter" onchange="renderPosts()" class="w-full md:w-48 bg-slate-50 border border-slate-200 text-xs rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400">
+                    <option value="">すべてのアルバム・種類</option>
+                    <option value="SUPER REAL ME">SUPER REAL ME</option>
+                    <option value="I'LL LIKE YOU">I'LL LIKE YOU</option>
+                    <option value="Weverse Shop特典">Weverse Shop特典</option>
+                    <option value="Universal Music特典">Universal Music特典</option>
+                    <option value="ラッキードロー">ラッキードロー (Lucky Draw)</option>
+                    <option value="応募シリアルコード">応募シリアルコード</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- 投稿一覧グリッド -->
+        <div id="posts-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <!-- JSで投稿が挿入されます -->
+        </div>
+
+        <!-- 検索結果ゼロの表示 -->
+        <div id="empty-state" class="hidden text-center py-16 bg-white rounded-2xl border border-slate-100 shadow-sm">
+            <div class="w-16 h-16 bg-purple-50 text-purple-400 rounded-full flex items-center justify-center mx-auto mb-3">
+                <i data-lucide="search-x" class="w-8 h-8"></i>
+            </div>
+            <p class="text-slate-600 font-bold">該当する募集が見つかりませんでした</p>
+            <p class="text-xs text-slate-400 mt-1">フィルター条件を変更するか、新しい募集を投稿してください。</p>
+        </div>
+
+    </main>
+
+    <!-- フッター -->
+    <footer class="border-t border-slate-200 bg-white py-6 mt-12 text-center text-xs text-slate-500">
+        <div class="max-w-5xl mx-auto px-4">
+            <p class="font-bold text-slate-700 mb-1">ILLIT Trade (ILLIT交換)</p>
+            <p class="mb-3">手数料0円で使えるILLITファン専用非公式トレーディングカード・シリアル交換プラットフォーム</p>
+            <p class="text-[11px] text-slate-400">※当サイトはファンの相互協力のための掲示板であり、金銭のやり取り・売買行為は固く禁止しております。</p>
+        </div>
+    </footer>
+
+    <!-- モーダル1: 募集投稿 modal -->
+    <div id="modal-post" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-purple-100 animate-in fade-in zoom-in duration-200">
+            <div class="p-5 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white z-10">
+                <h3 class="font-bold text-lg text-slate-800 flex items-center">
+                    <i data-lucide="plus-circle" class="w-5 h-5 text-purple-600 mr-2"></i>
+                    新規募集を投稿する
+                </h3>
+                <button onclick="closeModal('modal-post')" class="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form id="form-post" onsubmit="handleCreatePost(event)" class="p-5 space-y-4">
+                <!-- 投稿者名 -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">あなたのユーザー名 <span class="text-red-500">*</span></label>
+                    <input type="text" id="post-username" required placeholder="例: もかペン@交換用" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-purple-400 outline-none">
+                </div>
+
+                <!-- 種別 -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">アイテム種別 <span class="text-red-500">*</span></label>
+                    <select id="post-type" required class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-purple-400 outline-none bg-slate-50">
+                        <option value="photocard">フォトカード / トレカ</option>
+                        <option value="serial">応募用シリアルコード</option>
+                    </select>
+                </div>
+
+                <!-- アルバム/種類 -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">アルバム・特典の種類 <span class="text-red-500">*</span></label>
+                    <select id="post-album" required class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-purple-400 outline-none bg-slate-50">
+                        <option value="SUPER REAL ME">SUPER REAL ME</option>
+                        <option value="I'LL LIKE YOU">I'LL LIKE YOU</option>
+                        <option value="Weverse Shop特典">Weverse Shop特典</option>
+                        <option value="Universal Music特典">Universal Music特典</option>
+                        <option value="ラッキードロー">ラッキードロー (Lucky Draw)</option>
+                        <option value="応募シリアルコード">応募シリアルコード</option>
+                    </select>
+                </div>
+
+                <!-- 譲 (Have) -->
+                <div class="bg-purple-50/50 p-3.5 rounded-2xl border border-purple-100">
+                    <label class="block text-xs font-bold text-purple-900 mb-1.5 flex items-center">
+                        <span class="bg-purple-600 text-white text-[10px] px-1.5 py-0.5 rounded mr-1.5">譲</span> 譲れるメンバー / アイテム
+                    </label>
+                    <div class="grid grid-cols-5 gap-1.5 mb-2" id="have-member-selector">
+                        <!-- JSで生成 -->
+                    </div>
+                    <input type="text" id="post-have-detail" required placeholder="詳細 (例: Ver.A トレカ, シリアル2枚 など)" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-white outline-none focus:ring-2 focus:ring-purple-400">
+                </div>
+
+                <!-- 求 (Want) -->
+                <div class="bg-pink-50/50 p-3.5 rounded-2xl border border-pink-100">
+                    <label class="block text-xs font-bold text-pink-900 mb-1.5 flex items-center">
+                        <span class="bg-pink-500 text-white text-[10px] px-1.5 py-0.5 rounded mr-1.5">求</span> 求めるメンバー / アイテム
+                    </label>
+                    <div class="grid grid-cols-5 gap-1.5 mb-2" id="want-member-selector">
+                        <!-- JSで生成 -->
+                    </div>
+                    <input type="text" id="post-want-detail" required placeholder="詳細 (例: 同種 ウォンヒ または イロハ)" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-white outline-none focus:ring-2 focus:ring-pink-400">
+                </div>
+
+                <!-- 補足コメント -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">備考・発送方法など</label>
+                    <textarea id="post-note" rows="2" placeholder="スリーブ＋硬質ケース＋防水対策のうえ普通郵便で発送希望です。" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-purple-400"></textarea>
+                </div>
+
+                <div class="pt-2">
+                    <button type="submit" class="w-full bg-gradient-to-r from-purple-600 to-pink-500 text-white font-bold py-3 rounded-xl shadow-lg hover:opacity-95 transition-all text-sm">
+                        募集を公開する（無料）
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- モーダル2: 取引詳細・2段階発送フロー modal -->
+    <div id="modal-trade" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-purple-100 animate-in fade-in zoom-in duration-200">
+            <div class="p-5 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white z-10">
+                <div>
+                    <h3 class="font-bold text-base text-slate-800">取引進行・発送ステータス</h3>
+                    <p class="text-[11px] text-slate-400" id="trade-modal-id">取引ID: #0000</p>
+                </div>
+                <button onclick="closeModal('modal-trade')" class="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="p-5 space-y-5">
+                <!-- 取引概要カード -->
+                <div id="trade-detail-summary" class="bg-slate-50 p-4 rounded-2xl text-xs space-y-2 border border-slate-100">
+                    <!-- JSで動的挿入 -->
+                </div>
+
+                <!-- 2段階認証ステータス進行バー -->
+                <div class="bg-purple-50/60 border border-purple-100 p-4 rounded-2xl">
+                    <h4 class="font-bold text-xs text-purple-900 mb-3 flex items-center">
+                        <i data-lucide="shield-alert" class="w-4 h-4 mr-1 text-purple-600"></i>
+                        2段階 安心発送・受取確認フロー
+                    </h4>
+                    
+                    <div class="relative flex items-center justify-between px-4 my-2">
+                        <!-- 接続線 -->
+                        <div class="absolute left-10 right-10 top-1/2 -translate-y-1/2 h-1 bg-slate-200 z-0"></div>
+                        <div id="progress-line" class="absolute left-10 top-1/2 -translate-y-1/2 h-1 bg-gradient-to-r from-purple-500 to-pink-500 z-0 transition-all duration-300" style="width: 0%;"></div>
+
+                        <!-- ステップ1: 発送 -->
+                        <div class="relative z-10 text-center">
+                            <div id="step-1-icon" class="w-8 h-8 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold text-xs mx-auto shadow">1</div>
+                            <span class="text-[10px] font-bold mt-1 block text-slate-700">発送完了</span>
+                        </div>
+                        <!-- ステップ2: 受取 -->
+                        <div class="relative z-10 text-center">
+                            <div id="step-2-icon" class="w-8 h-8 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center font-bold text-xs mx-auto">2</div>
+                            <span class="text-[10px] font-bold mt-1 block text-slate-500" id="step-2-text">受取完了</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 発送情報の入力・表示エリア -->
+                <div class="space-y-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                    <h4 class="font-bold text-xs text-slate-800">発送情報の登録 (追跡番号・証明写真)</h4>
+                    
+                    <div>
+                        <label class="block text-[11px] font-medium text-slate-500 mb-1">追跡番号 / 問い合わせ番号 (任意)</label>
+                        <input type="text" id="trade-tracking-input" placeholder="例: 1234-5678-9012" class="w-full border border-slate-200 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-purple-400">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-[11px] font-medium text-slate-500 mb-1">発送証拠・梱包写真URL (任意)</label>
+                        <input type="url" id="trade-photo-input" placeholder="https://..." class="w-full border border-slate-200 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-purple-400">
+                    </div>
+
+                    <div class="pt-2 flex gap-2">
+                        <button onclick="updateTradeStep(1)" id="btn-dispatch" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 rounded-xl text-xs shadow transition">
+                            発送完了を相手に通知
+                        </button>
+                        <button onclick="updateTradeStep(2)" id="btn-receive" disabled class="flex-1 bg-slate-200 text-slate-400 font-bold py-2 rounded-xl text-xs transition cursor-not-allowed">
+                            受取確認をして完了
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 詐欺報告ボタン -->
+                <div class="pt-2 border-t border-slate-100 flex justify-between items-center">
+                    <span class="text-[11px] text-slate-400">万が一問題が発生した場合</span>
+                    <button onclick="reportUserFromTrade()" class="text-red-500 hover:text-red-700 font-bold text-xs flex items-center bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition">
+                        <i data-lucide="flag" class="w-3.5 h-3.5 mr-1"></i>
+                        詐欺・トラブルを報告
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- モーダル3: ユーザープロフィール & 報告 modal -->
+    <div id="modal-user-profile" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl border border-purple-100 text-center animate-in fade-in zoom-in duration-200 relative">
+            <button onclick="closeModal('modal-user-profile')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1 rounded-full">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+
+            <div class="w-16 h-16 bg-gradient-to-tr from-purple-400 to-pink-400 text-white rounded-full flex items-center justify-center mx-auto text-2xl font-bold mb-3 shadow-md" id="profile-avatar">
+                U
+            </div>
+            
+            <h3 class="font-bold text-lg text-slate-800" id="profile-name">ユーザー名</h3>
+            
+            <!-- バッジ表示 -->
+            <div class="flex justify-center items-center gap-2 mt-2" id="profile-badges">
+                <!-- JSで動的挿入 -->
+            </div>
+
+            <!-- 報告警告バナー -->
+            <div id="profile-warning" class="hidden mt-4 bg-red-50 border border-red-200 text-red-700 p-3 rounded-2xl text-left text-xs">
+                <p class="font-bold flex items-center">
+                    <i data-lucide="alert-triangle" class="w-4 h-4 mr-1 text-red-600"></i>
+                    ⚠️ 注意: 通報を受けているユーザー
+                </p>
+                <p class="mt-1 text-[11px] text-red-600 leading-tight">このユーザーは複数の詐欺・トラブル報告を受けています。取引の際は十分にご注意ください。</p>
+            </div>
+
+            <!-- スタッツ -->
+            <div class="grid grid-cols-2 gap-2 my-4 bg-slate-50 p-3 rounded-2xl border border-slate-100 text-xs">
+                <div>
+                    <span class="block text-slate-400 text-[10px]">完了実績</span>
+                    <span class="font-bold text-slate-700 text-sm" id="profile-trades-count">0件</span>
+                </div>
+                <div>
+                    <span class="block text-slate-400 text-[10px]">通報報告数</span>
+                    <span class="font-bold text-red-500 text-sm" id="profile-report-count">0件</span>
+                </div>
+            </div>
+
+            <!-- 通報アクション -->
+            <button onclick="triggerReportUser()" class="w-full bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 border border-slate-200 hover:border-red-200 font-bold py-2 rounded-xl text-xs transition flex items-center justify-center">
+                <i data-lucide="flag" class="w-3.5 h-3.5 mr-1"></i>
+                このユーザーを詐欺・不当行為で報告
+            </button>
+        </div>
+    </div>
+
+    <!-- 通知トースト -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-slate-800 text-white text-xs px-4 py-3 rounded-2xl shadow-xl flex items-center space-x-2 transition-all duration-300 opacity-0 pointer-events-none translate-y-4 z-50">
+        <i data-lucide="check-circle-2" class="w-4 h-4 text-green-400" id="toast-icon"></i>
+        <span id="toast-message">処理が完了しました</span>
+    </div>
+
+    <script>
+        // ILLIT メンバー定義
+        const MEMBERS = [
+            { id: 'yuna', name: 'ユナ', color: 'from-pink-400 to-rose-400' },
+            { id: 'minju', name: 'ミンジュ', color: 'from-purple-400 to-indigo-400' },
+            { id: 'moka', name: 'モカ', color: 'from-sky-400 to-blue-400' },
+            { id: 'wonhee', name: 'ウォンヒ', color: 'from-amber-300 to-orange-400' },
+            { id: 'iroha', name: 'イロハ', color: 'from-emerald-400 to-teal-400' }
+        ];
+
+        // サンプル初期データ
+        let posts = [
+            {
+                id: 'trade-101',
+                username: 'ウォンヒ推し🌸',
+                tradesCompleted: 0, // 0件 = 新規バッジ
+                reportCount: 0,
+                type: 'photocard',
+                album: "I'LL LIKE YOU",
+                haveMember: 'ウォンヒ',
+                haveDetail: 'I\'LL LIKE YOU (GLLIT Ver.) トレカ',
+                wantMember: 'モカ',
+                wantDetail: '同種 モカ トレカ',
+                note: 'スリーブ・防水梱包のうえ郵便窓口より普通郵便で送ります！',
+                status: 'open',
+                dispatchStep: 0,
+                createdAt: '10分前'
+            },
+            {
+                id: 'trade-102',
+                username: 'ILLIT_LOVE_JP',
+                tradesCompleted: 18,
+                reportCount: 0,
+                type: 'serial',
+                album: '応募シリアルコード',
+                haveMember: 'シリアル',
+                haveDetail: 'I\'LL LIKE YOU 応札シリアルコード 2枚',
+                wantMember: 'ユナ',
+                wantDetail: 'Weverse特典 ユナ トレカ',
+                note: 'シリアルコード通知のみもご相談可能です。迅速に対応いたします。',
+                status: 'open',
+                dispatchStep: 0,
+                createdAt: '25分前'
+            },
+            {
+                id: 'trade-103',
+                username: 'イロハトレカ収集部',
+                tradesCompleted: 42,
+                reportCount: 0,
+                type: 'photocard',
+                album: 'SUPER REAL ME',
+                haveMember: 'ミンジュ',
+                haveDetail: 'SUPER REAL ME Real Me Ver. トレカ',
+                wantMember: 'イロハ',
+                wantDetail: '同種 イロハ トレカ',
+                note: '同日発送希望です。実績多数あります。よろしくお願いします。',
+                status: 'open',
+                dispatchStep: 0,
+                createdAt: '1時間前'
+            },
+            {
+                id: 'trade-104',
+                username: '怪しいユーザー例',
+                tradesCompleted: 1,
+                reportCount: 3, // 報告3件 = 警告対象
+                type: 'photocard',
+                album: 'Universal Music特典',
+                haveMember: 'ユナ',
+                haveDetail: 'ラッキードロー トレカ',
+                wantMember: 'ミンジュ',
+                wantDetail: 'ラキドロ ミンジュ',
+                note: '先送り不可',
+                status: 'open',
+                dispatchStep: 0,
+                createdAt: '2時間前'
+            }
+        ];
+
+        // 状態変数
+        let currentMemberFilter = 'ALL';
+        let currentCategoryFilter = 'all';
+        let activeTradeId = null;
+        let activeUserProfile = null;
+
+        // フォーム用選択メンバー
+        let selectedPostHaveMember = 'ユナ';
+        let selectedPostWantMember = 'ミンジュ';
+
+        // 初期化
+        window.addEventListener('DOMContentLoaded', () => {
+            renderMemberFilters();
+            renderPostMemberSelectors();
+            renderPosts();
+            lucide.createIcons();
+        });
+
+        // メンバーフィルターボタンを描画
+        function renderMemberFilters() {
+            const container = document.getElementById('member-filter-buttons');
+            let html = `
+                <button onclick="setMemberFilter('ALL')" 
+                        class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all border ${currentMemberFilter === 'ALL' ? 'member-btn-active border-transparent' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}">
+                    全員
+                </button>
+            `;
+
+            MEMBERS.forEach(m => {
+                const isActive = currentMemberFilter === m.name;
+                html += `
+                    <button onclick="setMemberFilter('${m.name}')" 
+                            class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all border ${isActive ? 'member-btn-active border-transparent' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}">
+                        ${m.name}
+                    </button>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        // 投稿フォーム内のメンバー選択ボタンを描画
+        function renderPostMemberSelectors() {
+            const haveContainer = document.getElementById('have-member-selector');
+            const wantContainer = document.getElementById('want-member-selector');
+
+            let haveHtml = '';
+            let wantHtml = '';
+
+            MEMBERS.concat([{ id: 'serial', name: 'シリアル', color: '' }]).forEach(m => {
+                const isHave = selectedPostHaveMember === m.name;
+                const isWant = selectedPostWantMember === m.name;
+
+                haveHtml += `
+                    <button type="button" onclick="selectPostMember('have', '${m.name}')" 
+                        class="py-1.5 rounded-lg text-xs font-bold transition ${isHave ? 'bg-purple-600 text-white shadow' : 'bg-white text-slate-600 border border-slate-200'}">
+                        ${m.name}
+                    </button>
+                `;
+
+                wantHtml += `
+                    <button type="button" onclick="selectPostMember('want', '${m.name}')" 
+                        class="py-1.5 rounded-lg text-xs font-bold transition ${isWant ? 'bg-pink-500 text-white shadow' : 'bg-white text-slate-600 border border-slate-200'}">
+                        ${m.name}
+                    </button>
+                `;
+            });
+
+            haveContainer.innerHTML = haveHtml;
+            wantContainer.innerHTML = wantHtml;
+        }
+
+        function selectPostMember(type, name) {
+            if (type === 'have') selectedPostHaveMember = name;
+            if (type === 'want') selectedPostWantMember = name;
+            renderPostMemberSelectors();
+        }
+
+        // フィルター更新
+        function setMemberFilter(memberName) {
+            currentMemberFilter = memberName;
+            renderMemberFilters();
+            renderPosts();
+        }
+
+        function setCategoryFilter(cat) {
+            currentCategoryFilter = cat;
+            ['all', 'photocard', 'serial'].forEach(c => {
+                const btn = document.getElementById(`cat-btn-${c}`);
+                if (c === cat) {
+                    btn.className = "flex-1 md:flex-none px-4 py-1.5 rounded-lg transition-all text-slate-700 font-bold bg-white shadow-sm";
+                } else {
+                    btn.className = "flex-1 md:flex-none px-4 py-1.5 rounded-lg transition-all text-slate-600 hover:text-slate-900";
+                }
+            });
+            renderPosts();
+        }
+
+        function resetFilters() {
+            currentMemberFilter = 'ALL';
+            currentCategoryFilter = 'all';
+            document.getElementById('album-filter').value = '';
+            renderMemberFilters();
+            setCategoryFilter('all');
+        }
+
+        // 投稿一覧の描写
+        function renderPosts() {
+            const grid = document.getElementById('posts-grid');
+            const emptyState = document.getElementById('empty-state');
+            const albumFilter = document.getElementById('album-filter').value;
+
+            const filtered = posts.filter(post => {
+                // メンバー判定
+                if (currentMemberFilter !== 'ALL') {
+                    if (post.haveMember !== currentMemberFilter && post.wantMember !== currentMemberFilter) {
+                        return false;
+                    }
+                }
+                // カテゴリ判定
+                if (currentCategoryFilter !== 'all' && post.type !== currentCategoryFilter) {
+                    return false;
+                }
+                // アルバム判定
+                if (albumFilter && post.album !== albumFilter) {
+                    return false;
+                }
+                return true;
+            });
+
+            if (filtered.length === 0) {
+                grid.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+
+            let html = '';
+            filtered.forEach(post => {
+                const isNewUser = post.tradesCompleted <= 2;
+                const hasWarning = post.reportCount >= 2;
+
+                html += `
+                    <div class="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm hover:shadow-md transition-all flex flex-col justify-between relative overflow-hidden">
+                        
+                        ${hasWarning ? `
+                            <div class="bg-red-500 text-white text-[10px] font-bold px-3 py-0.5 text-center -mx-4 -mt-4 mb-3 flex items-center justify-center">
+                                <i data-lucide="alert-triangle" class="w-3 h-3 mr-1"></i> 注意: 複数報告のあるアカウント
+                            </div>
+                        ` : ''}
+
+                        <div>
+                            <!-- ユーザー情報 & 実績バッジ -->
+                            <div class="flex items-center justify-between mb-3">
+                                <button onclick="openUserProfile('${post.username}')" class="flex items-center space-x-2 text-left group">
+                                    <div class="w-7 h-7 rounded-full bg-purple-100 text-purple-700 font-bold flex items-center justify-center text-xs group-hover:bg-purple-600 group-hover:text-white transition">
+                                        ${post.username.charAt(0)}
+                                    </div>
+                                    <div>
+                                        <div class="text-xs font-bold text-slate-800 group-hover:text-purple-600 transition flex items-center">
+                                            ${post.username}
+                                        </div>
+                                        <div class="flex items-center space-x-1 mt-0.5">
+                                            ${isNewUser ? `
+                                                <span class="bg-amber-100 text-amber-800 text-[9px] font-bold px-1.5 py-0.2 rounded border border-amber-200">新規</span>
+                                            ` : `
+                                                <span class="bg-emerald-50 text-emerald-700 text-[9px] font-bold px-1.5 py-0.2 rounded border border-emerald-200">実績 ${post.tradesCompleted}件</span>
+                                            `}
+                                            ${post.reportCount > 0 ? `
+                                                <span class="bg-red-50 text-red-600 text-[9px] font-bold px-1 py-0.2 rounded">通報${post.reportCount}</span>
+                                            ` : ''}
+                                        </div>
+                                    </div>
+                                </button>
+                                <span class="text-[10px] text-slate-400">${post.createdAt}</span>
+                            </div>
+
+                            <!-- アルバムバッジ -->
+                            <div class="mb-2">
+                                <span class="inline-block bg-slate-100 text-slate-600 text-[10px] font-medium px-2 py-0.5 rounded-md">
+                                    ${post.album}
+                                </span>
+                            </div>
+
+                            <!-- 譲・求 メイン詳細 -->
+                            <div class="space-y-2 mb-3">
+                                <!-- 譲 -->
+                                <div class="bg-purple-50/60 p-2.5 rounded-xl border border-purple-100/80">
+                                    <div class="flex items-center justify-between mb-0.5">
+                                        <span class="text-[10px] font-bold bg-purple-600 text-white px-1.5 py-0.2 rounded">譲</span>
+                                        <span class="text-xs font-bold text-purple-900">${post.haveMember}</span>
+                                    </div>
+                                    <p class="text-xs text-slate-700 font-medium pl-1">${post.haveDetail}</p>
+                                </div>
+                                <!-- 求 -->
+                                <div class="bg-pink-50/60 p-2.5 rounded-xl border border-pink-100/80">
+                                    <div class="flex items-center justify-between mb-0.5">
+                                        <span class="text-[10px] font-bold bg-pink-500 text-white px-1.5 py-0.2 rounded">求</span>
+                                        <span class="text-xs font-bold text-pink-900">${post.wantMember}</span>
+                                    </div>
+                                    <p class="text-xs text-slate-700 font-medium pl-1">${post.wantDetail}</p>
+                                </div>
+                            </div>
+
+                            ${post.note ? `<p class="text-[11px] text-slate-500 mb-3 line-clamp-2 italic">“${post.note}”</p>` : ''}
+                        </div>
+
+                        <!-- 取引開始ボタン -->
+                        <button onclick="openTradeModal('${post.id}')" class="w-full bg-slate-900 hover:bg-purple-700 text-white font-bold py-2 rounded-xl text-xs transition-all shadow flex items-center justify-center space-x-1">
+                            <i data-lucide="repeat" class="w-3.5 h-3.5"></i>
+                            <span>交換取引に進む (手数料0円)</span>
+                        </button>
+                    </div>
+                `;
+            });
+
+            grid.innerHTML = html;
+            lucide.createIcons();
+        }
+
+        // 新規募集の作成
+        function handleCreatePost(e) {
+            e.preventDefault();
+            const username = document.getElementById('post-username').value;
+            const type = document.getElementById('post-type').value;
+            const album = document.getElementById('post-album').value;
+            const haveDetail = document.getElementById('post-have-detail').value;
+            const wantDetail = document.getElementById('post-want-detail').value;
+            const note = document.getElementById('post-note').value;
+
+            const newPost = {
+                id: 'trade-' + Date.now(),
+                username: username,
+                tradesCompleted: 0, // 新規ユーザーとして登録
+                reportCount: 0,
+                type: type,
+                album: album,
+                haveMember: selectedPostHaveMember,
+                haveDetail: haveDetail,
+                wantMember: selectedPostWantMember,
+                wantDetail: wantDetail,
+                note: note,
+                status: 'open',
+                dispatchStep: 0,
+                createdAt: 'たった今'
+            };
+
+            posts.unshift(newPost);
+            closeModal('modal-post');
+            document.getElementById('form-post').reset();
+            renderPosts();
+            showToast('新しい募集を投稿しました！');
+        }
+
+        // 取引モーダルを開く
+        function openTradeModal(postId) {
+            const post = posts.find(p => p.id === postId);
+            if (!post) return;
+
+            activeTradeId = postId;
+            document.getElementById('trade-modal-id').innerText = `取引ID: #${post.id}`;
+
+            const summary = document.getElementById('trade-detail-summary');
+            summary.innerHTML = `
+                <div class="flex justify-between items-center text-slate-500 pb-2 border-b border-slate-200">
+                    <span>出品者: <strong>${post.username}</strong></span>
+                    <span class="text-[10px]">${post.album}</span>
+                </div>
+                <div class="grid grid-cols-2 gap-2 pt-1">
+                    <div>
+                        <span class="text-[10px] font-bold text-purple-600 block">あなたが受け取る (譲)</span>
+                        <p class="font-bold text-slate-800">${post.haveMember} - ${post.haveDetail}</p>
+                    </div>
+                    <div>
+                        <span class="text-[10px] font-bold text-pink-600 block">あなたが渡す (求)</span>
+                        <p class="font-bold text-slate-800">${post.wantMember} - ${post.wantDetail}</p>
+                    </div>
+                </div>
+            `;
+
+            updateTradeUI(post.dispatchStep);
+            openModal('modal-trade');
+        }
+
+        // 2段階発送フローの更新
+        function updateTradeStep(step) {
+            const post = posts.find(p => p.id === activeTradeId);
+            if (!post) return;
+
+            post.dispatchStep = Math.max(post.dispatchStep, step);
+            updateTradeUI(post.dispatchStep);
+
+            if (step === 1) {
+                showToast('発送完了を通知しました');
+            } else if (step === 2) {
+                post.tradesCompleted += 1;
+                showToast('取引が正常に完了しました！お疲れ様でした。');
+                renderPosts();
+            }
+        }
+
+        function updateTradeUI(step) {
+            const step1Icon = document.getElementById('step-1-icon');
+            const step2Icon = document.getElementById('step-2-icon');
+            const step2Text = document.getElementById('step-2-text');
+            const progressLine = document.getElementById('progress-line');
+            const btnDispatch = document.getElementById('btn-dispatch');
+            const btnReceive = document.getElementById('btn-receive');
+
+            if (step >= 1) {
+                step1Icon.className = "w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center font-bold text-xs mx-auto shadow";
+                step1Icon.innerHTML = "✓";
+                progressLine.style.width = "100%";
+                
+                step2Icon.className = "w-8 h-8 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold text-xs mx-auto shadow";
+                step2Text.className = "text-[10px] font-bold mt-1 block text-purple-700";
+
+                btnDispatch.disabled = true;
+                btnDispatch.className = "flex-1 bg-slate-100 text-slate-400 font-bold py-2 rounded-xl text-xs cursor-not-allowed";
+                btnDispatch.innerText = "発送済み";
+
+                btnReceive.disabled = false;
+                btnReceive.className = "flex-1 bg-gradient-to-r from-purple-600 to-pink-500 hover:opacity-95 text-white font-bold py-2 rounded-xl text-xs shadow transition active:scale-95";
+            }
+
+            if (step >= 2) {
+                step2Icon.className = "w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center font-bold text-xs mx-auto shadow";
+                step2Icon.innerHTML = "✓";
+
+                btnReceive.disabled = true;
+                btnReceive.className = "flex-1 bg-slate-100 text-slate-400 font-bold py-2 rounded-xl text-xs cursor-not-allowed";
+                btnReceive.innerText = "受取完了・取引終了";
+            }
+        }
+
+        // ユーザープロフィール ＆ 通報機能
+        function openUserProfile(username) {
+            const post = posts.find(p => p.username === username);
+            const tradesCount = post ? post.tradesCompleted : 0;
+            const reports = post ? post.reportCount : 0;
+
+            activeUserProfile = username;
+
+            document.getElementById('profile-avatar').innerText = username.charAt(0);
+            document.getElementById('profile-name').innerText = username;
+            document.getElementById('profile-trades-count').innerText = `${tradesCount}件`;
+            document.getElementById('profile-report-count').innerText = `${reports}件`;
+
+            // バッジ
+            const badgesContainer = document.getElementById('profile-badges');
+            let badgesHtml = '';
+            if (tradesCount <= 2) {
+                badgesHtml += `<span class="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-0.5 rounded-md border border-amber-200">新規ユーザー</span>`;
+            } else {
+                badgesHtml += `<span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-2 py-0.5 rounded-md border border-emerald-200">ベテラントレーダー</span>`;
+            }
+            badgesContainer.innerHTML = badgesHtml;
+
+            // 警告表示
+            const warningEl = document.getElementById('profile-warning');
+            if (reports >= 2) {
+                warningEl.classList.remove('hidden');
+            } else {
+                warningEl.classList.add('hidden');
+            }
+
+            openModal('modal-user-profile');
+        }
+
+        function triggerReportUser() {
+            if (!activeUserProfile) return;
+            
+            // 対象ユーザーの報告カウントを増加
+            posts.forEach(p => {
+                if (p.username === activeUserProfile) {
+                    p.reportCount += 1;
+                }
+            });
+
+            closeModal('modal-user-profile');
+            renderPosts();
+            showToast(`ユーザー「${activeUserProfile}」を通報・報告しました。`, true);
+        }
+
+        function reportUserFromTrade() {
+            const post = posts.find(p => p.id === activeTradeId);
+            if (post) {
+                closeModal('modal-trade');
+                openUserProfile(post.username);
+            }
+        }
+
+        // モーダルヘルパー
+        function openModal(id) {
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.add('hidden');
+        }
+
+        function openNewPostModal() {
+            openModal('modal-post');
+        }
+
+        // トースト通知
+        function showToast(msg, isError = false) {
+            const toast = document.getElementById('toast');
+            const messageEl = document.getElementById('toast-message');
+            const iconEl = document.getElementById('toast-icon');
+
+            messageEl.innerText = msg;
+            if (isError) {
+                iconEl.className = "w-4 h-4 text-red-400";
+            } else {
+                iconEl.className = "w-4 h-4 text-green-400";
+            }
+
+            toast.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-4');
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'pointer-events-none', 'translate-y-4');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
