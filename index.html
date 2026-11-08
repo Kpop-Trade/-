@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ILLIT Trade (ILLIT交換・買取) - 手数料0円のファン専用安心トレカ・シリアル交換</title>
+  <title>ILLIT Trade (ILLIT交換・買取・共同購入) - 手数料0円のファン専用安心トレカ・シリアル交換</title>
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#b794f4">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -69,7 +69,7 @@
       <div class="flex items-start space-x-3">
         <div class="text-2xl">🤝</div>
         <div>
-          <h2 class="font-bold text-base md:text-lg text-gray-900">ファン同士で直接トレカ・シリアル交換・買取</h2>
+          <h2 class="font-bold text-base md:text-lg text-gray-900">ファン同士で直接トレカ・シリアル交換・買取・共同購入</h2>
           <p class="text-xs md:text-sm text-gray-600 mt-1">
             写真付き出品・チャット・評価まで、すべてサイト内で完結。手数料0円のファン専用プラットフォームです。
           </p>
@@ -77,13 +77,13 @@
       </div>
       <div class="bg-gray-50 border border-gray-200 rounded-xl p-3 text-[11px] text-gray-600 leading-relaxed">
         <p class="font-bold text-gray-700 mb-0.5">⚠️ 免責事項（ご利用規約）</p>
-        <p>本サービスはファン同士の交流および情報交換の場を提供するものです。ユーザー間のトレード・売買・発送・金銭授受等のトラブルや損害につきましては、<b>運営は取引に関する一切の責任を負いません。</b>お互いの評価や商品の状態を十分に確認のうえ、自己責任にてご利用ください。</p>
+        <p>本サービスはファン同士の交流および情報交換の場を提供するものです。ユーザー間のトレード・売買・共同購入・発送・金銭授受等のトラブルや損害につきましては、<b>運営は取引に関する一切の責任を負いません。</b>お互いの評価や商品の状態を十分に確認のうえ、自己責任にてご利用ください。</p>
       </div>
     </section>
 
     <section class="bg-gradient-to-r from-purple-500 to-illit-accent p-4 md:p-6 rounded-2xl text-white shadow-sm space-y-3">
       <div>
-        <h3 class="font-bold text-base md:text-lg">トレード・買取に出す</h3>
+        <h3 class="font-bold text-base md:text-lg">トレード・買取・共同購入に出す</h3>
         <p class="text-xs text-purple-100 mt-0.5">手数料完全無料！ファン同士でスムーズに取引</p>
       </div>
       <div class="flex space-x-2">
@@ -102,6 +102,11 @@
           💳 シリアル買取
         </button>
       </div>
+      <div class="flex space-x-2">
+        <button onclick="openGroupPostModal()" class="flex-1 bg-teal-100 text-teal-800 font-bold text-xs md:text-sm px-3 py-2.5 rounded-xl shadow hover:bg-teal-200 transition">
+          🛍 共同購入を主催する
+        </button>
+      </div>
     </section>
 
     <section class="space-y-4">
@@ -113,6 +118,7 @@
       <div class="space-y-2">
         <input type="text" id="search-input" oninput="setSearch(this.value)" placeholder="🔍 譲・求・出品者名で検索" class="w-full border border-purple-100 rounded-xl p-2.5 bg-white text-xs md:text-sm">
         <div id="kind-filters" class="flex gap-2 flex-wrap"></div>
+        <div id="bundle-filters" class="hidden flex gap-2 flex-wrap"></div>
         <div id="member-filters" class="flex flex-wrap gap-2"></div>
       </div>
 
@@ -158,7 +164,7 @@
         <div>
           <label class="block font-semibold text-gray-700 mb-1">💳 PayPay ID（受取用）</label>
           <input type="text" id="profile-paypay" maxlength="50" placeholder="例: paypay_id_123" class="w-full border border-pink-200 rounded-xl p-2.5 bg-pink-50/50">
-          <p class="text-[10px] text-gray-400 mt-0.5">※買取取引の際、相手がワンタップでコピーできるようになります。</p>
+          <p class="text-[10px] text-gray-400 mt-0.5">※買取・共同購入の際、相手がワンタップでコピーできるようになります。</p>
         </div>
         <hr class="border-purple-100 my-1">
         <div>
@@ -305,6 +311,80 @@
     </div>
   </div>
 
+  <!-- 🛍 共同購入 主催モーダル -->
+  <div id="group-post-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-md rounded-2xl p-6 space-y-4 shadow-xl max-h-[92vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b pb-3">
+        <h3 class="font-bold text-base text-gray-800">🛍 共同購入を主催する</h3>
+        <button onclick="closeGroupPostModal()" class="text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
+      </div>
+      <div class="bg-teal-50 border border-teal-200 rounded-xl p-3 text-[11px] text-teal-800 space-y-1">
+        <p class="font-bold">⚠️ 主催前にご確認ください</p>
+        <p>・参加者は「参加する」を押すと、あなたとの専用取引ルームが作られます。</p>
+        <p>・代金のやり取りは個別のPayPay送金です。<b>目標人数が集まるまで入金を受け取らない</b>など、参加者が安心できる進め方を推奨します。</p>
+        <p>・購入先・商品の詳細は説明文に書いてください。</p>
+      </div>
+      <div class="space-y-3 text-xs md:text-sm">
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">対象メンバー</label>
+          <select id="group-member" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+            <option value="指定なし">指定なし</option>
+            <option value="ウォニ (Wonhee)">ウォニ (Wonhee)</option>
+            <option value="ミンジュ (Minju)">ミンジュ (Minju)</option>
+            <option value="イロハ (Iroha)">イロハ (Iroha)</option>
+            <option value="モカ (Moka)">モカ (Moka)</option>
+            <option value="ユナ (Yuna)">ユナ (Yuna)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">【商品】共同購入する内容</label>
+          <input type="text" id="group-give" maxlength="100" placeholder="例: 〇〇盤 CD 共同購入（特典トレカ目当て）" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+        </div>
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">1人あたりの金額（円・PayPay送金）</label>
+          <input type="number" id="group-price" min="1" max="100000" placeholder="例: 1500" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+        </div>
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">募集人数（主催者を除く）</label>
+          <input type="number" id="group-target" min="1" max="100" placeholder="例: 5" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+        </div>
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">🔗 抱き合わせ</label>
+          <select id="group-bundle" onchange="onGroupBundleChange()" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+            <option value="ok">抱き合わせ可</option>
+            <option value="ask">要相談</option>
+            <option value="ng">抱き合わせ不可（単品のみ）</option>
+          </select>
+          <p class="text-[10px] text-gray-400 mt-0.5">※「抱き合わせ」＝他の商品・トレカなどをセットで購入・引き取ってもらうことです。</p>
+        </div>
+        <div id="group-bundle-note-box">
+          <label class="block font-semibold text-gray-700 mb-1">抱き合わせの内容（任意）</label>
+          <input type="text" id="group-bundle-note" maxlength="100" placeholder="例: 他メンバーのトレカ1枚をセットで引き取り" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+        </div>
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">📦 送料</label>
+          <select id="group-shipping" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+            <option value="organizer">主催者負担</option>
+            <option value="split">参加者で割り勘</option>
+            <option value="self">各自負担（個別発送の送料）</option>
+          </select>
+        </div>
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">募集締切（任意）</label>
+          <input type="date" id="group-deadline" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+        </div>
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">説明文・備考（任意）</label>
+          <textarea id="group-desc" maxlength="200" rows="3" placeholder="例: 購入先、発送予定時期、受け渡し方法など" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50"></textarea>
+        </div>
+      </div>
+      <div class="flex space-x-2 pt-2">
+        <button onclick="closeGroupPostModal()" class="flex-1 bg-gray-100 text-gray-600 font-bold py-2.5 rounded-xl hover:bg-gray-200 transition">キャンセル</button>
+        <button id="group-submit-btn" onclick="submitGroupPost()" class="flex-1 bg-teal-500 text-white font-bold py-2.5 rounded-xl hover:bg-teal-600 transition">主催する</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 出品編集モーダル -->
   <div id="edit-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
     <div class="bg-white w-full max-w-md rounded-2xl p-6 space-y-4 shadow-xl max-h-[92vh] overflow-y-auto">
@@ -322,18 +402,44 @@
           <input type="text" id="edit-want" maxlength="100" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
         </div>
         <div id="edit-price-container" class="hidden">
-          <label class="block font-semibold text-gray-700 mb-1">希望価格（円・PayPay送金）</label>
+          <label id="edit-label-price" class="block font-semibold text-gray-700 mb-1">希望価格（円・PayPay送金）</label>
           <input type="number" id="edit-price" min="1" max="100000" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
         </div>
+        <div id="edit-group-container" class="hidden space-y-3">
+          <div>
+            <label class="block font-semibold text-gray-700 mb-1">募集人数（主催者を除く）</label>
+            <input type="number" id="edit-target" min="1" max="100" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+          </div>
+          <div>
+            <label class="block font-semibold text-gray-700 mb-1">🔗 抱き合わせ</label>
+            <select id="edit-bundle" onchange="onEditBundleChange()" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+              <option value="ok">抱き合わせ可</option>
+              <option value="ask">要相談</option>
+              <option value="ng">抱き合わせ不可（単品のみ）</option>
+            </select>
+          </div>
+          <div id="edit-bundle-note-box">
+            <label class="block font-semibold text-gray-700 mb-1">抱き合わせの内容（任意）</label>
+            <input type="text" id="edit-bundle-note" maxlength="100" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+          </div>
+          <div>
+            <label class="block font-semibold text-gray-700 mb-1">📦 送料</label>
+            <select id="edit-shipping" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+              <option value="organizer">主催者負担</option>
+              <option value="split">参加者で割り勘</option>
+              <option value="self">各自負担（個別発送の送料）</option>
+            </select>
+          </div>
+        </div>
         <div id="edit-deadline-container" class="hidden">
-          <label class="block font-semibold text-gray-700 mb-1">有効期限（任意）</label>
+          <label class="block font-semibold text-gray-700 mb-1">有効期限・締切（任意）</label>
           <input type="date" id="edit-deadline" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
         </div>
         <div>
           <label class="block font-semibold text-gray-700 mb-1">説明文・備考（任意）</label>
           <textarea id="edit-desc" maxlength="200" rows="3" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50"></textarea>
         </div>
-        <p class="text-[11px] text-gray-400">※写真を変えたい場合は、一度削除して出品し直してください。</p>
+        <p id="edit-photo-note" class="text-[11px] text-gray-400">※写真を変えたい場合は、一度削除して出品し直してください。</p>
       </div>
       <div class="flex space-x-2 pt-2">
         <button onclick="closeEditModal()" class="flex-1 bg-gray-100 text-gray-600 font-bold py-2.5 rounded-xl hover:bg-gray-200 transition">キャンセル</button>
@@ -431,64 +537,12 @@
     <img id="image-viewer-img" src="" alt="" class="max-w-full max-h-full object-contain">
     <button class="absolute top-4 right-4 text-white text-3xl font-bold" onclick="closeImageViewer()">×</button>
   </div>
-  <!-- 👥 共同購入（GO）出品モーダル（抱き合わせ選択付き） -->
-  <div id="group-post-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
-    <div class="bg-white w-full max-w-md rounded-2xl p-6 space-y-4 shadow-xl max-h-[92vh] overflow-y-auto">
-      <div class="flex justify-between items-center border-b pb-3">
-        <h3 class="font-bold text-base text-gray-800">👥 グループ共同購入 (GO)</h3>
-        <button onclick="closeGroupPostModal()" class="text-gray-400 font-bold text-lg">×</button>
-      </div>
-      <div class="space-y-3 text-xs md:text-sm">
-        <div>
-          <label class="block font-semibold text-gray-700 mb-1">対象</label>
-          <select id="group-member" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
-            <option value="全体 (ILLIT)">全体 (ILLIT)</option>
-            <option value="ウォニ (Wonhee)">ウォニ (Wonhee)</option>
-            <option value="ミンジュ (Minju)">ミンジュ (Minju)</option>
-            <option value="イロハ (Iroha)">イロハ (Iroha)</option>
-            <option value="モカ (Moka)">モカ (Moka)</option>
-            <option value="ユナ (Yuna)">ユナ (Yuna)</option>
-          </select>
-        </div>
-        <div>
-          <label class="block font-semibold text-gray-700 mb-1">タイトル（何を購入するか）</label>
-          <input type="text" id="group-title" maxlength="100" placeholder="例: 2nd Mini Album 共同購入（特典付き）" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
-        </div>
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block font-semibold text-gray-700 mb-1">募集人数（枠）</label>
-            <input type="number" id="group-slots" min="1" max="50" value="3" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
-          </div>
-          <div>
-            <label class="block font-semibold text-gray-700 mb-1">1人あたりの金額（円）</label>
-            <input type="number" id="group-price" min="1" max="100000" placeholder="例: 2200" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
-          </div>
-        </div>
-        <div>
-          <label class="block font-semibold text-gray-700 mb-1">📦 他のグッズとの抱き合わせ（同梱）</label>
-          <select id="group-combine" class="w-full border border-purple-200 rounded-xl p-2.5 bg-purple-50/50 font-semibold text-purple-900">
-            <option value="抱き合わせ可能（同梱OK）">✨ 抱き合わせ可能（他のトレカ等と同梱OK）</option>
-            <option value="要相談（ご相談ください）">💬 要相談（プロフやチャットでご相談ください）</option>
-            <option value="抱き合わせ不可（単体発送のみ）">❌ 抱き合わせ不可（単体発送のみ）</option>
-          </select>
-        </div>
-        <div>
-          <label class="block font-semibold text-gray-700 mb-1">詳細・備考</label>
-          <textarea id="group-desc" maxlength="200" rows="3" placeholder="例: タワレコ特典付き。送料込みです。" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50"></textarea>
-        </div>
-      </div>
-      <div class="flex space-x-2 pt-2">
-        <button onclick="closeGroupPostModal()" class="flex-1 bg-gray-100 text-gray-600 font-bold py-2.5 rounded-xl">キャンセル</button>
-        <button onclick="submitGroupPost()" class="flex-1 bg-indigo-600 text-white font-bold py-2.5 rounded-xl">共同購入を募集する</button>
-      </div>
-    </div>
-  </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app-check.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { getFirestore, collection, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, where, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, collectionGroup, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, where, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getMessaging, getToken, deleteToken } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js";
 
     const firebaseConfig = {
@@ -541,8 +595,31 @@
       { key: "card_buy", label: "💳 トレカ買取" },
       { key: "serial_exchange", label: "🎫 シリアル➡トレカ求" },
       { key: "serial_buy", label: "💳 シリアル買取" },
+      { key: "group_buy", label: "🛍 共同購入" },
       { key: "likes", label: "♡ いいね一覧" }
     ];
+    // 🛍 共同購入：抱き合わせ・送料
+    const BUNDLE_FILTERS = [
+      { key: "all", label: "抱き合わせ: すべて" },
+      { key: "ok", label: "🔗 抱き合わせ可" },
+      { key: "ask", label: "💬 要相談" },
+      { key: "ng", label: "🚫 不可（単品のみ）" }
+    ];
+    const BUNDLE_LABEL = {
+      ok: "🔗 抱き合わせ可",
+      ask: "💬 抱き合わせ要相談",
+      ng: "🚫 抱き合わせ不可"
+    };
+    const BUNDLE_CLASS = {
+      ok: "bg-green-100 text-green-700",
+      ask: "bg-yellow-100 text-yellow-700",
+      ng: "bg-gray-100 text-gray-500"
+    };
+    const SHIPPING_LABEL = {
+      organizer: "主催者負担",
+      split: "参加者で割り勘",
+      self: "各自負担"
+    };
     const IMAGE_PREFIX = "data:image/jpeg;base64,";
     const CHAT_IMAGE_MAX = 600000;
     const PHOTO_FULL = { maxSide: 900, quality: 0.72, maxChars: 380000 };
@@ -555,6 +632,7 @@
     let unsubPosts = null;
     let selectedMember = "すべて";
     let kindFilter = "all";
+    let bundleFilter = "all";
     let searchText = "";
     let currentDetailIndex = -1;
 
@@ -562,6 +640,7 @@
     let postPhotos = [];
     let processingPhotos = false;
     let submittingPost = false;
+    let submittingGroup = false;
     const photoCache = {};
     let detailPhotos = [];
     let roomPhotos = [];
@@ -569,6 +648,10 @@
 
     let myTrades = [];
     let unsubTrades = null;
+
+    // 🛍 共同購入の参加者（postId -> [{id(uid), userName, bundleChoice, ...}]）
+    let groupJoins = {};
+    let unsubJoins = null;
 
     let currentTrade = null;
     let roomMessages = [];
@@ -619,11 +702,19 @@
       return !!(p && p.deadline && p.deadline < todayStr());
     }
     function getPostType(p) {
+      if (p.kind === "group") return "group_buy";
       if (p.isBuy) return p.kind === "serial" ? "serial_buy" : "card_buy";
       return p.kind === "serial" ? "serial_exchange" : "card_exchange";
     }
     function isJpegData(s) {
       return typeof s === "string" && s.startsWith(IMAGE_PREFIX);
+    }
+    // 🛍 PayPayで代金のやり取りをする取引か（買取 or 共同購入）
+    function isPayTrade(t) {
+      return !!(t && (t.isBuy || t.kind === "group"));
+    }
+    function joinsOf(postId) {
+      return groupJoins[postId] || [];
     }
 
     // ===== デバイスID（テスト用複数アカウント対応：管理者はチェック免除） =====
@@ -659,6 +750,28 @@
         console.error("デバイスチェックエラー:", e);
         return true;
       }
+    }
+
+    // 🛡️ 新規アカウント（評価0件）の同時出品1件制限チェック（管理者は免除）。true=出品OK
+    async function checkPostLimit() {
+      if (isAdmin()) return true;
+      try {
+        const reviewSnap = await getDocs(query(collection(db, "reviews"), where("toId", "==", currentUser.uid)));
+        if (reviewSnap.size === 0) {
+          const myPostsSnap = await getDocs(query(
+            collection(db, "posts"),
+            where("userId", "==", currentUser.uid),
+            where("status", "==", "active")
+          ));
+          if (myPostsSnap.size >= 1) {
+            alert("⚠️ 出品制限\n評価が0件の新規アカウントは、同時に複数の出品を行うことができません（最大1件まで）。現在の出品が完了するまで新しい出品はお控えください。");
+            return false;
+          }
+        }
+      } catch (e) {
+        console.error("出品制限チェックエラー:", e);
+      }
+      return true;
     }
 
     // ===== ユーザーデータ（Firestore保存） =====
@@ -710,6 +823,21 @@
       } finally {
         migratingLocal = false;
       }
+    }
+
+    // ===== 🛍 共同購入の参加者購読 =====
+    function subscribeJoins() {
+      if (unsubJoins) { unsubJoins(); unsubJoins = null; }
+      unsubJoins = onSnapshot(collectionGroup(db, "joins"), (snap) => {
+        const m = {};
+        snap.docs.forEach((d) => {
+          const parent = d.ref.parent.parent;
+          if (!parent) return;
+          (m[parent.id] = m[parent.id] || []).push({ id: d.id, ...d.data() });
+        });
+        groupJoins = m;
+        renderPosts();
+      }, (e) => console.warn("共同購入の参加者読み込みエラー（Firestoreルールを確認してください）:", e));
     }
 
     // ===== 👑 管理者パネル機能 =====
@@ -783,7 +911,7 @@
     window.deleteReportedPost = async function(postId, reportId) {
       if (!confirm("本当にこの募集を強制削除しますか？")) return;
       try {
-        await deleteDoc(doc(db, "posts", postId));
+        await deletePostWithPhotos(postId);
         await deleteDoc(doc(db, "reports", reportId));
         alert("募集を削除しました。");
         loadAdminData();
@@ -1133,6 +1261,7 @@
         updateBadge();
       }
       subscribePosts();
+      subscribeJoins();
     });
 
     // ===== 出品（トレカ） =====
@@ -1217,52 +1346,18 @@
       } catch (e) {
         console.error(e);
       }
+      // 🛍 共同購入の参加者記録も削除
+      try {
+        const js = await getDocs(collection(db, "posts", postId, "joins"));
+        await Promise.all(js.docs.map((d) => deleteDoc(d.ref)));
+      } catch (e) {
+        console.error(e);
+      }
       await deleteDoc(doc(db, "posts", postId));
       delete photoCache[postId];
     }
-    // 👥 共同購入モーダルを開く・閉じる・保存する関数
-    window.openGroupPostModal = async function() {
-      if (!currentUser) return alert("ログインが必要です。");
-      if (!(await checkDeviceLock())) return;
-      document.getElementById("group-title").value = ""; 
-      document.getElementById("group-price").value = ""; 
-      document.getElementById("group-desc").value = "";
-      document.getElementById("group-post-modal").classList.remove("hidden");
-    };
 
-    window.closeGroupPostModal = function() { 
-      document.getElementById("group-post-modal").classList.add("hidden"); 
-    };
-
-    window.submitGroupPost = async function() {
-      if (!(await checkDeviceLock())) return;
-      const member = document.getElementById("group-member").value;
-      const title = document.getElementById("group-title").value.trim();
-      const slots = Number(document.getElementById("group-slots").value) || 1;
-      const price = Number(document.getElementById("group-price").value) || 0;
-      const combine = document.getElementById("group-combine").value;
-      const description = document.getElementById("group-desc").value.trim().slice(0, 200);
-
-      if (!title || price <= 0) return alert("タイトルと金額を入力してください。");
-
-      try {
-        await addDoc(collection(db, "posts"), {
-          kind: "group", isBuy: false, member, 
-          give: `【共同購入】${title} (残り${slots}枠)`, 
-          want: `￥${price.toLocaleString()} / 1人`,
-          combine: combine, // 抱き合わせ情報
-          price, slots, description, 
-          status: "active", userId: currentUser.uid, userName: getMyDisplayName(), createdAt: serverTimestamp()
-        });
-        alert("共同購入の募集を開始しました！");
-        closeGroupPostModal();
-      } catch (e) {
-        alert("失敗しました。");
-      }
-    };
-    
     window.submitPost = async function() {
-      
       if (submittingPost || processingPhotos) return;
       if (!(await checkDeviceLock())) return;
 
@@ -1279,25 +1374,7 @@
       if (isBuy && (!price || price <= 0)) { alert("有効な希望価格を入力してください。"); return; }
       if (!isBuy && postPhotos.length < 1) { alert("状態がわかる写真を1枚以上添付してください。"); return; }
 
-      // 🛡️ 新規アカウント（評価0件）の同時出品1件制限チェック（管理者は免除）
-      if (!isAdmin()) {
-        try {
-          const reviewSnap = await getDocs(query(collection(db, "reviews"), where("toId", "==", currentUser.uid)));
-          if (reviewSnap.size === 0) {
-            const myPostsSnap = await getDocs(query(
-              collection(db, "posts"), 
-              where("userId", "==", currentUser.uid),
-              where("status", "==", "active")
-            ));
-            if (myPostsSnap.size >= 1) {
-              alert("⚠️ 出品制限\n評価が0件の新規アカウントは、同時に複数の出品を行うことができません（最大1件まで）。現在の出品が完了するまで新しい出品はお控えください。");
-              return;
-            }
-          }
-        } catch (e) {
-          console.error("出品制限チェックエラー:", e);
-        }
-      }
+      if (!(await checkPostLimit())) return;
 
       submittingPost = true;
       const btn = document.getElementById("post-submit-btn");
@@ -1395,24 +1472,7 @@
       if (isBuy && (!price || price <= 0)) { alert("有効な希望価格を入力してください。"); return; }
       if (deadline && deadline < todayStr()) { alert("有効期限が過去の日付になっています。"); return; }
 
-      if (!isAdmin()) {
-        try {
-          const reviewSnap = await getDocs(query(collection(db, "reviews"), where("toId", "==", currentUser.uid)));
-          if (reviewSnap.size === 0) {
-            const myPostsSnap = await getDocs(query(
-              collection(db, "posts"), 
-              where("userId", "==", currentUser.uid),
-              where("status", "==", "active")
-            ));
-            if (myPostsSnap.size >= 1) {
-              alert("⚠️ 出品制限\n評価が0件の新規アカウントは、同時に複数の出品を行うことができません（最大1件まで）。現在の出品が完了するまで新しい出品はお控えください。");
-              return;
-            }
-          }
-        } catch (e) {
-          console.error("出品制限チェックエラー:", e);
-        }
-      }
+      if (!(await checkPostLimit())) return;
 
       try {
         await addDoc(collection(db, "posts"), {
@@ -1437,6 +1497,90 @@
       }
     };
 
+    // ===== 🛍 出品（共同購入） =====
+    window.onGroupBundleChange = function() {
+      const v = document.getElementById("group-bundle").value;
+      document.getElementById("group-bundle-note-box").classList.toggle("hidden", v === "ng");
+    };
+
+    window.openGroupPostModal = async function() {
+      if (!currentUser) {
+        alert("共同購入を主催するにはGoogleログインが必要です。");
+        return;
+      }
+      if (!(await checkDeviceLock())) return;
+      document.getElementById("group-member").value = "指定なし";
+      document.getElementById("group-give").value = "";
+      document.getElementById("group-price").value = "";
+      document.getElementById("group-target").value = "";
+      document.getElementById("group-bundle").value = "ok";
+      document.getElementById("group-bundle-note").value = "";
+      document.getElementById("group-shipping").value = "organizer";
+      document.getElementById("group-deadline").value = "";
+      document.getElementById("group-desc").value = "";
+      onGroupBundleChange();
+      document.getElementById("group-post-modal").classList.remove("hidden");
+    };
+    window.closeGroupPostModal = function() {
+      document.getElementById("group-post-modal").classList.add("hidden");
+    };
+
+    window.submitGroupPost = async function() {
+      if (submittingGroup) return;
+      if (!(await checkDeviceLock())) return;
+
+      const member = document.getElementById("group-member").value;
+      const give = document.getElementById("group-give").value.trim();
+      const price = Number(document.getElementById("group-price").value);
+      const target = Number(document.getElementById("group-target").value);
+      const bundle = document.getElementById("group-bundle").value;
+      const bundleNote = document.getElementById("group-bundle-note").value.trim().slice(0, 100);
+      const shipping = document.getElementById("group-shipping").value;
+      const deadline = document.getElementById("group-deadline").value;
+      const description = document.getElementById("group-desc").value.trim().slice(0, 200);
+
+      if (!give) { alert("共同購入する内容を入力してください。"); return; }
+      if (!price || price <= 0) { alert("有効な1人あたりの金額を入力してください。"); return; }
+      if (!Number.isInteger(target) || target < 1 || target > 100) { alert("募集人数は1〜100の整数で入力してください。"); return; }
+      if (deadline && deadline < todayStr()) { alert("募集締切が過去の日付になっています。"); return; }
+
+      if (!(await checkPostLimit())) return;
+
+      submittingGroup = true;
+      const btn = document.getElementById("group-submit-btn");
+      btn.disabled = true;
+      btn.innerText = "投稿中…";
+      try {
+        await addDoc(collection(db, "posts"), {
+          kind: "group",
+          isBuy: false,
+          member,
+          give,
+          want: "",
+          price,
+          target,
+          bundle,
+          bundleNote: bundle === "ng" ? "" : bundleNote,
+          shipping,
+          deadline,
+          description,
+          status: "active",
+          userId: currentUser.uid,
+          userName: getMyDisplayName(),
+          createdAt: serverTimestamp()
+        });
+        alert("共同購入の募集を開始しました！");
+        closeGroupPostModal();
+      } catch (e) {
+        console.error(e);
+        alert("募集の作成に失敗しました。");
+      } finally {
+        submittingGroup = false;
+        btn.disabled = false;
+        btn.innerText = "主催する";
+      }
+    };
+
     // ===== フィルター・検索 =====
     function renderFilters() {
       document.getElementById("member-filters").innerHTML = MEMBERS.map((m, i) => {
@@ -1452,6 +1596,16 @@
           : "bg-white text-gray-600 border border-gray-200";
         return `<button onclick="setKind('${k.key}')" class="${cls} text-xs font-bold px-3 py-1.5 rounded-full transition">${k.label}</button>`;
       }).join("");
+
+      // 🛍 共同購入選択時のみ「抱き合わせ」絞り込みを表示
+      const bf = document.getElementById("bundle-filters");
+      bf.classList.toggle("hidden", kindFilter !== "group_buy");
+      bf.innerHTML = BUNDLE_FILTERS.map((b) => {
+        const cls = b.key === bundleFilter
+          ? "bg-teal-500 text-white"
+          : "bg-white text-teal-700 border border-teal-200";
+        return `<button onclick="setBundle('${b.key}')" class="${cls} text-xs font-bold px-3 py-1.5 rounded-full transition">${b.label}</button>`;
+      }).join("");
     }
     window.setMember = function(i) {
       selectedMember = MEMBERS[i];
@@ -1460,6 +1614,11 @@
     };
     window.setKind = function(k) {
       kindFilter = k;
+      renderFilters();
+      renderPosts();
+    };
+    window.setBundle = function(k) {
+      bundleFilter = k;
       renderFilters();
       renderPosts();
     };
@@ -1480,24 +1639,33 @@
         const type = getPostType(p);
         const okKind = kindFilter === "all" || (kindFilter === "likes" ? likes.includes(p.id) : kindFilter === type);
         const okMember = selectedMember === "すべて" || p.member === selectedMember;
+        const okBundle = kindFilter !== "group_buy" || bundleFilter === "all" || p.bundle === bundleFilter;
         const okText = !searchText ||
-          (p.give + " " + p.want + " " + p.userName + " " + (p.price || "") + " " + (p.description || "")).toLowerCase().includes(searchText);
-        if (!okKind || !okMember || !okText) return;
+          (p.give + " " + p.want + " " + p.userName + " " + (p.price || "") + " " + (p.description || "") + " " + (p.bundleNote || "")).toLowerCase().includes(searchText);
+        if (!okKind || !okMember || !okText || !okBundle) return;
 
         const mine = currentUser && p.userId === currentUser.uid;
         const expired = isExpired(p);
         const isBuy = !!p.isBuy;
         const isSerial = p.kind === "serial";
+        const isGroup = p.kind === "group";
         const isLiked = likes.includes(p.id);
 
+        const joins = isGroup ? joinsOf(p.id) : [];
+        const target = Number(p.target || 0);
+        const full = isGroup && target > 0 && joins.length >= target;
+        const closed = isGroup && p.status === "closed";
+        const dim = expired || closed;
+
         let badgeHtml = "";
-        if (isBuy && isSerial) badgeHtml = `<span class="bg-yellow-100 text-yellow-800 font-bold px-2 py-0.5 rounded text-[11px]">💳 シリアル買取（希望: ¥${Number(p.price || 0).toLocaleString()}）</span>`;
+        if (isGroup) badgeHtml = `<span class="bg-teal-100 text-teal-700 font-bold px-2 py-0.5 rounded text-[11px]">🛍 共同購入（¥${Number(p.price || 0).toLocaleString()}/人）</span>`;
+        else if (isBuy && isSerial) badgeHtml = `<span class="bg-yellow-100 text-yellow-800 font-bold px-2 py-0.5 rounded text-[11px]">💳 シリアル買取（希望: ¥${Number(p.price || 0).toLocaleString()}）</span>`;
         else if (isBuy) badgeHtml = `<span class="bg-pink-100 text-pink-700 font-bold px-2 py-0.5 rounded text-[11px]">💳 買取希望（¥${Number(p.price || 0).toLocaleString()}）</span>`;
         else if (isSerial) badgeHtml = `<span class="bg-yellow-100 text-yellow-700 font-bold px-2 py-0.5 rounded text-[11px]">🎫 シリアルでトレカ求む</span>`;
         else badgeHtml = `<span class="bg-purple-100 text-purple-700 font-bold px-2 py-0.5 rounded text-[11px]">🃏 トレカ交換</span>`;
 
         let photoHtml = "";
-        if (!isSerial && p.photoCount) {
+        if (!isSerial && !isGroup && p.photoCount) {
           if (isJpegData(p.thumb)) {
             photoHtml = `<div class="relative">
               <img src="${p.thumb}" alt="" onclick="openDetailModal(${index})" class="w-full h-36 object-cover rounded-xl cursor-pointer">
@@ -1509,8 +1677,32 @@
         const memberLabel = p.member && p.member !== "指定なし" ? ` <span class="text-xs text-gray-400 font-normal">(${escapeHtml(p.member)})</span>` : "";
         const descPreview = p.description ? `<p class="text-xs text-gray-500 line-clamp-1">💬 ${escapeHtml(p.description)}</p>` : "";
 
+        // 🛍 共同購入の進捗・抱き合わせ表示
+        let groupHtml = "";
+        if (isGroup) {
+          const pct = target > 0 ? Math.min(100, Math.round(joins.length / target * 100)) : 0;
+          const stateText = closed ? "🔒 募集終了" : (full ? "🎉 満員" : (expired ? "期限切れ" : "募集中"));
+          const stateCls = closed ? "text-gray-500" : (full ? "text-green-600" : "text-teal-600");
+          groupHtml = `
+            <div class="space-y-1.5">
+              <div class="flex justify-between text-[11px] text-gray-600">
+                <span>👥 参加 <b>${joins.length}</b> / ${target}人</span>
+                <span class="font-bold ${stateCls}">${stateText}</span>
+              </div>
+              <div class="w-full h-2 bg-gray-100 rounded-full overflow-hidden"><div class="h-2 bg-teal-400" style="width:${pct}%"></div></div>
+              <div class="flex flex-wrap gap-1.5">
+                <span class="${BUNDLE_CLASS[p.bundle] || BUNDLE_CLASS.ng} text-[11px] font-bold px-2 py-0.5 rounded">${BUNDLE_LABEL[p.bundle] || BUNDLE_LABEL.ng}</span>
+                <span class="bg-gray-100 text-gray-600 text-[11px] font-bold px-2 py-0.5 rounded">📦 送料: ${SHIPPING_LABEL[p.shipping] || "未設定"}</span>
+              </div>
+            </div>`;
+        }
+
+        const giveLabelHtml = isGroup
+          ? '<span class="bg-teal-100 text-teal-800 text-xs font-bold px-2 py-0.5 rounded">商品</span>'
+          : '<span class="bg-yellow-100 text-yellow-800 text-xs font-bold px-2 py-0.5 rounded">譲</span>';
+
         cards.push(`
-          <div class="bg-white p-4 rounded-2xl border ${isBuy ? 'border-pink-200' : isSerial ? 'border-yellow-200' : 'border-purple-100'} shadow-sm flex flex-col justify-between space-y-3 ${expired ? 'opacity-60' : ''}">
+          <div class="bg-white p-4 rounded-2xl border ${isGroup ? 'border-teal-200' : isBuy ? 'border-pink-200' : isSerial ? 'border-yellow-200' : 'border-purple-100'} shadow-sm flex flex-col justify-between space-y-3 ${dim ? 'opacity-60' : ''}">
             <div class="flex items-center justify-between">
               ${badgeHtml}
               <div class="flex items-center space-x-2">
@@ -1520,18 +1712,19 @@
             </div>
             ${photoHtml}
             <div class="flex items-center space-x-2">
-              <span class="bg-yellow-100 text-yellow-800 text-xs font-bold px-2 py-0.5 rounded">譲</span>
+              ${giveLabelHtml}
               <span class="font-bold text-sm text-gray-800">${escapeHtml(p.give)}${memberLabel}</span>
             </div>
-            ${!isBuy ? `
+            ${!isBuy && !isGroup ? `
             <div class="flex items-center space-x-2">
               <span class="bg-purple-100 text-illit-darkPurple text-xs font-bold px-2 py-0.5 rounded">求</span>
               <span class="font-bold text-sm text-gray-800">${escapeHtml(p.want)}</span>
             </div>` : ''}
+            ${groupHtml}
             ${descPreview}
             <div class="pt-2 border-t border-gray-100 flex justify-between items-center text-xs text-gray-500">
-              <span>出品者: ${escapeHtml(p.userName)}${mine ? ' <span class="bg-purple-100 text-illit-darkPurple px-1.5 py-0.5 rounded">あなた</span>' : ''}</span>
-              <button onclick="openDetailModal(${index})" class="bg-illit-purple text-white font-bold px-3 py-1.5 rounded-lg hover:bg-illit-darkPurple transition">詳細・申込</button>
+              <span>${isGroup ? '主催者' : '出品者'}: ${escapeHtml(p.userName)}${mine ? ' <span class="bg-purple-100 text-illit-darkPurple px-1.5 py-0.5 rounded">あなた</span>' : ''}</span>
+              <button onclick="openDetailModal(${index})" class="${isGroup ? 'bg-teal-500 hover:bg-teal-600' : 'bg-illit-purple hover:bg-illit-darkPurple'} text-white font-bold px-3 py-1.5 rounded-lg transition">${isGroup ? '詳細・参加' : '詳細・申込'}</button>
             </div>
           </div>
         `);
@@ -1585,7 +1778,7 @@
     async function loadDetailPhotos(p, index) {
       const el = document.getElementById("detail-photos");
       detailPhotos = [];
-      if (p.kind === "serial" || !p.photoCount) { el.innerHTML = ""; return; }
+      if (p.kind === "serial" || p.kind === "group" || !p.photoCount) { el.innerHTML = ""; return; }
       el.innerHTML = isJpegData(p.thumb)
         ? `<img src="${p.thumb}" alt="" class="w-full h-44 object-cover rounded-xl opacity-60">`
         : '';
@@ -1609,8 +1802,10 @@
       currentDetailIndex = index;
       const isBuy = !!p.isBuy;
       const isSerial = p.kind === "serial";
+      const isGroup = p.kind === "group";
+      const mine = !!(currentUser && p.userId === currentUser.uid);
 
-      document.getElementById("detail-title").innerText = isBuy ? "💳 買取（購入希望）の詳細" : "募集の詳細";
+      document.getElementById("detail-title").innerText = isGroup ? "🛍 共同購入の詳細" : (isBuy ? "💳 買取（購入希望）の詳細" : "募集の詳細");
       document.getElementById("detail-give").innerText = p.give;
       document.getElementById("detail-want").innerText = p.want || "（なし）";
       document.getElementById("detail-member").innerText = p.member || "指定なし";
@@ -1625,10 +1820,12 @@
       const priceBox = document.getElementById("detail-price-box");
       const descBox = document.getElementById("detail-desc-box");
 
-      giveBox.querySelector("span").innerText = isBuy ? "求" : "譲";
-      wantBox.classList.toggle("hidden", isBuy);
-      priceBox.classList.toggle("hidden", !isBuy);
-      if (isBuy) {
+      giveBox.querySelector("span").innerText = isGroup ? "商品" : (isBuy ? "求" : "譲");
+      wantBox.classList.toggle("hidden", isBuy || isGroup);
+      priceBox.classList.toggle("hidden", !(isBuy || isGroup));
+      if (isGroup) {
+        document.getElementById("detail-price").innerText = "￥" + Number(p.price || 0).toLocaleString() + " / 1人（PayPay送金）";
+      } else if (isBuy) {
         document.getElementById("detail-price").innerText = "￥" + Number(p.price || 0).toLocaleString() + "（PayPay送金）";
       }
 
@@ -1640,14 +1837,40 @@
         descBox.innerHTML = "";
       }
 
+      const joins = isGroup ? joinsOf(p.id) : [];
+      const target = Number(p.target || 0);
+      const full = isGroup && target > 0 && joins.length >= target;
+      const closed = isGroup && p.status === "closed";
+      const joined = !!(isGroup && currentUser && joins.some((j) => j.id === currentUser.uid));
+
       let extra = "";
       if (isSerial) {
         if (p.deadline) extra += `<div>有効期限: <b>${escapeHtml(p.deadline)}</b></div>`;
       }
+      if (isGroup) {
+        extra += `<div>👥 参加状況: <b>${joins.length} / ${target}人</b> ${closed ? '<span class="text-gray-500 font-bold">（募集終了）</span>' : (full ? '<span class="text-green-600 font-bold">（満員）</span>' : '')}</div>`;
+        extra += `<div>🔗 抱き合わせ: <span class="${BUNDLE_CLASS[p.bundle] || BUNDLE_CLASS.ng} font-bold px-2 py-0.5 rounded">${BUNDLE_LABEL[p.bundle] || BUNDLE_LABEL.ng}</span></div>`;
+        if (p.bundle !== "ng" && p.bundleNote) {
+          extra += `<div class="bg-white rounded-lg p-2 border border-purple-100">抱き合わせ内容: <b>${escapeHtml(p.bundleNote)}</b></div>`;
+        }
+        extra += `<div>📦 送料: <b>${SHIPPING_LABEL[p.shipping] || "未設定"}</b></div>`;
+        if (p.deadline) extra += `<div>募集締切: <b>${escapeHtml(p.deadline)}</b></div>`;
+        if (mine) {
+          extra += `<div class="pt-1 border-t border-purple-100">
+            <div class="font-bold text-gray-700">参加者一覧（主催者のみ表示）</div>
+            ${joins.length
+              ? joins.map((j) => `<div>・${escapeHtml(j.userName)}　${j.bundleChoice === "want" ? "🔗 抱き合わせ希望" : "単品"}</div>`).join("")
+              : '<div class="text-gray-400">まだ参加者はいません</div>'}
+          </div>`;
+        }
+      }
       document.getElementById("detail-extra").innerHTML = extra;
-      document.getElementById("detail-tip").innerText = isBuy
-        ? "💡 この募集に申し込むと、PayPayでの送金・受取や発送に関する専用チャットルームが作成されます。"
-        : "💡 申し込むと専用の取引ルームが作られます。お互いに安心安全に進めましょう。";
+
+      let tip;
+      if (isGroup) tip = "💡 参加すると主催者との専用取引ルームが作られます。PayPay送金・発送・抱き合わせの相談はルーム内で行います。";
+      else if (isBuy) tip = "💡 この募集に申し込むと、PayPayでの送金・受取や発送に関する専用チャットルームが作成されます。";
+      else tip = "💡 申し込むと専用の取引ルームが作られます。お互いに安心安全に進めましょう。";
+      document.getElementById("detail-tip").innerText = tip;
 
       const blockBtn = document.getElementById("detail-block-user-btn");
       if (currentUser && p.userId !== currentUser.uid) {
@@ -1659,16 +1882,40 @@
 
       const actions = document.getElementById("detail-actions");
       if (!currentUser) {
-        actions.innerHTML = `<button onclick="loginWithGoogle()" class="w-full bg-illit-purple text-white font-bold py-2.5 rounded-xl hover:bg-illit-darkPurple transition text-sm">ログインして申し込む</button>`;
+        actions.innerHTML = `<button onclick="loginWithGoogle()" class="w-full bg-illit-purple text-white font-bold py-2.5 rounded-xl hover:bg-illit-darkPurple transition text-sm">ログインして${isGroup ? '参加する' : '申し込む'}</button>`;
       } else if (p.userId && (p.userId === currentUser.uid || isAdmin())) {
         const adminDelete = isAdmin() && p.userId !== currentUser.uid ? `<button onclick="adminDeletePost('${p.id}')" class="w-full bg-red-600 text-white font-bold py-2.5 rounded-xl hover:bg-red-700 transition text-sm">👑 [管理者] この募集を強制削除</button>` : '';
+        const closeBtn = isGroup && p.userId === currentUser.uid
+          ? `<button onclick="toggleGroupClosed(${index})" class="w-full bg-teal-50 text-teal-700 font-bold py-2.5 rounded-xl hover:bg-teal-100 transition text-sm">${closed ? '🔓 募集を再開する' : '🔒 募集を締め切る'}</button>`
+          : '';
         actions.innerHTML = `
-          <p class="text-xs text-gray-500 text-center">${p.userId === currentUser.uid ? 'あなたの出品です。' : '👑 管理者権限での操作'}</p>
-          ${p.userId === currentUser.uid ? `<button onclick="openEditPost(${index})" class="w-full bg-purple-100 text-illit-darkPurple font-bold py-2.5 rounded-xl hover:bg-purple-200 transition text-sm">✏️ この募集を編集する</button>
+          <p class="text-xs text-gray-500 text-center">${p.userId === currentUser.uid ? (isGroup ? 'あなたが主催する共同購入です。' : 'あなたの出品です。') : '👑 管理者権限での操作'}</p>
+          ${p.userId === currentUser.uid ? `${closeBtn}<button onclick="openEditPost(${index})" class="w-full bg-purple-100 text-illit-darkPurple font-bold py-2.5 rounded-xl hover:bg-purple-200 transition text-sm">✏️ この募集を編集する</button>
           <button onclick="deletePost(${index})" class="w-full bg-red-50 text-red-500 font-bold py-2.5 rounded-xl hover:bg-red-100 transition text-sm">この募集を削除する</button>` : ''}
           ${adminDelete}`;
+      } else if (isGroup && joined) {
+        actions.innerHTML = `
+          <p class="text-xs text-teal-600 text-center font-bold">✅ この共同購入に参加済みです。</p>
+          <button onclick="openMyGroupTrade(${index})" class="w-full bg-teal-500 text-white font-bold py-2.5 rounded-xl hover:bg-teal-600 transition text-sm">💬 取引ルームを開く</button>`;
+      } else if (isGroup && closed) {
+        actions.innerHTML = `<p class="text-xs text-gray-500 text-center">この共同購入は募集を終了しました。</p>`;
       } else if (isExpired(p)) {
-        actions.innerHTML = `<p class="text-xs text-red-400 text-center">有効期限が切れています。</p>`;
+        actions.innerHTML = `<p class="text-xs text-red-400 text-center">${isGroup ? '募集期限が切れています。' : '有効期限が切れています。'}</p>`;
+      } else if (isGroup && full) {
+        actions.innerHTML = `<p class="text-xs text-green-600 text-center font-bold">🎉 目標人数に達したため満員です。</p>`;
+      } else if (isGroup) {
+        const bundleForm = p.bundle === "ng"
+          ? `<p class="text-[11px] text-gray-500">この共同購入は抱き合わせ不可（単品のみ）です。</p>`
+          : `<div class="bg-teal-50 border border-teal-200 rounded-xl p-3 space-y-1.5 text-xs">
+               <p class="font-bold text-teal-800">🔗 抱き合わせの希望</p>
+               <label class="flex items-center space-x-2"><input type="radio" name="join-bundle" value="none" checked> <span>希望しない（単品で参加）</span></label>
+               <label class="flex items-center space-x-2"><input type="radio" name="join-bundle" value="want"> <span>抱き合わせを希望する</span></label>
+               <p class="text-[10px] text-teal-700">${p.bundle === "ask" ? '※主催者と相談のうえ決定します。取引ルームで詳細を確認してください。' : '※主催者が設定した抱き合わせ内容に同意したものとして扱われます。'}</p>
+             </div>`;
+        actions.innerHTML = `
+          ${bundleForm}
+          <button onclick="joinGroup(${index})" class="w-full bg-gradient-to-r from-teal-500 to-emerald-500 text-white font-bold py-2.5 rounded-xl hover:opacity-90 transition text-sm">🛍 この共同購入に参加する（￥${Number(p.price || 0).toLocaleString()}）</button>
+          <button onclick="reportPost('${p.id}', '${escapeHtml(p.give)}')" class="w-full text-xs text-gray-400 hover:text-red-500 py-1 underline text-center block">🚨 この募集を通報する</button>`;
       } else {
         actions.innerHTML = `
           <button onclick="applyToPost(${index})" class="w-full bg-gradient-to-r from-purple-500 to-illit-accent text-white font-bold py-2.5 rounded-xl hover:opacity-90 transition text-sm">この募集に申し込む</button>
@@ -1720,7 +1967,27 @@
       }
     };
 
+    // 🛍 主催者：募集の締切／再開
+    window.toggleGroupClosed = async function(index) {
+      const p = allPosts[index];
+      if (!p || !currentUser || p.userId !== currentUser.uid || p.kind !== "group") return;
+      const next = p.status === "closed" ? "active" : "closed";
+      if (!confirm(next === "closed" ? "この共同購入の募集を締め切りますか？（新規参加を受け付けなくなります）" : "募集を再開しますか？")) return;
+      try {
+        await updateDoc(doc(db, "posts", p.id), { status: next, editedAt: serverTimestamp() });
+        closeDetailModal();
+      } catch (e) {
+        console.error(e);
+        alert("更新に失敗しました。");
+      }
+    };
+
     // ===== 出品の編集 =====
+    window.onEditBundleChange = function() {
+      const v = document.getElementById("edit-bundle").value;
+      document.getElementById("edit-bundle-note-box").classList.toggle("hidden", v === "ng");
+    };
+
     window.openEditPost = function(index) {
       const p = allPosts[index];
       if (!p || !currentUser || (p.userId !== currentUser.uid && !isAdmin())) return;
@@ -1728,15 +1995,26 @@
       editingPostId = p.id;
       const isBuy = !!p.isBuy;
       const isSerial = p.kind === "serial";
-      document.getElementById("edit-label-give").innerText = isBuy ? "【求】（買いたいもの）" : "【譲】（出すもの）";
+      const isGroup = p.kind === "group";
+      document.getElementById("edit-label-give").innerText = isGroup ? "【商品】共同購入する内容" : (isBuy ? "【求】（買いたいもの）" : "【譲】（出すもの）");
+      document.getElementById("edit-label-price").innerText = isGroup ? "1人あたりの金額（円・PayPay送金）" : "希望価格（円・PayPay送金）";
       document.getElementById("edit-give").value = p.give || "";
       document.getElementById("edit-want").value = p.want || "";
       document.getElementById("edit-price").value = p.price || "";
       document.getElementById("edit-deadline").value = p.deadline || "";
       document.getElementById("edit-desc").value = p.description || "";
-      document.getElementById("edit-want-container").classList.toggle("hidden", isBuy);
-      document.getElementById("edit-price-container").classList.toggle("hidden", !isBuy);
-      document.getElementById("edit-deadline-container").classList.toggle("hidden", !isSerial);
+      document.getElementById("edit-want-container").classList.toggle("hidden", isBuy || isGroup);
+      document.getElementById("edit-price-container").classList.toggle("hidden", !(isBuy || isGroup));
+      document.getElementById("edit-deadline-container").classList.toggle("hidden", !(isSerial || isGroup));
+      document.getElementById("edit-group-container").classList.toggle("hidden", !isGroup);
+      document.getElementById("edit-photo-note").classList.toggle("hidden", isGroup);
+      if (isGroup) {
+        document.getElementById("edit-target").value = p.target || "";
+        document.getElementById("edit-bundle").value = p.bundle || "ok";
+        document.getElementById("edit-bundle-note").value = p.bundleNote || "";
+        document.getElementById("edit-shipping").value = p.shipping || "organizer";
+        onEditBundleChange();
+      }
       document.getElementById("edit-modal").classList.remove("hidden");
     };
     window.closeEditModal = function() {
@@ -1748,6 +2026,7 @@
       if (!p || !currentUser || (p.userId !== currentUser.uid && !isAdmin())) return;
       const isBuy = !!p.isBuy;
       const isSerial = p.kind === "serial";
+      const isGroup = p.kind === "group";
       const give = document.getElementById("edit-give").value.trim();
       const want = document.getElementById("edit-want").value.trim();
       const price = Number(document.getElementById("edit-price").value);
@@ -1755,18 +2034,33 @@
       const description = document.getElementById("edit-desc").value.trim().slice(0, 200);
 
       if (!give) { alert("内容を入力してください。"); return; }
-      if (!isBuy && !want) { alert("「求」の内容を入力してください。"); return; }
-      if (isBuy && (!price || price <= 0)) { alert("有効な希望価格を入力してください。"); return; }
-      if (isSerial && deadline && deadline < todayStr()) { alert("有効期限が過去の日付になっています。"); return; }
+      if (!isBuy && !isGroup && !want) { alert("「求」の内容を入力してください。"); return; }
+      if ((isBuy || isGroup) && (!price || price <= 0)) { alert("有効な金額を入力してください。"); return; }
+      if ((isSerial || isGroup) && deadline && deadline < todayStr()) { alert("期限が過去の日付になっています。"); return; }
 
       const data = {
         give,
-        want: isBuy ? "" : want,
-        price: isBuy ? price : 0,
+        want: (isBuy || isGroup) ? "" : want,
+        price: (isBuy || isGroup) ? price : 0,
         description,
         editedAt: serverTimestamp()
       };
-      if (isSerial) data.deadline = deadline;
+      if (isSerial || isGroup) data.deadline = deadline;
+
+      if (isGroup) {
+        const target = Number(document.getElementById("edit-target").value);
+        const bundle = document.getElementById("edit-bundle").value;
+        const bundleNote = document.getElementById("edit-bundle-note").value.trim().slice(0, 100);
+        const shipping = document.getElementById("edit-shipping").value;
+        const joinedNow = joinsOf(p.id).length;
+        if (!Number.isInteger(target) || target < 1 || target > 100) { alert("募集人数は1〜100の整数で入力してください。"); return; }
+        if (target < joinedNow) { alert(`すでに${joinedNow}人が参加しているため、募集人数は${joinedNow}人以上にしてください。`); return; }
+        data.target = target;
+        data.bundle = bundle;
+        data.bundleNote = bundle === "ng" ? "" : bundleNote;
+        data.shipping = shipping;
+      }
+
       try {
         await updateDoc(doc(db, "posts", p.id), data);
         alert("募集を更新しました！");
@@ -1810,6 +2104,7 @@
     window.applyToPost = async function(index) {
       const p = allPosts[index];
       if (!currentUser || !p || !p.userId) return;
+      if (p.kind === "group") { return joinGroup(index); }
       if (!(await checkDeviceLock())) return;
       try {
         const ref = await addDoc(collection(db, "trades"), {
@@ -1844,6 +2139,89 @@
         console.error("申込エラー詳細:", e);
         alert("申込に失敗しました。時間をおいて再度お試しください。");
       }
+    };
+
+    // ===== 🛍 共同購入に参加 =====
+    window.joinGroup = async function(index) {
+      const p = allPosts[index];
+      if (!currentUser || !p || !p.userId || p.kind !== "group") return;
+      if (p.userId === currentUser.uid) return;
+      if (!(await checkDeviceLock())) return;
+
+      if (p.status === "closed") { alert("この共同購入は募集を終了しています。"); return; }
+      if (isExpired(p)) { alert("募集期限が切れています。"); return; }
+      const joins = joinsOf(p.id);
+      if (joins.some((j) => j.id === currentUser.uid)) { alert("すでに参加済みです。"); return; }
+      if (joins.length >= Number(p.target || 0)) { alert("目標人数に達したため満員です。"); return; }
+
+      const sel = document.querySelector('input[name="join-bundle"]:checked');
+      const bundleChoice = p.bundle === "ng" ? "none" : (sel ? sel.value : "none");
+      const joinRef = doc(db, "posts", p.id, "joins", currentUser.uid);
+
+      try {
+        await setDoc(joinRef, {
+          uid: currentUser.uid,
+          userName: getMyDisplayName(),
+          bundleChoice,
+          createdAt: serverTimestamp()
+        });
+      } catch (e) {
+        console.error("参加登録エラー:", e);
+        alert("参加に失敗しました。時間をおいて再度お試しください。");
+        return;
+      }
+
+      try {
+        const ref = await addDoc(collection(db, "trades"), {
+          kind: "group",
+          isBuy: false,
+          postId: p.id,
+          postGive: p.give,
+          postWant: "",
+          postPrice: p.price || 0,
+          postMember: p.member || "指定なし",
+          postDeadline: p.deadline || "",
+          postPhotoCount: 0,
+          postTarget: p.target || 0,
+          postBundle: p.bundle || "ng",
+          postBundleNote: p.bundleNote || "",
+          postShipping: p.shipping || "",
+          bundleChoice,
+          ownerId: p.userId,
+          ownerName: p.userName,
+          applicantId: currentUser.uid,
+          applicantName: getMyDisplayName(),
+          participants: [p.userId, currentUser.uid],
+          status: "negotiating",
+          agreed: {},
+          shipped: {},
+          received: {},
+          disputed: {},
+          lastMessageAt: serverTimestamp(),
+          lastSenderId: currentUser.uid,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+        closeDetailModal();
+        openTrade(ref.id);
+      } catch (e) {
+        console.error("共同購入 取引作成エラー:", e);
+        try { await deleteDoc(joinRef); } catch (e2) {}
+        alert("参加に失敗しました。時間をおいて再度お試しください。");
+      }
+    };
+
+    // 🛍 参加済みの共同購入の取引ルームを開く
+    window.openMyGroupTrade = function(index) {
+      const p = allPosts[index];
+      if (!p || !currentUser) return;
+      const t = myTrades.find((x) => x.postId === p.id && x.applicantId === currentUser.uid && x.status !== "cancelled");
+      if (!t) {
+        alert("取引ルームが見つかりません。「💬 取引」から確認してください。");
+        return;
+      }
+      closeDetailModal();
+      openTrade(t.id);
     };
 
     // ===== 取引一覧 =====
@@ -1886,12 +2264,19 @@
       el.innerHTML = myTrades.map((t) => {
         const iAmOwner = currentUser.uid === t.ownerId;
         const otherName = iAmOwner ? t.applicantName : t.ownerName;
-        const role = iAmOwner ? "申込が届きました" : "申込中";
+        const isGroup = t.kind === "group";
+        const role = isGroup
+          ? (iAmOwner ? "参加申込が届きました" : "参加中")
+          : (iAmOwner ? "申込が届きました" : "申込中");
         const label = STATUS_LABEL[t.status] || "";
         const isBuy = t.isBuy;
-        const titleText = isBuy ? `💳 買取 ¥${Number(t.postPrice).toLocaleString()}：${t.postGive}` : `譲 ${t.postGive} ⇄ 求 ${t.postWant}`;
+        let titleText;
+        if (isGroup) titleText = `🛍 共同購入 ¥${Number(t.postPrice).toLocaleString()}：${t.postGive}`;
+        else if (isBuy) titleText = `💳 買取 ¥${Number(t.postPrice).toLocaleString()}：${t.postGive}`;
+        else titleText = `譲 ${t.postGive} ⇄ 求 ${t.postWant}`;
+        const border = isGroup ? 'border-teal-200' : (isBuy ? 'border-pink-200' : 'border-purple-100');
         return `
-          <button onclick="openTrade('${t.id}')" class="w-full text-left bg-white border ${isBuy ? 'border-pink-200' : 'border-purple-100'} rounded-xl p-3 hover:bg-purple-50 transition space-y-1">
+          <button onclick="openTrade('${t.id}')" class="w-full text-left bg-white border ${border} rounded-xl p-3 hover:bg-purple-50 transition space-y-1">
             <div class="flex justify-between items-center">
               <span class="text-xs text-gray-500">${escapeHtml(otherName)} さん ・ ${role}</span>
               <span class="flex items-center gap-1">${isUnread(t) ? '<span class="bg-pink-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">新着</span>' : ''}<span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_CLASS[t.status] || ''}">${label}</span></span>
@@ -1916,7 +2301,7 @@
 
     async function loadRoomPhotos(t) {
       const el = document.getElementById("room-photos");
-      if (t.kind === "serial" || !t.postPhotoCount) { el.innerHTML = ""; return; }
+      if (t.kind === "serial" || t.kind === "group" || !t.postPhotoCount) { el.innerHTML = ""; return; }
       try {
         const list = await getPhotos(t.postId);
         if (!currentTrade || currentTrade.id !== t.id) return;
@@ -1960,12 +2345,19 @@
       }
       const myProfile = getMyProfile();
       const myPayPay = myProfile && myProfile.paypay ? myProfile.paypay : "";
+      const isGroup = currentTrade.kind === "group";
+      const payTrade = isPayTrade(currentTrade);
+      // 請求リンクを作る（＝代金を受け取る）側：買取は従来どおり、共同購入は主催者のみ
+      const showLink = currentTrade.isBuy || (isGroup && currentUser.uid === currentTrade.ownerId);
+      const amountText = payTrade
+        ? (isGroup ? '代金: ￥' : '買取金額: ￥') + Number(currentTrade.postPrice || 0).toLocaleString() + (isGroup ? '（1人分）' : '')
+        : '';
 
       el.innerHTML = `
         <div class="bg-pink-50 rounded-xl p-3 border border-pink-200 space-y-2">
           <div class="flex items-center justify-between">
             <div class="text-xs font-bold text-pink-800">💳 PayPay送金サポート</div>
-            <span class="text-[10px] text-pink-600">${currentTrade.isBuy ? '買取金額: ￥' + Number(currentTrade.postPrice || 0).toLocaleString() : ''}</span>
+            <span class="text-[10px] text-pink-600">${amountText}</span>
           </div>
           <div class="flex items-center space-x-2">
             <input type="text" id="chat-paypay-input" value="${escapeHtml(myPayPay)}" placeholder="あなたのPayPay IDを入力" class="flex-1 border border-pink-200 rounded-lg p-2 text-xs bg-white">
@@ -1974,7 +2366,7 @@
             </button>
           </div>
           <p class="text-[10px] text-pink-600">※ボタンを押すと、あなたのPayPay IDがチャットに送信され、相手がワンタップでコピーできるようになります。</p>
-          ${currentTrade.isBuy ? `
+          ${showLink ? `
           <div class="border-t border-pink-200 pt-2 space-y-1.5">
             <div class="text-[11px] font-bold text-pink-800">⚡ ワンタップ送金（受け取る側）</div>
             <p class="text-[10px] text-pink-600">PayPayアプリで「￥${Number(currentTrade.postPrice || 0).toLocaleString()}」の請求（受取）リンクを作り、貼り付けて送ると、相手はタップだけで支払い画面に進めます。</p>
@@ -2093,7 +2485,8 @@
       let next = null;
       if (t.status === "negotiating" && both("agreed")) {
         next = "shipping";
-        if (t.postId) {
+        // 🛍 共同購入は他の参加者も参加できるよう、募集を非表示(traded)にしない
+        if (t.postId && t.kind !== "group") {
           try {
             await updateDoc(doc(db, "posts", t.postId), { status: "traded" });
           } catch (e) { console.error(e); }
@@ -2120,14 +2513,14 @@
         });
     }
 
-    function stepsHtml(status, isBuy) {
+    function stepsHtml(status, payFlow) {
       if (status === "cancelled") {
         return '<div class="text-xs font-bold text-gray-500 bg-gray-100 rounded-lg p-2 text-center">この取引はキャンセルされました</div>';
       }
       const order = ["negotiating", "shipping", "completed"];
-      const labels = isBuy ? ["① 条件確認", "② PayPay送金・発送", "③ 完了"] : ["① 交渉・合意", "② 発送・受取", "③ 完了"];
+      const labels = payFlow ? ["① 条件確認", "② PayPay送金・発送", "③ 完了"] : ["① 交渉・合意", "② 発送・受取", "③ 完了"];
       const idx = order.indexOf(status);
-      const on = isBuy ? "bg-pink-500 text-white" : "bg-illit-purple text-white";
+      const on = payFlow ? "bg-pink-500 text-white" : "bg-illit-purple text-white";
       return '<div class="flex space-x-1">' + labels.map((l, i) => {
         const cls = i <= idx ? on : "bg-gray-100 text-gray-400";
         return `<div class="flex-1 text-center text-[11px] font-bold py-1.5 rounded-lg ${cls}">${l}</div>`;
@@ -2142,11 +2535,24 @@
       const otherId = iAmOwner ? t.applicantId : t.ownerId;
       const otherName = iAmOwner ? t.applicantName : t.ownerName;
       const isBuy = t.isBuy;
+      const isGroup = t.kind === "group";
+      const payFlow = isPayTrade(t);
 
       document.getElementById("room-title").innerText = otherName + " さんとの取引";
 
       let infoText = "";
-      if (isBuy) {
+      if (isGroup) {
+        const bundleSetting = BUNDLE_LABEL[t.postBundle] || BUNDLE_LABEL.ng;
+        const choiceText = t.postBundle === "ng"
+          ? "（単品のみ）"
+          : (t.bundleChoice === "want" ? "参加者は抱き合わせを希望しています" : "参加者は単品での参加です");
+        infoText = `
+          <div class="text-teal-700 font-bold">🛍 共同購入（￥${Number(t.postPrice).toLocaleString()} / 1人）</div>
+          <div><span class="bg-teal-500 text-white font-bold px-2 py-0.5 rounded">商品</span> <span class="font-bold">${escapeHtml(t.postGive)}</span></div>
+          <div class="text-[11px]">🔗 ${escapeHtml(bundleSetting)}　<b>${escapeHtml(choiceText)}</b></div>
+          ${t.postBundle !== "ng" && t.postBundleNote ? `<div class="text-[11px] text-gray-600">抱き合わせ内容: ${escapeHtml(t.postBundleNote)}</div>` : ''}
+          <div class="text-[11px] text-gray-600">📦 送料: ${escapeHtml(SHIPPING_LABEL[t.postShipping] || "未設定")}</div>`;
+      } else if (isBuy) {
         infoText = `
           <div class="text-pink-600 font-bold">💳 PayPay買取取引（￥${Number(t.postPrice).toLocaleString()}）</div>
           <div><span class="bg-pink-500 text-white font-bold px-2 py-0.5 rounded">求</span> <span class="font-bold">${escapeHtml(t.postGive)}</span></div>`;
@@ -2157,12 +2563,12 @@
       }
 
       document.getElementById("room-info").innerHTML = `
-        <div class="bg-white rounded-xl p-3 text-xs space-y-1 border ${isBuy ? 'border-pink-200' : 'border-purple-100'}">
+        <div class="bg-white rounded-xl p-3 text-xs space-y-1 border ${isGroup ? 'border-teal-200' : (isBuy ? 'border-pink-200' : 'border-purple-100')}">
           ${infoText}
-          <div class="text-gray-400">出品者: ${escapeHtml(t.ownerName)}</div>
+          <div class="text-gray-400">${isGroup ? '主催者' : '出品者'}: ${escapeHtml(t.ownerName)}</div>
         </div>`;
 
-      document.getElementById("room-steps").innerHTML = stepsHtml(t.status, isBuy);
+      document.getElementById("room-steps").innerHTML = stepsHtml(t.status, payFlow);
 
       const mark = (b) => b ? "✅" : "⏳";
       const btn = "w-full font-bold py-2.5 rounded-xl text-sm transition ";
@@ -2172,27 +2578,45 @@
 
       if (t.status === "negotiating") {
         const my = flag(t, "agreed", uid), other = flag(t, "agreed", otherId);
+        const agreeNote = isGroup
+          ? "抱き合わせの有無・送料・発送方法などを確認し、納得できたら「合意する」を押してください。お互い合意すると取引が進みます（他の参加者の募集は継続されます）。"
+          : "内容を確認し、納得できたら「合意する」を押してください。お互い合意すると正式に成立し、募集が非表示になります。";
         html = `
-          <p class="text-xs text-gray-600">内容を確認し、納得できたら「合意する」を押してください。お互い合意すると正式に成立し、募集が非表示になります。</p>
+          <p class="text-xs text-gray-600">${agreeNote}</p>
           <div class="text-xs text-gray-600">合意: あなた ${mark(my)} ／ 相手 ${mark(other)}</div>
-          ${my ? '<p class="text-xs text-gray-400 text-center">相手の合意を待っています…</p>' : `<button onclick="tradeAction('agreed')" class="${isBuy ? pinkBtn : primary}">合意する</button>`}
-          <button onclick="cancelTrade()" class="${btn} bg-white text-gray-400 border border-gray-200 hover:bg-gray-50">キャンセル</button>`;
-      } else if (t.status === "shipping" && isBuy) {
+          ${my ? '<p class="text-xs text-gray-400 text-center">相手の合意を待っています…</p>' : `<button onclick="tradeAction('agreed')" class="${payFlow ? pinkBtn : primary}">合意する</button>`}
+          <button onclick="cancelTrade()" class="${btn} bg-white text-gray-400 border border-gray-200 hover:bg-gray-50">${isGroup ? (iAmOwner ? 'この参加者をキャンセルする' : '参加をキャンセルする') : 'キャンセル'}</button>`;
+      } else if (t.status === "shipping" && payFlow) {
         const myS = flag(t, "shipped", uid), otherS = flag(t, "shipped", otherId);
         const myR = flag(t, "received", uid), otherR = flag(t, "received", otherId);
-        html = `
-          <div class="bg-pink-50 border border-pink-200 rounded-xl p-2.5 text-[11px] text-pink-800 space-y-1">
+        let guide, shipLabel, recvLabel;
+        if (isGroup) {
+          guide = `
+            <p class="font-bold">🛍 共同購入の手順</p>
+            <p>1. 参加者は「IDを送る」またはリンクを使って、主催者へPayPayで代金（1人分）を送金します。</p>
+            <p>2. 主催者は入金を確認したら、商品を発送します（抱き合わせがある場合は内容も同梱）。</p>
+            <p>3. 参加者は商品が届いたら「受け取った」、主催者は「入金確認」を押して完了です。</p>`;
+          shipLabel = iAmOwner ? "発送した" : "PayPayで送金した";
+          recvLabel = iAmOwner ? "入金を確認した（完了）" : "商品を受け取った（完了）";
+        } else {
+          guide = `
             <p class="font-bold">💳 PayPay送金・取引の手順</p>
             <p>1. 上の「IDを送る」ボタンからPayPay IDを共有するか、送金リンクをチャットに貼ってください。</p>
             <p>2. 代金の送金・入金確認ができたら出品者は商品を発送します。</p>
-            <p>3. 商品が届いたら「受取確認」を押して完了です。</p>
+            <p>3. 商品が届いたら「受取確認」を押して完了です。</p>`;
+          shipLabel = "送金完了・または発送した";
+          recvLabel = "受取確認（完了）";
+        }
+        html = `
+          <div class="bg-pink-50 border border-pink-200 rounded-xl p-2.5 text-[11px] text-pink-800 space-y-1">
+            ${guide}
           </div>
           <div class="text-xs text-gray-600 space-y-0.5">
             <div>送金／発送完了: あなた ${mark(myS)} ／ 相手 ${mark(otherS)}</div>
             <div>受取確認: あなた ${mark(myR)} ／ 相手 ${mark(otherR)}</div>
           </div>
-          ${!myS ? `<button onclick="tradeAction('shipped')" class="${pinkBtn}">送金完了・または発送した</button>` : ''}
-          ${otherS && !myR ? `<button onclick="tradeAction('received')" class="${btn} bg-green-500 text-white hover:bg-green-600">受取確認（完了）</button>` : ''}
+          ${!myS ? `<button onclick="tradeAction('shipped')" class="${pinkBtn}">${shipLabel}</button>` : ''}
+          ${otherS && !myR ? `<button onclick="tradeAction('received')" class="${btn} bg-green-500 text-white hover:bg-green-600">${recvLabel}</button>` : ''}
           ${myR && !otherR ? '<p class="text-xs text-gray-400 text-center">相手の確認を待っています…</p>' : ''}`;
       } else if (t.status === "shipping") {
         const myS = flag(t, "shipped", uid), otherS = flag(t, "shipped", otherId);
@@ -2261,7 +2685,7 @@
           const lines = m.text.split("\n");
           const paypayId = lines[1] ? lines[1].trim() : "";
           if (paypayId) {
-            const price = currentTrade && currentTrade.isBuy ? Number(currentTrade.postPrice || 0) : 0;
+            const price = currentTrade && isPayTrade(currentTrade) ? Number(currentTrade.postPrice || 0) : 0;
             const amountBtn = price > 0
               ? `<button onclick="copyAmount(${price})" class="mt-1 bg-white border border-pink-300 text-pink-600 font-bold text-[10px] px-2.5 py-1 rounded-lg transition">💰 ￥${price.toLocaleString()} をコピー</button>`
               : "";
@@ -2378,7 +2802,14 @@
     window.cancelTrade = async function() {
       if (!currentTrade || !confirm("キャンセルしますか？")) return;
       try {
-        if (currentTrade.postId) {
+        if (currentTrade.kind === "group") {
+          // 🛍 共同購入：この参加者の枠を空ける（募集は継続）
+          if (currentTrade.postId && currentTrade.applicantId) {
+            try {
+              await deleteDoc(doc(db, "posts", currentTrade.postId, "joins", currentTrade.applicantId));
+            } catch (err) { console.error(err); }
+          }
+        } else if (currentTrade.postId) {
           try {
             await updateDoc(doc(db, "posts", currentTrade.postId), { status: "active" });
           } catch (err) { console.error(err); }
@@ -2429,3 +2860,4 @@
   </script>
 </body>
 </html>
+
