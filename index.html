@@ -159,13 +159,6 @@
         </div>
         <hr class="border-purple-100 my-1">
         <div>
-          <label class="block font-semibold text-gray-700 mb-1">📱 電話番号認証</label>
-          <p id="phone-status" class="text-[11px] text-gray-500 mb-1"></p>
-          <button id="phone-open-btn" onclick="openPhoneModal()" class="w-full bg-purple-100 text-illit-darkPurple font-bold py-2 rounded-xl hover:bg-purple-200 transition">電話番号を認証する</button>
-          <p class="text-[10px] text-gray-400 mt-1">※出品・申込に必要です。番号は他のユーザーには表示されません。</p>
-        </div>
-        <hr class="border-purple-100 my-1">
-        <div>
           <label class="block font-semibold text-gray-700 mb-1">🔔 プッシュ通知</label>
           <p id="push-status" class="text-[11px] text-gray-500 mb-1"></p>
           <button id="push-on-btn" onclick="enablePush()" class="w-full bg-purple-100 text-illit-darkPurple font-bold py-2 rounded-xl hover:bg-purple-200 transition">🔔 この端末で通知をオンにする</button>
@@ -285,34 +278,6 @@
         <button onclick="closeSerialPostModal()" class="flex-1 bg-gray-100 text-gray-600 font-bold py-2.5 rounded-xl hover:bg-gray-200 transition">キャンセル</button>
         <button onclick="submitSerialPost()" class="flex-1 bg-yellow-400 text-yellow-900 font-bold py-2.5 rounded-xl hover:bg-yellow-300 transition">出品する</button>
       </div>
-    </div>
-  </div>
-
-  <!-- 電話番号認証モーダル -->
-  <div id="phone-modal" class="fixed inset-0 bg-black/50 hidden z-[55] flex items-center justify-center p-4">
-    <div class="bg-white w-full max-w-md rounded-2xl p-6 space-y-4 shadow-xl max-h-[92vh] overflow-y-auto">
-      <div class="flex justify-between items-center border-b pb-3">
-        <h3 class="font-bold text-base text-gray-800">📱 電話番号認証</h3>
-        <button onclick="closePhoneModal()" class="text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
-      </div>
-      <p class="text-xs text-gray-600 leading-relaxed">出品・申込をするには、電話番号の認証が必要です（初回のみ）。安心して取引できるよう、複数アカウントでの悪用を防ぐために行っています。電話番号は他のユーザーには公開されません。</p>
-      <div id="phone-step1" class="space-y-3 text-xs md:text-sm">
-        <div>
-          <label class="block font-semibold text-gray-700 mb-1">携帯電話番号</label>
-          <input type="tel" id="phone-input" maxlength="20" placeholder="例: 090-1234-5678" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
-        </div>
-        <button id="phone-send-btn" onclick="sendPhoneCode()" class="w-full bg-illit-purple text-white font-bold py-2.5 rounded-xl hover:bg-illit-darkPurple transition">認証コードをSMSで送る</button>
-      </div>
-      <div id="phone-step2" class="hidden space-y-3 text-xs md:text-sm">
-        <div>
-          <label class="block font-semibold text-gray-700 mb-1">SMSに届いた6桁のコード</label>
-          <input type="text" id="phone-code-input" inputmode="numeric" maxlength="6" placeholder="123456" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50 tracking-widest text-center text-lg">
-        </div>
-        <button id="phone-verify-btn" onclick="verifyPhoneCode()" class="w-full bg-illit-purple text-white font-bold py-2.5 rounded-xl hover:bg-illit-darkPurple transition">認証する</button>
-        <button onclick="backToPhoneStep1()" class="w-full text-xs text-gray-400 underline">番号を入力し直す</button>
-      </div>
-      <div id="recaptcha-container"></div>
-      <button onclick="closePhoneModal()" class="w-full bg-gray-100 text-gray-600 font-bold py-2.5 rounded-xl hover:bg-gray-200 transition text-sm">キャンセル</button>
     </div>
   </div>
 
@@ -445,7 +410,8 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, RecaptchaVerifier, linkWithPhoneNumber } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app-check.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { getFirestore, collection, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, where, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getMessaging, getToken, deleteToken } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js";
 
@@ -460,12 +426,26 @@
     };
 
     const app = initializeApp(firebaseConfig);
+
+    // ★ Firebase App Check の初期化（Bot判定）
+    // Google Cloudで取得したサイトキーがある場合は 'YOUR_RECAPTCHA_SITE_KEY' を置き換えてください
+    const recaptchaSiteKey = 'YOUR_RECAPTCHA_SITE_KEY';
+    if (recaptchaSiteKey && recaptchaSiteKey !== 'YOUR_RECAPTCHA_SITE_KEY') {
+      try {
+        initializeAppCheck(app, {
+          provider: new ReCaptchaEnterpriseProvider(recaptchaSiteKey),
+          isTokenAutoRefreshEnabled: true
+        });
+      } catch (e) {
+        console.warn("App Check init error:", e);
+      }
+    }
+
     const auth = getAuth(app);
     const db = getFirestore(app);
     const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: "select_account" }); // 毎回アカウント選択画面を出す
+    provider.setCustomParameters({ prompt: "select_account" });
 
-    // Firebaseコンソール > プロジェクト設定 > Cloud Messaging > ウェブプッシュ証明書 の「キーペア」
     const VAPID_KEY = "ここにVAPIDキーを貼る";
 
     // ===== 状態 =====
@@ -493,7 +473,7 @@
     let searchText = "";
     let currentDetailIndex = -1;
 
-    let postMode = "exchange"; // "exchange" or "buy"
+    let postMode = "exchange";
     let postPhotos = [];
     let processingPhotos = false;
     let submittingPost = false;
@@ -561,6 +541,39 @@
       return typeof s === "string" && s.startsWith(IMAGE_PREFIX);
     }
 
+    // ===== デバイスID（マルチアカウント防止） =====
+    function getOrCreateDeviceId() {
+      let did = localStorage.getItem("illit_device_id");
+      if (!did) {
+        did = "dev_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
+        localStorage.setItem("illit_device_id", did);
+      }
+      return did;
+    }
+
+    async function checkDeviceLock() {
+      if (!currentUser) return true;
+      const deviceId = getOrCreateDeviceId();
+      try {
+        const ref = doc(db, "devices", deviceId);
+        const snap = await getDoc(ref);
+        if (!snap.exists()) {
+          await setDoc(ref, { uid: currentUser.uid, updatedAt: serverTimestamp() });
+          return true;
+        }
+        const data = snap.data();
+        if (data.uid === currentUser.uid) {
+          return true;
+        } else {
+          alert("⚠️ セキュリティ制限\nこのブラウザ（端末）からはすでに別のアカウントで登録・操作が行われています。1つの端末につき1つのアカウントのみご利用いただけます。");
+          return false;
+        }
+      } catch (e) {
+        console.error("デバイスチェックエラー:", e);
+        return true;
+      }
+    }
+
     // ===== ユーザーデータ（Firestore保存） =====
     function saveUserData(data) {
       return setDoc(doc(db, "users", currentUser.uid), data, { merge: true });
@@ -587,7 +600,6 @@
       }, (e) => console.error("ユーザーデータ読み込みエラー:", e));
     }
 
-    // 以前localStorageに保存していたデータを一度だけFirestoreへ移す
     async function migrateLocalData(ref) {
       if (migratingLocal || !currentUser) return;
       migratingLocal = true;
@@ -653,13 +665,7 @@
       if (!list.includes(userId)) {
         list.push(userId);
         userData.blocked = list;
-        try {
-          await saveUserData({ blocked: list });
-        } catch (e) {
-          console.error(e);
-          alert("ブロックの保存に失敗しました。");
-          return;
-        }
+        try { await saveUserData({ blocked: list }); } catch (e) { alert("ブロックの保存に失敗しました。"); return; }
       }
       alert("ブロックしました。");
       closeDetailModal();
@@ -716,7 +722,7 @@
       btn.querySelector("span").innerText = liked ? "♥" : "♡";
     }
 
-    // ===== プロフィール・設定（PayPay ID対応） =====
+    // ===== プロフィール・設定 =====
     window.openProfileModal = function() {
       if (!currentUser) return;
       const saved = userData.profile || {};
@@ -729,7 +735,6 @@
       document.getElementById("profile-phone").value = saved.phone || "";
       renderBlockedBox();
       updatePushUI();
-      updatePhoneUI();
       document.getElementById("profile-modal").classList.remove("hidden");
     };
     window.closeProfileModal = function() {
@@ -799,7 +804,6 @@
       }
     };
 
-    // 相手のPayPay IDをコピーする関数
     window.copyPayPayId = function(idStr) {
       navigator.clipboard.writeText(idStr).then(() => {
         alert(`PayPay ID「${idStr}」をコピーしました！\nPayPayアプリを開いて送金にご利用ください。`);
@@ -915,137 +919,12 @@
       alert("プッシュ通知をオフにしました。");
     };
 
-    // ログイン時、すでにオンの端末ならトークンを自動更新
     async function refreshPushToken() {
       if (!currentUser || !("Notification" in window) || !("serviceWorker" in navigator)) return;
       if (Notification.permission !== "granted") return;
       if (!localStorage.getItem(pushStorageKey())) return;
       try { await saveToken(); } catch (e) { console.error(e); }
     }
-
-    // ===== 電話番号認証（出品・申込の前に必要） =====
-    let phoneConfirmation = null;
-    let recaptchaVerifier = null;
-    let afterPhoneVerified = null;
-
-    function hasPhone() {
-      return !!(auth.currentUser && auth.currentUser.phoneNumber);
-    }
-
-    // 認証済みなら true。未認証なら認証画面を開き、成功後に next を実行して false を返す
-    function requirePhone(next) {
-      if (hasPhone()) return true;
-      afterPhoneVerified = next || null;
-      openPhoneModal();
-      return false;
-    }
-
-    function normalizeJpPhone(raw) {
-      let v = String(raw || "").trim().replace(/[\s\-()（）ー－]/g, "");
-      v = v.replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
-      if (/^\+\d{10,15}$/.test(v)) return v;
-      if (/^0\d{9,10}$/.test(v)) return "+81" + v.slice(1);
-      if (/^81\d{9,10}$/.test(v)) return "+" + v;
-      return null;
-    }
-
-    function updatePhoneUI() {
-      const status = document.getElementById("phone-status");
-      const btn = document.getElementById("phone-open-btn");
-      if (!status || !currentUser) return;
-      const ok = hasPhone();
-      status.innerText = ok ? "認証済み ✅" : "未認証（出品・申込の前に認証が必要です）";
-      btn.classList.toggle("hidden", ok);
-    }
-
-    function resetRecaptcha() {
-      if (recaptchaVerifier) {
-        try { recaptchaVerifier.clear(); } catch (e) {}
-        recaptchaVerifier = null;
-      }
-      const c = document.getElementById("recaptcha-container");
-      if (c) c.innerHTML = "";
-    }
-
-    window.openPhoneModal = function() {
-      if (!currentUser) { alert("ログインしてください。"); return; }
-      if (hasPhone()) { alert("すでに電話番号認証が完了しています。"); return; }
-      phoneConfirmation = null;
-      document.getElementById("phone-input").value = "";
-      document.getElementById("phone-code-input").value = "";
-      document.getElementById("phone-step1").classList.remove("hidden");
-      document.getElementById("phone-step2").classList.add("hidden");
-      document.getElementById("phone-modal").classList.remove("hidden");
-    };
-    window.closePhoneModal = function() {
-      document.getElementById("phone-modal").classList.add("hidden");
-      afterPhoneVerified = null;
-      resetRecaptcha();
-    };
-    window.backToPhoneStep1 = function() {
-      phoneConfirmation = null;
-      document.getElementById("phone-step1").classList.remove("hidden");
-      document.getElementById("phone-step2").classList.add("hidden");
-    };
-
-    window.sendPhoneCode = async function() {
-      if (!auth.currentUser) return;
-      const phone = normalizeJpPhone(document.getElementById("phone-input").value);
-      if (!phone) { alert("電話番号の形式が正しくありません。（例: 090-1234-5678）"); return; }
-      const btn = document.getElementById("phone-send-btn");
-      btn.disabled = true;
-      btn.innerText = "送信中…";
-      try {
-        resetRecaptcha();
-        recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", { size: "invisible" });
-        phoneConfirmation = await linkWithPhoneNumber(auth.currentUser, phone, recaptchaVerifier);
-        document.getElementById("phone-step1").classList.add("hidden");
-        document.getElementById("phone-step2").classList.remove("hidden");
-      } catch (e) {
-        console.error(e);
-        resetRecaptcha();
-        const code = e && e.code || "";
-        if (code === "auth/invalid-phone-number") alert("電話番号が正しくありません。");
-        else if (code === "auth/too-many-requests") alert("リクエストが多すぎます。しばらく待ってからお試しください。");
-        else if (code === "auth/provider-already-linked") alert("すでに電話番号が登録されています。");
-        else if (code === "auth/operation-not-allowed") alert("この地域への送信は許可されていません。");
-        else alert("認証コードの送信に失敗しました。");
-      } finally {
-        btn.disabled = false;
-        btn.innerText = "認証コードをSMSで送る";
-      }
-    };
-
-    window.verifyPhoneCode = async function() {
-      const code = document.getElementById("phone-code-input").value.trim();
-      if (!phoneConfirmation) return;
-      if (!/^\d{6}$/.test(code)) { alert("6桁のコードを入力してください。"); return; }
-      const btn = document.getElementById("phone-verify-btn");
-      btn.disabled = true;
-      btn.innerText = "確認中…";
-      try {
-        await phoneConfirmation.confirm(code);
-        await auth.currentUser.reload();
-        await auth.currentUser.getIdToken(true); // ルール側で使うトークンを更新
-        const next = afterPhoneVerified;
-        afterPhoneVerified = null;
-        document.getElementById("phone-modal").classList.add("hidden");
-        resetRecaptcha();
-        updatePhoneUI();
-        alert("電話番号認証が完了しました！");
-        if (next) next();
-      } catch (e) {
-        console.error(e);
-        const c = e && e.code || "";
-        if (c === "auth/invalid-verification-code") alert("コードが正しくありません。");
-        else if (c === "auth/code-expired") alert("コードの有効期限が切れました。もう一度送信してください。");
-        else if (c === "auth/credential-already-in-use" || c === "auth/account-exists-with-different-credential") alert("この電話番号は、別のアカウントですでに使われています。");
-        else alert("認証に失敗しました。");
-      } finally {
-        btn.disabled = false;
-        btn.innerText = "認証する";
-      }
-    };
 
     // ===== 認証 =====
     window.loginWithGoogle = function() {
@@ -1056,7 +935,7 @@
 
     window.logout = async function() {
       closeRoom();
-      await removePushToken(); // 共有端末で次の人に通知が届かないようにする
+      await removePushToken();
       signOut(auth);
     };
 
@@ -1086,12 +965,12 @@
     });
 
     // ===== 出品（トレカ） =====
-    window.openPostModal = function(mode) {
+    window.openPostModal = async function(mode) {
       if (!currentUser) {
         alert("出品するにはGoogleログインが必要です。");
         return;
       }
-      if (!requirePhone(() => openPostModal(mode))) return;
+      if (!(await checkDeviceLock())) return;
       postMode = mode;
       document.getElementById("post-modal-title").innerText = mode === "buy" ? "💳 トレカの買取（購入希望）" : "🃏 トレカ交換の出品";
       document.getElementById("label-give").innerText = mode === "buy" ? "【求】（買いたいトレカ）" : "【譲】（出すもの）";
@@ -1173,6 +1052,7 @@
 
     window.submitPost = async function() {
       if (submittingPost || processingPhotos) return;
+      if (!(await checkDeviceLock())) return;
       const member = document.getElementById("input-member").value;
       const give = document.getElementById("input-give").value.trim();
       const want = document.getElementById("input-want").value.trim();
@@ -1180,23 +1060,11 @@
       const description = document.getElementById("input-desc").value.trim().slice(0, 200);
       const isBuy = postMode === "buy";
 
-      if (!give) {
-        alert("内容を入力してください。");
-        return;
-      }
-      if (!isBuy && !want) {
-        alert("「求」の内容を入力してください。");
-        return;
-      }
+      if (!give) { alert("内容を入力してください。"); return; }
+      if (!isBuy && !want) { alert("「求」の内容を入力してください。"); return; }
       const price = isBuy ? Number(priceStr) : 0;
-      if (isBuy && (!price || price <= 0)) {
-        alert("有効な希望価格を入力してください。");
-        return;
-      }
-      if (!isBuy && postPhotos.length < 1) {
-        alert("状態がわかる写真を1枚以上添付してください。");
-        return;
-      }
+      if (isBuy && (!price || price <= 0)) { alert("有効な希望価格を入力してください。"); return; }
+      if (!isBuy && postPhotos.length < 1) { alert("状態がわかる写真を1枚以上添付してください。"); return; }
 
       submittingPost = true;
       const btn = document.getElementById("post-submit-btn");
@@ -1247,12 +1115,12 @@
     };
 
     // ===== 出品（シリアル） =====
-    window.openSerialPostModal = function(mode) {
+    window.openSerialPostModal = async function(mode) {
       if (!currentUser) {
         alert("出品するにはGoogleログインが必要です。");
         return;
       }
-      if (!requirePhone(() => openSerialPostModal(mode))) return;
+      if (!(await checkDeviceLock())) return;
       postMode = mode;
       if (mode === "buy") {
         document.getElementById("serial-modal-title").innerText = "💳 シリアルの買取（購入希望）";
@@ -1279,6 +1147,7 @@
     };
 
     window.submitSerialPost = async function() {
+      if (!(await checkDeviceLock())) return;
       const member = document.getElementById("serial-member").value;
       const give = document.getElementById("serial-give").value.trim();
       const want = document.getElementById("serial-want").value.trim();
@@ -1287,23 +1156,11 @@
       const note = document.getElementById("serial-note").value.trim().slice(0, 200);
       const isBuy = postMode === "buy";
 
-      if (!give) {
-        alert("内容を入力してください。");
-        return;
-      }
-      if (!isBuy && !want) {
-        alert("「求」のトレカ名を入力してください。");
-        return;
-      }
+      if (!give) { alert("内容を入力してください。"); return; }
+      if (!isBuy && !want) { alert("「求」のトレカ名を入力してください。"); return; }
       const price = isBuy ? Number(priceStr) : 0;
-      if (isBuy && (!price || price <= 0)) {
-        alert("有効な希望価格を入力してください。");
-        return;
-      }
-      if (deadline && deadline < todayStr()) {
-        alert("有効期限が過去の日付になっています。");
-        return;
-      }
+      if (isBuy && (!price || price <= 0)) { alert("有効な希望価格を入力してください。"); return; }
+      if (deadline && deadline < todayStr()) { alert("有効期限が過去の日付になっています。"); return; }
       try {
         await addDoc(collection(db, "posts"), {
           kind: "serial",
@@ -1687,7 +1544,7 @@
     window.applyToPost = async function(index) {
       const p = allPosts[index];
       if (!currentUser || !p || !p.userId) return;
-      if (!requirePhone(() => applyToPost(index))) return;
+      if (!(await checkDeviceLock())) return;
       try {
         const ref = await addDoc(collection(db, "trades"), {
           kind: p.kind,
@@ -1835,7 +1692,6 @@
         </div>`;
     }
 
-    // PayPay ID送信ボックス（相手はチャット上でワンタップコピー）
     async function renderRoomPayPayBox() {
       const el = document.getElementById("room-paypay-box");
       if (!currentTrade || currentTrade.status === "cancelled") {
@@ -1870,7 +1726,6 @@
         </div>`;
     }
 
-    // PayPay請求リンクをチャットに送る（買取金額つき）
     const PAYPAY_LINK_RE = /^https:\/\/(pay\.)?paypay\.ne\.jp\/[^\s]+$/;
     window.sendPayPayLink = async function() {
       if (!currentTrade || !currentUser) return;
@@ -1896,7 +1751,6 @@
       }
     };
 
-    // 金額コピー
     window.copyAmount = function(amount) {
       navigator.clipboard.writeText(String(amount)).then(() => {
         alert(`金額「${Number(amount).toLocaleString()}」をコピーしました！\nPayPayの送金画面で貼り付けてください。`);
@@ -2135,7 +1989,6 @@
           ? `<img src="${m.image}" alt="" onclick="viewImage(${roomMessages.indexOf(m)})" class="rounded-xl max-h-60 w-auto cursor-pointer ${m.text ? 'mb-1' : ''}">`
           : "";
         
-        // メッセージ内にPayPay IDが含まれている場合、ワンタップコピーボタンを自動付与
         let textContent = escapeHtml(m.text);
         if (m.text && m.text.includes("【PayPay受取用 ID】")) {
           const lines = m.text.split("\n");
