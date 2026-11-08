@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ILLIT Trade (ILLIT交換) - 手数料0円のファン専用安心トレカ・シリアル交換</title>
-  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -27,46 +26,45 @@
 </head>
 <body class="bg-illit-bg text-gray-800 min-h-screen font-sans">
 
-  <!-- ヘッダーエリア -->
+  <!-- ヘッダー -->
   <header class="bg-white border-b border-purple-100 sticky top-0 z-40 shadow-sm">
     <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
       <div class="flex items-center space-x-2">
         <span class="bg-illit-purple text-white font-bold text-xs px-2 py-1 rounded-full">ILLIT</span>
-        <h1 class="text-xl font-bold bg-gradient-to-r from-illit-darkPurple to-illit-accent bg-clip-text text-transparent">
-          ILLIT Trade
-        </h1>
+        <h1 class="text-xl font-bold bg-gradient-to-r from-illit-darkPurple to-illit-accent bg-clip-text text-transparent">ILLIT Trade</h1>
       </div>
 
-      <!-- ログイン状態表示・操作エリア -->
       <div id="auth-container" class="flex items-center space-x-3">
         <button id="login-btn" onclick="loginWithGoogle()" class="bg-illit-purple hover:bg-illit-darkPurple text-white text-xs md:text-sm font-bold py-2 px-4 rounded-full transition shadow-sm">
           Googleでログイン
         </button>
         <div id="user-profile" class="hidden flex items-center space-x-2">
-          <span id="user-name" class="text-xs md:text-sm font-semibold text-gray-700"></span>
+          <button onclick="openTradesModal()" class="relative bg-purple-100 text-illit-darkPurple text-xs font-bold px-3 py-1.5 rounded-full hover:bg-purple-200 transition">
+            💬 取引
+            <span id="trades-badge" class="hidden absolute -top-1.5 -right-1.5 bg-pink-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">0</span>
+          </button>
+          <span id="user-name" class="text-xs md:text-sm font-semibold text-gray-700 max-w-[80px] truncate"></span>
           <button onclick="logout()" class="text-xs text-gray-400 hover:text-gray-600 underline">ログアウト</button>
         </div>
       </div>
     </div>
   </header>
 
-  <!-- メインコンテンツエリア -->
+  <!-- メイン -->
   <main class="max-w-4xl mx-auto px-4 py-6 space-y-6">
 
-    <!-- サイト趣旨案内バナー -->
     <section class="bg-white p-4 md:p-6 rounded-2xl border border-purple-100 shadow-sm">
       <div class="flex items-start space-x-3">
         <div class="text-2xl">🤝</div>
         <div>
           <h2 class="font-bold text-base md:text-lg text-gray-900">ファン同士で安心・安全に直接トレカ交換</h2>
           <p class="text-xs md:text-sm text-gray-600 mt-1">
-            ILLITファンのための手数料0円交換プラットフォームです。相互発送確認と詐欺防止ロジックで安心な取引をサポートします。
+            申込・チャット・発送確認・評価まで、すべてサイト内で完結。手数料0円の交換プラットフォームです。
           </p>
         </div>
       </div>
     </section>
 
-    <!-- 出品ボタンエリア -->
     <section class="bg-gradient-to-r from-purple-500 to-illit-accent p-4 md:p-6 rounded-2xl text-white shadow-sm flex justify-between items-center">
       <div>
         <h3 class="font-bold text-base md:text-lg">トレカやシリアルコードを交換に出す</h3>
@@ -77,25 +75,21 @@
       </button>
     </section>
 
-    <!-- 出品一覧セクション -->
     <section class="space-y-4">
       <div class="flex justify-between items-center px-1">
         <h3 class="font-bold text-base text-gray-800">最新の交換募集</h3>
         <span class="text-xs text-gray-500">手数料 0円</span>
       </div>
 
-      <!-- 検索・絞り込み -->
       <div class="space-y-2">
         <input type="text" id="search-input" oninput="setSearch(this.value)" placeholder="🔍 譲・求・出品者名で検索" class="w-full border border-purple-100 rounded-xl p-2.5 bg-white text-xs md:text-sm">
         <div id="member-filters" class="flex flex-wrap gap-2"></div>
       </div>
 
-      <!-- データベースから取得したカードがここに並びます -->
       <div id="posts-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <p class="text-xs text-gray-400 col-span-2 text-center py-4">読み込み中...</p>
       </div>
     </section>
-
   </main>
 
   <!-- 新規出品モーダル -->
@@ -105,7 +99,6 @@
         <h3 class="font-bold text-base text-gray-800">新規トレカ交換の出品</h3>
         <button onclick="closePostModal()" class="text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
       </div>
-
       <div class="space-y-3 text-xs md:text-sm">
         <div>
           <label class="block font-semibold text-gray-700 mb-1">対象メンバー</label>
@@ -117,18 +110,15 @@
             <option value="ユナ (Yuna)">ユナ (Yuna)</option>
           </select>
         </div>
-
         <div>
           <label class="block font-semibold text-gray-700 mb-1">【譲】（出すもの）</label>
-          <input type="text" id="input-give" placeholder="例: SUPER REAL ME トレカ" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+          <input type="text" id="input-give" maxlength="100" placeholder="例: SUPER REAL ME トレカ" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
         </div>
-
         <div>
           <label class="block font-semibold text-gray-700 mb-1">【求】（希望するもの）</label>
-          <input type="text" id="input-want" placeholder="例: 同種 ウォニ または シリアル" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+          <input type="text" id="input-want" maxlength="100" placeholder="例: 同種 ウォニ または シリアル" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
         </div>
       </div>
-
       <div class="flex space-x-2 pt-2">
         <button onclick="closePostModal()" class="flex-1 bg-gray-100 text-gray-600 font-bold py-2.5 rounded-xl hover:bg-gray-200 transition">キャンセル</button>
         <button onclick="submitPost()" class="flex-1 bg-illit-purple text-white font-bold py-2.5 rounded-xl hover:bg-illit-darkPurple transition">出品する</button>
@@ -136,14 +126,13 @@
     </div>
   </div>
 
-  <!-- 詳細・連絡モーダル -->
+  <!-- 詳細モーダル -->
   <div id="detail-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
     <div class="bg-white w-full max-w-md rounded-2xl p-6 space-y-4 shadow-xl">
       <div class="flex justify-between items-center border-b pb-3">
         <h3 class="font-bold text-base text-gray-800">交換募集の詳細</h3>
         <button onclick="closeDetailModal()" class="text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
       </div>
-
       <div class="space-y-3 text-xs md:text-sm">
         <div class="bg-purple-50 p-3 rounded-xl space-y-2">
           <div><span class="font-bold text-gray-500">メンバー:</span> <span id="detail-member" class="font-semibold text-gray-800"></span></div>
@@ -152,25 +141,56 @@
         </div>
         <div>
           <span class="font-semibold text-gray-700">出品者:</span> <span id="detail-user" class="text-gray-600"></span>
+          <span id="detail-rating" class="ml-2 text-yellow-500 font-bold"></span>
         </div>
         <p class="text-gray-500 text-xs bg-gray-50 p-3 rounded-xl">
-          💡 交換を行う際は、お互いのトレカの状態や発送方法（スリーブ・硬質ケース・防水対策など）をよく確認してから進めてください。
+          💡 申し込むと専用のチャットルームが作られます。トレカの状態や発送方法をよく確認してから合意してください。
         </p>
       </div>
+      <div id="detail-actions" class="space-y-2"></div>
+      <button onclick="closeDetailModal()" class="w-full bg-gray-100 text-gray-600 font-bold py-2.5 rounded-xl hover:bg-gray-200 transition text-sm">閉じる</button>
+    </div>
+  </div>
 
-      <div class="pt-2">
-        <button onclick="closeDetailModal()" class="w-full bg-illit-purple text-white font-bold py-2.5 rounded-xl hover:bg-illit-darkPurple transition">閉じる</button>
+  <!-- 取引一覧モーダル -->
+  <div id="trades-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-md rounded-2xl p-6 space-y-4 shadow-xl max-h-[85vh] flex flex-col">
+      <div class="flex justify-between items-center border-b pb-3 shrink-0">
+        <h3 class="font-bold text-base text-gray-800">あなたの取引</h3>
+        <button onclick="closeTradesModal()" class="text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
+      </div>
+      <div id="trades-list" class="space-y-2 overflow-y-auto"></div>
+    </div>
+  </div>
+
+  <!-- 取引ルーム（チャット） -->
+  <div id="room-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center md:p-4">
+    <div class="bg-white w-full max-w-md h-full md:h-[90vh] md:rounded-2xl shadow-xl flex flex-col overflow-hidden">
+      <div class="flex justify-between items-center px-4 py-3 border-b shrink-0">
+        <h3 id="room-title" class="font-bold text-sm text-gray-800 truncate"></h3>
+        <button onclick="closeRoom()" class="text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
+      </div>
+
+      <div class="p-4 space-y-3 border-b bg-purple-50/50 overflow-y-auto shrink-0 max-h-[45%]">
+        <div id="room-info"></div>
+        <div id="room-steps"></div>
+        <div id="room-actions" class="space-y-2"></div>
+      </div>
+
+      <div id="room-messages" class="flex-1 overflow-y-auto p-4 space-y-2 bg-white"></div>
+
+      <div class="p-3 border-t flex space-x-2 shrink-0">
+        <input id="room-input" type="text" maxlength="1000" placeholder="メッセージを入力" onkeydown="if(event.key==='Enter'&&!event.isComposing){sendMessage();}" class="flex-1 border border-gray-200 rounded-xl p-2.5 bg-gray-50 text-sm">
+        <button id="room-send" onclick="sendMessage()" class="bg-illit-purple text-white font-bold text-sm px-4 rounded-xl hover:bg-illit-darkPurple transition">送信</button>
       </div>
     </div>
   </div>
 
-  <!-- Firebase & アプリケーションロジック -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { getFirestore, collection, addDoc, getDocs, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, where, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // 組み込み済みのFirebase設定
     const firebaseConfig = {
       apiKey: "AIzaSyBB1_QTcXpF0Ap72tDaf5_CCUtNBwSlXCs",
       authDomain: "illit-7ecd4.firebaseapp.com",
@@ -186,21 +206,65 @@
     const db = getFirestore(app);
     const provider = new GoogleAuthProvider();
 
+    // ===== 状態 =====
+    const MEMBERS = ["すべて", "ウォニ (Wonhee)", "ミンジュ (Minju)", "イロハ (Iroha)", "モカ (Moka)", "ユナ (Yuna)"];
     let currentUser = null;
+    let allPosts = [];
+    let selectedMember = "すべて";
+    let searchText = "";
+    let currentDetailIndex = -1;
 
-    // ログイン関数
+    let myTrades = [];
+    let unsubTrades = null;
+
+    let currentTrade = null;
+    let roomMessages = [];
+    let unsubRoom = null;
+    let unsubMsgs = null;
+    let reviewState = { tradeId: null, done: null };
+    let selectedRating = 0;
+
+    const STATUS_LABEL = {
+      negotiating: "交渉中",
+      shipping: "発送・受取中",
+      completed: "完了",
+      cancelled: "キャンセル"
+    };
+    const STATUS_CLASS = {
+      negotiating: "bg-yellow-100 text-yellow-700",
+      shipping: "bg-blue-100 text-blue-700",
+      completed: "bg-green-100 text-green-700",
+      cancelled: "bg-gray-100 text-gray-500"
+    };
+
+    // ===== ユーティリティ =====
+    function escapeHtml(str) {
+      return String(str ?? "").replace(/[&<>'"]/g,
+        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+      );
+    }
+    function fmtTime(ts) {
+      if (!ts || !ts.toDate) return "";
+      const d = ts.toDate();
+      return (d.getMonth() + 1) + "/" + d.getDate() + " " +
+        String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+    }
+    function tsValue(ts) {
+      return ts && ts.toMillis ? ts.toMillis() : Number.MAX_SAFE_INTEGER;
+    }
+
+    // ===== 認証 =====
     window.loginWithGoogle = function() {
       signInWithPopup(auth, provider).catch((error) => {
         alert("ログインエラー: " + error.message);
       });
     };
 
-    // ログアウト関数
     window.logout = function() {
+      closeRoom();
       signOut(auth);
     };
 
-    // ログイン状態の監視
     onAuthStateChanged(auth, (user) => {
       currentUser = user;
       const loginBtn = document.getElementById("login-btn");
@@ -208,16 +272,21 @@
       const userName = document.getElementById("user-name");
 
       if (user) {
-        if (loginBtn) loginBtn.classList.add("hidden");
-        if (userProfile) userProfile.classList.remove("hidden");
-        if (userName) userName.innerText = user.displayName || "ユーザー";
+        loginBtn.classList.add("hidden");
+        userProfile.classList.remove("hidden");
+        userName.innerText = user.displayName || "ユーザー";
+        subscribeTrades();
       } else {
-        if (loginBtn) loginBtn.classList.remove("hidden");
-        if (userProfile) userProfile.classList.add("hidden");
+        loginBtn.classList.remove("hidden");
+        userProfile.classList.add("hidden");
+        if (unsubTrades) { unsubTrades(); unsubTrades = null; }
+        myTrades = [];
+        updateBadge();
       }
+      renderPosts();
     });
 
-    // 新規出品モーダルの開閉
+    // ===== 出品 =====
     window.openPostModal = function() {
       if (!currentUser) {
         alert("出品するにはGoogleログインが必要です。");
@@ -225,27 +294,10 @@
       }
       document.getElementById("post-modal").classList.remove("hidden");
     };
-
     window.closePostModal = function() {
       document.getElementById("post-modal").classList.add("hidden");
     };
 
-    // 詳細モーダルの開閉（allPosts の番号で投稿を特定）
-    window.openDetailModal = function(index) {
-      const p = allPosts[index];
-      if (!p) return;
-      document.getElementById("detail-give").innerText = p.give;
-      document.getElementById("detail-want").innerText = p.want;
-      document.getElementById("detail-member").innerText = p.member;
-      document.getElementById("detail-user").innerText = p.userName;
-      document.getElementById("detail-modal").classList.remove("hidden");
-    };
-
-    window.closeDetailModal = function() {
-      document.getElementById("detail-modal").classList.add("hidden");
-    };
-
-    // 出品データをFirestoreに保存する関数
     window.submitPost = async function() {
       const member = document.getElementById("input-member").value;
       const give = document.getElementById("input-give").value.trim();
@@ -255,49 +307,38 @@
         alert("「譲」と「求」の内容を入力してください。");
         return;
       }
-
       try {
         await addDoc(collection(db, "posts"), {
-          member: member,
-          give: give,
-          want: want,
+          member, give, want,
+          userId: currentUser.uid,
           userName: currentUser.displayName || "匿名ファン",
           createdAt: serverTimestamp()
         });
-
         alert("出品が完了しました！");
         closePostModal();
         document.getElementById("input-give").value = "";
         document.getElementById("input-want").value = "";
-        loadPosts(); // リストを再読み込み
+        loadPosts();
       } catch (e) {
         console.error("出品エラー: ", e);
         alert("出品に失敗しました。");
       }
     };
 
-    // ===== 絞り込み・検索 =====
-    const MEMBERS = ["すべて", "ウォニ (Wonhee)", "ミンジュ (Minju)", "イロハ (Iroha)", "モカ (Moka)", "ユナ (Yuna)"];
-    let allPosts = [];
-    let selectedMember = "すべて";
-    let searchText = "";
-
+    // ===== 一覧・絞り込み・検索 =====
     function renderFilters() {
       document.getElementById("member-filters").innerHTML = MEMBERS.map((m, i) => {
-        const active = m === selectedMember;
-        const cls = active
+        const cls = m === selectedMember
           ? "bg-illit-purple text-white"
           : "bg-white text-gray-600 border border-purple-100";
         return `<button onclick="setMember(${i})" class="${cls} text-xs font-bold px-3 py-1.5 rounded-full transition">${m.split(" ")[0]}</button>`;
       }).join("");
     }
-
     window.setMember = function(i) {
       selectedMember = MEMBERS[i];
       renderFilters();
       renderPosts();
     };
-
     window.setSearch = function(v) {
       searchText = v.trim().toLowerCase();
       renderPosts();
@@ -313,6 +354,7 @@
           (p.give + " " + p.want + " " + p.userName).toLowerCase().includes(searchText);
         if (!okMember || !okText) return;
 
+        const mine = currentUser && p.userId === currentUser.uid;
         cards.push(`
           <div class="bg-white p-4 rounded-2xl border border-purple-100 shadow-sm flex flex-col justify-between space-y-3">
             <div class="flex items-center space-x-2">
@@ -324,8 +366,8 @@
               <span class="font-bold text-sm text-gray-800">${escapeHtml(p.want)}</span>
             </div>
             <div class="pt-2 border-t border-gray-100 flex justify-between items-center text-xs text-gray-500">
-              <span>出品者: ${escapeHtml(p.userName)}</span>
-              <button onclick="openDetailModal(${index})" class="bg-illit-purple text-white font-bold px-3 py-1.5 rounded-lg hover:bg-illit-darkPurple transition">詳細・連絡</button>
+              <span>出品者: ${escapeHtml(p.userName)}${mine ? ' <span class="bg-purple-100 text-illit-darkPurple px-1.5 py-0.5 rounded">あなた</span>' : ''}</span>
+              <button onclick="openDetailModal(${index})" class="bg-illit-purple text-white font-bold px-3 py-1.5 rounded-lg hover:bg-illit-darkPurple transition">詳細・申込</button>
             </div>
           </div>
         `);
@@ -340,14 +382,13 @@
       }
     }
 
-    // Firestoreから出品一覧を読み込む関数
     async function loadPosts() {
       const container = document.getElementById("posts-container");
       container.innerHTML = '<p class="text-xs text-gray-400 col-span-2 text-center py-4">読み込み中...</p>';
       try {
         const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
         const snapshot = await getDocs(q);
-        allPosts = snapshot.docs.map((d) => d.data());
+        allPosts = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
         renderPosts();
       } catch (e) {
         console.error("読み込みエラー: ", e);
@@ -355,17 +396,441 @@
       }
     }
 
-    // HTMLエスケープ（セキュリティ対策）
-    function escapeHtml(str) {
-      return String(str ?? "").replace(/[&<>'"]/g,
-        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
-      );
+    // ===== 詳細モーダル =====
+    window.openDetailModal = function(index) {
+      const p = allPosts[index];
+      if (!p) return;
+      currentDetailIndex = index;
+
+      document.getElementById("detail-give").innerText = p.give;
+      document.getElementById("detail-want").innerText = p.want;
+      document.getElementById("detail-member").innerText = p.member;
+      document.getElementById("detail-user").innerText = p.userName;
+      document.getElementById("detail-rating").innerText = "";
+
+      const actions = document.getElementById("detail-actions");
+      if (!currentUser) {
+        actions.innerHTML = `<button onclick="loginWithGoogle()" class="w-full bg-illit-purple text-white font-bold py-2.5 rounded-xl hover:bg-illit-darkPurple transition text-sm">ログインして申し込む</button>`;
+      } else if (p.userId && p.userId === currentUser.uid) {
+        actions.innerHTML = `
+          <p class="text-xs text-gray-500 text-center">あなたの出品です。申込は右上の「💬 取引」に届きます。</p>
+          <button onclick="deletePost(${index})" class="w-full bg-red-50 text-red-500 font-bold py-2.5 rounded-xl hover:bg-red-100 transition text-sm">この募集を削除する</button>`;
+      } else if (!p.userId) {
+        actions.innerHTML = `<p class="text-xs text-gray-400 text-center">この出品は旧バージョンで作られたため、申込できません。</p>`;
+      } else {
+        actions.innerHTML = `<button onclick="applyToPost(${index})" class="w-full bg-gradient-to-r from-purple-500 to-illit-accent text-white font-bold py-2.5 rounded-xl hover:opacity-90 transition text-sm">この募集に申し込む</button>`;
+      }
+
+      document.getElementById("detail-modal").classList.remove("hidden");
+      if (p.userId) loadRating(p.userId, index);
+    };
+
+    window.closeDetailModal = function() {
+      document.getElementById("detail-modal").classList.add("hidden");
+      currentDetailIndex = -1;
+    };
+
+    async function loadRating(userId, index) {
+      try {
+        const snap = await getDocs(query(collection(db, "reviews"), where("toId", "==", userId)));
+        if (currentDetailIndex !== index) return;
+        const el = document.getElementById("detail-rating");
+        if (snap.empty) {
+          el.innerText = "評価なし";
+          el.className = "ml-2 text-gray-400 font-normal";
+          return;
+        }
+        let sum = 0;
+        snap.forEach((d) => { sum += d.data().rating || 0; });
+        el.className = "ml-2 text-yellow-500 font-bold";
+        el.innerText = "⭐ " + (sum / snap.size).toFixed(1) + "（" + snap.size + "件）";
+      } catch (e) {
+        console.error(e);
+      }
     }
 
-    // ページを開いたときの初期化
+    window.deletePost = async function(index) {
+      const p = allPosts[index];
+      if (!p || !confirm("この募集を削除しますか？")) return;
+      try {
+        await deleteDoc(doc(db, "posts", p.id));
+        closeDetailModal();
+        loadPosts();
+      } catch (e) {
+        console.error(e);
+        alert("削除に失敗しました。");
+      }
+    };
+
+    // ===== 交換申込 =====
+    window.applyToPost = async function(index) {
+      const p = allPosts[index];
+      if (!currentUser || !p || !p.userId) return;
+
+      const existing = myTrades.find((t) =>
+        t.postId === p.id && t.applicantId === currentUser.uid &&
+        !["cancelled", "completed"].includes(t.status));
+      if (existing) {
+        openTrade(existing.id);
+        return;
+      }
+
+      try {
+        const ref = await addDoc(collection(db, "trades"), {
+          postId: p.id,
+          postGive: p.give,
+          postWant: p.want,
+          postMember: p.member,
+          ownerId: p.userId,
+          ownerName: p.userName,
+          applicantId: currentUser.uid,
+          applicantName: currentUser.displayName || "匿名ファン",
+          participants: [p.userId, currentUser.uid],
+          status: "negotiating",
+          agreed: {},
+          shipped: {},
+          received: {},
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+        openTrade(ref.id);
+      } catch (e) {
+        console.error("申込エラー: ", e);
+        alert("申込に失敗しました。");
+      }
+    };
+
+    // ===== 取引一覧 =====
+    function subscribeTrades() {
+      if (unsubTrades) unsubTrades();
+      const q = query(collection(db, "trades"), where("participants", "array-contains", currentUser.uid));
+      unsubTrades = onSnapshot(q, (snap) => {
+        myTrades = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        myTrades.sort((a, b) => tsValue(b.updatedAt) - tsValue(a.updatedAt));
+        updateBadge();
+        if (!document.getElementById("trades-modal").classList.contains("hidden")) renderTradesList();
+      }, (err) => console.error("取引の購読エラー: ", err));
+    }
+
+    function updateBadge() {
+      const n = myTrades.filter((t) => t.status === "negotiating" || t.status === "shipping").length;
+      const badge = document.getElementById("trades-badge");
+      badge.innerText = n;
+      badge.classList.toggle("hidden", n === 0);
+    }
+
+    window.openTradesModal = function() {
+      renderTradesList();
+      document.getElementById("trades-modal").classList.remove("hidden");
+    };
+    window.closeTradesModal = function() {
+      document.getElementById("trades-modal").classList.add("hidden");
+    };
+
+    function renderTradesList() {
+      const el = document.getElementById("trades-list");
+      if (myTrades.length === 0) {
+        el.innerHTML = '<p class="text-xs text-gray-400 text-center py-6">まだ取引はありません。<br>気になる募集に申し込んでみましょう！</p>';
+        return;
+      }
+      el.innerHTML = myTrades.map((t) => {
+        const iAmOwner = currentUser.uid === t.ownerId;
+        const otherName = iAmOwner ? t.applicantName : t.ownerName;
+        const role = iAmOwner ? "申込が届きました" : "あなたが申込";
+        return `
+          <button onclick="openTrade('${t.id}')" class="w-full text-left bg-white border border-purple-100 rounded-xl p-3 hover:bg-purple-50 transition space-y-1">
+            <div class="flex justify-between items-center">
+              <span class="text-xs text-gray-500">${escapeHtml(otherName)} さん ・ ${role}</span>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_CLASS[t.status] || ''}">${STATUS_LABEL[t.status] || ''}</span>
+            </div>
+            <div class="text-sm font-bold text-gray-800">譲 ${escapeHtml(t.postGive)} <span class="text-gray-400 font-normal">⇄</span> 求 ${escapeHtml(t.postWant)}</div>
+          </button>`;
+      }).join("");
+    }
+
+    // ===== 取引ルーム =====
+    function cleanupRoom() {
+      if (unsubRoom) { unsubRoom(); unsubRoom = null; }
+      if (unsubMsgs) { unsubMsgs(); unsubMsgs = null; }
+      currentTrade = null;
+      roomMessages = [];
+      reviewState = { tradeId: null, done: null };
+      selectedRating = 0;
+    }
+
+    window.openTrade = function(id) {
+      closeTradesModal();
+      closeDetailModal();
+      cleanupRoom();
+      document.getElementById("room-messages").innerHTML = "";
+      document.getElementById("room-modal").classList.remove("hidden");
+
+      unsubRoom = onSnapshot(doc(db, "trades", id), (snap) => {
+        if (!snap.exists()) { closeRoom(); return; }
+        currentTrade = { id: snap.id, ...snap.data() };
+        renderRoom();
+        advanceIfNeeded();
+        checkReview();
+      }, (err) => {
+        console.error(err);
+        alert("取引を読み込めませんでした。");
+        closeRoom();
+      });
+
+      unsubMsgs = onSnapshot(
+        query(collection(db, "trades", id, "messages"), orderBy("createdAt", "asc")),
+        (snap) => {
+          roomMessages = snap.docs.map((d) => d.data());
+          renderMessages();
+        },
+        (err) => console.error(err)
+      );
+    };
+
+    window.closeRoom = function() {
+      document.getElementById("room-modal").classList.add("hidden");
+      cleanupRoom();
+    };
+
+    function flag(t, field, uid) {
+      return !!(t[field] && t[field][uid]);
+    }
+
+    function advanceIfNeeded() {
+      const t = currentTrade;
+      if (!t) return;
+      const both = (f) => flag(t, f, t.ownerId) && flag(t, f, t.applicantId);
+      let next = null;
+      if (t.status === "negotiating" && both("agreed")) next = "shipping";
+      else if (t.status === "shipping" && both("received")) next = "completed";
+      if (next) {
+        updateDoc(doc(db, "trades", t.id), { status: next, updatedAt: serverTimestamp() })
+          .catch((e) => console.error(e));
+      }
+    }
+
+    function checkReview() {
+      const t = currentTrade;
+      if (!t || t.status !== "completed" || reviewState.tradeId === t.id) return;
+      reviewState = { tradeId: t.id, done: null };
+      getDoc(doc(db, "reviews", t.id + "_" + currentUser.uid))
+        .then((s) => {
+          if (currentTrade && currentTrade.id === t.id) {
+            reviewState.done = s.exists();
+            renderRoom();
+          }
+        })
+        .catch((e) => console.error(e));
+    }
+
+    function stepsHtml(status) {
+      if (status === "cancelled") {
+        return '<div class="text-xs font-bold text-gray-500 bg-gray-100 rounded-lg p-2 text-center">この取引はキャンセルされました</div>';
+      }
+      const order = ["negotiating", "shipping", "completed"];
+      const labels = ["① 交渉", "② 発送・受取", "③ 完了"];
+      const idx = order.indexOf(status);
+      return '<div class="flex space-x-1">' + labels.map((l, i) => {
+        const cls = i <= idx ? "bg-illit-purple text-white" : "bg-gray-100 text-gray-400";
+        return `<div class="flex-1 text-center text-[11px] font-bold py-1.5 rounded-lg ${cls}">${l}</div>`;
+      }).join("") + "</div>";
+    }
+
+    function renderRoom() {
+      const t = currentTrade;
+      if (!t) return;
+      const uid = currentUser.uid;
+      const iAmOwner = uid === t.ownerId;
+      const otherId = iAmOwner ? t.applicantId : t.ownerId;
+      const otherName = iAmOwner ? t.applicantName : t.ownerName;
+
+      document.getElementById("room-title").innerText = otherName + " さんとの交換";
+
+      document.getElementById("room-info").innerHTML = `
+        <div class="bg-white rounded-xl p-3 text-xs space-y-1 border border-purple-100">
+          <div class="text-gray-500">${escapeHtml(t.postMember)}</div>
+          <div><span class="bg-pink-100 text-pink-700 font-bold px-2 py-0.5 rounded">譲</span> <span class="font-bold">${escapeHtml(t.postGive)}</span></div>
+          <div><span class="bg-purple-100 text-illit-darkPurple font-bold px-2 py-0.5 rounded">求</span> <span class="font-bold">${escapeHtml(t.postWant)}</span></div>
+          <div class="text-gray-400">出品者: ${escapeHtml(t.ownerName)}</div>
+        </div>`;
+
+      document.getElementById("room-steps").innerHTML = stepsHtml(t.status);
+
+      const mark = (b) => b ? "✅" : "⏳";
+      const btn = "w-full font-bold py-2.5 rounded-xl text-sm transition ";
+      const primary = btn + "bg-illit-purple text-white hover:bg-illit-darkPurple";
+      let html = "";
+
+      if (t.status === "negotiating") {
+        const my = flag(t, "agreed", uid), other = flag(t, "agreed", otherId);
+        html = `
+          <p class="text-xs text-gray-600">チャットで条件を確認し、納得できたら「成立に合意」を押してください。双方が押すと取引が確定します。</p>
+          <div class="text-xs text-gray-600">合意: あなた ${mark(my)} ／ 相手 ${mark(other)}</div>
+          ${my ? '<p class="text-xs text-gray-400 text-center">相手の合意を待っています…</p>' : `<button onclick="tradeAction('agreed')" class="${primary}">成立に合意する</button>`}
+          <button onclick="cancelTrade()" class="${btn} bg-white text-gray-400 border border-gray-200 hover:bg-gray-50">この取引をキャンセル</button>`;
+      } else if (t.status === "shipping") {
+        const myS = flag(t, "shipped", uid), otherS = flag(t, "shipped", otherId);
+        const myR = flag(t, "received", uid), otherR = flag(t, "received", otherId);
+        html = `
+          <p class="text-xs text-gray-600">お互いに発送し、届いたら「受け取った」を押してください。住所などはチャットで必要な範囲だけ共有しましょう。</p>
+          <div class="text-xs text-gray-600 space-y-0.5">
+            <div>発送: あなた ${mark(myS)} ／ 相手 ${mark(otherS)}</div>
+            <div>受取: あなた ${mark(myR)} ／ 相手 ${mark(otherR)}</div>
+          </div>
+          ${!myS ? `<button onclick="tradeAction('shipped')" class="${primary}">発送した</button>` : ''}
+          ${otherS && !myR ? `<button onclick="tradeAction('received')" class="${btn} bg-green-500 text-white hover:bg-green-600">受け取った</button>` : ''}
+          ${myR && !otherR ? '<p class="text-xs text-gray-400 text-center">相手の受取確認を待っています…</p>' : ''}`;
+      } else if (t.status === "completed") {
+        let review = "";
+        if (reviewState.done === null) {
+          review = '<p class="text-xs text-gray-400 text-center">読み込み中…</p>';
+        } else if (reviewState.done) {
+          review = '<p class="text-xs text-green-600 text-center font-bold">✅ 評価済みです。ご協力ありがとうございました！</p>';
+        } else {
+          review = `
+            <div class="bg-white rounded-xl p-3 border border-purple-100 space-y-2">
+              <div class="text-xs font-bold text-gray-700">${escapeHtml(otherName)} さんを評価</div>
+              <div class="flex space-x-1">${[1,2,3,4,5].map((n) => `<button data-star="${n}" onclick="setRating(${n})" class="text-2xl text-gray-300">★</button>`).join("")}</div>
+              <textarea id="review-comment" maxlength="200" rows="2" placeholder="コメント（任意）" class="w-full border border-gray-200 rounded-lg p-2 text-xs bg-gray-50"></textarea>
+              <button onclick="submitReview()" class="${primary}">評価を送信</button>
+            </div>`;
+        }
+        html = `
+          <p class="text-xs text-green-600 font-bold text-center">🎉 取引が完了しました！</p>
+          ${review}
+          ${iAmOwner ? `<button onclick="deleteRoomPost()" class="${btn} bg-white text-red-400 border border-red-100 hover:bg-red-50">この募集を削除する</button>` : ''}`;
+      } else if (t.status === "cancelled") {
+        html = '<p class="text-xs text-gray-400 text-center">キャンセル済みの取引です。</p>';
+      }
+      document.getElementById("room-actions").innerHTML = html;
+      if (selectedRating > 0) setRating(selectedRating);
+
+      const disabled = t.status === "cancelled";
+      document.getElementById("room-input").disabled = disabled;
+      document.getElementById("room-send").disabled = disabled;
+      document.getElementById("room-input").placeholder = disabled ? "キャンセルされたためチャットできません" : "メッセージを入力";
+    }
+
+    function renderMessages() {
+      const el = document.getElementById("room-messages");
+      if (!currentUser) return;
+      if (roomMessages.length === 0) {
+        el.innerHTML = '<p class="text-xs text-gray-400 text-center py-6">まだメッセージはありません。<br>まずは挨拶してみましょう 👋</p>';
+        return;
+      }
+      el.innerHTML = roomMessages.map((m) => {
+        const mine = m.senderId === currentUser.uid;
+        const bubble = mine
+          ? "bg-illit-purple text-white rounded-2xl rounded-br-sm"
+          : "bg-gray-100 text-gray-800 rounded-2xl rounded-bl-sm";
+        return `
+          <div class="flex ${mine ? 'justify-end' : 'justify-start'}">
+            <div class="max-w-[80%]">
+              ${mine ? '' : `<div class="text-[10px] text-gray-400 mb-0.5">${escapeHtml(m.senderName)}</div>`}
+              <div class="${bubble} px-3 py-2 text-sm whitespace-pre-wrap break-words">${escapeHtml(m.text)}</div>
+              <div class="text-[10px] text-gray-300 mt-0.5 ${mine ? 'text-right' : ''}">${fmtTime(m.createdAt)}</div>
+            </div>
+          </div>`;
+      }).join("");
+      el.scrollTop = el.scrollHeight;
+    }
+
+    window.sendMessage = async function() {
+      const input = document.getElementById("room-input");
+      const text = input.value.trim();
+      if (!text || !currentTrade || currentTrade.status === "cancelled") return;
+      input.value = "";
+      try {
+        await addDoc(collection(db, "trades", currentTrade.id, "messages"), {
+          senderId: currentUser.uid,
+          senderName: currentUser.displayName || "匿名ファン",
+          text: text.slice(0, 1000),
+          createdAt: serverTimestamp()
+        });
+      } catch (e) {
+        console.error(e);
+        input.value = text;
+        alert("送信に失敗しました。");
+      }
+    };
+
+    window.tradeAction = async function(field) {
+      if (!currentTrade) return;
+      try {
+        await updateDoc(doc(db, "trades", currentTrade.id), {
+          [field + "." + currentUser.uid]: true,
+          updatedAt: serverTimestamp()
+        });
+      } catch (e) {
+        console.error(e);
+        alert("更新に失敗しました。");
+      }
+    };
+
+    window.cancelTrade = async function() {
+      if (!currentTrade || !confirm("この取引をキャンセルしますか？")) return;
+      try {
+        await updateDoc(doc(db, "trades", currentTrade.id), {
+          status: "cancelled",
+          updatedAt: serverTimestamp()
+        });
+      } catch (e) {
+        console.error(e);
+        alert("キャンセルに失敗しました。");
+      }
+    };
+
+    window.deleteRoomPost = async function() {
+      if (!currentTrade || !confirm("この募集を削除しますか？")) return;
+      try {
+        await deleteDoc(doc(db, "posts", currentTrade.postId));
+        alert("募集を削除しました。");
+        loadPosts();
+      } catch (e) {
+        console.error(e);
+        alert("すでに削除されているか、削除できませんでした。");
+      }
+    };
+
+    // ===== 評価 =====
+    window.setRating = function(n) {
+      selectedRating = n;
+      document.querySelectorAll("[data-star]").forEach((b) => {
+        const on = Number(b.dataset.star) <= n;
+        b.className = "text-2xl " + (on ? "text-yellow-400" : "text-gray-300");
+      });
+    };
+
+    window.submitReview = async function() {
+      const t = currentTrade;
+      if (!t) return;
+      if (selectedRating < 1) {
+        alert("星の数を選んでください。");
+        return;
+      }
+      const toId = currentUser.uid === t.ownerId ? t.applicantId : t.ownerId;
+      const comment = (document.getElementById("review-comment").value || "").trim().slice(0, 200);
+      try {
+        await setDoc(doc(db, "reviews", t.id + "_" + currentUser.uid), {
+          tradeId: t.id,
+          fromId: currentUser.uid,
+          toId: toId,
+          rating: selectedRating,
+          comment: comment,
+          createdAt: serverTimestamp()
+        });
+        reviewState.done = true;
+        selectedRating = 0;
+        renderRoom();
+      } catch (e) {
+        console.error(e);
+        alert("評価の送信に失敗しました。");
+      }
+    };
+
+    // ===== 初期化 =====
     renderFilters();
     loadPosts();
   </script>
 </body>
 </html>
-
