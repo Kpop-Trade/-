@@ -67,53 +67,77 @@
       </div>
     </section>
 
-    <!-- メンバー選択・検索フィルター -->
-    <section class="bg-white p-4 md:p-6 rounded-2xl border border-purple-100 shadow-sm space-y-4">
-      <h3 class="font-bold text-sm text-gray-700">メンバーで絞り込む</h3>
-      <div class="flex flex-wrap gap-2">
-        <button class="member-btn bg-purple-50 hover:bg-purple-100 text-illit-darkPurple font-medium text-xs md:text-sm px-3 py-1.5 rounded-full border border-purple-200 transition">全メンバー</button>
-        <button class="member-btn bg-gray-50 hover:bg-purple-50 text-gray-600 font-medium text-xs md:text-sm px-3 py-1.5 rounded-full border border-gray-200 transition">ウォニ (Wonhee)</button>
-        <button class="member-btn bg-gray-50 hover:bg-purple-50 text-gray-600 font-medium text-xs md:text-sm px-3 py-1.5 rounded-full border border-gray-200 transition">ミンジュ (Minju)</button>
-        <button class="member-btn bg-gray-50 hover:bg-purple-50 text-gray-600 font-medium text-xs md:text-sm px-3 py-1.5 rounded-full border border-gray-200 transition">イロハ (Iroha)</button>
-        <button class="member-btn bg-gray-50 hover:bg-purple-50 text-gray-600 font-medium text-xs md:text-sm px-3 py-1.5 rounded-full border border-gray-200 transition">モカ (Moka)</button>
-        <button class="member-btn bg-gray-50 hover:bg-purple-50 text-gray-600 font-medium text-xs md:text-sm px-3 py-1.5 rounded-full border border-gray-200 transition">ユナ (Yuna)</button>
+    <!-- 出品ボタンエリア -->
+    <section class="bg-gradient-to-r from-purple-500 to-illit-accent p-4 md:p-6 rounded-2xl text-white shadow-sm flex justify-between items-center">
+      <div>
+        <h3 class="font-bold text-base md:text-lg">トレカやシリアルコードを交換に出す</h3>
+        <p class="text-xs text-purple-100 mt-0.5">手数料完全無料！ファン同士でスムーズにトレード</p>
       </div>
+      <button onclick="openPostModal()" class="bg-white text-illit-darkPurple font-bold text-xs md:text-sm px-4 py-2.5 rounded-xl shadow hover:bg-purple-50 transition">
+        ＋ 新規出品する
+      </button>
     </section>
 
-    <!-- 出品一覧（ダミー表示） -->
+    <!-- 出品一覧セクション -->
     <section class="space-y-4">
       <div class="flex justify-between items-center px-1">
         <h3 class="font-bold text-base text-gray-800">最新の交換募集</h3>
         <span class="text-xs text-gray-500">手数料 0円</span>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <!-- カード1 -->
-        <div class="bg-white p-4 rounded-2xl border border-purple-100 shadow-sm flex flex-col justify-between space-y-3">
-          <div class="flex items-center space-x-2">
-            <span class="bg-pink-100 text-pink-700 text-xs font-bold px-2 py-0.5 rounded">譲</span>
-            <span class="font-bold text-sm text-gray-800">ミンジュ (SUPER REAL ME Ver.)</span>
-          </div>
-          <div class="flex items-center space-x-2">
-            <span class="bg-purple-100 text-illit-darkPurple text-xs font-bold px-2 py-0.5 rounded">求</span>
-            <span class="font-bold text-sm text-gray-800">ウォニ (同種)</span>
-          </div>
-          <div class="pt-2 border-t border-gray-100 flex justify-between items-center text-xs text-gray-500">
-            <span>出品者: ユーザーA <span class="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">新規</span></span>
-            <button class="bg-illit-purple text-white font-bold px-3 py-1.5 rounded-lg hover:bg-illit-darkPurple transition">詳細を見る</button>
-          </div>
-        </div>
+      <!-- データベースから取得したカードがここに並びます -->
+      <div id="posts-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <p class="text-xs text-gray-400 col-span-2 text-center py-4">読み込み中...</p>
       </div>
     </section>
 
   </main>
 
-  <!-- Firebase Auth スクリプト -->
+  <!-- 出品モーダル（ポップアップ画面） -->
+  <div id="post-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-md rounded-2xl p-6 space-y-4 shadow-xl">
+      <div class="flex justify-between items-center border-b pb-3">
+        <h3 class="font-bold text-base text-gray-800">新規トレカ交換の出品</h3>
+        <button onclick="closePostModal()" class="text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
+      </div>
+      
+      <div class="space-y-3 text-xs md:text-sm">
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">対象メンバー</label>
+          <select id="input-member" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+            <option value="ウォニ (Wonhee)">ウォニ (Wonhee)</option>
+            <option value="ミンジュ (Minju)">ミンジュ (Minju)</option>
+            <option value="イロハ (Iroha)">イロハ (Iroha)</option>
+            <option value="モカ (Moka)">モカ (Moka)</option>
+            <option value="ユナ (Yuna)">ユナ (Yuna)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">【譲】（出すもの）</label>
+          <input type="text" id="input-give" placeholder="例: SUPER REAL ME トレカ" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+        </div>
+
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">【求】（希望するもの）</label>
+          <input type="text" id="input-want" placeholder="例: 同種 ウォニ または シリアル" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+        </div>
+      </div>
+
+      <div class="flex space-x-2 pt-2">
+        <button onclick="closePostModal()" class="flex-1 bg-gray-100 text-gray-600 font-bold py-2.5 rounded-xl hover:bg-gray-200 transition">キャンセル</button>
+        <button onclick="submitPost()" class="flex-1 bg-illit-purple text-white font-bold py-2.5 rounded-xl hover:bg-illit-darkPurple transition">出品する</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase & アプリケーションロジック -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getFirestore, collection, addDoc, getDocs, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // ★ ご自身のFirebaseプロジェクトの設定値に書き換えてください
+    // ★ 新しいFirebaseプロジェクトの設定値に書き換えてください
     const firebaseConfig = {
       apiKey: "ここにAPIキー",
       authDomain: "ここに認証ドメイン",
@@ -125,29 +149,26 @@
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
+    const db = getFirestore(app);
     const provider = new GoogleAuthProvider();
+
+    let currentUser = null;
 
     // ログイン関数
     window.loginWithGoogle = function() {
-      signInWithPopup(auth, provider)
-        .then((result) => {
-          console.log("ログイン成功:", result.user);
-        })
-        .catch((error) => {
-          console.error("ログインエラー:", error);
-          alert("ログインできませんでした: " + error.message);
-        });
+      signInWithPopup(auth, provider).catch((error) => {
+        alert("ログインエラー: " + error.message);
+      });
     };
 
     // ログアウト関数
     window.logout = function() {
-      signOut(auth).then(() => {
-        console.log("ログアウト完了");
-      });
+      signOut(auth);
     };
 
     // ログイン状態の監視
     onAuthStateChanged(auth, (user) => {
+      currentUser = user;
       const loginBtn = document.getElementById("login-btn");
       const userProfile = document.getElementById("user-profile");
       const userName = document.getElementById("user-name");
@@ -161,6 +182,101 @@
         if (userProfile) userProfile.classList.add("hidden");
       }
     });
+
+    // モダル開閉
+    window.openPostModal = function() {
+      if (!currentUser) {
+        alert("出品するにはGoogleログインが必要です。");
+        return;
+      }
+      document.getElementById("post-modal").classList.remove("hidden");
+    };
+
+    window.closePostModal = function() {
+      document.getElementById("post-modal").classList.add("hidden");
+    };
+
+    // 出品データをFirestoreに保存する関数
+    window.submitPost = async function() {
+      const member = document.getElementById("input-member").value;
+      const give = document.getElementById("input-give").value;
+      const want = document.getElementById("input-want").value;
+
+      if (!give || !want) {
+        alert("「譲」と「求」の内容を入力してください。");
+        return;
+      }
+
+      try {
+        await addDoc(collection(db, "posts"), {
+          member: member,
+          give: give,
+          want: want,
+          userName: currentUser.displayName || "匿名ファン",
+          createdAt: serverTimestamp()
+        });
+
+        alert("出品が完了しました！");
+        closePostModal();
+        document.getElementById("input-give").value = "";
+        document.getElementById("input-want").value = "";
+        loadPosts(); // リストを再読み込み
+      } catch (e) {
+        console.error("出品エラー: ", e);
+        alert("出品に失敗しました。");
+      }
+    };
+
+    // Firestoreから出品一覧を読み込んで画面に表示する関数
+    async function loadPosts() {
+      const container = document.getElementById("posts-container");
+      container.innerHTML = '<p class="text-xs text-gray-400 col-span-2 text-center py-4">読み込み中...</p>';
+
+      try {
+        const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+          container.innerHTML = '<p class="text-xs text-gray-400 col-span-2 text-center py-4">現在、出品されているカードはありません。</p>';
+          return;
+        }
+
+        container.innerHTML = "";
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          const cardHtml = `
+            <div class="bg-white p-4 rounded-2xl border border-purple-100 shadow-sm flex flex-col justify-between space-y-3">
+              <div class="flex items-center space-x-2">
+                <span class="bg-pink-100 text-pink-700 text-xs font-bold px-2 py-0.5 rounded">譲</span>
+                <span class="font-bold text-sm text-gray-800">${escapeHtml(data.give)} <span class="text-xs text-gray-400 font-normal">(${escapeHtml(data.member)})</span></span>
+              </div>
+              <div class="flex items-center space-x-2">
+                <span class="bg-purple-100 text-illit-darkPurple text-xs font-bold px-2 py-0.5 rounded">求</span>
+                <span class="font-bold text-sm text-gray-800">${escapeHtml(data.want)}</span>
+              </div>
+              <div class="pt-2 border-t border-gray-100 flex justify-between items-center text-xs text-gray-500">
+                <span>出品者: ${escapeHtml(data.userName)} <span class="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">新規</span></span>
+                <button class="bg-illit-purple text-white font-bold px-3 py-1.5 rounded-lg hover:bg-illit-darkPurple transition">詳細・連絡</button>
+              </div>
+            </div>
+          `;
+          container.innerHTML += cardHtml;
+        });
+      } catch (e) {
+        console.error("読み込みエラー: ", e);
+        container.innerHTML = '<p class="text-xs text-red-400 col-span-2 text-center py-4">データの読み込みに失敗しました。</p>';
+      }
+    }
+
+    // HTMLエスケープ（セキュリティ対策）
+    function escapeHtml(str) {
+      return str.replace(/[&<>'"]/g, 
+        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+      );
+    }
+
+    // ページを開いたときに出品一覧を読み込む
+    loadPosts();
   </script>
 </body>
 </html>
