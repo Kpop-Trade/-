@@ -1758,6 +1758,9 @@
 
       allPosts.forEach((p, index) => {
         if (blocked.includes(p.userId) || p.status === "traded") return;
+        // 🛍 共同購入：募集人数に達したら一覧から自動で非表示（主催者・管理者には表示。キャンセルで枠が空けば再表示）
+        if (p.kind === "group" && Number(p.target || 0) > 0 && joinsOf(p.id).length >= Number(p.target) &&
+            !(currentUser && (p.userId === currentUser.uid || isAdmin()))) return;
 
         const type = getPostType(p);
         const okKind = kindFilter === "all" || (kindFilter === "likes" ? likes.includes(p.id) : kindFilter === type);
