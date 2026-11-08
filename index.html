@@ -427,8 +427,6 @@
 
     const app = initializeApp(firebaseConfig);
 
-    // ★ Firebase App Check の初期化（Bot判定）
-    // Google Cloudで取得したサイトキーがある場合は 'YOUR_RECAPTCHA_SITE_KEY' を置き換えてください
     const recaptchaSiteKey = 'YOUR_RECAPTCHA_SITE_KEY';
     if (recaptchaSiteKey && recaptchaSiteKey !== 'YOUR_RECAPTCHA_SITE_KEY') {
       try {
@@ -1053,6 +1051,7 @@
     window.submitPost = async function() {
       if (submittingPost || processingPhotos) return;
       if (!(await checkDeviceLock())) return;
+
       const member = document.getElementById("input-member").value;
       const give = document.getElementById("input-give").value.trim();
       const want = document.getElementById("input-want").value.trim();
@@ -1065,6 +1064,24 @@
       const price = isBuy ? Number(priceStr) : 0;
       if (isBuy && (!price || price <= 0)) { alert("有効な希望価格を入力してください。"); return; }
       if (!isBuy && postPhotos.length < 1) { alert("状態がわかる写真を1枚以上添付してください。"); return; }
+
+      // 🛡️ 新規アカウント（評価0件）の同時出品1件制限チェック
+      try {
+        const reviewSnap = await getDocs(query(collection(db, "reviews"), where("toId", "==", currentUser.uid)));
+        if (reviewSnap.size === 0) {
+          const myPostsSnap = await getDocs(query(
+            collection(db, "posts"), 
+            where("userId", "==", currentUser.uid),
+            where("status", "==", "active")
+          ));
+          if (myPostsSnap.size >= 1) {
+            alert("⚠️ 出品制限\n評価が0件の新規アカウントは、同時に複数の出品を行うことができません（最大1件まで）。現在の出品が完了するまで新しい出品はお控えください。");
+            return;
+          }
+        }
+      } catch (e) {
+        console.error("出品制限チェックエラー:", e);
+      }
 
       submittingPost = true;
       const btn = document.getElementById("post-submit-btn");
@@ -1161,6 +1178,25 @@
       const price = isBuy ? Number(priceStr) : 0;
       if (isBuy && (!price || price <= 0)) { alert("有効な希望価格を入力してください。"); return; }
       if (deadline && deadline < todayStr()) { alert("有効期限が過去の日付になっています。"); return; }
+
+      // 🛡️ 新規アカウント（評価0件）の同時出品1件制限チェック
+      try {
+        const reviewSnap = await getDocs(query(collection(db, "reviews"), where("toId", "==", currentUser.uid)));
+        if (reviewSnap.size === 0) {
+          const myPostsSnap = await getDocs(query(
+            collection(db, "posts"), 
+            where("userId", "==", currentUser.uid),
+            where("status", "==", "active")
+          ));
+          if (myPostsSnap.size >= 1) {
+            alert("⚠️ 出品制限\n評価が0件の新規アカウントは、同時に複数の出品を行うことができません（最大1件まで）。現在の出品が完了するまで新しい出品はお控えください。");
+            return;
+          }
+        }
+      } catch (e) {
+        console.error("出品制限チェックエラー:", e);
+      }
+
       try {
         await addDoc(collection(db, "posts"), {
           kind: "serial",
@@ -1540,7 +1576,7 @@
       }
     };
 
-    // ===== 申込 =====
+    // ===== 申込（合意するまで募集は残る仕様） =====
     window.applyToPost = async function(index) {
       const p = allPosts[index];
       if (!currentUser || !p || !p.userId) return;
@@ -1571,12 +1607,6 @@
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
         });
-
-        try {
-          await updateDoc(doc(db, "posts", p.id), { status: "traded" });
-        } catch (delErr) {
-          console.error("募集の更新エラー:", delErr);
-        }
 
         closeDetailModal();
         openTrade(ref.id);
@@ -1826,13 +1856,24 @@
       return !!(t[field] && t[field][uid]);
     }
 
-    function advanceIfNeeded() {
+    // 🤝 お互いに合意したら、ここで初めて募集を「traded（取引中）」にしてタイムラインから消す！
+    async function advanceIfNeeded() {
       const t = currentTrade;
       if (!t) return;
       const both = (f) => flag(t, f, t.ownerId) && flag(t, f, t.applicantId);
       let next = null;
-      if (t.status === "negotiating" && both("agreed")) next = "shipping";
-      else if (t.status === "shipping" && both("received")) next = "completed";
+      if (t.status === "negotiating" && both("agreed")) {
+        next = "shipping";
+        // 募集を非表示（traded）にする
+        if (t.postId) {
+          try {
+            await updateDoc(doc(db, "posts", t.postId), { status: "traded" });
+          } catch (e) { console.error(e); }
+        }
+      } else if (t.status === "shipping" && both("received")) {
+        next = "completed";
+      }
+
       if (next) {
         updateDoc(doc(db, "trades", t.id), { status: next, updatedAt: serverTimestamp() }).catch((e) => {});
       }
@@ -1856,7 +1897,7 @@
         return '<div class="text-xs font-bold text-gray-500 bg-gray-100 rounded-lg p-2 text-center">この取引はキャンセルされました</div>';
       }
       const order = ["negotiating", "shipping", "completed"];
-      const labels = isBuy ? ["① 条件確認", "② PayPay送金・発送", "③ 完了"] : ["① 交渉", "② 発送・受取", "③ 完了"];
+      const labels = isBuy ? ["① 条件確認", "② PayPay送金・発送", "③ 完了"] : ["① 交渉・合意", "② 発送・受取", "③ 完了"];
       const idx = order.indexOf(status);
       const on = isBuy ? "bg-pink-500 text-white" : "bg-illit-purple text-white";
       return '<div class="flex space-x-1">' + labels.map((l, i) => {
@@ -1905,8 +1946,8 @@
         const my = flag(t, "agreed", uid), other = flag(t, "agreed", otherId);
         html = `
           <p class="text-xs text-gray-600">${isBuy
-            ? "チャットでPayPay送金の方法や発送予定を確認し、よければ「合意する」を押してください。"
-            : "内容を確認し、納得できたら「合意する」を押してください。"}</p>
+            ? "チャットで条件を確認し、よければ「合意する」を押してください。お互い合意すると正式に成立し、募集が非表示になります。"
+            : "内容を確認し、納得できたら「合意する」を押してください。お互い合意すると正式に成立し、募集が非表示になります。"}</p>
           <div class="text-xs text-gray-600">合意: あなた ${mark(my)} ／ 相手 ${mark(other)}</div>
           ${my ? '<p class="text-xs text-gray-400 text-center">相手の合意を待っています…</p>' : `<button onclick="tradeAction('agreed')" class="${isBuy ? pinkBtn : primary}">合意する</button>`}
           <button onclick="cancelTrade()" class="${btn} bg-white text-gray-400 border border-gray-200 hover:bg-gray-50">キャンセル</button>`;
@@ -2108,13 +2149,14 @@
       }
     };
 
+    // 🔄 キャンセルされたら募集を元の「active（募集中）」にしっかり復活させる
     window.cancelTrade = async function() {
       if (!currentTrade || !confirm("キャンセルしますか？")) return;
       try {
         if (currentTrade.postId) {
           try {
             await updateDoc(doc(db, "posts", currentTrade.postId), { status: "active" });
-          } catch (err) {}
+          } catch (err) { console.error(err); }
         }
         await updateDoc(doc(db, "trades", currentTrade.id), {
           status: "cancelled",
