@@ -4,8 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ILLIT Trade (ILLIT交換・買取・共同購入) - 手数料0円のファン専用安心トレカ・シリアル交換</title>
+  <!-- 👇可愛い丸ゴシックフォントを読み込み -->
+  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="manifest" href="/manifest.json">
-  <meta name="theme-color" content="#b794f4">
+  <meta name="theme-color" content="#c084fc">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <link rel="apple-touch-icon" href="/icon-192.png">
   <script src="https://cdn.tailwindcss.com"></script>
@@ -13,14 +15,18 @@
     tailwind.config = {
       theme: {
         extend: {
+          fontFamily: {
+            // 丸みを帯びた可愛いフォントを全体に適用
+            sans: ['"M PLUS Rounded 1c"', 'sans-serif'],
+          },
           colors: {
             illit: {
-              purple: '#b794f4',
-              pink: '#fbb6ce',
-              darkPurple: '#6b46c1',
-              accent: '#9f7aea',
-              bg: '#faf5ff',
-              softPink: '#fff5f7'
+              purple: '#c084fc', // 少し明るくドリーミーな紫
+              darkPurple: '#9333ea',
+              accent: '#a855f7',
+              pink: '#f472b6',
+              bg: '#fdf4ff', // ほんのりピンクがかった背景
+              card: 'rgba(255, 255, 255, 0.85)', // すりガラス風の白
             }
           }
         }
@@ -28,10 +34,11 @@
     }
   </script>
 </head>
-<body class="bg-illit-bg text-gray-800 min-h-screen font-sans">
+<!-- 👇ふんわりしたパステルグラデーション背景 -->
+<body class="bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 text-gray-800 min-h-screen font-sans bg-fixed">
 
   <!-- ヘッダー -->
-  <header class="bg-white border-b border-purple-100 sticky top-0 z-40 shadow-sm">
+  <header class="bg-white/90 backdrop-blur-md border-b border-purple-100 sticky top-0 z-40 shadow-sm">
     <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
       <div class="flex items-center space-x-2">
         <span class="bg-illit-purple text-white font-bold text-xs px-2 py-1 rounded-full">ILLIT</span>
@@ -39,7 +46,7 @@
       </div>
 
       <div id="auth-container" class="flex items-center space-x-2">
-        <button id="login-btn" onclick="loginWithGoogle()" class="bg-illit-purple hover:bg-illit-darkPurple text-white text-xs md:text-sm font-bold py-2 px-4 rounded-full transition shadow-sm">
+        <button id="login-btn" onclick="loginWithGoogle()" class="bg-gradient-to-r from-illit-purple to-illit-accent text-white text-xs md:text-sm font-bold py-2 px-4 rounded-full transition shadow-sm hover:opacity-90">
           Googleでログイン
         </button>
         <div id="user-profile" class="hidden flex items-center space-x-2">
@@ -49,7 +56,7 @@
           </button>
           <button onclick="openTradesModal()" class="relative bg-purple-100 text-illit-darkPurple text-xs font-bold px-3 py-1.5 rounded-full hover:bg-purple-200 transition">
             💬 取引
-            <span id="trades-badge" class="hidden absolute -top-1.5 -right-1.5 bg-pink-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">0</span>
+            <span id="trades-badge" class="hidden absolute -top-1.5 -right-1.5 bg-pink-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-sm">0</span>
           </button>
           <button onclick="openProfileModal()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold px-2.5 py-1.5 rounded-full transition" title="プロフィール・設定">
             ⚙️ 設定
@@ -65,7 +72,7 @@
   <main class="max-w-4xl mx-auto px-4 py-6 space-y-6">
 
     <!-- 案内・免責事項バナー -->
-    <section class="bg-white p-4 md:p-6 rounded-2xl border border-purple-100 shadow-sm space-y-2">
+    <section class="bg-white/90 backdrop-blur-sm p-4 md:p-6 rounded-2xl border border-purple-100 shadow-sm space-y-2 transition duration-300 hover:shadow-md">
       <div class="flex items-start space-x-3">
         <div class="text-2xl">🤝</div>
         <div>
@@ -75,61 +82,73 @@
           </p>
         </div>
       </div>
-      <div class="bg-gray-50 border border-gray-200 rounded-xl p-3 text-[11px] text-gray-600 leading-relaxed">
+      <div class="bg-gray-50/80 border border-gray-200 rounded-xl p-3 text-[11px] text-gray-600 leading-relaxed">
         <p class="font-bold text-gray-700 mb-0.5">⚠️ 免責事項（ご利用規約）</p>
         <p>本サービスはファン同士の交流および情報交換の場を提供するものです。ユーザー間のトレード・売買・共同購入・発送・金銭授受等のトラブルや損害につきましては、<b>運営は取引に関する一切の責任を負いません。</b>お互いの評価や商品の状態を十分に確認のうえ、自己責任にてご利用ください。</p>
       </div>
     </section>
 
-    <section class="bg-gradient-to-r from-purple-500 to-illit-accent p-4 md:p-6 rounded-2xl text-white shadow-sm space-y-3">
+    <!-- 募集ボタン群 -->
+    <section class="bg-gradient-to-r from-illit-accent to-illit-pink p-4 md:p-6 rounded-2xl text-white shadow-md space-y-3">
       <div>
         <h3 class="font-bold text-base md:text-lg">トレード・買取・共同購入に出す</h3>
         <p class="text-xs text-purple-100 mt-0.5">手数料完全無料！ファン同士でスムーズに取引</p>
       </div>
       <div class="flex space-x-2">
-        <button onclick="openPostModal('exchange')" class="flex-1 bg-white text-illit-darkPurple font-bold text-xs md:text-sm px-3 py-2.5 rounded-xl shadow hover:bg-purple-50 transition">
+        <button onclick="openPostModal('exchange')" class="flex-1 bg-white/95 text-illit-darkPurple font-bold text-xs md:text-sm px-3 py-2.5 rounded-xl shadow hover:bg-white hover:scale-105 active:scale-95 transition-all">
           🃏 トレカ交換
         </button>
-        <button onclick="openPostModal('buy')" class="flex-1 bg-pink-100 text-pink-700 font-bold text-xs md:text-sm px-3 py-2.5 rounded-xl shadow hover:bg-pink-200 transition">
+        <button onclick="openPostModal('buy')" class="flex-1 bg-pink-100/95 text-pink-700 font-bold text-xs md:text-sm px-3 py-2.5 rounded-xl shadow hover:bg-pink-100 hover:scale-105 active:scale-95 transition-all">
           💳 トレカ買取
         </button>
       </div>
       <div class="flex space-x-2">
-        <button onclick="openSerialPostModal('exchange')" class="flex-1 bg-yellow-300 text-yellow-900 font-bold text-xs md:text-sm px-3 py-2.5 rounded-xl shadow hover:bg-yellow-200 transition">
+        <button onclick="openSerialPostModal('exchange')" class="flex-1 bg-yellow-300/95 text-yellow-900 font-bold text-xs md:text-sm px-3 py-2.5 rounded-xl shadow hover:bg-yellow-300 hover:scale-105 active:scale-95 transition-all">
           🎫 シリアルでトレカを求む
         </button>
-        <button onclick="openSerialPostModal('buy')" class="flex-1 bg-yellow-100 text-yellow-900 font-bold text-xs md:text-sm px-3 py-2.5 rounded-xl shadow hover:bg-yellow-100 transition">
+        <button onclick="openSerialPostModal('buy')" class="flex-1 bg-yellow-100/95 text-yellow-900 font-bold text-xs md:text-sm px-3 py-2.5 rounded-xl shadow hover:bg-yellow-100 hover:scale-105 active:scale-95 transition-all">
           💳 シリアル買取
         </button>
       </div>
       <div class="flex space-x-2">
-        <button onclick="openSerialPostModal('sell')" class="flex-1 bg-yellow-200 text-yellow-900 font-bold text-xs md:text-sm px-3 py-2.5 rounded-xl shadow hover:bg-yellow-300 transition">
+        <button onclick="openSerialPostModal('sell')" class="flex-1 bg-yellow-200/95 text-yellow-900 font-bold text-xs md:text-sm px-3 py-2.5 rounded-xl shadow hover:bg-yellow-200 hover:scale-105 active:scale-95 transition-all">
           💰 シリアル売却
         </button>
-        <button onclick="openGroupPostModal()" class="flex-1 bg-teal-100 text-teal-800 font-bold text-xs md:text-sm px-3 py-2.5 rounded-xl shadow hover:bg-teal-200 transition">
+        <button onclick="openGroupPostModal()" class="flex-1 bg-teal-100/95 text-teal-800 font-bold text-xs md:text-sm px-3 py-2.5 rounded-xl shadow hover:bg-teal-100 hover:scale-105 active:scale-95 transition-all">
           🛍 共同購入を主催する
         </button>
       </div>
     </section>
 
+    <!-- 募集一覧 -->
     <section class="space-y-4">
       <div class="flex justify-between items-center px-1">
         <h3 class="font-bold text-base text-gray-800">最新の募集</h3>
-        <span class="text-xs text-gray-500">手数料 0円</span>
+        <span class="text-xs font-bold text-illit-accent">手数料 0円</span>
       </div>
 
+      <!-- フィルター・検索 -->
       <div class="space-y-2">
-        <input type="text" id="search-input" oninput="setSearch(this.value)" placeholder="🔍 譲・求・出品者名で検索" class="w-full border border-purple-100 rounded-xl p-2.5 bg-white text-xs md:text-sm">
+        <input type="text" id="search-input" oninput="setSearch(this.value)" placeholder="🔍 譲・求・出品者名で検索" class="w-full border border-purple-200 rounded-xl p-2.5 bg-white/80 backdrop-blur-sm text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-illit-purple transition">
         <div id="kind-filters" class="flex gap-2 flex-wrap"></div>
         <div id="bundle-filters" class="hidden flex gap-2 flex-wrap"></div>
         <div id="member-filters" class="flex flex-wrap gap-2"></div>
       </div>
 
+      <!-- 投稿リスト -->
       <div id="posts-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <p class="text-xs text-gray-400 col-span-2 text-center py-4">読み込み中...</p>
+        <p class="text-xs text-gray-400 col-span-2 text-center py-4 font-bold">読み込み中...</p>
       </div>
     </section>
   </main>
+
+  <!-- 👇画面右下に浮かぶ出品（＋）ボタン（スマホで超使いやすい！） -->
+  <div class="fixed bottom-6 right-4 md:right-8 z-40 flex flex-col items-end space-y-2">
+    <button onclick="openPostModal('exchange')" class="bg-gradient-to-r from-illit-accent to-illit-pink text-white w-14 h-14 md:w-16 md:h-16 rounded-full shadow-lg shadow-purple-300 flex flex-col items-center justify-center hover:scale-110 active:scale-95 transition-transform duration-200">
+      <span class="text-xl md:text-2xl leading-none font-bold">+</span>
+      <span class="text-[9px] md:text-[10px] font-bold mt-0.5">出品</span>
+    </button>
+  </div>
 
   <footer class="max-w-4xl mx-auto px-4 pb-8 text-center text-[11px] text-gray-400 space-x-3">
     <a href="#" onclick="openTerms(true); return false;" class="underline hover:text-gray-600">利用規約</a>
@@ -137,13 +156,13 @@
   </footer>
 
   <!-- 👑 管理者パネルモーダル -->
-  <div id="admin-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
-    <div class="bg-white w-full max-w-lg rounded-2xl p-6 space-y-4 shadow-xl max-h-[90vh] flex flex-col">
-      <div class="flex justify-between items-center border-b pb-3 shrink-0">
+  <div id="admin-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white/95 w-full max-w-lg rounded-3xl p-6 space-y-4 shadow-xl max-h-[90vh] flex flex-col">
+      <div class="flex justify-between items-center border-b border-purple-100 pb-3 shrink-0">
         <h3 class="font-bold text-base text-gray-800">👑 運営・管理者パネル</h3>
-        <button onclick="closeAdminModal()" class="text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
+        <button onclick="closeAdminModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
       </div>
-      <div class="flex border-b text-xs font-bold shrink-0">
+      <div class="flex border-b border-purple-100 text-xs font-bold shrink-0">
         <button onclick="switchAdminTab('reports')" id="admin-tab-reports" class="flex-1 py-2 border-b-2 border-red-500 text-red-600">🚨 通報一覧</button>
         <button onclick="switchAdminTab('users')" id="admin-tab-users" class="flex-1 py-2 border-b-2 border-transparent text-gray-500">👥 登録ユーザー確認</button>
         <button onclick="switchAdminTab('suspended')" id="admin-tab-suspended" class="flex-1 py-2 border-b-2 border-transparent text-gray-500">🚫 停止中</button>
@@ -151,50 +170,50 @@
       <div id="admin-content" class="flex-1 overflow-y-auto space-y-2 text-xs">
         <p class="text-gray-400 text-center py-4">読み込み中...</p>
       </div>
-      <div class="pt-2 border-t shrink-0">
+      <div class="pt-2 border-t border-purple-100 shrink-0">
         <button onclick="closeAdminModal()" class="w-full bg-gray-100 text-gray-600 font-bold py-2.5 rounded-xl hover:bg-gray-200 transition text-sm">閉じる</button>
       </div>
     </div>
   </div>
 
   <!-- プロフィール・設定モーダル -->
-  <div id="profile-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
-    <div class="bg-white w-full max-w-md rounded-2xl p-6 space-y-4 shadow-xl max-h-[92vh] overflow-y-auto">
-      <div class="flex justify-between items-center border-b pb-3">
+  <div id="profile-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white/95 w-full max-w-md rounded-3xl p-6 space-y-4 shadow-xl max-h-[92vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-purple-100 pb-3">
         <h3 class="font-bold text-base text-gray-800">⚙️ プロフィール・設定</h3>
-        <button onclick="closeProfileModal()" class="text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
+        <button onclick="closeProfileModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
       </div>
       <p class="text-xs text-gray-500">サイト内でのニックネームや、PayPay ID、配送先の管理ができます。</p>
       <div class="space-y-3 text-xs md:text-sm">
         <div>
           <label class="block font-semibold text-gray-700 mb-1">サイト内ニックネーム</label>
-          <input type="text" id="profile-nickname" maxlength="30" placeholder="例: 芋けんぴ推し" class="w-full border border-purple-200 rounded-xl p-2.5 bg-purple-50/50">
+          <input type="text" id="profile-nickname" maxlength="30" placeholder="例: 芋けんぴ推し" class="w-full border border-purple-200 rounded-xl p-2.5 bg-purple-50/50 focus:ring-2 focus:ring-illit-purple focus:outline-none">
         </div>
         <div>
           <label class="block font-semibold text-gray-700 mb-1">💳 PayPay ID（受取用）</label>
-          <input type="text" id="profile-paypay" maxlength="50" placeholder="例: paypay_id_123" class="w-full border border-pink-200 rounded-xl p-2.5 bg-pink-50/50">
+          <input type="text" id="profile-paypay" maxlength="50" placeholder="例: paypay_id_123" class="w-full border border-pink-200 rounded-xl p-2.5 bg-pink-50/50 focus:ring-2 focus:ring-pink-400 focus:outline-none">
           <p class="text-[10px] text-gray-400 mt-0.5">※買取・共同購入の際、相手がワンタップでコピーできるようになります。</p>
         </div>
         <hr class="border-purple-100 my-1">
         <div>
           <label class="block font-semibold text-gray-700 mb-1">お名前（郵送時の宛名）</label>
-          <input type="text" id="profile-name" maxlength="50" placeholder="例: 山田 花子" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+          <input type="text" id="profile-name" maxlength="50" placeholder="例: 山田 花子" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50 focus:ring-2 focus:ring-illit-purple focus:outline-none">
         </div>
         <div>
           <label class="block font-semibold text-gray-700 mb-1">郵便番号</label>
-          <input type="text" id="profile-zip" maxlength="10" placeholder="例: 123-4567" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+          <input type="text" id="profile-zip" maxlength="10" placeholder="例: 123-4567" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50 focus:ring-2 focus:ring-illit-purple focus:outline-none">
         </div>
         <div>
           <label class="block font-semibold text-gray-700 mb-1">都道府県・市区町村・番地</label>
-          <input type="text" id="profile-address1" maxlength="100" placeholder="例: 東京都渋谷区神宮前1-2-3" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+          <input type="text" id="profile-address1" maxlength="100" placeholder="例: 東京都渋谷区神宮前1-2-3" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50 focus:ring-2 focus:ring-illit-purple focus:outline-none">
         </div>
         <div>
           <label class="block font-semibold text-gray-700 mb-1">建物名・部屋番号（任意）</label>
-          <input type="text" id="profile-address2" maxlength="100" placeholder="例: イルーシブ原宿 101号室" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+          <input type="text" id="profile-address2" maxlength="100" placeholder="例: イルーシブ原宿 101号室" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50 focus:ring-2 focus:ring-illit-purple focus:outline-none">
         </div>
         <div>
           <label class="block font-semibold text-gray-700 mb-1">電話番号（任意・伝票用）</label>
-          <input type="text" id="profile-phone" maxlength="20" placeholder="例: 090-1234-5678" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+          <input type="text" id="profile-phone" maxlength="20" placeholder="例: 090-1234-5678" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50 focus:ring-2 focus:ring-illit-purple focus:outline-none">
         </div>
         <hr class="border-purple-100 my-1">
         <div>
@@ -208,28 +227,28 @@
         <div>
           <label class="block font-semibold text-gray-700 mb-1">🚫 ブロック管理</label>
           <p class="text-[11px] text-gray-500 mb-1">ブロック中のユーザーID一覧</p>
-          <div id="blocked-users-box" class="text-xs text-gray-600 bg-gray-50 p-2 rounded-xl mb-1">なし</div>
+          <div id="blocked-users-box" class="text-xs text-gray-600 bg-gray-50 p-2 rounded-xl mb-1 border border-gray-100">なし</div>
           <button onclick="clearBlockedUsers()" class="text-xs text-red-500 underline font-bold">ブロックをすべて解除する</button>
         </div>
       </div>
       <div class="flex space-x-2 pt-2">
         <button onclick="closeProfileModal()" class="flex-1 bg-gray-100 text-gray-600 font-bold py-2.5 rounded-xl hover:bg-gray-200 transition">キャンセル</button>
-        <button onclick="saveProfile()" class="flex-1 bg-illit-purple text-white font-bold py-2.5 rounded-xl hover:bg-illit-darkPurple transition">保存する</button>
+        <button onclick="saveProfile()" class="flex-1 bg-gradient-to-r from-illit-purple to-illit-accent text-white font-bold py-2.5 rounded-xl hover:opacity-90 transition shadow-sm">保存する</button>
       </div>
     </div>
   </div>
 
   <!-- トレカ出品モーダル -->
-  <div id="post-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
-    <div class="bg-white w-full max-w-md rounded-2xl p-6 space-y-4 shadow-xl max-h-[92vh] overflow-y-auto">
-      <div class="flex justify-between items-center border-b pb-3">
+  <div id="post-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white/95 w-full max-w-md rounded-3xl p-6 space-y-4 shadow-xl max-h-[92vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-purple-100 pb-3">
         <h3 id="post-modal-title" class="font-bold text-base text-gray-800">🃏 トレカの出品</h3>
-        <button onclick="closePostModal()" class="text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
+        <button onclick="closePostModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
       </div>
       <div class="space-y-3 text-xs md:text-sm">
         <div>
           <label class="block font-semibold text-gray-700 mb-1">対象メンバー</label>
-          <select id="input-member" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+          <select id="input-member" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50 focus:ring-2 focus:ring-illit-purple focus:outline-none">
             <option value="ウォニ (Wonhee)">ウォニ (Wonhee)</option>
             <option value="ミンジュ (Minju)">ミンジュ (Minju)</option>
             <option value="イロハ (Iroha)">イロハ (Iroha)</option>
@@ -239,23 +258,23 @@
         </div>
         <div>
           <label id="label-give" class="block font-semibold text-gray-700 mb-1">【譲】（出すもの）</label>
-          <input type="text" id="input-give" maxlength="100" placeholder="例: SUPER REAL ME トレカ" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+          <input type="text" id="input-give" maxlength="100" placeholder="例: SUPER REAL ME トレカ" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50 focus:ring-2 focus:ring-illit-purple focus:outline-none">
         </div>
         <div id="want-container">
           <label id="label-want" class="block font-semibold text-gray-700 mb-1">【求】（希望するもの）</label>
-          <input type="text" id="input-want" maxlength="100" placeholder="例: 同種 ウォニ" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+          <input type="text" id="input-want" maxlength="100" placeholder="例: 同種 ウォニ" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50 focus:ring-2 focus:ring-illit-purple focus:outline-none">
         </div>
         <div id="price-container" class="hidden">
           <label class="block font-semibold text-gray-700 mb-1">希望買取り価格（円・PayPay送金）</label>
-          <input type="number" id="input-price" min="1" max="100000" placeholder="例: 1500" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+          <input type="number" id="input-price" min="1" max="100000" placeholder="例: 1500" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50 focus:ring-2 focus:ring-illit-purple focus:outline-none">
         </div>
         <div>
           <label class="block font-semibold text-gray-700 mb-1">説明文・備考（任意）</label>
-          <textarea id="input-desc" maxlength="200" rows="2" placeholder="例: 初期傷があります。硬質ケースに入れて発送します。" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50"></textarea>
+          <textarea id="input-desc" maxlength="200" rows="2" placeholder="例: 初期傷があります。硬質ケースに入れて発送します。" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50 focus:ring-2 focus:ring-illit-purple focus:outline-none"></textarea>
         </div>
         <div>
           <label class="block font-semibold text-gray-700 mb-1">
-            📷 写真 <span id="photo-req-label" class="text-red-500">（必須・最大3枚）</span>
+            📷 写真 <span id="photo-req-label" class="text-illit-pink">（必須・最大3枚）</span>
           </label>
           <p class="text-[11px] text-gray-500 mb-2">表・裏、傷や角の状態がわかる写真を添付してください。（買取希望時は任意）</p>
           <input id="post-photo-input" type="file" accept="image/*" multiple class="hidden" onchange="addPostPhotos(this)">
@@ -264,26 +283,26 @@
       </div>
       <div class="flex space-x-2 pt-2">
         <button onclick="closePostModal()" class="flex-1 bg-gray-100 text-gray-600 font-bold py-2.5 rounded-xl hover:bg-gray-200 transition">キャンセル</button>
-        <button id="post-submit-btn" onclick="submitPost()" class="flex-1 bg-illit-purple text-white font-bold py-2.5 rounded-xl hover:bg-illit-darkPurple transition">出品する</button>
+        <button id="post-submit-btn" onclick="submitPost()" class="flex-1 bg-gradient-to-r from-illit-purple to-illit-accent text-white font-bold py-2.5 rounded-xl hover:opacity-90 transition shadow-sm">出品する</button>
       </div>
     </div>
   </div>
 
   <!-- シリアル出品モーダル -->
-  <div id="serial-post-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
-    <div class="bg-white w-full max-w-md rounded-2xl p-6 space-y-4 shadow-xl max-h-[92vh] overflow-y-auto">
-      <div class="flex justify-between items-center border-b pb-3">
+  <div id="serial-post-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white/95 w-full max-w-md rounded-3xl p-6 space-y-4 shadow-xl max-h-[92vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-purple-100 pb-3">
         <h3 id="serial-modal-title" class="font-bold text-base text-gray-800">🎫 シリアルでトレカを求める</h3>
-        <button onclick="closeSerialPostModal()" class="text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
+        <button onclick="closeSerialPostModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
       </div>
-      <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-3 text-[11px] text-yellow-800 space-y-1">
+      <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-3 text-[11px] text-yellow-800 space-y-1 shadow-sm">
         <p class="font-bold">⚠️ 出品前にご確認ください</p>
         <p>・<b>実際のシリアルコードは出品に書かないでください。</b>成立後、取引ルーム内でのみ送ります。</p>
       </div>
       <div class="space-y-3 text-xs md:text-sm">
         <div>
           <label class="block font-semibold text-gray-700 mb-1">対象メンバー</label>
-          <select id="serial-member" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+          <select id="serial-member" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50 focus:ring-2 focus:ring-yellow-400 focus:outline-none">
             <option value="指定なし">指定なし</option>
             <option value="ウォニ (Wonhee)">ウォニ (Wonhee)</option>
             <option value="ミンジュ (Minju)">ミンジュ (Minju)</option>
@@ -294,40 +313,40 @@
         </div>
         <div>
           <label id="serial-label-give" class="block font-semibold text-gray-700 mb-1">【譲】出せるシリアル</label>
-          <input type="text" id="serial-give" maxlength="100" placeholder="例: 〇〇盤 応募シリアル 1枚" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+          <input type="text" id="serial-give" maxlength="100" placeholder="例: 〇〇盤 応募シリアル 1枚" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50 focus:ring-2 focus:ring-yellow-400 focus:outline-none">
         </div>
         <div id="serial-want-container">
           <label id="serial-label-want" class="block font-semibold text-gray-700 mb-1">【求】求めたいトレカ</label>
-          <input type="text" id="serial-want" maxlength="100" placeholder="例: Moka トレカ" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+          <input type="text" id="serial-want" maxlength="100" placeholder="例: Moka トレカ" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50 focus:ring-2 focus:ring-yellow-400 focus:outline-none">
         </div>
         <div id="serial-price-container" class="hidden">
           <label class="block font-semibold text-gray-700 mb-1">希望価格（円・PayPay送金）</label>
-          <input type="number" id="serial-price" min="1" max="100000" placeholder="例: 1000" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+          <input type="number" id="serial-price" min="1" max="100000" placeholder="例: 1000" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50 focus:ring-2 focus:ring-yellow-400 focus:outline-none">
         </div>
         <div>
           <label class="block font-semibold text-gray-700 mb-1">有効期限（任意）</label>
-          <input type="date" id="serial-deadline" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+          <input type="date" id="serial-deadline" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50 focus:ring-2 focus:ring-yellow-400 focus:outline-none">
         </div>
         <div>
           <label class="block font-semibold text-gray-700 mb-1">説明文・備考（任意）</label>
-          <textarea id="serial-note" maxlength="200" rows="2" placeholder="例: 未使用です。コードのみ通知も可能です。" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50"></textarea>
+          <textarea id="serial-note" maxlength="200" rows="2" placeholder="例: 未使用です。コードのみ通知も可能です。" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50 focus:ring-2 focus:ring-yellow-400 focus:outline-none"></textarea>
         </div>
       </div>
       <div class="flex space-x-2 pt-2">
         <button onclick="closeSerialPostModal()" class="flex-1 bg-gray-100 text-gray-600 font-bold py-2.5 rounded-xl hover:bg-gray-200 transition">キャンセル</button>
-        <button onclick="submitSerialPost()" class="flex-1 bg-yellow-400 text-yellow-900 font-bold py-2.5 rounded-xl hover:bg-yellow-300 transition">出品する</button>
+        <button onclick="submitSerialPost()" class="flex-1 bg-gradient-to-r from-yellow-400 to-yellow-500 text-yellow-900 font-bold py-2.5 rounded-xl hover:opacity-90 transition shadow-sm">出品する</button>
       </div>
     </div>
   </div>
 
   <!-- 🛍 共同購入 主催モーダル -->
-  <div id="group-post-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
-    <div class="bg-white w-full max-w-md rounded-2xl p-6 space-y-4 shadow-xl max-h-[92vh] overflow-y-auto">
-      <div class="flex justify-between items-center border-b pb-3">
+  <div id="group-post-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white/95 w-full max-w-md rounded-3xl p-6 space-y-4 shadow-xl max-h-[92vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-purple-100 pb-3">
         <h3 class="font-bold text-base text-gray-800">🛍 共同購入を主催する</h3>
-        <button onclick="closeGroupPostModal()" class="text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
+        <button onclick="closeGroupPostModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
       </div>
-      <div class="bg-teal-50 border border-teal-200 rounded-xl p-3 text-[11px] text-teal-800 space-y-1">
+      <div class="bg-teal-50 border border-teal-200 rounded-xl p-3 text-[11px] text-teal-800 space-y-1 shadow-sm">
         <p class="font-bold">⚠️ 主催前にご確認ください</p>
         <p>・参加者は「参加する」を押すと、あなたとの専用取引ルームが作られます。</p>
         <p>・代金のやり取りは個別のPayPay送金です。<b>目標人数が集まるまで入金を受け取らない</b>など、参加者が安心できる進め方を推奨します。</p>
@@ -336,7 +355,7 @@
       <div class="space-y-3 text-xs md:text-sm">
         <div>
           <label class="block font-semibold text-gray-700 mb-1">対象メンバー</label>
-          <select id="group-member" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+          <select id="group-member" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50 focus:ring-2 focus:ring-teal-400 focus:outline-none">
             <option value="指定なし">指定なし</option>
             <option value="ウォニ (Wonhee)">ウォニ (Wonhee)</option>
             <option value="ミンジュ (Minju)">ミンジュ (Minju)</option>
@@ -347,33 +366,33 @@
         </div>
         <div>
           <label class="block font-semibold text-gray-700 mb-1">【商品】共同購入する内容</label>
-          <input type="text" id="group-give" maxlength="100" placeholder="例: 〇〇盤 CD 共同購入（特典トレカ目当て）" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+          <input type="text" id="group-give" maxlength="100" placeholder="例: 〇〇盤 CD 共同購入（特典トレカ目当て）" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50 focus:ring-2 focus:ring-teal-400 focus:outline-none">
         </div>
         <div>
           <label class="block font-semibold text-gray-700 mb-1">1人あたりの金額（円・PayPay送金）</label>
-          <input type="number" id="group-price" min="1" max="100000" placeholder="例: 1500" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+          <input type="number" id="group-price" min="1" max="100000" placeholder="例: 1500" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50 focus:ring-2 focus:ring-teal-400 focus:outline-none">
         </div>
         <div>
           <label class="block font-semibold text-gray-700 mb-1">募集人数（主催者を除く）</label>
-          <input type="number" id="group-target" min="1" max="100" placeholder="例: 5" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+          <input type="number" id="group-target" min="1" max="100" placeholder="例: 5" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50 focus:ring-2 focus:ring-teal-400 focus:outline-none">
         </div>
         <div>
           <label class="block font-semibold text-gray-700 mb-1">🔗 抱き合わせ</label>
-          <select id="group-bundle" onchange="onGroupBundleChange()" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+          <select id="group-bundle" onchange="onGroupBundleChange()" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50 focus:ring-2 focus:ring-teal-400 focus:outline-none">
             <option value="only">🔒 抱き合わせ限定（抱き合わせ込みでのみ参加可）</option>
             <option value="prefer">⭐ 抱き合わせ優先（希望者を優先）</option>
             <option value="ok">🔗 どちらでも可</option>
             <option value="ng">🚫 単品のみ（抱き合わせ不可）</option>
           </select>
-          <p class="text-[10px] text-gray-400 mt-0.5">※「抱き合わせ」＝他の商品・トレカなどをセットで購入・引き取ってもらうことです。限定＝抱き合わせ込みでのみ参加可／優先＝希望者を優先／どちらでも可／単品のみ。</p>
+          <p class="text-[10px] text-gray-400 mt-0.5">※「抱き合わせ」＝他の商品・トレカなどをセットで購入・引き取ってもらうことです。</p>
         </div>
         <div id="group-bundle-note-box">
           <label class="block font-semibold text-gray-700 mb-1">抱き合わせの内容（任意）</label>
-          <input type="text" id="group-bundle-note" maxlength="100" placeholder="例: 他メンバーのトレカ1枚をセットで引き取り" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+          <input type="text" id="group-bundle-note" maxlength="100" placeholder="例: 他メンバーのトレカ1枚をセットで引き取り" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50 focus:ring-2 focus:ring-teal-400 focus:outline-none">
         </div>
         <div>
           <label class="block font-semibold text-gray-700 mb-1">📦 送料</label>
-          <select id="group-shipping" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+          <select id="group-shipping" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50 focus:ring-2 focus:ring-teal-400 focus:outline-none">
             <option value="organizer">主催者負担</option>
             <option value="split">参加者で割り勘</option>
             <option value="self">各自負担（個別発送の送料）</option>
@@ -381,11 +400,11 @@
         </div>
         <div>
           <label class="block font-semibold text-gray-700 mb-1">募集締切（任意）</label>
-          <input type="date" id="group-deadline" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+          <input type="date" id="group-deadline" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50 focus:ring-2 focus:ring-teal-400 focus:outline-none">
         </div>
         <div>
           <label class="block font-semibold text-gray-700 mb-1">説明文・備考（任意）</label>
-          <textarea id="group-desc" maxlength="200" rows="3" placeholder="例: 購入先、発送予定時期、受け渡し方法など" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50"></textarea>
+          <textarea id="group-desc" maxlength="200" rows="3" placeholder="例: 購入先、発送予定時期、受け渡し方法など" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50 focus:ring-2 focus:ring-teal-400 focus:outline-none"></textarea>
         </div>
         <div>
           <label class="block font-semibold text-gray-700 mb-1">📷 写真 <span class="text-gray-400 font-normal">（任意・最大3枚）</span></label>
@@ -395,52 +414,52 @@
       </div>
       <div class="flex space-x-2 pt-2">
         <button onclick="closeGroupPostModal()" class="flex-1 bg-gray-100 text-gray-600 font-bold py-2.5 rounded-xl hover:bg-gray-200 transition">キャンセル</button>
-        <button id="group-submit-btn" onclick="submitGroupPost()" class="flex-1 bg-teal-500 text-white font-bold py-2.5 rounded-xl hover:bg-teal-600 transition">主催する</button>
+        <button id="group-submit-btn" onclick="submitGroupPost()" class="flex-1 bg-gradient-to-r from-teal-400 to-teal-500 text-white font-bold py-2.5 rounded-xl hover:opacity-90 transition shadow-sm">主催する</button>
       </div>
     </div>
   </div>
 
   <!-- 出品編集モーダル -->
-  <div id="edit-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
-    <div class="bg-white w-full max-w-md rounded-2xl p-6 space-y-4 shadow-xl max-h-[92vh] overflow-y-auto">
-      <div class="flex justify-between items-center border-b pb-3">
+  <div id="edit-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white/95 w-full max-w-md rounded-3xl p-6 space-y-4 shadow-xl max-h-[92vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-purple-100 pb-3">
         <h3 class="font-bold text-base text-gray-800">✏️ 募集の編集</h3>
-        <button onclick="closeEditModal()" class="text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
+        <button onclick="closeEditModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
       </div>
       <div class="space-y-3 text-xs md:text-sm">
         <div>
           <label id="edit-label-give" class="block font-semibold text-gray-700 mb-1">【譲】</label>
-          <input type="text" id="edit-give" maxlength="100" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+          <input type="text" id="edit-give" maxlength="100" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50 focus:ring-2 focus:ring-illit-purple focus:outline-none">
         </div>
         <div id="edit-want-container">
           <label class="block font-semibold text-gray-700 mb-1">【求】</label>
-          <input type="text" id="edit-want" maxlength="100" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+          <input type="text" id="edit-want" maxlength="100" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50 focus:ring-2 focus:ring-illit-purple focus:outline-none">
         </div>
         <div id="edit-price-container" class="hidden">
           <label id="edit-label-price" class="block font-semibold text-gray-700 mb-1">希望価格（円・PayPay送金）</label>
-          <input type="number" id="edit-price" min="1" max="100000" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+          <input type="number" id="edit-price" min="1" max="100000" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50 focus:ring-2 focus:ring-illit-purple focus:outline-none">
         </div>
         <div id="edit-group-container" class="hidden space-y-3">
           <div>
             <label class="block font-semibold text-gray-700 mb-1">募集人数（主催者を除く）</label>
-            <input type="number" id="edit-target" min="1" max="100" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+            <input type="number" id="edit-target" min="1" max="100" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50 focus:ring-2 focus:ring-teal-400 focus:outline-none">
           </div>
           <div>
             <label class="block font-semibold text-gray-700 mb-1">🔗 抱き合わせ</label>
-            <select id="edit-bundle" onchange="onEditBundleChange()" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+            <select id="edit-bundle" onchange="onEditBundleChange()" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50 focus:ring-2 focus:ring-teal-400 focus:outline-none">
               <option value="only">🔒 抱き合わせ限定（抱き合わせ込みでのみ参加可）</option>
-            <option value="prefer">⭐ 抱き合わせ優先（希望者を優先）</option>
-            <option value="ok">🔗 どちらでも可</option>
-            <option value="ng">🚫 単品のみ（抱き合わせ不可）</option>
+              <option value="prefer">⭐ 抱き合わせ優先（希望者を優先）</option>
+              <option value="ok">🔗 どちらでも可</option>
+              <option value="ng">🚫 単品のみ（抱き合わせ不可）</option>
             </select>
           </div>
           <div id="edit-bundle-note-box">
             <label class="block font-semibold text-gray-700 mb-1">抱き合わせの内容（任意）</label>
-            <input type="text" id="edit-bundle-note" maxlength="100" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+            <input type="text" id="edit-bundle-note" maxlength="100" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50 focus:ring-2 focus:ring-teal-400 focus:outline-none">
           </div>
           <div>
             <label class="block font-semibold text-gray-700 mb-1">📦 送料</label>
-            <select id="edit-shipping" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+            <select id="edit-shipping" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50 focus:ring-2 focus:ring-teal-400 focus:outline-none">
               <option value="organizer">主催者負担</option>
               <option value="split">参加者で割り勘</option>
               <option value="self">各自負担（個別発送の送料）</option>
@@ -449,36 +468,36 @@
         </div>
         <div id="edit-deadline-container" class="hidden">
           <label class="block font-semibold text-gray-700 mb-1">有効期限・締切（任意）</label>
-          <input type="date" id="edit-deadline" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+          <input type="date" id="edit-deadline" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50 focus:ring-2 focus:ring-illit-purple focus:outline-none">
         </div>
         <div>
           <label class="block font-semibold text-gray-700 mb-1">説明文・備考（任意）</label>
-          <textarea id="edit-desc" maxlength="200" rows="3" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50"></textarea>
+          <textarea id="edit-desc" maxlength="200" rows="3" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50 focus:ring-2 focus:ring-illit-purple focus:outline-none"></textarea>
         </div>
         <p id="edit-photo-note" class="text-[11px] text-gray-400">※写真を変えたい場合は、一度削除して出品し直してください。</p>
       </div>
       <div class="flex space-x-2 pt-2">
         <button onclick="closeEditModal()" class="flex-1 bg-gray-100 text-gray-600 font-bold py-2.5 rounded-xl hover:bg-gray-200 transition">キャンセル</button>
-        <button onclick="submitEditPost()" class="flex-1 bg-illit-purple text-white font-bold py-2.5 rounded-xl hover:bg-illit-darkPurple transition">保存する</button>
+        <button onclick="submitEditPost()" class="flex-1 bg-gradient-to-r from-illit-purple to-illit-accent text-white font-bold py-2.5 rounded-xl hover:opacity-90 transition shadow-sm">保存する</button>
       </div>
     </div>
   </div>
 
   <!-- 詳細モーダル -->
-  <div id="detail-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
-    <div class="bg-white w-full max-w-md rounded-2xl p-6 space-y-4 shadow-xl max-h-[92vh] overflow-y-auto">
-      <div class="flex justify-between items-center border-b pb-3">
+  <div id="detail-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white/95 w-full max-w-md rounded-3xl p-6 space-y-4 shadow-xl max-h-[92vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-purple-100 pb-3">
         <h3 id="detail-title" class="font-bold text-base text-gray-800">募集の詳細</h3>
-        <button onclick="closeDetailModal()" class="text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
+        <button onclick="closeDetailModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
       </div>
       <div class="space-y-3 text-xs md:text-sm">
         <div id="detail-photos"></div>
-        <div class="bg-purple-50 p-3 rounded-xl space-y-2">
+        <div class="bg-purple-50/70 p-3 rounded-xl space-y-2 border border-purple-100">
           <div><span class="font-bold text-gray-500">メンバー:</span> <span id="detail-member" class="font-semibold text-gray-800"></span></div>
-          <div id="detail-give-box"><span class="bg-pink-100 text-pink-700 text-xs font-bold px-2 py-0.5 rounded">譲</span> <span id="detail-give" class="font-bold text-gray-800 ml-1"></span></div>
-          <div id="detail-want-box"><span class="bg-purple-100 text-illit-darkPurple text-xs font-bold px-2 py-0.5 rounded">求</span> <span id="detail-want" class="font-bold text-gray-800 ml-1"></span></div>
-          <div id="detail-price-box" class="hidden"><span class="bg-pink-500 text-white text-xs font-bold px-2 py-0.5 rounded">価格</span> <span id="detail-price" class="font-bold text-pink-600 ml-1 text-base"></span></div>
-          <div id="detail-desc-box" class="pt-1 border-t border-purple-100 text-gray-700 text-xs whitespace-pre-wrap"></div>
+          <div id="detail-give-box"><span class="bg-pink-200 text-pink-700 text-xs font-bold px-2 py-0.5 rounded">譲</span> <span id="detail-give" class="font-bold text-gray-800 ml-1"></span></div>
+          <div id="detail-want-box"><span class="bg-purple-200 text-illit-darkPurple text-xs font-bold px-2 py-0.5 rounded">求</span> <span id="detail-want" class="font-bold text-gray-800 ml-1"></span></div>
+          <div id="detail-price-box" class="hidden"><span class="bg-gradient-to-r from-pink-400 to-pink-500 text-white text-xs font-bold px-2 py-0.5 rounded shadow-sm">価格</span> <span id="detail-price" class="font-bold text-pink-600 ml-1 text-base"></span></div>
+          <div id="detail-desc-box" class="pt-1 border-t border-purple-200 text-gray-700 text-xs whitespace-pre-wrap"></div>
           <div id="detail-extra" class="text-xs text-gray-600 space-y-1"></div>
         </div>
         <div class="flex justify-between items-center">
@@ -486,14 +505,14 @@
             <span class="font-semibold text-gray-700">出品者:</span> <span id="detail-user" class="text-gray-600"></span>
             <span id="detail-rating" class="ml-2 text-yellow-500 font-bold"></span>
           </div>
-          <button id="detail-like-btn" onclick="toggleDetailLike()" class="bg-pink-50 text-pink-500 font-bold px-3 py-1.5 rounded-full text-xs border border-pink-200 hover:bg-pink-100 transition flex items-center space-x-1">
+          <button id="detail-like-btn" onclick="toggleDetailLike()" class="bg-pink-50 text-pink-500 font-bold px-3 py-1.5 rounded-full text-xs border border-pink-200 hover:bg-pink-100 transition flex items-center space-x-1 shadow-sm">
             <span>♡</span> <span id="detail-like-count">いいね</span>
           </button>
         </div>
         <div id="detail-user-actions" class="flex space-x-2 text-xs">
-          <button id="detail-block-user-btn" onclick="" class="text-gray-400 hover:text-red-500 underline">このユーザーをブロックする</button>
+          <button id="detail-block-user-btn" onclick="" class="text-gray-400 hover:text-red-500 underline transition">このユーザーをブロックする</button>
         </div>
-        <p id="detail-tip" class="text-gray-500 text-xs bg-gray-50 p-3 rounded-xl leading-relaxed"></p>
+        <p id="detail-tip" class="text-gray-500 text-xs bg-gray-50/80 p-3 rounded-xl leading-relaxed border border-gray-100"></p>
       </div>
       <div id="detail-actions" class="space-y-2"></div>
       <button onclick="closeDetailModal()" class="w-full bg-gray-100 text-gray-600 font-bold py-2.5 rounded-xl hover:bg-gray-200 transition text-sm">閉じる</button>
@@ -501,25 +520,25 @@
   </div>
 
   <!-- 取引一覧モーダル -->
-  <div id="trades-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
-    <div class="bg-white w-full max-w-md rounded-2xl p-6 space-y-4 shadow-xl max-h-[85vh] flex flex-col">
-      <div class="flex justify-between items-center border-b pb-3 shrink-0">
+  <div id="trades-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white/95 w-full max-w-md rounded-3xl p-6 space-y-4 shadow-xl max-h-[85vh] flex flex-col">
+      <div class="flex justify-between items-center border-b border-purple-100 pb-3 shrink-0">
         <h3 class="font-bold text-base text-gray-800">あなたの取引</h3>
-        <button onclick="closeTradesModal()" class="text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
+        <button onclick="closeTradesModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
       </div>
       <div id="trades-list" class="space-y-2 overflow-y-auto"></div>
     </div>
   </div>
 
   <!-- 取引ルーム（チャット） -->
-  <div id="room-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center md:p-4">
-    <div class="bg-white w-full max-w-md h-full md:h-[90vh] md:rounded-2xl shadow-xl flex flex-col overflow-hidden">
-      <div class="flex justify-between items-center px-4 py-3 border-b shrink-0">
+  <div id="room-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm hidden z-50 flex items-center justify-center md:p-4">
+    <div class="bg-white/95 w-full max-w-md h-full md:h-[90vh] md:rounded-3xl shadow-xl flex flex-col overflow-hidden">
+      <div class="flex justify-between items-center px-4 py-3 border-b border-purple-100 shrink-0 bg-white/90">
         <h3 id="room-title" class="font-bold text-sm text-gray-800 truncate"></h3>
-        <button onclick="closeRoom()" class="text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
+        <button onclick="closeRoom()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
       </div>
 
-      <div class="p-4 space-y-3 border-b bg-purple-50/50 overflow-y-auto shrink-0 max-h-[52%]" id="room-top-box">
+      <div class="p-4 space-y-3 border-b border-purple-100 bg-purple-50/30 overflow-y-auto shrink-0 max-h-[52%]" id="room-top-box">
         <div id="room-info"></div>
         <div id="room-paypay-box"></div>
         <div id="room-photos"></div>
@@ -529,28 +548,28 @@
       </div>
 
       <!-- チャット定型文ボタン -->
-      <div class="px-3 py-1.5 bg-purple-50 border-b flex gap-1.5 overflow-x-auto shrink-0 text-[11px]">
-        <button onclick="sendQuickMsg('よろしくおねがいします！')" class="bg-white border border-purple-200 px-2.5 py-1 rounded-full text-purple-700 font-bold shrink-0 hover:bg-purple-100">👋 よろしくお願いします</button>
-        <button onclick="sendQuickMsg('PayPayで送金しますので、リンクまたはPayPay IDを教えてください！')" class="bg-white border border-pink-200 px-2.5 py-1 rounded-full text-pink-700 font-bold shrink-0 hover:bg-purple-100">💳 PayPay送金案内</button>
-        <button onclick="sendQuickMsg('水濡れ・折れ防止をして発送いたします！')" class="bg-white border border-purple-200 px-2.5 py-1 rounded-full text-purple-700 font-bold shrink-0 hover:bg-purple-100">📦 梱包して発送します</button>
-        <button onclick="sendQuickMsg('本日発送いたしました！到着までお待ちください。')" class="bg-white border border-purple-200 px-2.5 py-1 rounded-full text-purple-700 font-bold shrink-0 hover:bg-purple-100">📮 発送完了</button>
-        <button onclick="sendQuickMsg('無事に受け取りました！丁寧な取引ありがとうございました✨')" class="bg-white border border-purple-200 px-2.5 py-1 rounded-full text-purple-700 font-bold shrink-0 hover:bg-purple-100">✨ 受取完了</button>
+      <div class="px-3 py-1.5 bg-purple-50/50 border-b border-purple-100 flex gap-1.5 overflow-x-auto shrink-0 text-[11px]">
+        <button onclick="sendQuickMsg('よろしくおねがいします！')" class="bg-white border border-purple-200 px-2.5 py-1 rounded-full text-purple-700 font-bold shrink-0 hover:bg-purple-100 shadow-sm transition">👋 よろしくお願いします</button>
+        <button onclick="sendQuickMsg('PayPayで送金しますので、リンクまたはPayPay IDを教えてください！')" class="bg-white border border-pink-200 px-2.5 py-1 rounded-full text-pink-700 font-bold shrink-0 hover:bg-pink-50 shadow-sm transition">💳 PayPay送金案内</button>
+        <button onclick="sendQuickMsg('水濡れ・折れ防止をして発送いたします！')" class="bg-white border border-purple-200 px-2.5 py-1 rounded-full text-purple-700 font-bold shrink-0 hover:bg-purple-100 shadow-sm transition">📦 梱包して発送します</button>
+        <button onclick="sendQuickMsg('本日発送いたしました！到着までお待ちください。')" class="bg-white border border-purple-200 px-2.5 py-1 rounded-full text-purple-700 font-bold shrink-0 hover:bg-purple-100 shadow-sm transition">📮 発送完了</button>
+        <button onclick="sendQuickMsg('無事に受け取りました！丁寧な取引ありがとうございました✨')" class="bg-white border border-purple-200 px-2.5 py-1 rounded-full text-purple-700 font-bold shrink-0 hover:bg-purple-100 shadow-sm transition">✨ 受取完了</button>
       </div>
 
-      <div id="room-messages" class="flex-1 overflow-y-auto p-4 space-y-2 bg-white"></div>
+      <div id="room-messages" class="flex-1 overflow-y-auto p-4 space-y-2 bg-white/90"></div>
 
-      <div class="p-3 border-t flex items-center space-x-2 shrink-0">
+      <div class="p-3 border-t border-purple-100 flex items-center space-x-2 shrink-0 bg-white/90">
         <input id="image-input" type="file" accept="image/*" class="hidden" onchange="sendImage(this)">
-        <button id="room-photo" onclick="document.getElementById('image-input').click()" class="text-xl px-2 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 transition" title="写真を送る">📷</button>
-        <input id="room-input" type="text" maxlength="1000" placeholder="メッセージを入力" onkeydown="if(event.key==='Enter'&&!event.isComposing){sendMessage();}" class="flex-1 min-w-0 border border-gray-200 rounded-xl p-2.5 bg-gray-50 text-sm">
-        <button id="room-send" onclick="sendMessage()" class="bg-illit-purple text-white font-bold text-sm px-4 py-2.5 rounded-xl hover:bg-illit-darkPurple transition">送信</button>
+        <button id="room-photo" onclick="document.getElementById('image-input').click()" class="text-xl px-2 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-600 transition" title="写真を送る">📷</button>
+        <input id="room-input" type="text" maxlength="1000" placeholder="メッセージを入力" onkeydown="if(event.key==='Enter'&&!event.isComposing){sendMessage();}" class="flex-1 min-w-0 border border-purple-200 rounded-xl p-2.5 bg-gray-50 focus:ring-2 focus:ring-illit-purple focus:outline-none text-sm shadow-inner">
+        <button id="room-send" onclick="sendMessage()" class="bg-gradient-to-r from-illit-purple to-illit-accent text-white font-bold text-sm px-4 py-2.5 rounded-xl hover:opacity-90 transition shadow-sm">送信</button>
       </div>
     </div>
   </div>
 
-  <!-- 🚫 アカウント停止モーダル（停止中のユーザーに表示・閉じられない） -->
-  <div id="suspended-modal" class="fixed inset-0 bg-black/80 hidden z-[80] flex items-center justify-center p-4">
-    <div class="bg-white w-full max-w-sm rounded-2xl p-6 space-y-3 shadow-xl text-center">
+  <!-- 🚫 アカウント停止モーダル -->
+  <div id="suspended-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden z-[80] flex items-center justify-center p-4">
+    <div class="bg-white/95 w-full max-w-sm rounded-3xl p-6 space-y-3 shadow-xl text-center">
       <div class="text-4xl">🚫</div>
       <h3 class="font-bold text-base text-gray-800">アカウントが停止されています</h3>
       <p class="text-xs text-gray-600">利用規約に反する行為などにより、このアカウントの利用が停止されました。</p>
@@ -562,15 +581,15 @@
     </div>
   </div>
 
-  <!-- 📜 利用規約モーダル（初回は同意必須） -->
-  <div id="terms-modal" class="fixed inset-0 bg-black/60 hidden z-[70] flex items-center justify-center p-4">
-    <div class="bg-white w-full max-w-md rounded-2xl p-5 space-y-3 shadow-xl max-h-[92vh] flex flex-col">
-      <div class="flex justify-between items-center border-b pb-2 shrink-0">
+  <!-- 📜 利用規約モーダル -->
+  <div id="terms-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-[70] flex items-center justify-center p-4">
+    <div class="bg-white/95 w-full max-w-md rounded-3xl p-5 space-y-3 shadow-xl max-h-[92vh] flex flex-col">
+      <div class="flex justify-between items-center border-b border-purple-100 pb-2 shrink-0">
         <h3 class="font-bold text-base text-gray-800">📜 ご利用規約</h3>
-        <button id="terms-close-btn" onclick="closeTerms()" class="hidden text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
+        <button id="terms-close-btn" onclick="closeTerms()" class="hidden text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
       </div>
       <p id="terms-lead" class="text-xs text-gray-600 shrink-0">ご利用の前に、以下の規約をお読みのうえ、同意をお願いします。</p>
-      <div class="flex-1 overflow-y-auto text-[12px] text-gray-700 leading-relaxed space-y-3 bg-gray-50 border border-gray-200 rounded-xl p-3">
+      <div class="flex-1 overflow-y-auto text-[12px] text-gray-700 leading-relaxed space-y-3 bg-gray-50/80 border border-gray-200 rounded-xl p-3 shadow-inner">
         <div>
           <p class="font-bold text-gray-800">1. 本サービスについて</p>
           <p>ILLIT Trade（以下「本サービス」）は、ファン有志が運営する非公式のサービスで、ILLITおよび所属会社・関係各社とは一切関係ありません。ファン同士のトレカ・シリアルの交換、売買、共同購入の場を提供するもので、手数料は無料です。</p>
@@ -620,21 +639,21 @@
       </div>
       <div id="terms-agree-area" class="space-y-2 shrink-0">
         <label class="flex items-start space-x-2 text-xs text-gray-700">
-          <input type="checkbox" id="terms-check" onchange="onTermsCheck()" class="mt-0.5">
+          <input type="checkbox" id="terms-check" onchange="onTermsCheck()" class="mt-0.5 text-illit-purple focus:ring-illit-purple rounded">
           <span>上記の利用規約をすべて読み、内容に同意します。</span>
         </label>
         <div class="flex space-x-2">
           <button onclick="declineTerms()" class="flex-1 bg-gray-100 text-gray-600 font-bold py-2.5 rounded-xl hover:bg-gray-200 transition text-sm">同意しない</button>
-          <button id="terms-agree-btn" onclick="agreeTerms()" disabled class="flex-1 bg-illit-purple text-white font-bold py-2.5 rounded-xl hover:bg-illit-darkPurple transition text-sm disabled:opacity-40 disabled:cursor-not-allowed">同意して利用する</button>
+          <button id="terms-agree-btn" onclick="agreeTerms()" disabled class="flex-1 bg-gradient-to-r from-illit-purple to-illit-accent text-white font-bold py-2.5 rounded-xl hover:opacity-90 transition text-sm disabled:opacity-40 disabled:cursor-not-allowed shadow-sm">同意して利用する</button>
         </div>
       </div>
     </div>
   </div>
 
   <!-- 画像拡大ビューア -->
-  <div id="image-viewer" class="fixed inset-0 bg-black/90 hidden z-[60] flex items-center justify-center p-2" onclick="closeImageViewer()">
-    <img id="image-viewer-img" src="" alt="" class="max-w-full max-h-full object-contain">
-    <button class="absolute top-4 right-4 text-white text-3xl font-bold" onclick="closeImageViewer()">×</button>
+  <div id="image-viewer" class="fixed inset-0 bg-black/90 backdrop-blur-sm hidden z-[60] flex items-center justify-center p-2" onclick="closeImageViewer()">
+    <img id="image-viewer-img" src="" alt="" class="max-w-full max-h-full object-contain rounded-lg">
+    <button class="absolute top-4 right-4 text-white text-4xl font-bold leading-none hover:scale-110 transition" onclick="closeImageViewer()">&times;</button>
   </div>
 
   <script type="module">
@@ -675,7 +694,7 @@
 
     const VAPID_KEY = "ここにVAPIDキーを貼る";
 
-    // 👑 2つのテスト用アカウントのUIDを両方とも登録済み！
+    // 👑 テスト用アカウントのUID
     const ADMIN_UIDS = [
       "Ay6VCS8HTgM3RqjDYZ0wKdHrSKz1",
       "GvVhAmT56GZjsWrl1YRaStB81im1"
@@ -698,7 +717,6 @@
       { key: "group_buy", label: "🛍 共同購入" },
       { key: "likes", label: "♡ いいね一覧" }
     ];
-    // 🛍 共同購入：抱き合わせ・送料
     const BUNDLE_FILTERS = [
       { key: "all", label: "抱き合わせ: すべて" },
       { key: "only", label: "🔒 限定" },
@@ -754,7 +772,6 @@
     let myTrades = [];
     let unsubTrades = null;
 
-    // 🛍 共同購入の参加者（postId -> [{id(uid), userName, bundleChoice, ...}]）
     let groupJoins = {};
     let unsubJoins = null;
 
@@ -815,7 +832,6 @@
     function isJpegData(s) {
       return typeof s === "string" && s.startsWith(IMAGE_PREFIX);
     }
-    // 🛍 PayPayで代金のやり取りをする取引か（買取 or 共同購入）
     function isPayTrade(t) {
       return !!(t && (t.isBuy || t.isSell || t.kind === "group"));
     }
@@ -858,7 +874,6 @@
       }
     }
 
-    // 🛡️ 新規アカウント（評価0件）の同時出品1件制限チェック（管理者は免除）。true=出品OK
     async function checkPostLimit() {
       if (isAdmin()) return true;
       try {
@@ -944,7 +959,7 @@
         });
         groupJoins = m;
         renderPosts();
-      }, (e) => console.warn("共同購入の参加者読み込みエラー（Firestoreルールを確認してください）:", e));
+      }, (e) => console.warn("共同購入の参加者読み込みエラー:", e));
     }
 
     // ===== 👑 管理者パネル機能 =====
@@ -1156,8 +1171,8 @@
       const btn = document.getElementById("detail-like-btn");
       if (!btn) return;
       btn.className = liked
-        ? "bg-pink-500 text-white font-bold px-3 py-1.5 rounded-full text-xs border border-pink-500 hover:bg-pink-600 transition flex items-center space-x-1"
-        : "bg-pink-50 text-pink-500 font-bold px-3 py-1.5 rounded-full text-xs border border-pink-200 hover:bg-pink-100 transition flex items-center space-x-1";
+        ? "bg-pink-500 text-white font-bold px-3 py-1.5 rounded-full text-xs border border-pink-500 hover:bg-pink-600 transition flex items-center space-x-1 shadow-sm"
+        : "bg-pink-50 text-pink-500 font-bold px-3 py-1.5 rounded-full text-xs border border-pink-200 hover:bg-pink-100 transition flex items-center space-x-1 shadow-sm";
       btn.querySelector("span").innerText = liked ? "♥" : "♡";
     }
 
@@ -1437,13 +1452,13 @@
       const el2 = document.getElementById("group-photo-preview");
       let html = postPhotos.map((p, i) => `
         <div class="relative w-20 h-20">
-          <img src="${p.thumb}" alt="" class="w-20 h-20 object-cover rounded-xl border border-purple-100">
-          <button onclick="removePostPhoto(${i})" class="absolute -top-1.5 -right-1.5 bg-gray-700 text-white text-xs font-bold w-5 h-5 rounded-full leading-none">×</button>
+          <img src="${p.thumb}" alt="" class="w-20 h-20 object-cover rounded-xl border border-purple-100 shadow-sm">
+          <button onclick="removePostPhoto(${i})" class="absolute -top-1.5 -right-1.5 bg-gray-700 text-white text-xs font-bold w-5 h-5 rounded-full leading-none hover:scale-110 transition">×</button>
         </div>`).join("");
       if (processingPhotos) {
         html += '<div class="w-20 h-20 rounded-xl bg-gray-100 flex items-center justify-center text-xl">⏳</div>';
       } else if (postPhotos.length < MAX_POST_PHOTOS) {
-        html += `<button onclick="document.getElementById('post-photo-input').click()" class="w-20 h-20 rounded-xl border-2 border-dashed border-purple-200 text-illit-purple text-xs font-bold flex flex-col items-center justify-center hover:bg-purple-50">
+        html += `<button onclick="document.getElementById('post-photo-input').click()" class="w-20 h-20 rounded-xl border-2 border-dashed border-purple-200 text-illit-purple text-xs font-bold flex flex-col items-center justify-center hover:bg-purple-50 transition">
                    <span class="text-2xl leading-none">＋</span>写真追加
                  </button>`;
       }
@@ -1490,7 +1505,6 @@
       } catch (e) {
         console.error(e);
       }
-      // 🛍 共同購入の参加者記録も削除
       try {
         const js = await getDocs(collection(db, "posts", postId, "joins"));
         await Promise.all(js.docs.map((d) => deleteDoc(d.ref)));
@@ -1758,25 +1772,24 @@
     function renderFilters() {
       document.getElementById("member-filters").innerHTML = MEMBERS.map((m, i) => {
         const cls = m === selectedMember
-          ? "bg-illit-purple text-white"
-          : "bg-white text-gray-600 border border-purple-100";
+          ? "bg-gradient-to-r from-illit-purple to-illit-accent text-white shadow-sm"
+          : "bg-white/80 text-gray-600 border border-purple-100 hover:bg-white";
         return `<button onclick="setMember(${i})" class="${cls} text-xs font-bold px-3 py-1.5 rounded-full transition">${m.split(" ")[0]}</button>`;
       }).join("");
 
       document.getElementById("kind-filters").innerHTML = KINDS.map((k) => {
         const cls = k.key === kindFilter
-          ? "bg-gray-800 text-white"
-          : "bg-white text-gray-600 border border-gray-200";
+          ? "bg-gray-800 text-white shadow-sm"
+          : "bg-white/80 text-gray-600 border border-gray-200 hover:bg-white";
         return `<button onclick="setKind('${k.key}')" class="${cls} text-xs font-bold px-3 py-1.5 rounded-full transition">${k.label}</button>`;
       }).join("");
 
-      // 🛍 共同購入選択時のみ「抱き合わせ」絞り込みを表示
       const bf = document.getElementById("bundle-filters");
       bf.classList.toggle("hidden", kindFilter !== "group_buy");
       bf.innerHTML = BUNDLE_FILTERS.map((b) => {
         const cls = b.key === bundleFilter
-          ? "bg-teal-500 text-white"
-          : "bg-white text-teal-700 border border-teal-200";
+          ? "bg-teal-500 text-white shadow-sm"
+          : "bg-white/80 text-teal-700 border border-teal-200 hover:bg-white";
         return `<button onclick="setBundle('${b.key}')" class="${cls} text-xs font-bold px-3 py-1.5 rounded-full transition">${b.label}</button>`;
       }).join("");
     }
@@ -1808,7 +1821,6 @@
 
       allPosts.forEach((p, index) => {
         if (blocked.includes(p.userId) || p.status === "traded") return;
-        // 🛍 共同購入：募集人数に達したら一覧から自動で非表示（主催者・管理者には表示。キャンセルで枠が空けば再表示）
         if (p.kind === "group" && Number(p.target || 0) > 0 && joinsOf(p.id).length >= Number(p.target) &&
             !(currentUser && (p.userId === currentUser.uid || isAdmin()))) return;
 
@@ -1834,19 +1846,19 @@
         const dim = expired || closed;
 
         let badgeHtml = "";
-        if (isGroup) badgeHtml = `<span class="bg-teal-100 text-teal-700 font-bold px-2 py-0.5 rounded text-[11px]">🛍 共同購入（¥${Number(p.price || 0).toLocaleString()}/人）</span>`;
-        else if (p.isSell) badgeHtml = `<span class="bg-yellow-100 text-yellow-800 font-bold px-2 py-0.5 rounded text-[11px]">💰 シリアル売却（¥${Number(p.price || 0).toLocaleString()}）</span>`;
-        else if (isBuy && isSerial) badgeHtml = `<span class="bg-yellow-100 text-yellow-800 font-bold px-2 py-0.5 rounded text-[11px]">💳 シリアル買取（希望: ¥${Number(p.price || 0).toLocaleString()}）</span>`;
-        else if (isBuy) badgeHtml = `<span class="bg-pink-100 text-pink-700 font-bold px-2 py-0.5 rounded text-[11px]">💳 買取希望（¥${Number(p.price || 0).toLocaleString()}）</span>`;
-        else if (isSerial) badgeHtml = `<span class="bg-yellow-100 text-yellow-700 font-bold px-2 py-0.5 rounded text-[11px]">🎫 シリアルでトレカ求む</span>`;
-        else badgeHtml = `<span class="bg-purple-100 text-purple-700 font-bold px-2 py-0.5 rounded text-[11px]">🃏 トレカ交換</span>`;
+        if (isGroup) badgeHtml = `<span class="bg-teal-100 text-teal-700 font-bold px-2 py-0.5 rounded text-[11px] shadow-sm">🛍 共同購入（¥${Number(p.price || 0).toLocaleString()}/人）</span>`;
+        else if (p.isSell) badgeHtml = `<span class="bg-yellow-100 text-yellow-800 font-bold px-2 py-0.5 rounded text-[11px] shadow-sm">💰 シリアル売却（¥${Number(p.price || 0).toLocaleString()}）</span>`;
+        else if (isBuy && isSerial) badgeHtml = `<span class="bg-yellow-100 text-yellow-800 font-bold px-2 py-0.5 rounded text-[11px] shadow-sm">💳 シリアル買取（希望: ¥${Number(p.price || 0).toLocaleString()}）</span>`;
+        else if (isBuy) badgeHtml = `<span class="bg-pink-100 text-pink-700 font-bold px-2 py-0.5 rounded text-[11px] shadow-sm">💳 買取希望（¥${Number(p.price || 0).toLocaleString()}）</span>`;
+        else if (isSerial) badgeHtml = `<span class="bg-yellow-100 text-yellow-700 font-bold px-2 py-0.5 rounded text-[11px] shadow-sm">🎫 シリアルでトレカ求む</span>`;
+        else badgeHtml = `<span class="bg-purple-100 text-purple-700 font-bold px-2 py-0.5 rounded text-[11px] shadow-sm">🃏 トレカ交換</span>`;
 
         let photoHtml = "";
         if (!isSerial && p.photoCount) {
           if (isJpegData(p.thumb)) {
             photoHtml = `<div class="relative">
               <img src="${p.thumb}" alt="" onclick="openDetailModal(${index})" class="w-full h-36 object-cover rounded-xl cursor-pointer">
-              ${p.photoCount > 1 ? `<span class="absolute bottom-1.5 right-1.5 bg-black/60 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">📷 ${p.photoCount}</span>` : ''}
+              ${p.photoCount > 1 ? `<span class="absolute bottom-1.5 right-1.5 bg-black/60 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full backdrop-blur-sm">📷 ${p.photoCount}</span>` : ''}
             </div>`;
           }
         }
@@ -1854,7 +1866,6 @@
         const memberLabel = p.member && p.member !== "指定なし" ? ` <span class="text-xs text-gray-400 font-normal">(${escapeHtml(p.member)})</span>` : "";
         const descPreview = p.description ? `<p class="text-xs text-gray-500 line-clamp-1">💬 ${escapeHtml(p.description)}</p>` : "";
 
-        // 🛍 共同購入の進捗・抱き合わせ表示
         let groupHtml = "";
         if (isGroup) {
           const pct = target > 0 ? Math.min(100, Math.round(joins.length / target * 100)) : 0;
@@ -1879,7 +1890,7 @@
           : '<span class="bg-yellow-100 text-yellow-800 text-xs font-bold px-2 py-0.5 rounded">譲</span>';
 
         cards.push(`
-          <div class="bg-white p-4 rounded-2xl border ${isGroup ? 'border-teal-200' : (isBuy || p.isSell) ? 'border-pink-200' : isSerial ? 'border-yellow-200' : 'border-purple-100'} shadow-sm flex flex-col justify-between space-y-3 ${dim ? 'opacity-60' : ''}">
+          <div class="bg-white/90 backdrop-blur-sm p-4 rounded-2xl border ${isGroup ? 'border-teal-200' : (isBuy || p.isSell) ? 'border-pink-200' : isSerial ? 'border-yellow-200' : 'border-purple-100'} shadow-sm flex flex-col justify-between space-y-3 ${dim ? 'opacity-60' : ''} transition duration-300 hover:-translate-y-1 hover:shadow-lg">
             <div class="flex items-center justify-between">
               ${badgeHtml}
               <div class="flex items-center space-x-2">
@@ -1901,7 +1912,7 @@
             ${descPreview}
             <div class="pt-2 border-t border-gray-100 flex justify-between items-center text-xs text-gray-500">
               <span>${isGroup ? '主催者' : '出品者'}: ${escapeHtml(p.userName)}${mine ? ' <span class="bg-purple-100 text-illit-darkPurple px-1.5 py-0.5 rounded">あなた</span>' : ''}</span>
-              <button onclick="openDetailModal(${index})" class="${isGroup ? 'bg-teal-500 hover:bg-teal-600' : 'bg-illit-purple hover:bg-illit-darkPurple'} text-white font-bold px-3 py-1.5 rounded-lg transition">${isGroup ? '詳細・参加' : '詳細・申込'}</button>
+              <button onclick="openDetailModal(${index})" class="${isGroup ? 'bg-teal-500 hover:bg-teal-600' : 'bg-gradient-to-r from-illit-purple to-illit-accent hover:opacity-90'} text-white font-bold px-3 py-1.5 rounded-lg transition shadow-sm">${isGroup ? '詳細・参加' : '詳細・申込'}</button>
             </div>
           </div>
         `);
@@ -1966,7 +1977,7 @@
         if (list.length === 0) { el.innerHTML = ""; return; }
         el.innerHTML = `
           <div class="grid ${list.length === 1 ? 'grid-cols-1' : list.length === 2 ? 'grid-cols-2' : 'grid-cols-3'} gap-2">
-            ${list.map((src, i) => `<img src="${src}" alt="" onclick="viewPhoto('detail', ${i})" class="w-full ${list.length === 1 ? 'h-56' : 'h-28'} object-cover rounded-xl cursor-pointer border border-purple-100">`).join("")}
+            ${list.map((src, i) => `<img src="${src}" alt="" onclick="viewPhoto('detail', ${i})" class="w-full ${list.length === 1 ? 'h-56' : 'h-28'} object-cover rounded-xl cursor-pointer border border-purple-100 hover:opacity-90 transition">`).join("")}
           </div>
           <p class="text-[11px] text-gray-400 mt-1">タップで拡大できます</p>`;
       } catch (e) {}
@@ -2028,12 +2039,12 @@
         extra += `<div>👥 参加状況: <b>${joins.length} / ${target}人</b> ${closed ? '<span class="text-gray-500 font-bold">（募集終了）</span>' : (full ? '<span class="text-green-600 font-bold">（満員）</span>' : '')}</div>`;
         extra += `<div>🔗 抱き合わせ: <span class="${BUNDLE_CLASS[p.bundle] || BUNDLE_CLASS.ng} font-bold px-2 py-0.5 rounded">${BUNDLE_LABEL[p.bundle] || BUNDLE_LABEL.ng}</span></div>`;
         if (p.bundle !== "ng" && p.bundleNote) {
-          extra += `<div class="bg-white rounded-lg p-2 border border-purple-100">抱き合わせ内容: <b>${escapeHtml(p.bundleNote)}</b></div>`;
+          extra += `<div class="bg-white rounded-lg p-2 border border-purple-100 mt-1">抱き合わせ内容: <b>${escapeHtml(p.bundleNote)}</b></div>`;
         }
-        extra += `<div>📦 送料: <b>${SHIPPING_LABEL[p.shipping] || "未設定"}</b></div>`;
+        extra += `<div class="mt-1">📦 送料: <b>${SHIPPING_LABEL[p.shipping] || "未設定"}</b></div>`;
         if (p.deadline) extra += `<div>募集締切: <b>${escapeHtml(p.deadline)}</b></div>`;
         if (mine) {
-          extra += `<div class="pt-1 border-t border-purple-100">
+          extra += `<div class="pt-2 mt-2 border-t border-purple-100">
             <div class="font-bold text-gray-700">参加者一覧（主催者のみ表示）</div>
             ${joins.length
               ? (p.bundle === "prefer" ? joins.slice().sort((a, b) => (b.bundleChoice === "want") - (a.bundleChoice === "want")) : joins).map((j) => `<div>・${escapeHtml(j.userName)}　${j.bundleChoice === "want" ? "🔗 抱き合わせ希望" : "単品"}</div>`).join("")
@@ -2058,16 +2069,12 @@
         blockBtn.classList.add("hidden");
       }
 
-      // ==========================================
-      // 👇 ここから下がボタン表示の修正箇所 👇
-      // ==========================================
       const actions = document.getElementById("detail-actions");
       
       if (!currentUser) {
-        actions.innerHTML = `<button onclick="loginWithGoogle()" class="w-full bg-illit-purple text-white font-bold py-2.5 rounded-xl hover:bg-illit-darkPurple transition text-sm">ログインして${isGroup ? '参加する' : '申し込む'}</button>`;
+        actions.innerHTML = `<button onclick="loginWithGoogle()" class="w-full bg-gradient-to-r from-illit-purple to-illit-accent text-white font-bold py-2.5 rounded-xl hover:opacity-90 transition text-sm shadow-sm">ログインして${isGroup ? '参加する' : '申し込む'}</button>`;
       
       } else if (p.userId === currentUser.uid) { 
-        // 自分の出品
         const closeBtn = isGroup
           ? `<button onclick="toggleGroupClosed(${index})" class="w-full bg-teal-50 text-teal-700 font-bold py-2.5 rounded-xl hover:bg-teal-100 transition text-sm">${closed ? '🔓 募集を再開する' : '🔒 募集を締め切る'}</button>`
           : '';
@@ -2079,12 +2086,11 @@
         `;
       
       } else {
-        // 他人の出品（管理者であってもまずは購入・申込ボタンを表示する）
         let userHtml = "";
         if (isGroup && joined) {
           userHtml = `
             <p class="text-xs text-teal-600 text-center font-bold">✅ この共同購入に参加済みです。</p>
-            <button onclick="openMyGroupTrade(${index})" class="w-full bg-teal-500 text-white font-bold py-2.5 rounded-xl hover:bg-teal-600 transition text-sm">💬 取引ルームを開く</button>`;
+            <button onclick="openMyGroupTrade(${index})" class="w-full bg-teal-500 text-white font-bold py-2.5 rounded-xl hover:bg-teal-600 transition text-sm shadow-sm">💬 取引ルームを開く</button>`;
         } else if (isGroup && closed) {
           userHtml = `<p class="text-xs text-gray-500 text-center">この共同購入は募集を終了しました。</p>`;
         } else if (isExpired(p)) {
@@ -2107,23 +2113,22 @@
               : (p.bundle === "ask" ? "※主催者と相談のうえ決定します。取引ルームで詳細を確認してください。" : "※抱き合わせの有無はどちらでも参加できます。");
             bundleForm = `<div class="bg-teal-50 border border-teal-200 rounded-xl p-3 space-y-1.5 text-xs">
                  <p class="font-bold text-teal-800">🔗 抱き合わせの希望</p>
-                 <label class="flex items-center space-x-2"><input type="radio" name="join-bundle" value="want" ${defWant ? 'checked' : ''}> <span>抱き合わせを希望する</span></label>
-                 <label class="flex items-center space-x-2"><input type="radio" name="join-bundle" value="none" ${defWant ? '' : 'checked'}> <span>希望しない（単品で参加）</span></label>
+                 <label class="flex items-center space-x-2"><input type="radio" name="join-bundle" value="want" ${defWant ? 'checked' : ''} class="text-teal-500 focus:ring-teal-500"> <span>抱き合わせを希望する</span></label>
+                 <label class="flex items-center space-x-2"><input type="radio" name="join-bundle" value="none" ${defWant ? '' : 'checked'} class="text-teal-500 focus:ring-teal-500"> <span>希望しない（単品で参加）</span></label>
                  <p class="text-[10px] text-teal-700">${noteText}</p>
                </div>`;
           }
           userHtml = `
             ${bundleForm}
-            <button onclick="joinGroup(${index})" class="w-full bg-gradient-to-r from-teal-500 to-emerald-500 text-white font-bold py-2.5 rounded-xl hover:opacity-90 transition text-sm">🛍 この共同購入に参加する（￥${Number(p.price || 0).toLocaleString()}）</button>
-            <button onclick="reportPost('${p.id}', '${escapeHtml(p.give)}')" class="w-full text-xs text-gray-400 hover:text-red-500 py-1 underline text-center block">🚨 この募集を通報する</button>`;
+            <button onclick="joinGroup(${index})" class="w-full bg-gradient-to-r from-teal-400 to-teal-500 text-white font-bold py-2.5 rounded-xl hover:opacity-90 transition text-sm shadow-sm">🛍 この共同購入に参加する（￥${Number(p.price || 0).toLocaleString()}）</button>
+            <button onclick="reportPost('${p.id}', '${escapeHtml(p.give)}')" class="w-full text-xs text-gray-400 hover:text-red-500 py-1 underline text-center block transition">🚨 この募集を通報する</button>`;
         } else {
           userHtml = `
-            <button onclick="applyToPost(${index})" class="w-full bg-gradient-to-r from-purple-500 to-illit-accent text-white font-bold py-2.5 rounded-xl hover:opacity-90 transition text-sm">${p.isSell ? 'このシリアルを購入申込する' : 'この募集に申し込む'}</button>
-            <button onclick="reportPost('${p.id}', '${escapeHtml(p.give)}')" class="w-full text-xs text-gray-400 hover:text-red-500 py-1 underline text-center block">🚨 この募集を通報する</button>
+            <button onclick="applyToPost(${index})" class="w-full bg-gradient-to-r from-illit-purple to-illit-accent text-white font-bold py-2.5 rounded-xl hover:opacity-90 transition text-sm shadow-sm">${p.isSell ? 'このシリアルを購入申込する' : 'この募集に申し込む'}</button>
+            <button onclick="reportPost('${p.id}', '${escapeHtml(p.give)}')" class="w-full text-xs text-gray-400 hover:text-red-500 py-1 underline text-center block transition">🚨 この募集を通報する</button>
           `;
         }
 
-        // さらに管理者の場合のみ、強制削除などのメニューを「追加で」下に表示する
         if (isAdmin()) {
           userHtml += `
             <div class="mt-4 pt-3 border-t border-red-200 space-y-2">
@@ -2133,7 +2138,6 @@
             </div>
           `;
         }
-        
         actions.innerHTML = userHtml;
       }
 
@@ -2181,7 +2185,6 @@
       }
     };
 
-    // 🛍 主催者：募集の締切／再開
     window.toggleGroupClosed = async function(index) {
       const p = allPosts[index];
       if (!p || !currentUser || p.userId !== currentUser.uid || p.kind !== "group") return;
@@ -2355,7 +2358,6 @@
       }
     };
 
-    // ===== 🛍 共同購入に参加 =====
     window.joinGroup = async function(index) {
       const p = allPosts[index];
       if (!currentUser || !p || !p.userId || p.kind !== "group") return;
@@ -2425,7 +2427,6 @@
       }
     };
 
-    // 🛍 参加済みの共同購入の取引ルームを開く
     window.openMyGroupTrade = function(index) {
       const p = allPosts[index];
       if (!p || !currentUser) return;
@@ -2457,7 +2458,7 @@
       const n = unread > 0 ? unread : active;
       const badge = document.getElementById("trades-badge");
       badge.innerText = n;
-      badge.className = "absolute -top-1.5 -right-1.5 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 " +
+      badge.className = "absolute -top-1.5 -right-1.5 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-sm " +
         (unread > 0 ? "bg-pink-500" : "bg-gray-400") + (n === 0 ? " hidden" : "");
     }
 
@@ -2491,10 +2492,10 @@
         else titleText = `譲 ${t.postGive} ⇄ 求 ${t.postWant}`;
         const border = isGroup ? 'border-teal-200' : ((isBuy || t.isSell) ? 'border-pink-200' : 'border-purple-100');
         return `
-          <button onclick="openTrade('${t.id}')" class="w-full text-left bg-white border ${border} rounded-xl p-3 hover:bg-purple-50 transition space-y-1">
+          <button onclick="openTrade('${t.id}')" class="w-full text-left bg-white/80 border ${border} rounded-xl p-3 hover:bg-white transition space-y-1 shadow-sm">
             <div class="flex justify-between items-center">
               <span class="text-xs text-gray-500">${escapeHtml(otherName)} さん ・ ${role}</span>
-              <span class="flex items-center gap-1">${isUnread(t) ? '<span class="bg-pink-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">新着</span>' : ''}<span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_CLASS[t.status] || ''}">${label}</span></span>
+              <span class="flex items-center gap-1">${isUnread(t) ? '<span class="bg-pink-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">新着</span>' : ''}<span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_CLASS[t.status] || ''}">${label}</span></span>
             </div>
             <div class="text-sm font-bold text-gray-800">${escapeHtml(titleText)}</div>
           </button>`;
@@ -2525,8 +2526,8 @@
         el.innerHTML = `
           <div>
             <div class="text-[11px] font-bold text-gray-500 mb-1">📷 出品時の写真（タップで拡大）</div>
-            <div class="flex gap-2 overflow-x-auto">
-              ${list.map((src, i) => `<img src="${src}" alt="" onclick="viewPhoto('room', ${i})" class="w-20 h-20 object-cover rounded-lg border border-purple-100 cursor-pointer shrink-0">`).join("")}
+            <div class="flex gap-2 overflow-x-auto pb-1">
+              ${list.map((src, i) => `<img src="${src}" alt="" onclick="viewPhoto('room', ${i})" class="w-20 h-20 object-cover rounded-lg border border-purple-100 cursor-pointer shrink-0 hover:opacity-90 transition shadow-sm">`).join("")}
             </div>
           </div>`;
       } catch (e) {
@@ -2541,12 +2542,12 @@
         return;
       }
       el.innerHTML = `
-        <div class="bg-white rounded-xl p-3 border border-purple-200 flex items-center justify-between">
+        <div class="bg-white/90 rounded-xl p-3 border border-purple-200 flex items-center justify-between shadow-sm">
           <div class="text-xs">
             <span class="font-bold text-gray-700">📦 配送先の共有</span>
             <p class="text-[11px] text-gray-500">登録済みの住所をチャットに送信します</p>
           </div>
-          <button onclick="sendMyAddress()" class="bg-purple-100 hover:bg-purple-200 text-illit-darkPurple font-bold text-xs px-3 py-2 rounded-lg transition">
+          <button onclick="sendMyAddress()" class="bg-purple-100 hover:bg-purple-200 text-illit-darkPurple font-bold text-xs px-3 py-2 rounded-lg transition shadow-sm">
             住所を送る
           </button>
         </div>`;
@@ -2562,7 +2563,6 @@
       const myPayPay = myProfile && myProfile.paypay ? myProfile.paypay : "";
       const isGroup = currentTrade.kind === "group";
       const payTrade = isPayTrade(currentTrade);
-      // 請求リンクを作る（＝代金を受け取る）側：買取は従来どおり、共同購入は主催者のみ
       const sellerSide = isGroup || currentTrade.isSell;
       const showLink = currentTrade.isBuy || (sellerSide && currentUser.uid === currentTrade.ownerId);
       const amountText = payTrade
@@ -2570,14 +2570,14 @@
         : '';
 
       el.innerHTML = `
-        <div class="bg-pink-50 rounded-xl p-3 border border-pink-200 space-y-2">
+        <div class="bg-pink-50/90 rounded-xl p-3 border border-pink-200 space-y-2 shadow-sm">
           <div class="flex items-center justify-between">
             <div class="text-xs font-bold text-pink-800">💳 PayPay送金サポート</div>
             <span class="text-[10px] text-pink-600">${amountText}</span>
           </div>
           <div class="flex items-center space-x-2">
-            <input type="text" id="chat-paypay-input" value="${escapeHtml(myPayPay)}" placeholder="あなたのPayPay IDを入力" class="flex-1 border border-pink-200 rounded-lg p-2 text-xs bg-white">
-            <button onclick="sendMyPayPayId()" class="bg-pink-500 hover:bg-pink-600 text-white font-bold text-xs px-3 py-2 rounded-lg transition shrink-0">
+            <input type="text" id="chat-paypay-input" value="${escapeHtml(myPayPay)}" placeholder="あなたのPayPay IDを入力" class="flex-1 border border-pink-200 rounded-lg p-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-pink-400">
+            <button onclick="sendMyPayPayId()" class="bg-pink-500 hover:bg-pink-600 text-white font-bold text-xs px-3 py-2 rounded-lg transition shrink-0 shadow-sm">
               IDを送る
             </button>
           </div>
@@ -2587,8 +2587,8 @@
             <div class="text-[11px] font-bold text-pink-800">⚡ ワンタップ送金（受け取る側）</div>
             <p class="text-[10px] text-pink-600">PayPayアプリで「￥${Number(currentTrade.postPrice || 0).toLocaleString()}」の請求（受取）リンクを作り、貼り付けて送ると、相手はタップだけで支払い画面に進めます。</p>
             <div class="flex items-center space-x-2">
-              <input type="text" id="chat-paypay-link" placeholder="https://pay.paypay.ne.jp/..." class="flex-1 min-w-0 border border-pink-200 rounded-lg p-2 text-xs bg-white">
-              <button onclick="sendPayPayLink()" class="bg-pink-500 hover:bg-pink-600 text-white font-bold text-xs px-3 py-2 rounded-lg transition shrink-0">リンクを送る</button>
+              <input type="text" id="chat-paypay-link" placeholder="https://pay.paypay.ne.jp/..." class="flex-1 min-w-0 border border-pink-200 rounded-lg p-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-pink-400">
+              <button onclick="sendPayPayLink()" class="bg-pink-500 hover:bg-pink-600 text-white font-bold text-xs px-3 py-2 rounded-lg transition shrink-0 shadow-sm">リンクを送る</button>
             </div>
           </div>` : ''}
         </div>`;
@@ -2701,7 +2701,6 @@
       let next = null;
       if (t.status === "negotiating" && both("agreed")) {
         next = "shipping";
-        // 🛍 共同購入は他の参加者も参加できるよう、募集を非表示(traded)にしない
         if (t.postId && t.kind !== "group") {
           try {
             await updateDoc(doc(db, "posts", t.postId), { status: "traded" });
@@ -2731,14 +2730,14 @@
 
     function stepsHtml(status, payFlow) {
       if (status === "cancelled") {
-        return '<div class="text-xs font-bold text-gray-500 bg-gray-100 rounded-lg p-2 text-center">この取引はキャンセルされました</div>';
+        return '<div class="text-xs font-bold text-gray-500 bg-gray-100 rounded-lg p-2 text-center shadow-sm">この取引はキャンセルされました</div>';
       }
       const order = ["negotiating", "shipping", "completed"];
       const labels = payFlow ? ["① 条件確認", "② PayPay送金・発送", "③ 完了"] : ["① 交渉・合意", "② 発送・受取", "③ 完了"];
       const idx = order.indexOf(status);
-      const on = payFlow ? "bg-pink-500 text-white" : "bg-illit-purple text-white";
+      const on = payFlow ? "bg-gradient-to-r from-pink-400 to-pink-500 text-white shadow-sm" : "bg-gradient-to-r from-illit-purple to-illit-accent text-white shadow-sm";
       return '<div class="flex space-x-1">' + labels.map((l, i) => {
-        const cls = i <= idx ? on : "bg-gray-100 text-gray-400";
+        const cls = i <= idx ? on : "bg-gray-100/80 text-gray-400";
         return `<div class="flex-1 text-center text-[11px] font-bold py-1.5 rounded-lg ${cls}">${l}</div>`;
       }).join("") + "</div>";
     }
@@ -2786,7 +2785,7 @@
       }
 
       document.getElementById("room-info").innerHTML = `
-        <div class="bg-white rounded-xl p-3 text-xs space-y-1 border ${isGroup ? 'border-teal-200' : ((isBuy || t.isSell) ? 'border-pink-200' : 'border-purple-100')}">
+        <div class="bg-white/90 rounded-xl p-3 text-xs space-y-1 border shadow-sm ${isGroup ? 'border-teal-200' : ((isBuy || t.isSell) ? 'border-pink-200' : 'border-purple-100')}">
           ${infoText}
           <div class="text-gray-400">${isGroup ? '主催者' : '出品者'}: ${escapeHtml(t.ownerName)}</div>
         </div>`;
@@ -2794,9 +2793,9 @@
       document.getElementById("room-steps").innerHTML = stepsHtml(t.status, payFlow);
 
       const mark = (b) => b ? "✅" : "⏳";
-      const btn = "w-full font-bold py-2.5 rounded-xl text-sm transition ";
-      const primary = btn + "bg-illit-purple text-white hover:bg-illit-darkPurple";
-      const pinkBtn = btn + "bg-pink-500 text-white hover:bg-pink-600";
+      const btn = "w-full font-bold py-2.5 rounded-xl text-sm transition shadow-sm ";
+      const primary = btn + "bg-gradient-to-r from-illit-purple to-illit-accent text-white hover:opacity-90";
+      const pinkBtn = btn + "bg-gradient-to-r from-pink-400 to-pink-500 text-white hover:opacity-90";
       let html = "";
 
       if (t.status === "negotiating") {
@@ -2839,7 +2838,7 @@
           recvLabel = "受取確認（完了）";
         }
         html = `
-          <div class="bg-pink-50 border border-pink-200 rounded-xl p-2.5 text-[11px] text-pink-800 space-y-1">
+          <div class="bg-pink-50/90 border border-pink-200 rounded-xl p-2.5 text-[11px] text-pink-800 space-y-1 shadow-sm">
             ${guide}
           </div>
           <div class="text-xs text-gray-600 space-y-0.5">
@@ -2847,7 +2846,7 @@
             <div>受取確認: あなた ${mark(myR)} ／ 相手 ${mark(otherR)}</div>
           </div>
           ${!myS ? `<button onclick="tradeAction('shipped')" class="${pinkBtn}">${shipLabel}</button>` : ''}
-          ${otherS && !myR ? `<button onclick="tradeAction('received')" class="${btn} bg-green-500 text-white hover:bg-green-600">${recvLabel}</button>` : ''}
+          ${otherS && !myR ? `<button onclick="tradeAction('received')" class="${btn} bg-gradient-to-r from-green-400 to-green-500 text-white hover:opacity-90">${recvLabel}</button>` : ''}
           ${myR && !otherR ? '<p class="text-xs text-gray-400 text-center">相手の確認を待っています…</p>' : ''}`;
       } else if (t.status === "shipping") {
         const myS = flag(t, "shipped", uid), otherS = flag(t, "shipped", otherId);
@@ -2859,7 +2858,7 @@
             <div>受取: あなた ${mark(myR)} ／ 相手 ${mark(otherR)}</div>
           </div>
           ${!myS ? `<button onclick="tradeAction('shipped')" class="${primary}">発送した</button>` : ''}
-          ${otherS && !myR ? `<button onclick="tradeAction('received')" class="${btn} bg-green-500 text-white hover:bg-green-600">受け取った</button>` : ''}
+          ${otherS && !myR ? `<button onclick="tradeAction('received')" class="${btn} bg-gradient-to-r from-green-400 to-green-500 text-white hover:opacity-90">受け取った</button>` : ''}
           ${myR && !otherR ? '<p class="text-xs text-gray-400 text-center">相手の受取確認を待っています…</p>' : ''}`;
       } else if (t.status === "completed") {
         let review = "";
@@ -2869,10 +2868,10 @@
           review = '<p class="text-xs text-green-600 text-center font-bold">✅ 評価済みです。</p>';
         } else {
           review = `
-            <div class="bg-white rounded-xl p-3 border border-purple-100 space-y-2">
+            <div class="bg-white/90 rounded-xl p-3 border border-purple-100 space-y-2 shadow-sm">
               <div class="text-xs font-bold text-gray-700">${escapeHtml(otherName)} さんを評価</div>
-              <div class="flex space-x-1">${[1,2,3,4,5].map((n) => `<button data-star="${n}" onclick="setRating(${n})" class="text-2xl text-gray-300">★</button>`).join("")}</div>
-              <textarea id="review-comment" maxlength="200" rows="2" placeholder="コメント（任意）" class="w-full border border-gray-200 rounded-lg p-2 text-xs bg-gray-50"></textarea>
+              <div class="flex space-x-1">${[1,2,3,4,5].map((n) => `<button data-star="${n}" onclick="setRating(${n})" class="text-2xl text-gray-300 hover:scale-110 transition">★</button>`).join("")}</div>
+              <textarea id="review-comment" maxlength="200" rows="2" placeholder="コメント（任意）" class="w-full border border-gray-200 rounded-lg p-2 text-xs bg-gray-50 focus:ring-2 focus:ring-illit-purple focus:outline-none"></textarea>
               <button onclick="submitReview()" class="${primary}">評価を送信</button>
             </div>`;
         }
@@ -2890,18 +2889,12 @@
       document.getElementById("room-send").disabled = disabled;
       document.getElementById("room-photo").disabled = disabled;
 
-      // ==========================================
-      // 👇 自動スクロール処理 👇
-      // ==========================================
+      // 👇 自動スクロール処理（進行中のみ）
       setTimeout(() => {
         const topBox = document.getElementById("room-top-box");
         const actionsBox = document.getElementById("room-actions");
-        // 取引が進行中（未完了・未キャンセル）のときだけ一番下へスクロール
         if (topBox && actionsBox && t.status !== "completed" && t.status !== "cancelled") {
-          topBox.scrollTo({
-            top: actionsBox.offsetTop,
-            behavior: "smooth"
-          });
+          topBox.scrollTo({ top: actionsBox.offsetTop, behavior: "smooth" });
         }
       }, 300);
     }
@@ -2919,11 +2912,11 @@
         const nameHtml = mine ? '' : `<div class="text-[10px] text-gray-400 mb-0.5">${escapeHtml(m.senderName)}</div>`;
 
         const bubble = mine
-          ? "bg-illit-purple text-white rounded-2xl rounded-br-sm"
-          : "bg-gray-100 text-gray-800 rounded-2xl rounded-bl-sm";
+          ? "bg-gradient-to-br from-illit-purple to-illit-accent text-white rounded-2xl rounded-br-sm shadow-sm"
+          : "bg-gray-100/90 text-gray-800 rounded-2xl rounded-bl-sm shadow-sm";
         const hasImage = isJpegData(m.image);
         const imgHtml = hasImage
-          ? `<img src="${m.image}" alt="" onclick="viewImage(${roomMessages.indexOf(m)})" class="rounded-xl max-h-60 w-auto cursor-pointer ${m.text ? 'mb-1' : ''}">`
+          ? `<img src="${m.image}" alt="" onclick="viewImage(${roomMessages.indexOf(m)})" class="rounded-xl max-h-60 w-auto cursor-pointer shadow-sm ${m.text ? 'mb-1' : ''}">`
           : "";
         
         let textContent = escapeHtml(m.text);
@@ -2933,13 +2926,13 @@
           if (paypayId) {
             const price = currentTrade && isPayTrade(currentTrade) ? Number(currentTrade.postPrice || 0) : 0;
             const amountBtn = price > 0
-              ? `<button onclick="copyAmount(${price})" class="mt-1 bg-white border border-pink-300 text-pink-600 font-bold text-[10px] px-2.5 py-1 rounded-lg transition">💰 ￥${price.toLocaleString()} をコピー</button>`
+              ? `<button onclick="copyAmount(${price})" class="mt-1 bg-white border border-pink-300 text-pink-600 font-bold text-[10px] px-2.5 py-1 rounded-lg transition hover:bg-pink-50">💰 ￥${price.toLocaleString()} をコピー</button>`
               : "";
             textContent = `【PayPay受取用 ID】<br><b class="text-pink-600">${escapeHtml(paypayId)}</b><br>
               <div class="flex flex-wrap gap-1">
-                <button onclick="copyPayPayId('${escapeHtml(paypayId)}')" class="mt-1 bg-pink-500 hover:bg-pink-600 text-white font-bold text-[10px] px-2.5 py-1 rounded-lg transition">📋 IDをコピー</button>
+                <button onclick="copyPayPayId('${escapeHtml(paypayId)}')" class="mt-1 bg-gradient-to-r from-pink-400 to-pink-500 hover:opacity-90 text-white font-bold text-[10px] px-2.5 py-1 rounded-lg transition shadow-sm">📋 IDをコピー</button>
                 ${amountBtn}
-                <a href="paypay://" class="mt-1 bg-white border border-pink-300 text-pink-600 font-bold text-[10px] px-2.5 py-1 rounded-lg transition">📱 PayPayを開く</a>
+                <a href="paypay://" class="mt-1 bg-white border border-pink-300 text-pink-600 font-bold text-[10px] px-2.5 py-1 rounded-lg transition hover:bg-pink-50">📱 PayPayを開く</a>
               </div>`;
           }
         } else if (m.text && m.text.startsWith("【PayPay請求リンク】")) {
@@ -2948,13 +2941,13 @@
           const amountLine = lines[2] || "";
           if (PAYPAY_LINK_RE.test(url)) {
             textContent = `【PayPay請求リンク】<br><b class="text-pink-600">${escapeHtml(amountLine)}</b><br>
-              <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="inline-block mt-1 bg-pink-500 hover:bg-pink-600 text-white font-bold text-xs px-3 py-2 rounded-lg transition no-underline">⚡ PayPayで支払う（タップ）</a>
+              <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="inline-block mt-1 bg-gradient-to-r from-pink-400 to-pink-500 hover:opacity-90 text-white font-bold text-xs px-3 py-2 rounded-lg transition no-underline shadow-sm">⚡ PayPayで支払う（タップ）</a>
               <div class="text-[10px] mt-1 opacity-70">開いたら金額と相手を確認してから送金してください。</div>`;
           }
         }
 
         const textHtml = m.text
-          ? `<div class="${bubble} px-3 py-2 text-sm whitespace-pre-wrap break-words">${textContent}</div>`
+          ? `<div class="${bubble} px-3 py-2 text-sm whitespace-pre-wrap break-words leading-relaxed">${textContent}</div>`
           : "";
         return `
           <div class="flex ${mine ? 'justify-end' : 'justify-start'}">
@@ -3049,7 +3042,6 @@
       if (!currentTrade || !confirm("キャンセルしますか？")) return;
       try {
         if (currentTrade.kind === "group") {
-          // 🛍 共同購入：この参加者の枠を空ける（募集は継続）
           if (currentTrade.postId && currentTrade.applicantId) {
             try {
               await deleteDoc(doc(db, "posts", currentTrade.postId, "joins", currentTrade.applicantId));
@@ -3071,7 +3063,7 @@
       selectedRating = n;
       document.querySelectorAll("[data-star]").forEach((b) => {
         const on = Number(b.dataset.star) <= n;
-        b.className = "text-2xl " + (on ? "text-yellow-400" : "text-gray-300");
+        b.className = "text-2xl hover:scale-110 transition " + (on ? "text-yellow-400" : "text-gray-300");
       });
     };
 
@@ -3172,7 +3164,7 @@
     }
     window.openTerms = function(readOnly) {
       const agreed = hasAgreedLocally();
-      const view = !!readOnly && agreed; // 同意済みなら閲覧のみ
+      const view = !!readOnly && agreed;
       document.getElementById("terms-agree-area").classList.toggle("hidden", view);
       document.getElementById("terms-close-btn").classList.toggle("hidden", !view);
       document.getElementById("terms-lead").classList.toggle("hidden", view);
@@ -3181,7 +3173,7 @@
       document.getElementById("terms-modal").classList.remove("hidden");
     };
     window.closeTerms = function() {
-      if (!hasAgreedLocally()) return; // 未同意の間は閉じられない
+      if (!hasAgreedLocally()) return;
       document.getElementById("terms-modal").classList.add("hidden");
     };
     window.onTermsCheck = function() {
@@ -3200,16 +3192,13 @@
         } catch (e) { console.error(e); }
       }
     };
-    // ログイン中のユーザーについて、同意の記録をFirestoreと同期する
     function syncTermsRecord(d) {
       if (!currentUser) return;
       const recorded = d && d.terms && d.terms.version === TERMS_VERSION;
       if (recorded && !hasAgreedLocally()) {
-        // 別の端末で同意済み → この端末でも同意済みとして扱う
         try { localStorage.setItem(TERMS_KEY, TERMS_VERSION); } catch (e) {}
         document.getElementById("terms-modal").classList.add("hidden");
       } else if (!recorded && hasAgreedLocally() && !termsSaving) {
-        // この端末で同意済みだが未記録 → 記録する
         termsSaving = true;
         saveUserData({ terms: { version: TERMS_VERSION, agreedAt: serverTimestamp() } })
           .catch((e) => console.error(e))
