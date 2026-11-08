@@ -2889,6 +2889,21 @@
       document.getElementById("room-input").disabled = disabled;
       document.getElementById("room-send").disabled = disabled;
       document.getElementById("room-photo").disabled = disabled;
+
+      // ==========================================
+      // 👇 自動スクロール処理 👇
+      // ==========================================
+      setTimeout(() => {
+        const topBox = document.getElementById("room-top-box");
+        const actionsBox = document.getElementById("room-actions");
+        // 取引が進行中（未完了・未キャンセル）のときだけ一番下へスクロール
+        if (topBox && actionsBox && t.status !== "completed" && t.status !== "cancelled") {
+          topBox.scrollTo({
+            top: actionsBox.offsetTop,
+            behavior: "smooth"
+          });
+        }
+      }, 300);
     }
 
     function renderMessages() {
