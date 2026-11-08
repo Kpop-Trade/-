@@ -85,7 +85,7 @@
       </div>
       <div class="flex space-x-2">
         <button onclick="openSerialPostModal('exchange')" class="flex-1 bg-yellow-300 text-yellow-900 font-bold text-xs md:text-sm px-3 py-2.5 rounded-xl shadow hover:bg-yellow-200 transition">
-          🎫 シリアル交換
+          🎫 シリアルでトレカを求む
         </button>
         <button onclick="openSerialPostModal('buy')" class="flex-1 bg-yellow-100 text-yellow-900 font-bold text-xs md:text-sm px-3 py-2.5 rounded-xl shadow hover:bg-yellow-200 transition">
           💳 シリアル買取
@@ -161,7 +161,7 @@
   <div id="serial-post-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
     <div class="bg-white w-full max-w-md rounded-2xl p-6 space-y-4 shadow-xl max-h-[92vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b pb-3">
-        <h3 id="serial-modal-title" class="font-bold text-base text-gray-800">🎫 シリアルの出品</h3>
+        <h3 id="serial-modal-title" class="font-bold text-base text-gray-800">🎫 シリアルでトレカを求める</h3>
         <button onclick="closeSerialPostModal()" class="text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
       </div>
       <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-3 text-[11px] text-yellow-800 space-y-1">
@@ -181,12 +181,12 @@
           </select>
         </div>
         <div>
-          <label id="serial-label-give" class="block font-semibold text-gray-700 mb-1">【譲】シリアルの種類</label>
+          <label id="serial-label-give" class="block font-semibold text-gray-700 mb-1">【譲】出せるシリアル</label>
           <input type="text" id="serial-give" maxlength="100" placeholder="例: 〇〇盤 応募シリアル 1枚" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
         </div>
         <div id="serial-want-container">
-          <label class="block font-semibold text-gray-700 mb-1">【求】希望するシリアル</label>
-          <input type="text" id="serial-want" maxlength="100" placeholder="例: △△盤 応募シリアル 1枚" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+          <label id="serial-label-want" class="block font-semibold text-gray-700 mb-1">【求】求めたいトレカ</label>
+          <input type="text" id="serial-want" maxlength="100" placeholder="例: Moka トレカ" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
         </div>
         <div id="serial-price-container" class="hidden">
           <label class="block font-semibold text-gray-700 mb-1">希望価格（円・PayPay送金）</label>
@@ -304,7 +304,7 @@
       { key: "all", label: "すべて" },
       { key: "card_exchange", label: "🃏 トレカ交換" },
       { key: "card_buy", label: "💳 トレカ買取" },
-      { key: "serial_exchange", label: "🎫 シリアル交換" },
+      { key: "serial_exchange", label: "🎫 シリアル➡トレカ求" },
       { key: "serial_buy", label: "💳 シリアル買取" }
     ];
     const IMAGE_PREFIX = "data:image/jpeg;base64,";
@@ -622,10 +622,18 @@
         return;
       }
       postMode = mode;
-      document.getElementById("serial-modal-title").innerText = mode === "buy" ? "💳 シリアルの買取（購入希望）" : "🎫 シリアル交換の出品";
-      document.getElementById("serial-label-give").innerText = mode === "buy" ? "【求】（買いたいシリアル）" : "【譲】シリアルの種類";
-      document.getElementById("serial-want-container").classList.toggle("hidden", mode === "buy");
-      document.getElementById("serial-price-container").classList.toggle("hidden", mode !== "buy");
+      if (mode === "buy") {
+        document.getElementById("serial-modal-title").innerText = "💳 シリアルの買取（購入希望）";
+        document.getElementById("serial-label-give").innerText = "【求】（買いたいシリアル）";
+        document.getElementById("serial-want-container").classList.add("hidden");
+        document.getElementById("serial-price-container").classList.remove("hidden");
+      } else {
+        document.getElementById("serial-modal-title").innerText = "🎫 シリアルでトレカを求める";
+        document.getElementById("serial-label-give").innerText = "【譲】出せるシリアル";
+        document.getElementById("serial-label-want").innerText = "【求】求めたいトレカ";
+        document.getElementById("serial-want-container").classList.remove("hidden");
+        document.getElementById("serial-price-container").classList.add("hidden");
+      }
       
       document.getElementById("serial-give").value = "";
       document.getElementById("serial-want").value = "";
@@ -652,7 +660,7 @@
         return;
       }
       if (!isBuy && !want) {
-        alert("「求」の内容を入力してください。");
+        alert("「求」のトレカ名を入力してください。");
         return;
       }
       const price = isBuy ? Number(priceStr) : 0;
@@ -738,7 +746,7 @@
         let badgeHtml = "";
         if (isBuy && isSerial) badgeHtml = `<span class="bg-yellow-100 text-yellow-800 font-bold px-2 py-0.5 rounded text-[11px]">💳 シリアル買取（希望: ¥${Number(p.price || 0).toLocaleString()}）</span>`;
         else if (isBuy) badgeHtml = `<span class="bg-pink-100 text-pink-700 font-bold px-2 py-0.5 rounded text-[11px]">💳 買取希望（¥${Number(p.price || 0).toLocaleString()}）</span>`;
-        else if (isSerial) badgeHtml = `<span class="bg-yellow-100 text-yellow-700 font-bold px-2 py-0.5 rounded text-[11px]">🎫 シリアル交換</span>`;
+        else if (isSerial) badgeHtml = `<span class="bg-yellow-100 text-yellow-700 font-bold px-2 py-0.5 rounded text-[11px]">🎫 シリアルでトレカ求む</span>`;
         else badgeHtml = `<span class="bg-purple-100 text-purple-700 font-bold px-2 py-0.5 rounded text-[11px]">🃏 トレカ交換</span>`;
 
         let photoHtml = "";
@@ -758,7 +766,7 @@
             <div class="flex items-center justify-between">${badgeHtml} ${p.deadline ? `<span class="text-[11px] ${expired ? 'text-red-500 font-bold' : 'text-gray-400'}">期限: ${escapeHtml(p.deadline)}</span>` : ''}</div>
             ${photoHtml}
             <div class="flex items-center space-x-2">
-              <span class="${isBuy ? 'bg-pink-500 text-white' : 'bg-pink-100 text-pink-700'} text-xs font-bold px-2 py-0.5 rounded">${isBuy ? '求' : '譲'}</span>
+              <span class="bg-yellow-100 text-yellow-800 text-xs font-bold px-2 py-0.5 rounded">譲</span>
               <span class="font-bold text-sm text-gray-800">${escapeHtml(p.give)}${memberLabel}</span>
             </div>
             ${!isBuy ? `
@@ -845,7 +853,7 @@
       const isBuy = !!p.isBuy;
       const isSerial = p.kind === "serial";
 
-      document.getElementById("detail-title").innerText = isBuy ? "💳 買取（購入希望）の詳細" : "交換募集の詳細";
+      document.getElementById("detail-title").innerText = isBuy ? "💳 買取（購入希望）の詳細" : "募集の詳細";
       document.getElementById("detail-give").innerText = p.give;
       document.getElementById("detail-want").innerText = p.want || "（なし）";
       document.getElementById("detail-member").innerText = p.member || "指定なし";
