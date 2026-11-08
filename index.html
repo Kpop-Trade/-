@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ILLIT Trade (ILLIT交換・買取) - 手数料0円のファン専用安心トレカ・シリアル交換</title>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#b794f4">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="apple-touch-icon" href="/icon-192.png">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -121,11 +125,16 @@
         <h3 class="font-bold text-base text-gray-800">⚙️ プロフィール・設定</h3>
         <button onclick="closeProfileModal()" class="text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
       </div>
-      <p class="text-xs text-gray-500">サイト内でのニックネームや配送先、ブロックしたユーザーの管理ができます。</p>
+      <p class="text-xs text-gray-500">サイト内でのニックネームや、PayPay ID、配送先の管理ができます。</p>
       <div class="space-y-3 text-xs md:text-sm">
         <div>
           <label class="block font-semibold text-gray-700 mb-1">サイト内ニックネーム</label>
           <input type="text" id="profile-nickname" maxlength="30" placeholder="例: 芋けんぴ推し" class="w-full border border-purple-200 rounded-xl p-2.5 bg-purple-50/50">
+        </div>
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">💳 PayPay ID（受取用）</label>
+          <input type="text" id="profile-paypay" maxlength="50" placeholder="例: paypay_id_123" class="w-full border border-pink-200 rounded-xl p-2.5 bg-pink-50/50">
+          <p class="text-[10px] text-gray-400 mt-0.5">※買取取引の際、相手がワンタップでコピーできるようになります。</p>
         </div>
         <hr class="border-purple-100 my-1">
         <div>
@@ -147,6 +156,14 @@
         <div>
           <label class="block font-semibold text-gray-700 mb-1">電話番号（任意・伝票用）</label>
           <input type="text" id="profile-phone" maxlength="20" placeholder="例: 090-1234-5678" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+        </div>
+        <hr class="border-purple-100 my-1">
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">🔔 プッシュ通知</label>
+          <p id="push-status" class="text-[11px] text-gray-500 mb-1"></p>
+          <button id="push-on-btn" onclick="enablePush()" class="w-full bg-purple-100 text-illit-darkPurple font-bold py-2 rounded-xl hover:bg-purple-200 transition">🔔 この端末で通知をオンにする</button>
+          <button id="push-off-btn" onclick="disablePush()" class="hidden w-full bg-gray-100 text-gray-600 font-bold py-2 rounded-xl hover:bg-gray-200 transition">通知をオフにする</button>
+          <p class="text-[10px] text-gray-400 mt-1">※メッセージ・申込・取引の進行をお知らせします。iPhoneはホーム画面に追加が必要です。</p>
         </div>
         <hr class="border-purple-100 my-1">
         <div>
@@ -319,8 +336,9 @@
         <button onclick="closeRoom()" class="text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
       </div>
 
-      <div class="p-4 space-y-3 border-b bg-purple-50/50 overflow-y-auto shrink-0 max-h-[48%]" id="room-top-box">
+      <div class="p-4 space-y-3 border-b bg-purple-50/50 overflow-y-auto shrink-0 max-h-[52%]" id="room-top-box">
         <div id="room-info"></div>
+        <div id="room-paypay-box"></div>
         <div id="room-photos"></div>
         <div id="room-address-box"></div>
         <div id="room-steps"></div>
@@ -357,6 +375,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { getFirestore, collection, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, where, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getMessaging, getToken, deleteToken } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBB1_QTcXpF0Ap72tDaf5_CCUtNBwSlXCs",
@@ -372,6 +391,9 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
     const provider = new GoogleAuthProvider();
+
+    // Firebaseコンソール > プロジェクト設定 > Cloud Messaging > ウェブプッシュ証明書 の「キーペア」
+    const VAPID_KEY = "ここにVAPIDキーを貼る";
 
     // ===== 状態 =====
     const MEMBERS = ["すべて", "ウォニ (Wonhee)", "ミンジュ (Minju)", "イロハ (Iroha)", "モカ (Moka)", "ユナ (Yuna)"];
@@ -535,17 +557,19 @@
       btn.querySelector("span").innerText = liked ? "♥" : "♡";
     }
 
-    // ===== プロフィール・設定 =====
+    // ===== プロフィール・設定（PayPay ID対応） =====
     window.openProfileModal = function() {
       if (!currentUser) return;
       const saved = JSON.parse(localStorage.getItem("illit_profile_" + currentUser.uid) || "{}");
       document.getElementById("profile-nickname").value = saved.nickname || "";
+      document.getElementById("profile-paypay").value = saved.paypay || "";
       document.getElementById("profile-name").value = saved.name || currentUser.displayName || "";
       document.getElementById("profile-zip").value = saved.zip || "";
       document.getElementById("profile-address1").value = saved.address1 || "";
       document.getElementById("profile-address2").value = saved.address2 || "";
       document.getElementById("profile-phone").value = saved.phone || "";
       renderBlockedBox();
+      updatePushUI();
       document.getElementById("profile-modal").classList.remove("hidden");
     };
     window.closeProfileModal = function() {
@@ -555,6 +579,7 @@
       if (!currentUser) return;
       const profile = {
         nickname: document.getElementById("profile-nickname").value.trim(),
+        paypay: document.getElementById("profile-paypay").value.trim(),
         name: document.getElementById("profile-name").value.trim(),
         zip: document.getElementById("profile-zip").value.trim(),
         address1: document.getElementById("profile-address1").value.trim(),
@@ -567,7 +592,10 @@
       if (currentUser) {
         document.getElementById("user-name").innerText = profile.nickname || currentUser.displayName || "ユーザー";
       }
-      if (currentTrade) renderRoomAddressBox();
+      if (currentTrade) {
+        renderRoomAddressBox();
+        renderRoomPayPayBox();
+      }
     };
 
     function getMyProfile() {
@@ -605,6 +633,15 @@
       } catch (e) {
         alert("住所の送信に失敗しました。");
       }
+    };
+
+    // 相手のPayPay IDをコピーする関数
+    window.copyPayPayId = function(idStr) {
+      navigator.clipboard.writeText(idStr).then(() => {
+        alert(`PayPay ID「${idStr}」をコピーしました！\nPayPayアプリを開いて送金にご利用ください。`);
+      }).catch(() => {
+        alert("コピーに失敗しました。");
+      });
     };
 
     // ===== 画像処理 =====
@@ -649,6 +686,79 @@
       return compressFromImage(img, opt);
     }
 
+    // ===== プッシュ通知 =====
+    function pushStorageKey() { return "illit_push_" + currentUser.uid; }
+
+    function updatePushUI() {
+      const onBtn = document.getElementById("push-on-btn");
+      const offBtn = document.getElementById("push-off-btn");
+      const status = document.getElementById("push-status");
+      if (!onBtn || !currentUser) return;
+      const on = !!localStorage.getItem(pushStorageKey());
+      onBtn.classList.toggle("hidden", on);
+      offBtn.classList.toggle("hidden", !on);
+      status.innerText = on ? "この端末：通知オン ✅" : "この端末：通知オフ";
+    }
+
+    async function saveToken() {
+      const reg = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
+      const token = await getToken(getMessaging(app), { vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
+      if (!token) throw new Error("トークンを取得できません");
+      await setDoc(doc(db, "users", currentUser.uid, "tokens", token), {
+        token,
+        ua: navigator.userAgent.slice(0, 120),
+        updatedAt: serverTimestamp()
+      });
+      localStorage.setItem(pushStorageKey(), token);
+    }
+
+    window.enablePush = async function() {
+      if (!currentUser) return alert("ログインしてください。");
+      const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+      const standalone = window.navigator.standalone || matchMedia("(display-mode: standalone)").matches;
+      if (isIOS && !standalone) {
+        return alert("iPhoneでは、Safariの共有ボタン →「ホーム画面に追加」をして、追加したアイコンから開いて設定してください。");
+      }
+      if (!("Notification" in window) || !("serviceWorker" in navigator)) {
+        return alert("このブラウザは通知に対応していません。");
+      }
+      if (await Notification.requestPermission() !== "granted") {
+        return alert("通知が許可されていません。ブラウザの設定から許可してください。");
+      }
+      try {
+        await saveToken();
+        updatePushUI();
+        alert("プッシュ通知をオンにしました！");
+      } catch (e) {
+        console.error(e);
+        alert("通知の設定に失敗しました。");
+      }
+    };
+
+    async function removePushToken() {
+      if (!currentUser) return;
+      const token = localStorage.getItem(pushStorageKey());
+      try {
+        if (token) await deleteDoc(doc(db, "users", currentUser.uid, "tokens", token));
+        if ("serviceWorker" in navigator && "Notification" in window) await deleteToken(getMessaging(app));
+      } catch (e) { console.error(e); }
+      localStorage.removeItem(pushStorageKey());
+    }
+
+    window.disablePush = async function() {
+      await removePushToken();
+      updatePushUI();
+      alert("プッシュ通知をオフにしました。");
+    };
+
+    // ログイン時、すでにオンの端末ならトークンを自動更新
+    async function refreshPushToken() {
+      if (!currentUser || !("Notification" in window) || !("serviceWorker" in navigator)) return;
+      if (Notification.permission !== "granted") return;
+      if (!localStorage.getItem(pushStorageKey())) return;
+      try { await saveToken(); } catch (e) { console.error(e); }
+    }
+
     // ===== 認証 =====
     window.loginWithGoogle = function() {
       signInWithPopup(auth, provider).catch((error) => {
@@ -656,8 +766,9 @@
       });
     };
 
-    window.logout = function() {
+    window.logout = async function() {
       closeRoom();
+      await removePushToken(); // 共有端末で次の人に通知が届かないようにする
       signOut(auth);
     };
 
@@ -672,6 +783,7 @@
         userProfile.classList.remove("hidden");
         userName.innerText = getMyDisplayName();
         subscribeTrades();
+        refreshPushToken();
       } else {
         loginBtn.classList.remove("hidden");
         userProfile.classList.add("hidden");
@@ -960,7 +1072,6 @@
       const cards = [];
 
       allPosts.forEach((p, index) => {
-        // 取引中（traded）のものは非表示
         if (blocked.includes(p.userId) || p.status === "traded") return;
 
         const type = getPostType(p);
@@ -1032,7 +1143,6 @@
       }
     }
 
-    // 募集一覧のリアルタイム監視（onSnapshot）
     function subscribePosts() {
       if (unsubPosts) unsubPosts();
       const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
@@ -1251,7 +1361,6 @@
           updatedAt: serverTimestamp()
         });
 
-        // 募集のステータスをtraded（取引中）に更新（これでリアルタイム監視により自動的に消えます）
         try {
           await updateDoc(doc(db, "posts", p.id), { status: "traded" });
         } catch (delErr) {
@@ -1367,6 +1476,54 @@
         </div>`;
     }
 
+    // PayPay ID送信ボックス（相手はチャット上でワンタップコピー）
+    async function renderRoomPayPayBox() {
+      const el = document.getElementById("room-paypay-box");
+      if (!currentTrade || currentTrade.status === "cancelled") {
+        el.innerHTML = "";
+        return;
+      }
+      const myProfile = getMyProfile();
+      const myPayPay = myProfile && myProfile.paypay ? myProfile.paypay : "";
+
+      el.innerHTML = `
+        <div class="bg-pink-50 rounded-xl p-3 border border-pink-200 space-y-2">
+          <div class="flex items-center justify-between">
+            <div class="text-xs font-bold text-pink-800">💳 PayPay送金サポート</div>
+            <span class="text-[10px] text-pink-600">${currentTrade.isBuy ? '買取金額: ￥' + Number(currentTrade.postPrice || 0).toLocaleString() : ''}</span>
+          </div>
+          <div class="flex items-center space-x-2">
+            <input type="text" id="chat-paypay-input" value="${escapeHtml(myPayPay)}" placeholder="あなたのPayPay IDを入力" class="flex-1 border border-pink-200 rounded-lg p-2 text-xs bg-white">
+            <button onclick="sendMyPayPayId()" class="bg-pink-500 hover:bg-pink-600 text-white font-bold text-xs px-3 py-2 rounded-lg transition shrink-0">
+              IDを送る
+            </button>
+          </div>
+          <p class="text-[10px] text-pink-600">※ボタンを押すと、あなたのPayPay IDがチャットに送信され、相手がワンタップでコピーできるようになります。</p>
+        </div>`;
+    }
+
+    window.sendMyPayPayId = async function() {
+      if (!currentTrade || !currentUser) return;
+      const input = document.getElementById("chat-paypay-input");
+      const idVal = input ? input.value.trim() : "";
+      if (!idVal) {
+        alert("先に設定画面、または上の入力欄にPayPay IDを入力してください。");
+        return;
+      }
+      const text = `【PayPay受取用 ID】\n${idVal}\n（タップしてコピーしてください）`;
+      try {
+        await addDoc(collection(db, "trades", currentTrade.id, "messages"), {
+          senderId: currentUser.uid,
+          senderName: getMyDisplayName(),
+          text: text,
+          createdAt: serverTimestamp()
+        });
+        alert("PayPay IDをチャットに送信しました！");
+      } catch (e) {
+        alert("送信に失敗しました。");
+      }
+    };
+
     window.openTrade = function(id) {
       closeTradesModal();
       closeDetailModal();
@@ -1379,6 +1536,7 @@
         currentTrade = { id: snap.id, ...snap.data() };
         renderRoom();
         renderRoomAddressBox();
+        renderRoomPayPayBox();
         if (roomPhotosFor !== currentTrade.id) {
           roomPhotosFor = currentTrade.id;
           loadRoomPhotos(currentTrade);
@@ -1496,10 +1654,9 @@
         html = `
           <div class="bg-pink-50 border border-pink-200 rounded-xl p-2.5 text-[11px] text-pink-800 space-y-1">
             <p class="font-bold">💳 PayPay送金・取引の手順</p>
-            <p>1. PayPayアプリの「送金」機能から、受取用リンク（https://paypay.me/...）またはPayPay IDを発行してチャットに貼ってください。</p>
+            <p>1. 上の「IDを送る」ボタンからPayPay IDを共有するか、送金リンクをチャットに貼ってください。</p>
             <p>2. 代金の送金・入金確認ができたら出品者は商品を発送します。</p>
             <p>3. 商品が届いたら「受取確認」を押して完了です。</p>
-            <p class="text-[10px] text-pink-600 pt-0.5">※当サイトは取引の場を提供するのみであり、運営は送金トラブル・取引に関して一切責任を負いません。</p>
           </div>
           <div class="text-xs text-gray-600 space-y-0.5">
             <div>送金／発送完了: あなた ${mark(myS)} ／ 相手 ${mark(otherS)}</div>
@@ -1569,8 +1726,19 @@
         const imgHtml = hasImage
           ? `<img src="${m.image}" alt="" onclick="viewImage(${roomMessages.indexOf(m)})" class="rounded-xl max-h-60 w-auto cursor-pointer ${m.text ? 'mb-1' : ''}">`
           : "";
+        
+        // メッセージ内にPayPay IDが含まれている場合、ワンタップコピーボタンを自動付与
+        let textContent = escapeHtml(m.text);
+        if (m.text && m.text.includes("【PayPay受取用 ID】")) {
+          const lines = m.text.split("\n");
+          const paypayId = lines[1] ? lines[1].trim() : "";
+          if (paypayId) {
+            textContent = `【PayPay受取用 ID】<br><b class="text-pink-600">${escapeHtml(paypayId)}</b><br><button onclick="copyPayPayId('${escapeHtml(paypayId)}')" class="mt-1 bg-pink-500 hover:bg-pink-600 text-white font-bold text-[10px] px-2.5 py-1 rounded-lg transition">📋 このIDをコピーする</button>`;
+          }
+        }
+
         const textHtml = m.text
-          ? `<div class="${bubble} px-3 py-2 text-sm whitespace-pre-wrap break-words">${escapeHtml(m.text)}</div>`
+          ? `<div class="${bubble} px-3 py-2 text-sm whitespace-pre-wrap break-words">${textContent}</div>`
           : "";
         return `
           <div class="flex ${mine ? 'justify-end' : 'justify-start'}">
@@ -1664,7 +1832,6 @@
     window.cancelTrade = async function() {
       if (!currentTrade || !confirm("キャンセルしますか？")) return;
       try {
-        // キャンセル時は元の投稿を再度「active（募集中）」に戻す
         if (currentTrade.postId) {
           try {
             await updateDoc(doc(db, "posts", currentTrade.postId), { status: "active" });
