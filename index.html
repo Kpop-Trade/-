@@ -43,7 +43,7 @@
             💬 取引
             <span id="trades-badge" class="hidden absolute -top-1.5 -right-1.5 bg-pink-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">0</span>
           </button>
-          <button onclick="openProfileModal()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold px-2.5 py-1.5 rounded-full transition" title="プロフィール・住所設定">
+          <button onclick="openProfileModal()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold px-2.5 py-1.5 rounded-full transition" title="プロフィール・設定">
             ⚙️ 設定
           </button>
           <span id="user-name" class="text-xs md:text-sm font-semibold text-gray-700 max-w-[70px] truncate"></span>
@@ -114,19 +114,18 @@
     </section>
   </main>
 
-  <!-- プロフィール（ニックネーム・住所）設定モーダル -->
+  <!-- プロフィール・設定モーダル -->
   <div id="profile-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
     <div class="bg-white w-full max-w-md rounded-2xl p-6 space-y-4 shadow-xl max-h-[92vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b pb-3">
-        <h3 class="font-bold text-base text-gray-800">⚙️ プロフィール・配送先設定</h3>
+        <h3 class="font-bold text-base text-gray-800">⚙️ プロフィール・設定</h3>
         <button onclick="closeProfileModal()" class="text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
       </div>
-      <p class="text-xs text-gray-500">サイト内で表示されるニックネームと、郵送取引用の配送先を設定できます。</p>
+      <p class="text-xs text-gray-500">サイト内でのニックネームや配送先、ブロックしたユーザーの管理ができます。</p>
       <div class="space-y-3 text-xs md:text-sm">
         <div>
           <label class="block font-semibold text-gray-700 mb-1">サイト内ニックネーム</label>
           <input type="text" id="profile-nickname" maxlength="30" placeholder="例: 芋けんぴ推し" class="w-full border border-purple-200 rounded-xl p-2.5 bg-purple-50/50">
-          <p class="text-[10px] text-gray-400 mt-0.5">※未入力の場合はGoogleアカウントの名前が使われます</p>
         </div>
         <hr class="border-purple-100 my-1">
         <div>
@@ -148,6 +147,13 @@
         <div>
           <label class="block font-semibold text-gray-700 mb-1">電話番号（任意・伝票用）</label>
           <input type="text" id="profile-phone" maxlength="20" placeholder="例: 090-1234-5678" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+        </div>
+        <hr class="border-purple-100 my-1">
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">🚫 ブロック管理</label>
+          <p class="text-[11px] text-gray-500 mb-1">ブロック中のユーザーID一覧</p>
+          <div id="blocked-users-box" class="text-xs text-gray-600 bg-gray-50 p-2 rounded-xl mb-1">なし</div>
+          <button onclick="clearBlockedUsers()" class="text-xs text-red-500 underline font-bold">ブロックをすべて解除する</button>
         </div>
       </div>
       <div class="flex space-x-2 pt-2">
@@ -186,6 +192,10 @@
         <div id="price-container" class="hidden">
           <label class="block font-semibold text-gray-700 mb-1">希望買取り価格（円・PayPay送金）</label>
           <input type="number" id="input-price" min="1" max="100000" placeholder="例: 1500" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+        </div>
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">説明文・備考（任意）</label>
+          <textarea id="input-desc" maxlength="200" rows="2" placeholder="例: 初期傷があります。硬質ケースに入れて発送します。" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50"></textarea>
         </div>
         <div>
           <label class="block font-semibold text-gray-700 mb-1">
@@ -243,8 +253,8 @@
           <input type="date" id="serial-deadline" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
         </div>
         <div>
-          <label class="block font-semibold text-gray-700 mb-1">備考（任意）</label>
-          <textarea id="serial-note" maxlength="200" rows="2" placeholder="例: 未使用であることなど" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50"></textarea>
+          <label class="block font-semibold text-gray-700 mb-1">説明文・備考（任意）</label>
+          <textarea id="serial-note" maxlength="200" rows="2" placeholder="例: 未使用です。コードのみ通知も可能です。" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50"></textarea>
         </div>
       </div>
       <div class="flex space-x-2 pt-2">
@@ -268,11 +278,20 @@
           <div id="detail-give-box"><span class="bg-pink-100 text-pink-700 text-xs font-bold px-2 py-0.5 rounded">譲</span> <span id="detail-give" class="font-bold text-gray-800 ml-1"></span></div>
           <div id="detail-want-box"><span class="bg-purple-100 text-illit-darkPurple text-xs font-bold px-2 py-0.5 rounded">求</span> <span id="detail-want" class="font-bold text-gray-800 ml-1"></span></div>
           <div id="detail-price-box" class="hidden"><span class="bg-pink-500 text-white text-xs font-bold px-2 py-0.5 rounded">価格</span> <span id="detail-price" class="font-bold text-pink-600 ml-1 text-base"></span></div>
+          <div id="detail-desc-box" class="pt-1 border-t border-purple-100 text-gray-700 text-xs whitespace-pre-wrap"></div>
           <div id="detail-extra" class="text-xs text-gray-600 space-y-1"></div>
         </div>
-        <div>
-          <span class="font-semibold text-gray-700">出品者:</span> <span id="detail-user" class="text-gray-600"></span>
-          <span id="detail-rating" class="ml-2 text-yellow-500 font-bold"></span>
+        <div class="flex justify-between items-center">
+          <div>
+            <span class="font-semibold text-gray-700">出品者:</span> <span id="detail-user" class="text-gray-600"></span>
+            <span id="detail-rating" class="ml-2 text-yellow-500 font-bold"></span>
+          </div>
+          <button id="detail-like-btn" onclick="toggleDetailLike()" class="bg-pink-50 text-pink-500 font-bold px-3 py-1.5 rounded-full text-xs border border-pink-200 hover:bg-pink-100 transition flex items-center space-x-1">
+            <span>♡</span> <span id="detail-like-count">いいね</span>
+          </button>
+        </div>
+        <div id="detail-user-actions" class="flex space-x-2 text-xs">
+          <button id="detail-block-user-btn" onclick="" class="text-gray-400 hover:text-red-500 underline">このユーザーをブロックする</button>
         </div>
         <p id="detail-tip" class="text-gray-500 text-xs bg-gray-50 p-3 rounded-xl leading-relaxed"></p>
       </div>
@@ -300,12 +319,21 @@
         <button onclick="closeRoom()" class="text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
       </div>
 
-      <div class="p-4 space-y-3 border-b bg-purple-50/50 overflow-y-auto shrink-0 max-h-[48%]">
+      <div class="p-4 space-y-3 border-b bg-purple-50/50 overflow-y-auto shrink-0 max-h-[48%]" id="room-top-box">
         <div id="room-info"></div>
         <div id="room-photos"></div>
         <div id="room-address-box"></div>
         <div id="room-steps"></div>
         <div id="room-actions" class="space-y-2"></div>
+      </div>
+
+      <!-- チャット定型文ボタン -->
+      <div class="px-3 py-1.5 bg-purple-50 border-b flex gap-1.5 overflow-x-auto shrink-0 text-[11px]">
+        <button onclick="sendQuickMsg('よろしくおねがいします！')" class="bg-white border border-purple-200 px-2.5 py-1 rounded-full text-purple-700 font-bold shrink-0 hover:bg-purple-100">👋 よろしくお願いします</button>
+        <button onclick="sendQuickMsg('PayPayで送金しますので、リンクまたはPayPay IDを教えてください！')" class="bg-white border border-pink-200 px-2.5 py-1 rounded-full text-pink-700 font-bold shrink-0 hover:bg-pink-100">💳 PayPay送金案内</button>
+        <button onclick="sendQuickMsg('水濡れ・折れ防止をして発送いたします！')" class="bg-white border border-purple-200 px-2.5 py-1 rounded-full text-purple-700 font-bold shrink-0 hover:bg-purple-100">📦 梱包して発送します</button>
+        <button onclick="sendQuickMsg('本日発送いたしました！到着までお待ちください。')" class="bg-white border border-purple-200 px-2.5 py-1 rounded-full text-purple-700 font-bold shrink-0 hover:bg-purple-100">📮 発送完了</button>
+        <button onclick="sendQuickMsg('無事に受け取りました！丁寧な取引ありがとうございました✨')" class="bg-white border border-purple-200 px-2.5 py-1 rounded-full text-purple-700 font-bold shrink-0 hover:bg-purple-100">✨ 受取完了</button>
       </div>
 
       <div id="room-messages" class="flex-1 overflow-y-auto p-4 space-y-2 bg-white"></div>
@@ -352,7 +380,8 @@
       { key: "card_exchange", label: "🃏 トレカ交換" },
       { key: "card_buy", label: "💳 トレカ買取" },
       { key: "serial_exchange", label: "🎫 シリアル➡トレカ求" },
-      { key: "serial_buy", label: "💳 シリアル買取" }
+      { key: "serial_buy", label: "💳 シリアル買取" },
+      { key: "likes", label: "♡ いいね一覧" }
     ];
     const IMAGE_PREFIX = "data:image/jpeg;base64,";
     const CHAT_IMAGE_MAX = 600000;
@@ -431,7 +460,81 @@
       return typeof s === "string" && s.startsWith(IMAGE_PREFIX);
     }
 
-    // ===== プロフィール（ニックネーム・住所）設定 =====
+    // ===== ブロック管理 =====
+    function getBlockedUsers() {
+      if (!currentUser) return [];
+      try {
+        return JSON.parse(localStorage.getItem("illit_blocked_" + currentUser.uid) || "[]");
+      } catch (e) {
+        return [];
+      }
+    }
+    window.blockUser = function(userId, userName) {
+      if (!currentUser || !userId) return;
+      if (!confirm(`「${userName}」さんをブロックしますか？\nブロックした相手の出品やメッセージは非表示になります。`)) return;
+      const list = getBlockedUsers();
+      if (!list.includes(userId)) {
+        list.push(userId);
+        localStorage.setItem("illit_blocked_" + currentUser.uid, JSON.stringify(list));
+      }
+      alert("ブロックしました。");
+      closeDetailModal();
+      loadPosts();
+    };
+    window.clearBlockedUsers = function() {
+      if (!currentUser) return;
+      if (!confirm("ブロックリストをすべてクリアしますか？")) return;
+      localStorage.removeItem("illit_blocked_" + currentUser.uid);
+      alert("ブロックをすべて解除しました。");
+      renderBlockedBox();
+      loadPosts();
+    };
+    function renderBlockedBox() {
+      const list = getBlockedUsers();
+      const el = document.getElementById("blocked-users-box");
+      if (!el) return;
+      el.innerText = list.length === 0 ? "なし" : `${list.length}人をブロック中`;
+    }
+
+    // ===== いいね管理 =====
+    function getMyLikes() {
+      if (!currentUser) return [];
+      try {
+        return JSON.parse(localStorage.getItem("illit_likes_" + currentUser.uid) || "[]");
+      } catch (e) {
+        return [];
+      }
+    }
+    window.toggleDetailLike = function() {
+      if (!currentUser) {
+        alert("いいねするにはログインが必要です。");
+        return;
+      }
+      const p = allPosts[currentDetailIndex];
+      if (!p) return;
+      let likes = getMyLikes();
+      const idx = likes.indexOf(p.id);
+      if (idx >= 0) {
+        likes.splice(idx, 1);
+      } else {
+        likes.push(p.id);
+      }
+      localStorage.setItem("illit_likes_" + currentUser.uid, JSON.stringify(likes));
+      updateDetailLikeUI(p.id);
+      renderPosts();
+    };
+    function updateDetailLikeUI(postId) {
+      const likes = getMyLikes();
+      const liked = likes.includes(postId);
+      const btn = document.getElementById("detail-like-btn");
+      if (!btn) return;
+      btn.className = liked
+        ? "bg-pink-500 text-white font-bold px-3 py-1.5 rounded-full text-xs border border-pink-500 hover:bg-pink-600 transition flex items-center space-x-1"
+        : "bg-pink-50 text-pink-500 font-bold px-3 py-1.5 rounded-full text-xs border border-pink-200 hover:bg-pink-100 transition flex items-center space-x-1";
+      btn.querySelector("span").innerText = liked ? "♥" : "♡";
+    }
+
+    // ===== プロフィール・設定 =====
     window.openProfileModal = function() {
       if (!currentUser) return;
       const saved = JSON.parse(localStorage.getItem("illit_profile_" + currentUser.uid) || "{}");
@@ -441,6 +544,7 @@
       document.getElementById("profile-address1").value = saved.address1 || "";
       document.getElementById("profile-address2").value = saved.address2 || "";
       document.getElementById("profile-phone").value = saved.phone || "";
+      renderBlockedBox();
       document.getElementById("profile-modal").classList.remove("hidden");
     };
     window.closeProfileModal = function() {
@@ -574,7 +678,7 @@
         myTrades = [];
         updateBadge();
       }
-      renderPosts();
+      loadPosts();
     });
 
     // ===== 出品（トレカ） =====
@@ -593,6 +697,7 @@
       document.getElementById("input-give").value = "";
       document.getElementById("input-want").value = "";
       document.getElementById("input-price").value = "";
+      document.getElementById("input-desc").value = "";
       postPhotos = [];
       renderPostPhotoPreview();
       document.getElementById("post-modal").classList.remove("hidden");
@@ -667,6 +772,7 @@
       const give = document.getElementById("input-give").value.trim();
       const want = document.getElementById("input-want").value.trim();
       const priceStr = document.getElementById("input-price").value.trim();
+      const description = document.getElementById("input-desc").value.trim().slice(0, 200);
       const isBuy = postMode === "buy";
 
       if (!give) {
@@ -700,6 +806,7 @@
           give,
           want: isBuy ? "" : want,
           price: isBuy ? price : 0,
+          description,
           photoCount: postPhotos.length,
           thumb: postPhotos.length > 0 ? postPhotos[0].thumb : "",
           userId: currentUser.uid,
@@ -718,6 +825,7 @@
         document.getElementById("input-give").value = "";
         document.getElementById("input-want").value = "";
         document.getElementById("input-price").value = "";
+        document.getElementById("input-desc").value = "";
         postPhotos = [];
         loadPosts();
       } catch (e) {
@@ -799,7 +907,7 @@
           want: isBuy ? "" : want,
           price: isBuy ? price : 0,
           deadline,
-          note,
+          description: note,
           userId: currentUser.uid,
           userName: getMyDisplayName(),
           createdAt: serverTimestamp()
@@ -846,20 +954,25 @@
 
     function renderPosts() {
       const container = document.getElementById("posts-container");
+      const blocked = getBlockedUsers();
+      const likes = getMyLikes();
       const cards = [];
 
       allPosts.forEach((p, index) => {
+        if (blocked.includes(p.userId)) return;
+
         const type = getPostType(p);
-        const okKind = kindFilter === "all" || kindFilter === type;
+        const okKind = kindFilter === "all" || (kindFilter === "likes" ? likes.includes(p.id) : kindFilter === type);
         const okMember = selectedMember === "すべて" || p.member === selectedMember;
         const okText = !searchText ||
-          (p.give + " " + p.want + " " + p.userName + " " + (p.price || "")).toLowerCase().includes(searchText);
+          (p.give + " " + p.want + " " + p.userName + " " + (p.price || "") + " " + (p.description || "")).toLowerCase().includes(searchText);
         if (!okKind || !okMember || !okText) return;
 
         const mine = currentUser && p.userId === currentUser.uid;
         const expired = isExpired(p);
         const isBuy = !!p.isBuy;
         const isSerial = p.kind === "serial";
+        const isLiked = likes.includes(p.id);
 
         let badgeHtml = "";
         if (isBuy && isSerial) badgeHtml = `<span class="bg-yellow-100 text-yellow-800 font-bold px-2 py-0.5 rounded text-[11px]">💳 シリアル買取（希望: ¥${Number(p.price || 0).toLocaleString()}）</span>`;
@@ -878,10 +991,17 @@
         }
 
         const memberLabel = p.member && p.member !== "指定なし" ? ` <span class="text-xs text-gray-400 font-normal">(${escapeHtml(p.member)})</span>` : "";
+        const descPreview = p.description ? `<p class="text-xs text-gray-500 line-clamp-1">💬 ${escapeHtml(p.description)}</p>` : "";
 
         cards.push(`
           <div class="bg-white p-4 rounded-2xl border ${isBuy ? 'border-pink-200' : isSerial ? 'border-yellow-200' : 'border-purple-100'} shadow-sm flex flex-col justify-between space-y-3 ${expired ? 'opacity-60' : ''}">
-            <div class="flex items-center justify-between">${badgeHtml} ${p.deadline ? `<span class="text-[11px] ${expired ? 'text-red-500 font-bold' : 'text-gray-400'}">期限: ${escapeHtml(p.deadline)}</span>` : ''}</div>
+            <div class="flex items-center justify-between">
+              ${badgeHtml}
+              <div class="flex items-center space-x-2">
+                ${p.deadline ? `<span class="text-[11px] ${expired ? 'text-red-500 font-bold' : 'text-gray-400'}">期限: ${escapeHtml(p.deadline)}</span>` : ''}
+                <span class="text-pink-500 font-bold text-xs">${isLiked ? '♥' : '♡'}</span>
+              </div>
+            </div>
             ${photoHtml}
             <div class="flex items-center space-x-2">
               <span class="bg-yellow-100 text-yellow-800 text-xs font-bold px-2 py-0.5 rounded">譲</span>
@@ -892,6 +1012,7 @@
               <span class="bg-purple-100 text-illit-darkPurple text-xs font-bold px-2 py-0.5 rounded">求</span>
               <span class="font-bold text-sm text-gray-800">${escapeHtml(p.want)}</span>
             </div>` : ''}
+            ${descPreview}
             <div class="pt-2 border-t border-gray-100 flex justify-between items-center text-xs text-gray-500">
               <span>出品者: ${escapeHtml(p.userName)}${mine ? ' <span class="bg-purple-100 text-illit-darkPurple px-1.5 py-0.5 rounded">あなた</span>' : ''}</span>
               <button onclick="openDetailModal(${index})" class="bg-illit-purple text-white font-bold px-3 py-1.5 rounded-lg hover:bg-illit-darkPurple transition">詳細・申込</button>
@@ -926,13 +1047,17 @@
     // ===== 写真 =====
     async function getPhotos(postId) {
       if (photoCache[postId]) return photoCache[postId];
-      const snap = await getDocs(collection(db, "posts", postId, "photos"));
-      const list = snap.docs.map((d) => d.data())
-        .sort((a, b) => (a.order || 0) - (b.order || 0))
-        .map((d) => d.data)
-        .filter(isJpegData);
-      photoCache[postId] = list;
-      return list;
+      try {
+        const snap = await getDocs(collection(db, "posts", postId, "photos"));
+        const list = snap.docs.map((d) => d.data())
+          .sort((a, b) => (a.order || 0) - (b.order || 0))
+          .map((d) => d.data)
+          .filter(isJpegData);
+        photoCache[postId] = list;
+        return list;
+      } catch (e) {
+        return [];
+      }
     }
 
     window.viewPhoto = function(kind, i) {
@@ -978,9 +1103,13 @@
       document.getElementById("detail-user").innerText = p.userName;
       document.getElementById("detail-rating").innerText = "";
 
+      updateDetailLikeUI(p.id);
+      document.getElementById("detail-like-count").innerText = "いいね";
+
       const giveBox = document.getElementById("detail-give-box");
       const wantBox = document.getElementById("detail-want-box");
       const priceBox = document.getElementById("detail-price-box");
+      const descBox = document.getElementById("detail-desc-box");
 
       giveBox.querySelector("span").innerText = isBuy ? "求" : "譲";
       wantBox.classList.toggle("hidden", isBuy);
@@ -989,15 +1118,30 @@
         document.getElementById("detail-price").innerText = "￥" + Number(p.price || 0).toLocaleString() + "（PayPay送金）";
       }
 
+      if (p.description) {
+        descBox.classList.remove("hidden");
+        descBox.innerHTML = `<b>説明文:</b><br>${escapeHtml(p.description)}`;
+      } else {
+        descBox.classList.add("hidden");
+        descBox.innerHTML = "";
+      }
+
       let extra = "";
       if (isSerial) {
         if (p.deadline) extra += `<div>有効期限: <b>${escapeHtml(p.deadline)}</b></div>`;
-        if (p.note) extra += `<div>備考: ${escapeHtml(p.note)}</div>`;
       }
       document.getElementById("detail-extra").innerHTML = extra;
       document.getElementById("detail-tip").innerText = isBuy
         ? "💡 この募集に申し込むと、PayPayでの送金・受取や発送に関する専用チャットルームが作成されます。なお、取引上のトラブル等について運営は取引に関する一切の責任を負いません。"
         : "💡 申し込むと専用の取引ルームが作られます。お互いに安心安全に進めましょう。なお、取引上のトラブル等について運営は取引に関する一切の責任を負いません。";
+
+      const blockBtn = document.getElementById("detail-block-user-btn");
+      if (currentUser && p.userId !== currentUser.uid) {
+        blockBtn.classList.remove("hidden");
+        blockBtn.setAttribute("onclick", `blockUser('${p.userId}', '${escapeHtml(p.userName)}')`);
+      } else {
+        blockBtn.classList.add("hidden");
+      }
 
       const actions = document.getElementById("detail-actions");
       if (!currentUser) {
@@ -1107,14 +1251,18 @@
           updatedAt: serverTimestamp()
         });
 
-        await deletePostWithPhotos(p.id);
+        try {
+          await deletePostWithPhotos(p.id);
+        } catch (delErr) {
+          console.error("募集の削除に失敗しましたが取引は継続します:", delErr);
+        }
 
         closeDetailModal();
         loadPosts();
         openTrade(ref.id);
       } catch (e) {
-        console.error(e);
-        alert("申込に失敗しました。");
+        console.error("申込エラー詳細:", e);
+        alert("申込に失敗しました。時間をおいて再度お試しください。");
       }
     };
 
@@ -1346,12 +1494,12 @@
         const myS = flag(t, "shipped", uid), otherS = flag(t, "shipped", otherId);
         const myR = flag(t, "received", uid), otherR = flag(t, "received", otherId);
         html = `
-          <div class="bg-pink-50 border border-pink-200 rounded-xl p-2 text-[11px] text-pink-800 space-y-0.5">
-            <p class="font-bold">💳 PayPay買取の流れ</p>
-            <p>1. 購入者側はチャットやPayPayリンクで代金を送金します。</p>
-            <p>2. 出品者は入金を確認したら商品を発送します。</p>
-            <p>3. 商品が届いたら「受取確認」を押してください。</p>
-            <p class="text-[10px] text-pink-600 pt-1">※当サイトは取引の場を提供するのみであり、運営は取引に関する一切の責任を負いません。</p>
+          <div class="bg-pink-50 border border-pink-200 rounded-xl p-2.5 text-[11px] text-pink-800 space-y-1">
+            <p class="font-bold">💳 PayPay送金・取引の手順</p>
+            <p>1. PayPayアプリの「送金」機能から、受取用リンク（https://paypay.me/...）またはPayPay IDを発行してチャットに貼ってください。</p>
+            <p>2. 代金の送金・入金確認ができたら出品者は商品を発送します。</p>
+            <p>3. 商品が届いたら「受取確認」を押して完了です。</p>
+            <p class="text-[10px] text-pink-600 pt-0.5">※当サイトは取引の場を提供するのみであり、運営は送金トラブル・取引に関して一切責任を負いません。</p>
           </div>
           <div class="text-xs text-gray-600 space-y-0.5">
             <div>送金／発送完了: あなた ${mark(myS)} ／ 相手 ${mark(otherS)}</div>
@@ -1454,6 +1602,20 @@
       }
     };
 
+    window.sendQuickMsg = async function(text) {
+      if (!currentTrade || currentTrade.status === "cancelled") return;
+      try {
+        await addDoc(collection(db, "trades", currentTrade.id, "messages"), {
+          senderId: currentUser.uid,
+          senderName: getMyDisplayName(),
+          text: text,
+          createdAt: serverTimestamp()
+        });
+      } catch (e) {
+        alert("メッセージの送信に失敗しました。");
+      }
+    };
+
     window.sendImage = async function(inputEl) {
       const file = inputEl.files && inputEl.files[0];
       inputEl.value = "";
@@ -1548,4 +1710,3 @@
   </script>
 </body>
 </html>
-6
