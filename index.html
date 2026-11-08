@@ -43,6 +43,10 @@
           Googleでログイン
         </button>
         <div id="user-profile" class="hidden flex items-center space-x-2">
+          <!-- 管理者用パネルボタン（管理者だけに表示されます） -->
+          <button id="admin-panel-btn" onclick="openAdminModal()" class="hidden bg-red-100 text-red-700 text-xs font-bold px-2.5 py-1.5 rounded-full hover:bg-red-200 transition" title="管理者パネル">
+            👑 管理
+          </button>
           <button onclick="openTradesModal()" class="relative bg-purple-100 text-illit-darkPurple text-xs font-bold px-3 py-1.5 rounded-full hover:bg-purple-200 transition">
             💬 取引
             <span id="trades-badge" class="hidden absolute -top-1.5 -right-1.5 bg-pink-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">0</span>
@@ -94,7 +98,7 @@
         <button onclick="openSerialPostModal('exchange')" class="flex-1 bg-yellow-300 text-yellow-900 font-bold text-xs md:text-sm px-3 py-2.5 rounded-xl shadow hover:bg-yellow-200 transition">
           🎫 シリアルでトレカを求む
         </button>
-        <button onclick="openSerialPostModal('buy')" class="flex-1 bg-yellow-100 text-yellow-900 font-bold text-xs md:text-sm px-3 py-2.5 rounded-xl shadow hover:bg-yellow-200 transition">
+        <button onclick="openSerialPostModal('buy')" class="flex-1 bg-yellow-100 text-yellow-900 font-bold text-xs md:text-sm px-3 py-2.5 rounded-xl shadow hover:bg-yellow-100 transition">
           💳 シリアル買取
         </button>
       </div>
@@ -117,6 +121,26 @@
       </div>
     </section>
   </main>
+
+  <!-- 👑 管理者パネルモーダル -->
+  <div id="admin-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-lg rounded-2xl p-6 space-y-4 shadow-xl max-h-[90vh] flex flex-col">
+      <div class="flex justify-between items-center border-b pb-3 shrink-0">
+        <h3 class="font-bold text-base text-gray-800">👑 運営・管理者パネル</h3>
+        <button onclick="closeAdminModal()" class="text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
+      </div>
+      <div class="flex border-b text-xs font-bold shrink-0">
+        <button onclick="switchAdminTab('reports')" id="admin-tab-reports" class="flex-1 py-2 border-b-2 border-red-500 text-red-600">🚨 通報一覧</button>
+        <button onclick="switchAdminTab('users')" id="admin-tab-users" class="flex-1 py-2 border-b-2 border-transparent text-gray-500">👥 登録ユーザー確認</button>
+      </div>
+      <div id="admin-content" class="flex-1 overflow-y-auto space-y-2 text-xs">
+        <p class="text-gray-400 text-center py-4">読み込み中...</p>
+      </div>
+      <div class="pt-2 border-t shrink-0">
+        <button onclick="closeAdminModal()" class="w-full bg-gray-100 text-gray-600 font-bold py-2.5 rounded-xl hover:bg-gray-200 transition text-sm">閉じる</button>
+      </div>
+    </div>
+  </div>
 
   <!-- プロフィール・設定モーダル -->
   <div id="profile-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
@@ -446,6 +470,17 @@
 
     const VAPID_KEY = "ここにVAPIDキーを貼る";
 
+    // 👑 【重要】あなたのGoogleアカウントのFirebase UIDをここに登録してください！
+    // ※ログインした状態でブラウザのコンソールやFirebaseコンソールで自分のUIDを確認してここに入れます。
+    const ADMIN_UIDS = [
+      "ここにあなたのFirebase_UIDを貼る" // 例: "abc123XYZ..."
+    ];
+
+    function isAdmin() {
+      if (!currentUser) return false;
+      return ADMIN_UIDS.includes(currentUser.uid);
+    }
+
     // ===== 状態 =====
     const MEMBERS = ["すべて", "ウォニ (Wonhee)", "ミンジュ (Minju)", "イロハ (Iroha)", "モカ (Moka)", "ユナ (Yuna)"];
     const KINDS = [
@@ -539,7 +574,7 @@
       return typeof s === "string" && s.startsWith(IMAGE_PREFIX);
     }
 
-    // ===== デバイスID（マルチアカウント防止） =====
+    // ===== デバイスID（テスト用複数アカウント対応：管理者はチェック免除） =====
     function getOrCreateDeviceId() {
       let did = localStorage.getItem("illit_device_id");
       if (!did) {
@@ -551,6 +586,9 @@
 
     async function checkDeviceLock() {
       if (!currentUser) return true;
+      // 👑 管理者なら複数アカウント（別Googleアカ）でのテストを完全許可！
+      if (isAdmin()) return true;
+
       const deviceId = getOrCreateDeviceId();
       try {
         const ref = doc(db, "devices", deviceId);
@@ -563,7 +601,7 @@
         if (data.uid === currentUser.uid) {
           return true;
         } else {
-          alert("⚠️ セキュリティ制限\nこのブラウザ（端末）からはすでに別のアカウントで登録・操作が行われています。1つの端末につき1つのアカウントのみご利用いただけます。");
+          alert("⚠️ セキュリティ制限\nこのブラウザ（端末）からはすでに別のアカウントで登録・操作が行われています。");
           return false;
         }
       } catch (e) {
@@ -591,6 +629,11 @@
         };
         const nm = document.getElementById("user-name");
         if (nm && currentUser) nm.innerText = getMyDisplayName();
+        
+        // 管理者ボタンの表示・非表示を切替
+        const adminBtn = document.getElementById("admin-panel-btn");
+        if (adminBtn) adminBtn.classList.toggle("hidden", !isAdmin());
+
         renderPosts();
         renderBlockedBox();
         updateBadge();
@@ -618,6 +661,86 @@
         migratingLocal = false;
       }
     }
+
+    // ===== 👑 管理者パネル機能 =====
+    let adminTab = "reports";
+    window.openAdminModal = function() {
+      if (!isAdmin()) return;
+      document.getElementById("admin-modal").classList.remove("hidden");
+      loadAdminData();
+    };
+    window.closeAdminModal = function() {
+      document.getElementById("admin-modal").classList.add("hidden");
+    };
+    window.switchAdminTab = function(tab) {
+      adminTab = tab;
+      document.getElementById("admin-tab-reports").className = "flex-1 py-2 border-b-2 " + (tab === 'reports' ? 'border-red-500 text-red-600 font-bold' : 'border-transparent text-gray-500');
+      document.getElementById("admin-tab-users").className = "flex-1 py-2 border-b-2 " + (tab === 'users' ? 'border-red-500 text-red-600 font-bold' : 'border-transparent text-gray-500');
+      loadAdminData();
+    };
+
+    async function loadAdminData() {
+      const el = document.getElementById("admin-content");
+      el.innerHTML = '<p class="text-gray-400 text-center py-4">読み込み中...</p>';
+      try {
+        if (adminTab === "reports") {
+          const snap = await getDocs(query(collection(db, "reports"), orderBy("createdAt", "desc")));
+          if (snap.empty) {
+            el.innerHTML = '<p class="text-gray-400 text-center py-6">現在、通報はありません。</p>';
+            return;
+          }
+          el.innerHTML = snap.docs.map((d) => {
+            const r = d.data();
+            return `
+              <div class="bg-red-50 border border-red-200 rounded-xl p-3 space-y-1">
+                <div class="flex justify-between items-center text-[10px] text-red-700">
+                  <span>通報者: ${escapeHtml(r.reporterName)}</span>
+                  <span>${fmtTime(r.createdAt)}</span>
+                </div>
+                <div class="font-bold text-gray-800">対象募集: ${escapeHtml(r.postGive)}</div>
+                <div class="text-red-600 bg-white p-2 rounded border border-red-100">理由: ${escapeHtml(r.reason)}</div>
+                <div class="flex justify-end pt-1">
+                  <button onclick="deleteReportedPost('${r.postId}', '${d.id}')" class="bg-red-600 text-white font-bold px-3 py-1 rounded text-[11px] hover:bg-red-700">この募集を強制削除する</button>
+                </div>
+              </div>`;
+          }).join("");
+        } else {
+          const snap = await getDocs(collection(db, "users"));
+          if (snap.empty) {
+            el.innerHTML = '<p class="text-gray-400 text-center py-6">ユーザーデータがありません。</p>';
+            return;
+          }
+          el.innerHTML = snap.docs.map((d) => {
+            const u = d.data();
+            const p = u.profile || {};
+            return `
+              <div class="bg-gray-50 border border-purple-100 rounded-xl p-3 space-y-1">
+                <div class="flex justify-between items-center font-bold text-gray-800">
+                  <span>${escapeHtml(p.nickname || '名無し')} (${escapeHtml(p.name || '未登録名')}さん)</span>
+                  <span class="text-[10px] text-gray-400">UID: ${d.id.slice(0, 8)}...</span>
+                </div>
+                <div class="text-gray-600">PayPay ID: ${escapeHtml(p.paypay || '未設定')}</div>
+                <div class="text-gray-500 text-[11px]">住所: ${escapeHtml(p.zip || '')} ${escapeHtml(p.address1 || '未登録')}</div>
+              </div>`;
+          }).join("");
+        }
+      } catch (e) {
+        console.error(e);
+        el.innerHTML = '<p class="text-red-400 text-center py-4">データの読み込みに失敗しました。</p>';
+      }
+    }
+
+    window.deleteReportedPost = async function(postId, reportId) {
+      if (!confirm("本当にこの募集を強制削除しますか？")) return;
+      try {
+        await deleteDoc(doc(db, "posts", postId));
+        await deleteDoc(doc(db, "reports", reportId));
+        alert("募集を削除しました。");
+        loadAdminData();
+      } catch (e) {
+        alert("削除に失敗しました。");
+      }
+    };
 
     // ===== 未読管理・メッセージ送信 =====
     function tsMillis(ts) {
@@ -1065,22 +1188,24 @@
       if (isBuy && (!price || price <= 0)) { alert("有効な希望価格を入力してください。"); return; }
       if (!isBuy && postPhotos.length < 1) { alert("状態がわかる写真を1枚以上添付してください。"); return; }
 
-      // 🛡️ 新規アカウント（評価0件）の同時出品1件制限チェック
-      try {
-        const reviewSnap = await getDocs(query(collection(db, "reviews"), where("toId", "==", currentUser.uid)));
-        if (reviewSnap.size === 0) {
-          const myPostsSnap = await getDocs(query(
-            collection(db, "posts"), 
-            where("userId", "==", currentUser.uid),
-            where("status", "==", "active")
-          ));
-          if (myPostsSnap.size >= 1) {
-            alert("⚠️ 出品制限\n評価が0件の新規アカウントは、同時に複数の出品を行うことができません（最大1件まで）。現在の出品が完了するまで新しい出品はお控えください。");
-            return;
+      // 🛡️ 新規アカウント（評価0件）の同時出品1件制限チェック（管理者は免除）
+      if (!isAdmin()) {
+        try {
+          const reviewSnap = await getDocs(query(collection(db, "reviews"), where("toId", "==", currentUser.uid)));
+          if (reviewSnap.size === 0) {
+            const myPostsSnap = await getDocs(query(
+              collection(db, "posts"), 
+              where("userId", "==", currentUser.uid),
+              where("status", "==", "active")
+            ));
+            if (myPostsSnap.size >= 1) {
+              alert("⚠️ 出品制限\n評価が0件の新規アカウントは、同時に複数の出品を行うことができません（最大1件まで）。現在の出品が完了するまで新しい出品はお控えください。");
+              return;
+            }
           }
+        } catch (e) {
+          console.error("出品制限チェックエラー:", e);
         }
-      } catch (e) {
-        console.error("出品制限チェックエラー:", e);
       }
 
       submittingPost = true;
@@ -1179,22 +1304,23 @@
       if (isBuy && (!price || price <= 0)) { alert("有効な希望価格を入力してください。"); return; }
       if (deadline && deadline < todayStr()) { alert("有効期限が過去の日付になっています。"); return; }
 
-      // 🛡️ 新規アカウント（評価0件）の同時出品1件制限チェック
-      try {
-        const reviewSnap = await getDocs(query(collection(db, "reviews"), where("toId", "==", currentUser.uid)));
-        if (reviewSnap.size === 0) {
-          const myPostsSnap = await getDocs(query(
-            collection(db, "posts"), 
-            where("userId", "==", currentUser.uid),
-            where("status", "==", "active")
-          ));
-          if (myPostsSnap.size >= 1) {
-            alert("⚠️ 出品制限\n評価が0件の新規アカウントは、同時に複数の出品を行うことができません（最大1件まで）。現在の出品が完了するまで新しい出品はお控えください。");
-            return;
+      if (!isAdmin()) {
+        try {
+          const reviewSnap = await getDocs(query(collection(db, "reviews"), where("toId", "==", currentUser.uid)));
+          if (reviewSnap.size === 0) {
+            const myPostsSnap = await getDocs(query(
+              collection(db, "posts"), 
+              where("userId", "==", currentUser.uid),
+              where("status", "==", "active")
+            ));
+            if (myPostsSnap.size >= 1) {
+              alert("⚠️ 出品制限\n評価が0件の新規アカウントは、同時に複数の出品を行うことができません（最大1件まで）。現在の出品が完了するまで新しい出品はお控えください。");
+              return;
+            }
           }
+        } catch (e) {
+          console.error("出品制限チェックエラー:", e);
         }
-      } catch (e) {
-        console.error("出品制限チェックエラー:", e);
       }
 
       try {
@@ -1429,8 +1555,8 @@
       }
       document.getElementById("detail-extra").innerHTML = extra;
       document.getElementById("detail-tip").innerText = isBuy
-        ? "💡 この募集に申し込むと、PayPayでの送金・受取や発送に関する専用チャットルームが作成されます。なお、取引上のトラブル等について運営は取引に関する一切の責任を負いません。"
-        : "💡 申し込むと専用の取引ルームが作られます。お互いに安心安全に進めましょう。なお、取引上のトラブル等について運営は取引に関する一切の責任を負いません。";
+        ? "💡 この募集に申し込むと、PayPayでの送金・受取や発送に関する専用チャットルームが作成されます。"
+        : "💡 申し込むと専用の取引ルームが作られます。お互いに安心安全に進めましょう。";
 
       const blockBtn = document.getElementById("detail-block-user-btn");
       if (currentUser && p.userId !== currentUser.uid) {
@@ -1443,11 +1569,14 @@
       const actions = document.getElementById("detail-actions");
       if (!currentUser) {
         actions.innerHTML = `<button onclick="loginWithGoogle()" class="w-full bg-illit-purple text-white font-bold py-2.5 rounded-xl hover:bg-illit-darkPurple transition text-sm">ログインして申し込む</button>`;
-      } else if (p.userId && p.userId === currentUser.uid) {
+      } else if (p.userId && (p.userId === currentUser.uid || isAdmin())) {
+        // 👑 管理者なら他人の出品でも削除・編集・管理ができる
+        const adminDelete = isAdmin() && p.userId !== currentUser.uid ? `<button onclick="adminDeletePost('${p.id}')" class="w-full bg-red-600 text-white font-bold py-2.5 rounded-xl hover:bg-red-700 transition text-sm">👑 [管理者] この募集を強制削除</button>` : '';
         actions.innerHTML = `
-          <p class="text-xs text-gray-500 text-center">あなたの出品です。</p>
-          <button onclick="openEditPost(${index})" class="w-full bg-purple-100 text-illit-darkPurple font-bold py-2.5 rounded-xl hover:bg-purple-200 transition text-sm">✏️ この募集を編集する</button>
-          <button onclick="deletePost(${index})" class="w-full bg-red-50 text-red-500 font-bold py-2.5 rounded-xl hover:bg-red-100 transition text-sm">この募集を削除する</button>`;
+          <p class="text-xs text-gray-500 text-center">${p.userId === currentUser.uid ? 'あなたの出品です。' : '👑 管理者権限での操作'}</p>
+          ${p.userId === currentUser.uid ? `<button onclick="openEditPost(${index})" class="w-full bg-purple-100 text-illit-darkPurple font-bold py-2.5 rounded-xl hover:bg-purple-200 transition text-sm">✏️ この募集を編集する</button>
+          <button onclick="deletePost(${index})" class="w-full bg-red-50 text-red-500 font-bold py-2.5 rounded-xl hover:bg-red-100 transition text-sm">この募集を削除する</button>` : ''}
+          ${adminDelete}`;
       } else if (isExpired(p)) {
         actions.innerHTML = `<p class="text-xs text-red-400 text-center">有効期限が切れています。</p>`;
       } else {
@@ -1465,6 +1594,17 @@
     window.closeDetailModal = function() {
       document.getElementById("detail-modal").classList.add("hidden");
       currentDetailIndex = -1;
+    };
+
+    window.adminDeletePost = async function(postId) {
+      if (!confirm("管理者権限でこの募集を強制削除しますか？")) return;
+      try {
+        await deletePostWithPhotos(postId);
+        closeDetailModal();
+        alert("強制削除しました。");
+      } catch (e) {
+        alert("削除に失敗しました。");
+      }
     };
 
     async function loadRating(userId, index) {
@@ -1493,7 +1633,7 @@
     // ===== 出品の編集 =====
     window.openEditPost = function(index) {
       const p = allPosts[index];
-      if (!p || !currentUser || p.userId !== currentUser.uid) return;
+      if (!p || !currentUser || (p.userId !== currentUser.uid && !isAdmin())) return;
       closeDetailModal();
       editingPostId = p.id;
       const isBuy = !!p.isBuy;
@@ -1515,7 +1655,7 @@
     };
     window.submitEditPost = async function() {
       const p = allPosts.find((x) => x.id === editingPostId);
-      if (!p || !currentUser || p.userId !== currentUser.uid) return;
+      if (!p || !currentUser || (p.userId !== currentUser.uid && !isAdmin())) return;
       const isBuy = !!p.isBuy;
       const isSerial = p.kind === "serial";
       const give = document.getElementById("edit-give").value.trim();
@@ -1576,7 +1716,7 @@
       }
     };
 
-    // ===== 申込（合意するまで募集は残る仕様） =====
+    // ===== 申込 =====
     window.applyToPost = async function(index) {
       const p = allPosts[index];
       if (!currentUser || !p || !p.userId) return;
@@ -1856,7 +1996,6 @@
       return !!(t[field] && t[field][uid]);
     }
 
-    // 🤝 お互いに合意したら、ここで初めて募集を「traded（取引中）」にしてタイムラインから消す！
     async function advanceIfNeeded() {
       const t = currentTrade;
       if (!t) return;
@@ -1864,7 +2003,6 @@
       let next = null;
       if (t.status === "negotiating" && both("agreed")) {
         next = "shipping";
-        // 募集を非表示（traded）にする
         if (t.postId) {
           try {
             await updateDoc(doc(db, "posts", t.postId), { status: "traded" });
@@ -1945,9 +2083,7 @@
       if (t.status === "negotiating") {
         const my = flag(t, "agreed", uid), other = flag(t, "agreed", otherId);
         html = `
-          <p class="text-xs text-gray-600">${isBuy
-            ? "チャットで条件を確認し、よければ「合意する」を押してください。お互い合意すると正式に成立し、募集が非表示になります。"
-            : "内容を確認し、納得できたら「合意する」を押してください。お互い合意すると正式に成立し、募集が非表示になります。"}</p>
+          <p class="text-xs text-gray-600">内容を確認し、納得できたら「合意する」を押してください。お互い合意すると正式に成立し、募集が非表示になります。</p>
           <div class="text-xs text-gray-600">合意: あなた ${mark(my)} ／ 相手 ${mark(other)}</div>
           ${my ? '<p class="text-xs text-gray-400 text-center">相手の合意を待っています…</p>' : `<button onclick="tradeAction('agreed')" class="${isBuy ? pinkBtn : primary}">合意する</button>`}
           <button onclick="cancelTrade()" class="${btn} bg-white text-gray-400 border border-gray-200 hover:bg-gray-50">キャンセル</button>`;
@@ -2149,7 +2285,6 @@
       }
     };
 
-    // 🔄 キャンセルされたら募集を元の「active（募集中）」にしっかり復活させる
     window.cancelTrade = async function() {
       if (!currentTrade || !confirm("キャンセルしますか？")) return;
       try {
