@@ -66,7 +66,7 @@
       </div>
       <div class="bg-gray-50 border border-gray-200 rounded-xl p-3 text-[11px] text-gray-600 leading-relaxed">
         <p class="font-bold text-gray-700 mb-0.5">⚠️ 免責事項（ご利用規約）</p>
-        <p>本サービスはファン同士の交流および情報交換の場を提供するものです。ユーザー間のトレード・売買・発送・金銭授受等のトラブルや損害につきましては、<b>運営は一切の責任を負いません。</b>お互いの評価や商品の状態を十分に確認のうえ、自己責任にてご利用ください。</p>
+        <p>本サービスはファン同士の交流および情報交換の場を提供するものです。ユーザー間のトレード・売買・発送・金銭授受等のトラブルや損害につきましては、<b>運営は取引に関する一切の責任を負いません。</b>お互いの評価や商品の状態を十分に確認のうえ、自己責任にてご利用ください。</p>
       </div>
     </section>
 
@@ -870,8 +870,8 @@
       }
       document.getElementById("detail-extra").innerHTML = extra;
       document.getElementById("detail-tip").innerText = isBuy
-        ? "💡 この募集に申し込むと、PayPayでの送金・受取や発送に関する専用チャットルームが作成されます。なお、取引上のトラブル等について運営は一切の責任を負いません。"
-        : "💡 申し込むと専用の取引ルームが作られます。お互いに安心安全に進めましょう。なお、取引上のトラブル等について運営は一切の責任を負いません。";
+        ? "💡 この募集に申し込むと、PayPayでの送金・受取や発送に関する専用チャットルームが作成されます。なお、取引上のトラブル等について運営は取引に関する一切の責任を負いません。"
+        : "💡 申し込むと専用の取引ルームが作られます。お互いに安心安全に進めましょう。なお、取引上のトラブル等について運営は取引に関する一切の責任を負いません。";
 
       const actions = document.getElementById("detail-actions");
       if (!currentUser) {
@@ -883,7 +883,10 @@
       } else if (isExpired(p)) {
         actions.innerHTML = `<p class="text-xs text-red-400 text-center">有効期限が切れています。</p>`;
       } else {
-        actions.innerHTML = `<button onclick="applyToPost(${index})" class="w-full bg-gradient-to-r from-purple-500 to-illit-accent text-white font-bold py-2.5 rounded-xl hover:opacity-90 transition text-sm">この募集に申し込む</button>`;
+        actions.innerHTML = `
+          <button onclick="applyToPost(${index})" class="w-full bg-gradient-to-r from-purple-500 to-illit-accent text-white font-bold py-2.5 rounded-xl hover:opacity-90 transition text-sm">この募集に申し込む</button>
+          <button onclick="reportPost('${p.id}', '${escapeHtml(p.give)}')" class="w-full text-xs text-gray-400 hover:text-red-500 py-1 underline text-center block">🚨 この募集を通報する</button>
+        `;
       }
 
       document.getElementById("detail-modal").classList.remove("hidden");
@@ -920,6 +923,35 @@
       }
     };
 
+    // ===== 通報機能 =====
+    window.reportPost = async function(postId, giveText) {
+      if (!currentUser) {
+        alert("通報するにはGoogleログインが必要です。");
+        return;
+      }
+      const reason = prompt(`「${giveText}」の募集を通報する理由を入力してください（例：詐欺の疑い、規約違反、不適切な表現など）:`);
+      if (reason === null) return;
+      if (!reason.trim()) {
+        alert("通報理由を入力してください。");
+        return;
+      }
+
+      try {
+        await addDoc(collection(db, "reports"), {
+          postId: postId,
+          postGive: giveText,
+          reporterId: currentUser.uid,
+          reporterName: currentUser.displayName || "匿名ファン",
+          reason: reason.trim(),
+          createdAt: serverTimestamp()
+        });
+        alert("通報を受け付けました。運営にて確認いたします。");
+      } catch (e) {
+        console.error(e);
+        alert("通報の送信に失敗しました。");
+      }
+    };
+
     // ===== 申込 =====
     window.applyToPost = async function(index) {
       const p = allPosts[index];
@@ -948,7 +980,7 @@
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
         });
-        closeDetailModal(); // モーダルを確実に閉じる
+        closeDetailModal();
         openTrade(ref.id);
       } catch (e) {
         console.error(e);
@@ -1170,7 +1202,7 @@
             <p>1. 購入者側はチャットやPayPayリンクで代金を送金します。</p>
             <p>2. 出品者は入金を確認したら商品を発送します。</p>
             <p>3. 商品が届いたら「受取確認」を押してください。</p>
-            <p class="text-[10px] text-pink-600 pt-1">※当サイトは取引の場を提供するのみであり、不着・返金トラブル等の責任は一切負いません。</p>
+            <p class="text-[10px] text-pink-600 pt-1">※当サイトは取引の場を提供するのみであり、運営は取引に関する一切の責任を負いません。</p>
           </div>
           <div class="text-xs text-gray-600 space-y-0.5">
             <div>送金／発送完了: あなた ${mark(myS)} ／ 相手 ${mark(otherS)}</div>
