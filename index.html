@@ -807,6 +807,7 @@
           want: isBuy ? "" : want,
           price: isBuy ? price : 0,
           description,
+          status: "active",
           photoCount: postPhotos.length,
           thumb: postPhotos.length > 0 ? postPhotos[0].thumb : "",
           userId: currentUser.uid,
@@ -908,6 +909,7 @@
           price: isBuy ? price : 0,
           deadline,
           description: note,
+          status: "active",
           userId: currentUser.uid,
           userName: getMyDisplayName(),
           createdAt: serverTimestamp()
@@ -959,7 +961,7 @@
       const cards = [];
 
       allPosts.forEach((p, index) => {
-        if (blocked.includes(p.userId)) return;
+        if (blocked.includes(p.userId) || p.status === "traded") return;
 
         const type = getPostType(p);
         const okKind = kindFilter === "all" || (kindFilter === "likes" ? likes.includes(p.id) : kindFilter === type);
@@ -1251,10 +1253,11 @@
           updatedAt: serverTimestamp()
         });
 
+        // 募集を「取引中(traded)」に更新して一覧から非表示にする
         try {
-          await deletePostWithPhotos(p.id);
+          await updateDoc(doc(db, "posts", p.id), { status: "traded" });
         } catch (delErr) {
-          console.error("募集の削除に失敗しましたが取引は継続します:", delErr);
+          console.error("募集の更新に失敗しましたが取引は継続します:", delErr);
         }
 
         closeDetailModal();
@@ -1664,10 +1667,17 @@
     window.cancelTrade = async function() {
       if (!currentTrade || !confirm("キャンセルしますか？")) return;
       try {
+        // キャンセル時は元の投稿を再度「active（募集中）」に戻す
+        if (currentTrade.postId) {
+          try {
+            await updateDoc(doc(db, "posts", currentTrade.postId), { status: "active" });
+          } catch (err) {}
+        }
         await updateDoc(doc(db, "trades", currentTrade.id), {
           status: "cancelled",
           updatedAt: serverTimestamp()
         });
+        loadPosts();
       } catch (e) {}
     };
 
