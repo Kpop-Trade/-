@@ -146,6 +146,7 @@
       <div class="flex border-b text-xs font-bold shrink-0">
         <button onclick="switchAdminTab('reports')" id="admin-tab-reports" class="flex-1 py-2 border-b-2 border-red-500 text-red-600">🚨 通報一覧</button>
         <button onclick="switchAdminTab('users')" id="admin-tab-users" class="flex-1 py-2 border-b-2 border-transparent text-gray-500">👥 登録ユーザー確認</button>
+        <button onclick="switchAdminTab('suspended')" id="admin-tab-suspended" class="flex-1 py-2 border-b-2 border-transparent text-gray-500">🚫 停止中</button>
       </div>
       <div id="admin-content" class="flex-1 overflow-y-auto space-y-2 text-xs">
         <p class="text-gray-400 text-center py-4">読み込み中...</p>
@@ -547,6 +548,20 @@
     </div>
   </div>
 
+  <!-- 🚫 アカウント停止モーダル（停止中のユーザーに表示・閉じられない） -->
+  <div id="suspended-modal" class="fixed inset-0 bg-black/80 hidden z-[80] flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-sm rounded-2xl p-6 space-y-3 shadow-xl text-center">
+      <div class="text-4xl">🚫</div>
+      <h3 class="font-bold text-base text-gray-800">アカウントが停止されています</h3>
+      <p class="text-xs text-gray-600">利用規約に反する行為などにより、このアカウントの利用が停止されました。</p>
+      <div class="bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700 text-left">
+        <span class="font-bold">理由:</span> <span id="suspended-reason"></span>
+      </div>
+      <p class="text-[11px] text-gray-400">心当たりがない場合や、解除のご相談は運営までご連絡ください。</p>
+      <button onclick="logout()" class="w-full bg-gray-100 text-gray-600 font-bold py-2.5 rounded-xl hover:bg-gray-200 transition text-sm">ログアウト</button>
+    </div>
+  </div>
+
   <!-- 📜 利用規約モーダル（初回は同意必須） -->
   <div id="terms-modal" class="fixed inset-0 bg-black/60 hidden z-[70] flex items-center justify-center p-4">
     <div class="bg-white w-full max-w-md rounded-2xl p-5 space-y-3 shadow-xl max-h-[92vh] flex flex-col">
@@ -934,6 +949,7 @@
 
     // ===== 👑 管理者パネル機能 =====
     let adminTab = "reports";
+    let adminUserNames = {};
     window.openAdminModal = function() {
       if (!isAdmin()) return;
       document.getElementById("admin-modal").classList.remove("hidden");
@@ -944,8 +960,9 @@
     };
     window.switchAdminTab = function(tab) {
       adminTab = tab;
-      document.getElementById("admin-tab-reports").className = "flex-1 py-2 border-b-2 " + (tab === 'reports' ? 'border-red-500 text-red-600 font-bold' : 'border-transparent text-gray-500');
-      document.getElementById("admin-tab-users").className = "flex-1 py-2 border-b-2 " + (tab === 'users' ? 'border-red-500 text-red-600 font-bold' : 'border-transparent text-gray-500');
+      ["reports", "users", "suspended"].forEach((k) => {
+        document.getElementById("admin-tab-" + k).className = "flex-1 py-2 border-b-2 " + (tab === k ? 'border-red-500 text-red-600 font-bold' : 'border-transparent text-gray-500');
+      });
       loadAdminData();
     };
 
@@ -974,8 +991,34 @@
                 </div>
               </div>`;
           }).join("");
+        } else if (adminTab === "suspended") {
+          const sSnap = await getDocs(collection(db, "suspensions"));
+          if (sSnap.empty) {
+            el.innerHTML = '<p class="text-gray-400 text-center py-6">停止中のアカウントはありません。</p>';
+            return;
+          }
+          el.innerHTML = sSnap.docs.map((d) => {
+            const r = d.data();
+            return `
+              <div class="bg-gray-50 border border-red-200 rounded-xl p-3 space-y-1">
+                <div class="flex justify-between items-center font-bold text-gray-800">
+                  <span>${escapeHtml(r.name || '名無し')}</span>
+                  <span class="text-[10px] text-gray-400">UID: ${d.id.slice(0, 8)}... / ${fmtTime(r.createdAt)}</span>
+                </div>
+                <div class="text-red-600 bg-white p-2 rounded border border-red-100">理由: ${escapeHtml(r.reason || '')}</div>
+                <div class="flex justify-end pt-1">
+                  <button onclick="adminUnsuspendUser('${d.id}')" class="bg-green-600 text-white font-bold px-3 py-1 rounded text-[11px] hover:bg-green-700">停止を解除する</button>
+                </div>
+              </div>`;
+          }).join("");
         } else {
           const snap = await getDocs(collection(db, "users"));
+          const suspSnap = await getDocs(collection(db, "suspensions"));
+          const suspSet = new Set(suspSnap.docs.map((x) => x.id));
+          snap.docs.forEach((x) => {
+            const pr = (x.data().profile) || {};
+            adminUserNames[x.id] = pr.nickname || pr.name || "名無し";
+          });
           if (snap.empty) {
             el.innerHTML = '<p class="text-gray-400 text-center py-6">ユーザーデータがありません。</p>';
             return;
@@ -991,6 +1034,11 @@
                 </div>
                 <div class="text-gray-600">PayPay ID: ${escapeHtml(p.paypay || '未設定')}</div>
                 <div class="text-gray-500 text-[11px]">住所: ${escapeHtml(p.zip || '')} ${escapeHtml(p.address1 || '未登録')}</div>
+                ${ADMIN_UIDS.includes(d.id) ? '' : `<div class="flex justify-end items-center gap-2 pt-1">
+                  ${suspSet.has(d.id)
+                    ? `<span class="text-red-600 font-bold">🚫 停止中</span><button onclick="adminUnsuspendUser('${d.id}')" class="bg-green-600 text-white font-bold px-3 py-1 rounded text-[11px] hover:bg-green-700">解除</button>`
+                    : `<button onclick="adminSuspendUser('${d.id}', '')" class="bg-gray-800 text-white font-bold px-3 py-1 rounded text-[11px] hover:bg-black">アカウント停止</button>`}
+                </div>`}
               </div>`;
           }).join("");
         }
@@ -1342,12 +1390,14 @@
         userName.innerText = getMyDisplayName();
         subscribeUserData();
         subscribeTrades();
+        subscribeSuspension();
         refreshPushToken();
       } else {
         loginBtn.classList.remove("hidden");
         userProfile.classList.add("hidden");
         if (unsubTrades) { unsubTrades(); unsubTrades = null; }
         if (unsubUser) { unsubUser(); unsubUser = null; }
+        clearSuspension();
         userData = { profile: {}, blocked: [], likes: [], reads: {} };
         myTrades = [];
         updateBadge();
@@ -2012,7 +2062,7 @@
       if (!currentUser) {
         actions.innerHTML = `<button onclick="loginWithGoogle()" class="w-full bg-illit-purple text-white font-bold py-2.5 rounded-xl hover:bg-illit-darkPurple transition text-sm">ログインして${isGroup ? '参加する' : '申し込む'}</button>`;
       } else if (p.userId && (p.userId === currentUser.uid || isAdmin())) {
-        const adminDelete = isAdmin() && p.userId !== currentUser.uid ? `<button onclick="adminDeletePost('${p.id}')" class="w-full bg-red-600 text-white font-bold py-2.5 rounded-xl hover:bg-red-700 transition text-sm">👑 [管理者] この募集を強制削除</button>` : '';
+        const adminDelete = isAdmin() && p.userId !== currentUser.uid ? `<button onclick="adminDeletePost('${p.id}')" class="w-full bg-red-600 text-white font-bold py-2.5 rounded-xl hover:bg-red-700 transition text-sm">👑 [管理者] この募集を強制削除</button><button onclick="adminSuspendUser('${p.userId}', '')" class="w-full bg-gray-800 text-white font-bold py-2.5 rounded-xl hover:bg-black transition text-sm">👑 [管理者] この出品者のアカウントを停止</button>` : '';
         const closeBtn = isGroup && p.userId === currentUser.uid
           ? `<button onclick="toggleGroupClosed(${index})" class="w-full bg-teal-50 text-teal-700 font-bold py-2.5 rounded-xl hover:bg-teal-100 transition text-sm">${closed ? '🔓 募集を再開する' : '🔒 募集を締め切る'}</button>`
           : '';
@@ -3008,6 +3058,68 @@
         renderRoom();
       } catch (e) {
         alert("評価の送信に失敗しました。");
+      }
+    };
+
+    // ===== 🚫 アカウント停止 =====
+    let unsubSusp = null;
+    function subscribeSuspension() {
+      if (unsubSusp) unsubSusp();
+      unsubSusp = onSnapshot(doc(db, "suspensions", currentUser.uid), (snap) => {
+        const m = document.getElementById("suspended-modal");
+        if (snap.exists() && !isAdmin()) {
+          document.getElementById("suspended-reason").innerText = snap.data().reason || "（記載なし）";
+          m.classList.remove("hidden");
+        } else {
+          m.classList.add("hidden");
+        }
+      }, (e) => console.warn("停止状態の確認エラー:", e));
+    }
+    function clearSuspension() {
+      if (unsubSusp) { unsubSusp(); unsubSusp = null; }
+      const m = document.getElementById("suspended-modal");
+      if (m) m.classList.add("hidden");
+    }
+
+    window.adminSuspendUser = async function(uid, name) {
+      if (!isAdmin() || !uid) return;
+      if (ADMIN_UIDS.includes(uid)) { alert("管理者アカウントは停止できません。"); return; }
+      const label = name || adminUserNames[uid] || (allPosts.find((x) => x.userId === uid) || {}).userName || uid.slice(0, 8);
+      const reason = prompt(`「${label}」さんのアカウントを停止します。\n理由を入力してください（本人にも表示されます）:`);
+      if (reason === null) return;
+      if (!reason.trim()) { alert("理由を入力してください。"); return; }
+      const delPosts = confirm("このユーザーの募集もすべて削除しますか？\nOK＝削除する ／ キャンセル＝残す");
+      try {
+        await setDoc(doc(db, "suspensions", uid), {
+          uid,
+          name: label,
+          reason: reason.trim().slice(0, 200),
+          by: currentUser.uid,
+          createdAt: serverTimestamp()
+        });
+        if (delPosts) {
+          const ps = await getDocs(query(collection(db, "posts"), where("userId", "==", uid)));
+          for (const d of ps.docs) { await deletePostWithPhotos(d.id); }
+        }
+        alert("アカウントを停止しました。");
+        closeDetailModal();
+        if (!document.getElementById("admin-modal").classList.contains("hidden")) loadAdminData();
+      } catch (e) {
+        console.error(e);
+        alert("停止に失敗しました。Firestoreルール（suspensions）を確認してください。");
+      }
+    };
+
+    window.adminUnsuspendUser = async function(uid) {
+      if (!isAdmin() || !uid) return;
+      if (!confirm("このアカウントの停止を解除しますか？")) return;
+      try {
+        await deleteDoc(doc(db, "suspensions", uid));
+        alert("停止を解除しました。");
+        loadAdminData();
+      } catch (e) {
+        console.error(e);
+        alert("解除に失敗しました。");
       }
     };
 
