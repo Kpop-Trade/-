@@ -28,7 +28,7 @@
 <body class="bg-illit-bg text-gray-800 min-h-screen font-sans">
 
   <!-- ヘッダーエリア -->
-  <header class="bg-white border-b border-purple-100 sticky top-0 z-50 shadow-sm">
+  <header class="bg-white border-b border-purple-100 sticky top-0 z-40 shadow-sm">
     <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
       <div class="flex items-center space-x-2">
         <span class="bg-illit-purple text-white font-bold text-xs px-2 py-1 rounded-full">ILLIT</span>
@@ -43,7 +43,6 @@
           Googleでログイン
         </button>
         <div id="user-profile" class="hidden flex items-center space-x-2">
-          <span class="text-xs bg-purple-100 text-illit-darkPurple font-bold px-2 py-0.5 rounded-full" id="new-user-badge">新規</span>
           <span id="user-name" class="text-xs md:text-sm font-semibold text-gray-700"></span>
           <button onclick="logout()" class="text-xs text-gray-400 hover:text-gray-600 underline">ログアウト</button>
         </div>
@@ -73,7 +72,7 @@
         <h3 class="font-bold text-base md:text-lg">トレカやシリアルコードを交換に出す</h3>
         <p class="text-xs text-purple-100 mt-0.5">手数料完全無料！ファン同士でスムーズにトレード</p>
       </div>
-      <button onclick="openPostModal()" class="bg-white text-illit-darkPurple font-bold text-xs md:text-sm px-4 py-2.5 rounded-xl shadow hover:bg-purple-50 transition">
+      <button onclick="openPostModal()" class="bg-white text-illit-darkPurple font-bold text-xs md:text-sm px-4 py-2.5 rounded-xl shadow hover:bg-purple-50 transition whitespace-nowrap">
         ＋ 新規出品する
       </button>
     </section>
@@ -83,6 +82,12 @@
       <div class="flex justify-between items-center px-1">
         <h3 class="font-bold text-base text-gray-800">最新の交換募集</h3>
         <span class="text-xs text-gray-500">手数料 0円</span>
+      </div>
+
+      <!-- 検索・絞り込み -->
+      <div class="space-y-2">
+        <input type="text" id="search-input" oninput="setSearch(this.value)" placeholder="🔍 譲・求・出品者名で検索" class="w-full border border-purple-100 rounded-xl p-2.5 bg-white text-xs md:text-sm">
+        <div id="member-filters" class="flex flex-wrap gap-2"></div>
       </div>
 
       <!-- データベースから取得したカードがここに並びます -->
@@ -100,7 +105,7 @@
         <h3 class="font-bold text-base text-gray-800">新規トレカ交換の出品</h3>
         <button onclick="closePostModal()" class="text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
       </div>
-      
+
       <div class="space-y-3 text-xs md:text-sm">
         <div>
           <label class="block font-semibold text-gray-700 mb-1">対象メンバー</label>
@@ -138,7 +143,7 @@
         <h3 class="font-bold text-base text-gray-800">交換募集の詳細</h3>
         <button onclick="closeDetailModal()" class="text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
       </div>
-      
+
       <div class="space-y-3 text-xs md:text-sm">
         <div class="bg-purple-50 p-3 rounded-xl space-y-2">
           <div><span class="font-bold text-gray-500">メンバー:</span> <span id="detail-member" class="font-semibold text-gray-800"></span></div>
@@ -225,12 +230,14 @@
       document.getElementById("post-modal").classList.add("hidden");
     };
 
-    // 詳細モーダルの開閉
-    window.openDetailModal = function(give, want, member, userName) {
-      document.getElementById("detail-give").innerText = give;
-      document.getElementById("detail-want").innerText = want;
-      document.getElementById("detail-member").innerText = member;
-      document.getElementById("detail-user").innerText = userName;
+    // 詳細モーダルの開閉（allPosts の番号で投稿を特定）
+    window.openDetailModal = function(index) {
+      const p = allPosts[index];
+      if (!p) return;
+      document.getElementById("detail-give").innerText = p.give;
+      document.getElementById("detail-want").innerText = p.want;
+      document.getElementById("detail-member").innerText = p.member;
+      document.getElementById("detail-user").innerText = p.userName;
       document.getElementById("detail-modal").classList.remove("hidden");
     };
 
@@ -241,8 +248,8 @@
     // 出品データをFirestoreに保存する関数
     window.submitPost = async function() {
       const member = document.getElementById("input-member").value;
-      const give = document.getElementById("input-give").value;
-      const want = document.getElementById("input-want").value;
+      const give = document.getElementById("input-give").value.trim();
+      const want = document.getElementById("input-want").value.trim();
 
       if (!give || !want) {
         alert("「譲」と「求」の内容を入力してください。");
@@ -269,41 +276,79 @@
       }
     };
 
-    // Firestoreから出品一覧を読み込んで画面に表示する関数
+    // ===== 絞り込み・検索 =====
+    const MEMBERS = ["すべて", "ウォニ (Wonhee)", "ミンジュ (Minju)", "イロハ (Iroha)", "モカ (Moka)", "ユナ (Yuna)"];
+    let allPosts = [];
+    let selectedMember = "すべて";
+    let searchText = "";
+
+    function renderFilters() {
+      document.getElementById("member-filters").innerHTML = MEMBERS.map((m, i) => {
+        const active = m === selectedMember;
+        const cls = active
+          ? "bg-illit-purple text-white"
+          : "bg-white text-gray-600 border border-purple-100";
+        return `<button onclick="setMember(${i})" class="${cls} text-xs font-bold px-3 py-1.5 rounded-full transition">${m.split(" ")[0]}</button>`;
+      }).join("");
+    }
+
+    window.setMember = function(i) {
+      selectedMember = MEMBERS[i];
+      renderFilters();
+      renderPosts();
+    };
+
+    window.setSearch = function(v) {
+      searchText = v.trim().toLowerCase();
+      renderPosts();
+    };
+
+    function renderPosts() {
+      const container = document.getElementById("posts-container");
+      const cards = [];
+
+      allPosts.forEach((p, index) => {
+        const okMember = selectedMember === "すべて" || p.member === selectedMember;
+        const okText = !searchText ||
+          (p.give + " " + p.want + " " + p.userName).toLowerCase().includes(searchText);
+        if (!okMember || !okText) return;
+
+        cards.push(`
+          <div class="bg-white p-4 rounded-2xl border border-purple-100 shadow-sm flex flex-col justify-between space-y-3">
+            <div class="flex items-center space-x-2">
+              <span class="bg-pink-100 text-pink-700 text-xs font-bold px-2 py-0.5 rounded">譲</span>
+              <span class="font-bold text-sm text-gray-800">${escapeHtml(p.give)} <span class="text-xs text-gray-400 font-normal">(${escapeHtml(p.member)})</span></span>
+            </div>
+            <div class="flex items-center space-x-2">
+              <span class="bg-purple-100 text-illit-darkPurple text-xs font-bold px-2 py-0.5 rounded">求</span>
+              <span class="font-bold text-sm text-gray-800">${escapeHtml(p.want)}</span>
+            </div>
+            <div class="pt-2 border-t border-gray-100 flex justify-between items-center text-xs text-gray-500">
+              <span>出品者: ${escapeHtml(p.userName)}</span>
+              <button onclick="openDetailModal(${index})" class="bg-illit-purple text-white font-bold px-3 py-1.5 rounded-lg hover:bg-illit-darkPurple transition">詳細・連絡</button>
+            </div>
+          </div>
+        `);
+      });
+
+      if (allPosts.length === 0) {
+        container.innerHTML = '<p class="text-xs text-gray-400 col-span-2 text-center py-4">現在、出品されているカードはありません。</p>';
+      } else if (cards.length === 0) {
+        container.innerHTML = '<p class="text-xs text-gray-400 col-span-2 text-center py-4">条件に合う出品はありません。</p>';
+      } else {
+        container.innerHTML = cards.join("");
+      }
+    }
+
+    // Firestoreから出品一覧を読み込む関数
     async function loadPosts() {
       const container = document.getElementById("posts-container");
       container.innerHTML = '<p class="text-xs text-gray-400 col-span-2 text-center py-4">読み込み中...</p>';
-
       try {
         const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
-        const querySnapshot = await getDocs(q);
-
-        if (querySnapshot.empty) {
-          container.innerHTML = '<p class="text-xs text-gray-400 col-span-2 text-center py-4">現在、出品されているカードはありません。</p>';
-          return;
-        }
-
-        container.innerHTML = "";
-        querySnapshot.forEach((doc) => {
-          const data = doc.data();
-          const cardHtml = `
-            <div class="bg-white p-4 rounded-2xl border border-purple-100 shadow-sm flex flex-col justify-between space-y-3">
-              <div class="flex items-center space-x-2">
-                <span class="bg-pink-100 text-pink-700 text-xs font-bold px-2 py-0.5 rounded">譲</span>
-                <span class="font-bold text-sm text-gray-800">${escapeHtml(data.give)} <span class="text-xs text-gray-400 font-normal">(${escapeHtml(data.member)})</span></span>
-              </div>
-              <div class="flex items-center space-x-2">
-                <span class="bg-purple-100 text-illit-darkPurple text-xs font-bold px-2 py-0.5 rounded">求</span>
-                <span class="font-bold text-sm text-gray-800">${escapeHtml(data.want)}</span>
-              </div>
-              <div class="pt-2 border-t border-gray-100 flex justify-between items-center text-xs text-gray-500">
-                <span>出品者: ${escapeHtml(data.userName)} <span class="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">新規</span></span>
-                <button onclick="openDetailModal('${escapeHtml(data.give).replace(/'/g, "\\'")}', '${escapeHtml(data.want).replace(/'/g, "\\'")}', '${escapeHtml(data.member).replace(/'/g, "\\'")}', '${escapeHtml(data.userName).replace(/'/g, "\\'")}')" class="bg-illit-purple text-white font-bold px-3 py-1.5 rounded-lg hover:bg-illit-darkPurple transition">詳細・連絡</button>
-              </div>
-            </div>
-          `;
-          container.innerHTML += cardHtml;
-        });
+        const snapshot = await getDocs(q);
+        allPosts = snapshot.docs.map((d) => d.data());
+        renderPosts();
       } catch (e) {
         console.error("読み込みエラー: ", e);
         container.innerHTML = '<p class="text-xs text-red-400 col-span-2 text-center py-4">データの読み込みに失敗しました。</p>';
@@ -312,12 +357,13 @@
 
     // HTMLエスケープ（セキュリティ対策）
     function escapeHtml(str) {
-      return str.replace(/[&<>'"]/g, 
+      return String(str ?? "").replace(/[&<>'"]/g,
         tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
       );
     }
 
-    // ページを開いたときに出品一覧を読み込む
+    // ページを開いたときの初期化
+    renderFilters();
     loadPosts();
   </script>
 </body>
