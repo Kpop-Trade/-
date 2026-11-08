@@ -1220,8 +1220,49 @@
       await deleteDoc(doc(db, "posts", postId));
       delete photoCache[postId];
     }
+    // 👥 共同購入モーダルを開く・閉じる・保存する関数
+    window.openGroupPostModal = async function() {
+      if (!currentUser) return alert("ログインが必要です。");
+      if (!(await checkDeviceLock())) return;
+      document.getElementById("group-title").value = ""; 
+      document.getElementById("group-price").value = ""; 
+      document.getElementById("group-desc").value = "";
+      document.getElementById("group-post-modal").classList.remove("hidden");
+    };
 
+    window.closeGroupPostModal = function() { 
+      document.getElementById("group-post-modal").classList.add("hidden"); 
+    };
+
+    window.submitGroupPost = async function() {
+      if (!(await checkDeviceLock())) return;
+      const member = document.getElementById("group-member").value;
+      const title = document.getElementById("group-title").value.trim();
+      const slots = Number(document.getElementById("group-slots").value) || 1;
+      const price = Number(document.getElementById("group-price").value) || 0;
+      const combine = document.getElementById("group-combine").value;
+      const description = document.getElementById("group-desc").value.trim().slice(0, 200);
+
+      if (!title || price <= 0) return alert("タイトルと金額を入力してください。");
+
+      try {
+        await addDoc(collection(db, "posts"), {
+          kind: "group", isBuy: false, member, 
+          give: `【共同購入】${title} (残り${slots}枠)`, 
+          want: `￥${price.toLocaleString()} / 1人`,
+          combine: combine, // 抱き合わせ情報
+          price, slots, description, 
+          status: "active", userId: currentUser.uid, userName: getMyDisplayName(), createdAt: serverTimestamp()
+        });
+        alert("共同購入の募集を開始しました！");
+        closeGroupPostModal();
+      } catch (e) {
+        alert("失敗しました。");
+      }
+    };
+    
     window.submitPost = async function() {
+      
       if (submittingPost || processingPhotos) return;
       if (!(await checkDeviceLock())) return;
 
