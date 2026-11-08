@@ -138,14 +138,14 @@
           <input type="text" id="input-want" maxlength="100" placeholder="例: 同種 ウォニ" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
         </div>
         <div id="price-container" class="hidden">
-          <label class="block font-semibold text-gray-700 mb-1">希望価格（円・PayPay送金）</label>
+          <label class="block font-semibold text-gray-700 mb-1">希望買取り価格（円・PayPay送金）</label>
           <input type="number" id="input-price" min="1" max="100000" placeholder="例: 1500" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50">
         </div>
         <div>
           <label class="block font-semibold text-gray-700 mb-1">
-            📷 写真 <span class="text-red-500">（必須・最大3枚）</span>
+            📷 写真 <span id="photo-req-label" class="text-red-500">（必須・最大3枚）</span>
           </label>
-          <p class="text-[11px] text-gray-500 mb-2">表・裏、傷や角の状態がわかる写真を添付してください。</p>
+          <p class="text-[11px] text-gray-500 mb-2">表・裏、傷や角の状態がわかる写真を添付してください。（買取希望時は任意）</p>
           <input id="post-photo-input" type="file" accept="image/*" multiple class="hidden" onchange="addPostPhotos(this)">
           <div id="post-photo-preview" class="flex flex-wrap gap-2"></div>
         </div>
@@ -272,25 +272,6 @@
     </div>
   </div>
 
-  <!-- シリアルコード送信モーダル -->
-  <div id="serial-send-modal" class="fixed inset-0 bg-black/60 hidden z-[55] flex items-center justify-center p-4">
-    <div class="bg-white w-full max-w-sm rounded-2xl p-6 space-y-4 shadow-xl">
-      <div class="flex justify-between items-center border-b pb-3">
-        <h3 class="font-bold text-base text-gray-800">🎫 シリアルコードを送る</h3>
-        <button onclick="closeSerialSendModal()" class="text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
-      </div>
-      <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-3 text-[11px] text-yellow-800 space-y-1">
-        <p>・コードはこの取引の相手にだけ届きます。</p>
-        <p>・<b>送信後は取り消せません。</b>有効なコードか確認してから送ってください。</p>
-      </div>
-      <input id="serial-code-input" type="text" maxlength="100" autocomplete="off" placeholder="シリアルコードを入力" class="w-full border border-gray-200 rounded-xl p-2.5 bg-gray-50 text-sm font-mono">
-      <div class="flex space-x-2">
-        <button onclick="closeSerialSendModal()" class="flex-1 bg-gray-100 text-gray-600 font-bold py-2.5 rounded-xl hover:bg-gray-200 transition text-sm">キャンセル</button>
-        <button id="serial-send-btn" onclick="sendSerial()" class="flex-1 bg-yellow-400 text-yellow-900 font-bold py-2.5 rounded-xl hover:bg-yellow-300 transition text-sm">送信する</button>
-      </div>
-    </div>
-  </div>
-
   <!-- 画像拡大ビューア -->
   <div id="image-viewer" class="fixed inset-0 bg-black/90 hidden z-[60] flex items-center justify-center p-2" onclick="closeImageViewer()">
     <img id="image-viewer-img" src="" alt="" class="max-w-full max-h-full object-contain">
@@ -359,8 +340,6 @@
     let reviewState = { tradeId: null, done: null };
     let selectedRating = 0;
     let sendingImage = false;
-    let sendingSerial = false;
-    let revealedSerial = new Set();
 
     const STATUS_LABEL = {
       negotiating: "交渉中",
@@ -489,9 +468,13 @@
       postMode = mode;
       document.getElementById("post-modal-title").innerText = mode === "buy" ? "💳 トレカの買取（購入希望）" : "🃏 トレカ交換の出品";
       document.getElementById("label-give").innerText = mode === "buy" ? "【求】（買いたいトレカ）" : "【譲】（出すもの）";
-      document.getElementById("label-want").innerText = "【求】（希望するもの）";
       document.getElementById("want-container").classList.toggle("hidden", mode === "buy");
-      document.getElementById("price-container").classList.toggle("hidden", mode === "buy");
+      document.getElementById("price-container").classList.toggle("hidden", mode !== "buy");
+      document.getElementById("photo-req-label").innerText = mode === "buy" ? "（任意・最大3枚）" : "（必須・最大3枚）";
+      
+      document.getElementById("input-give").value = "";
+      document.getElementById("input-want").value = "";
+      document.getElementById("input-price").value = "";
       postPhotos = [];
       renderPostPhotoPreview();
       document.getElementById("post-modal").classList.remove("hidden");
@@ -642,7 +625,8 @@
       document.getElementById("serial-modal-title").innerText = mode === "buy" ? "💳 シリアルの買取（購入希望）" : "🎫 シリアル交換の出品";
       document.getElementById("serial-label-give").innerText = mode === "buy" ? "【求】（買いたいシリアル）" : "【譲】シリアルの種類";
       document.getElementById("serial-want-container").classList.toggle("hidden", mode === "buy");
-      document.getElementById("serial-price-container").classList.toggle("hidden", mode === "buy");
+      document.getElementById("serial-price-container").classList.toggle("hidden", mode !== "buy");
+      
       document.getElementById("serial-give").value = "";
       document.getElementById("serial-want").value = "";
       document.getElementById("serial-price").value = "";
@@ -964,6 +948,7 @@
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
         });
+        closeDetailModal(); // モーダルを確実に閉じる
         openTrade(ref.id);
       } catch (e) {
         console.error(e);
@@ -1032,7 +1017,6 @@
       roomPhotosFor = null;
       reviewState = { tradeId: null, done: null };
       selectedRating = 0;
-      revealedSerial = new Set();
     }
 
     async function loadRoomPhotos(t) {
@@ -1058,7 +1042,6 @@
     window.openTrade = function(id) {
       closeTradesModal();
       closeDetailModal();
-      closeSerialSendModal();
       cleanupRoom();
       document.getElementById("room-messages").innerHTML = "";
       document.getElementById("room-modal").classList.remove("hidden");
@@ -1087,7 +1070,6 @@
     window.closeRoom = function() {
       document.getElementById("room-modal").classList.add("hidden");
       closeImageViewer();
-      closeSerialSendModal();
       cleanupRoom();
     };
 
@@ -1326,11 +1308,12 @@
     window.tradeAction = async function(field) {
       if (!currentTrade) return;
       try {
-        await updateDoc(doc(db, "trades", currentTrade.id), {
-          [field + "." + currentUser.uid]: true,
-          updatedAt: serverTimestamp()
-        });
+        const updateData = {};
+        updateData[`${field}.${currentUser.uid}`] = true;
+        updateData.updatedAt = serverTimestamp();
+        await updateDoc(doc(db, "trades", currentTrade.id), updateData);
       } catch (e) {
+        console.error(e);
         alert("更新に失敗しました。");
       }
     };
