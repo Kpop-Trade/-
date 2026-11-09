@@ -917,6 +917,7 @@
     const MAX_NOTIFICATIONS = 50;
 
     let currentUser = null, allPosts = [], unsubPosts = null, selectedMember = "すべて", kindFilter = "all", sortFilter = "new", bundleFilter = "all", searchText = "", activeOnly = false, currentDetailIndex = -1;
+    let pendingPostId = new URLSearchParams(location.search).get("post");
     let postMode = "exchange", postPhotos = [], processingPhotos = false, submittingPost = false, submittingGroup = false, detailPhotos = [], roomPhotos = [], roomPhotosFor = null;
     let myTrades = [], unsubTrades = null, groupJoins = {}, unsubJoins = null, currentTrade = null, roomMessages = [], unsubRoom = null, unsubMsgs = null;
     let reviewState = { tradeId: null, done: null }, selectedRating = 0, sendingImage = false, roomBoxKey = null, userData = { profile: {}, blocked: [], likes: [], reads: {}, notifications: [], cancelHistory: [] };
@@ -944,10 +945,39 @@
     function joinsOf(postId) { return groupJoins[postId] || []; }
     function needsCondition(kind) { return kind === "card" || kind === "album" || kind === "dearlit"; }
 
-    window.shareToX = function(text) {
-      const appUrl = location.origin;
-      const tweetText = encodeURIComponent(text + "\n\n🔗 アプリで確認・直接取引する👇\n" + appUrl + "\n#ILLIT #ILLIT交換 #ILLIT買取 #ILLIT共同購入");
-      window.open(`https://twitter.com/intent/tweet?text=${tweetText}`, '_blank');
+    // ==============================================
+    // Xシェア（定型文＋募集への直リンク）
+    // ==============================================
+    const SHARE_TYPE_LABEL = {
+      card_exchange: "🃏 トレカ交換募集", card_buy: "💳 トレカ買取募集", card_sell: "💰 トレカ売却",
+      album: "💿 アルバム", dearlit: "🎁 DEARLIT",
+      serial_exchange: "🎫 シリアル交換募集", serial_buy: "💳 シリアル買取募集", serial_sell: "💰 シリアル売却",
+      group_buy: "🛍 共同購入募集"
+    };
+
+    window.shareToX = function(text, postId) {
+      const url = location.origin + location.pathname + (postId ? "?post=" + postId : "");
+      window.open("https://x.com/intent/tweet?text=" + encodeURIComponent(text) + "&url=" + encodeURIComponent(url), "_blank");
+    };
+
+    window.shareCurrentPost = function() {
+      const p = allPosts[currentDetailIndex]; if (!p) return;
+      const type = getPostTypeKey(p);
+      const yen = "¥" + Number(p.price || 0).toLocaleString();
+      const lines = [SHARE_TYPE_LABEL[type] || "募集"];
+      if (p.member && p.member !== "指定なし") lines.push("【メンバー】" + p.member.split(" ")[0]);
+      if (type === "group_buy") {
+        lines.push("【商品】" + p.give, `【金額】${yen} / ${p.target}人募集`);
+      } else if (p.isBuy) {
+        lines.push("【求】" + p.give, "【希望価格】" + yen);
+      } else if (p.isSell) {
+        lines.push("【譲】" + p.give, "【価格】" + yen);
+      } else {
+        lines.push("【譲】" + p.give, "【求】" + p.want);
+      }
+      lines.push("", "手数料無料のILLIT Tradeで取引できます👇");
+      const text = lines.join("\n") + "\n#ILLIT #ILLIT交換 #ILLIT買取 #ILLIT共同購入";
+      shareToX(text, p.id);
     };
 
     function showToast(message, type = "info") {
@@ -1871,11 +1901,7 @@
         });
         for (let i = 0; i < postPhotos.length; i++) await addDoc(collection(db, "posts", ref.id, "photos"), { data: postPhotos[i].full, order: i, createdAt: serverTimestamp() });
         
-        showToast("出品が完了しました！", "success");
-        if (confirm("出品が完了しました！\nX（旧Twitter）でシェアしますか？")) {
-            const shareText = `【譲】${give}\n【求】${(isBuy || isSell) ? price + "円(PayPay)" : want}\nILLIT Tradeで出品しました！`;
-            shareToX(shareText);
-        }
+        showToast("出品が完了しました！詳細画面からXでシェアできます", "success");
         
         closePostModal(); switchTab('home');
       } catch(e) { alert("失敗しました"); } finally { submittingPost = false; btn.disabled = false; btn.innerText = "出品する"; }
@@ -1906,11 +1932,7 @@
           likesCount: 0, createdAt: serverTimestamp()
         });
         
-        showToast("出品が完了しました！", "success");
-        if (confirm("出品が完了しました！\nX（旧Twitter）でシェアしますか？")) {
-            const shareText = `🎫 シリアル${isSell ? '売却' : (isBuy ? '買取' : '交換')}募集\n【譲】${give}\n【求】${(isBuy || isSell) ? price + "円(PayPay)" : want}\nILLIT Tradeに出品しました！`;
-            shareToX(shareText);
-        }
+        showToast("出品が完了しました！詳細画面からXでシェアできます", "success");
         
         closeSerialPostModal(); switchTab('home');
       } catch(e) { alert("失敗しました"); }
@@ -1942,11 +1964,7 @@
         });
         for (let i = 0; i < postPhotos.length; i++) await addDoc(collection(db, "posts", ref.id, "photos"), { data: postPhotos[i].full, order: i, createdAt: serverTimestamp() });
         
-        showToast("共同購入の募集を開始しました！", "success");
-        if (confirm("募集を開始しました！\nX（旧Twitter）でシェアして参加者を集めますか？")) {
-            const shareText = `🛍 共同購入の募集\n【商品】${give}\n【金額】${price}円 / ${target}人募集\n手数料無料のILLIT Tradeで主催しています！`;
-            shareToX(shareText);
-        }
+        showToast("共同購入の募集を開始しました！詳細画面からXでシェアできます", "success");
         
         closeGroupPostModal(); switchTab('home');
       } catch(e) { alert("失敗しました"); } finally { submittingGroup = false; btn.disabled = false; btn.innerText = "主催する"; }
@@ -2070,7 +2088,14 @@
 
     function subscribePosts() {
       if (unsubPosts) unsubPosts();
-      unsubPosts = onSnapshot(query(collection(db, "posts"), orderBy("createdAt", "desc")), (snap) => { allPosts = snap.docs.map(d => ({ id: d.id, ...d.data() })); renderPosts(); });
+      unsubPosts = onSnapshot(query(collection(db, "posts"), orderBy("createdAt", "desc")), (snap) => {
+        allPosts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderPosts();
+        if (pendingPostId) {
+          const i = allPosts.findIndex(x => x.id === pendingPostId);
+          if (i >= 0) { pendingPostId = null; openDetailModal(i); }
+        }
+      });
     }
 
     async function getPhotos(postId) {
@@ -2149,6 +2174,7 @@
           actions.innerHTML = `<button onclick="${isGroup ? `joinGroup(${index})` : `applyToPost(${index})`}" class="w-full bg-gradient-to-r ${isGroup ? 'from-teal-400 to-teal-500' : 'from-illit-purple to-illit-accent'} text-white font-medium py-3 rounded-full shadow-md border border-white/30">${isGroup ? '🛍 参加する' : '申し込む'}</button>`;
         }
       }
+      actions.innerHTML += `<button onclick="shareCurrentPost()" class="w-full bg-black text-white font-medium py-3 rounded-full shadow-md border border-white/30 mt-2">𝕏 でシェア</button>`;
       document.getElementById("detail-modal").classList.remove("hidden"); loadDetailPhotos(p, index); if (p.userId) loadRating(p.userId, index);
     };
     window.closeDetailModal = function() { document.getElementById("detail-modal").classList.add("hidden"); currentDetailIndex = -1; };
