@@ -1,3 +1,5 @@
+ご指定の通り、強化された管理画面（ダッシュボード）の機能を組み込んだ完全なHTMLコード（全文）を作成しました。
+このコードをコピーして、元の index.html にそのまま上書きしてください。
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -420,24 +422,33 @@
     </div>
   </div>
 
-  <!-- 管理者パネル -->
+  <!-- 管理者パネル (強化版) -->
   <div id="admin-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
-    <div class="liquid-glass-heavy w-full max-w-lg rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[90vh] flex flex-col">
+    <div class="liquid-glass-heavy w-full max-w-2xl rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[90vh] flex flex-col">
       <div class="flex justify-between items-center border-b border-purple-200/50 pb-3 shrink-0">
-        <h3 class="font-bold text-base text-gray-800">👑 運営・管理者パネル</h3>
-        <button onclick="closeAdminModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
+        <h3 class="font-bold text-lg text-gray-800 flex items-center gap-2">👑 運営ダッシュボード</h3>
+        <button onclick="closeAdminModal()" class="text-gray-400 hover:text-gray-600 font-bold text-2xl leading-none">&times;</button>
       </div>
-      <div class="flex border-b border-purple-200/50 text-[10px] md:text-xs font-medium shrink-0 overflow-x-auto">
-        <button onclick="switchAdminTab('reports')" id="admin-tab-reports" class="flex-1 py-2 px-1 border-b-2 border-red-500 text-red-600 shrink-0 whitespace-nowrap">🚨 通報</button>
-        <button onclick="switchAdminTab('inquiries')" id="admin-tab-inquiries" class="flex-1 py-2 px-1 border-b-2 border-transparent text-gray-500 shrink-0 whitespace-nowrap">📩 問合せ</button>
-        <button onclick="switchAdminTab('users')" id="admin-tab-users" class="flex-1 py-2 px-1 border-b-2 border-transparent text-gray-500 shrink-0 whitespace-nowrap">👥 ユーザー</button>
-        <button onclick="switchAdminTab('suspended')" id="admin-tab-suspended" class="flex-1 py-2 px-1 border-b-2 border-transparent text-gray-500 shrink-0 whitespace-nowrap">🚫 停止中</button>
-        <button onclick="switchAdminTab('stats')" id="admin-tab-stats" class="flex-1 py-2 px-1 border-b-2 border-transparent text-gray-500 shrink-0 whitespace-nowrap">📊 統計</button>
-        <button onclick="switchAdminTab('broadcast')" id="admin-tab-broadcast" class="flex-1 py-2 px-1 border-b-2 border-transparent text-gray-500 shrink-0 whitespace-nowrap">📢 一斉通知</button>
+      
+      <!-- タブメニュー -->
+      <div class="flex border-b border-purple-200/50 text-[11px] md:text-xs font-bold shrink-0 overflow-x-auto hide-scrollbar gap-1">
+        <button onclick="switchAdminTab('stats')" id="admin-tab-stats" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">📊 統計</button>
+        <button onclick="switchAdminTab('reports')" id="admin-tab-reports" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">🚨 通報</button>
+        <button onclick="switchAdminTab('inquiries')" id="admin-tab-inquiries" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">📩 問合せ</button>
+        <button onclick="switchAdminTab('users')" id="admin-tab-users" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">👥 ユーザー</button>
+        <button onclick="switchAdminTab('posts')" id="admin-tab-posts" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">📦 投稿管理</button>
+        <button onclick="switchAdminTab('trades')" id="admin-tab-trades" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">💬 取引監視</button>
+        <button onclick="switchAdminTab('broadcast')" id="admin-tab-broadcast" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">📢 一斉通知</button>
       </div>
-      <div id="admin-content" class="flex-1 overflow-y-auto space-y-2 text-xs"></div>
+
+      <!-- サブコントロール (ユーザー検索など用) -->
+      <div id="admin-controls" class="hidden shrink-0 mt-2"></div>
+
+      <!-- コンテンツエリア -->
+      <div id="admin-content" class="flex-1 overflow-y-auto space-y-3 text-sm bg-white/40 p-3 rounded-xl border border-white/50 shadow-inner"></div>
+      
       <div class="pt-2 border-t border-purple-200/50 shrink-0">
-        <button onclick="closeAdminModal()" class="w-full bg-white/60 text-gray-700 border border-white font-medium py-2.5 rounded-full hover:bg-white transition text-sm shadow-sm">閉じる</button>
+        <button onclick="closeAdminModal()" class="w-full bg-white/80 text-gray-700 border border-white font-medium py-3 rounded-full hover:bg-white transition text-sm shadow-sm">ダッシュボードを閉じる</button>
       </div>
     </div>
   </div>
@@ -1049,74 +1060,331 @@
       });
     }
 
-    let adminTab = "reports";
-    window.openAdminModal = function() { if (!isAdmin()) return; document.getElementById("admin-modal").classList.remove("hidden"); loadAdminData(); };
-    window.closeAdminModal = function() { document.getElementById("admin-modal").classList.add("hidden"); };
+    // ==============================================
+    // 管理者用機能（ダッシュボード）
+    // ==============================================
+    let adminTab = "stats";
+    let adminSearchQuery = "";
+
+    window.openAdminModal = function() { 
+      if (!isAdmin()) return; 
+      document.getElementById("admin-modal").classList.remove("hidden"); 
+      switchAdminTab('stats'); // デフォルトを統計に
+    };
+    
+    window.closeAdminModal = function() { 
+      document.getElementById("admin-modal").classList.add("hidden"); 
+    };
+
     window.switchAdminTab = function(tab) {
       adminTab = tab;
-      ["reports", "inquiries", "users", "suspended", "stats", "broadcast"].forEach((k) => {
+      adminSearchQuery = ""; // タブ切り替えで検索リセット
+      const tabs = ["reports", "inquiries", "users", "posts", "trades", "stats", "broadcast"];
+      tabs.forEach((k) => {
         const el = document.getElementById("admin-tab-" + k);
-        if (el) el.className = "flex-1 py-2 px-1 border-b-2 whitespace-nowrap " + (tab === k ? 'border-red-500 text-red-600 font-bold' : 'border-transparent text-gray-500');
+        if (el) {
+          if (tab === k) {
+            el.classList.remove("border-transparent", "text-gray-500");
+            el.classList.add("border-illit-darkPurple", "text-illit-darkPurple");
+          } else {
+            el.classList.add("border-transparent", "text-gray-500");
+            el.classList.remove("border-illit-darkPurple", "text-illit-darkPurple");
+          }
+        }
       });
+
+      // 検索バーの表示制御
+      const controls = document.getElementById("admin-controls");
+      if (tab === "users" || tab === "posts" || tab === "trades") {
+        controls.innerHTML = `<input type="text" placeholder="名前, UID, またはキーワードで検索..." oninput="adminSearchQuery = this.value.trim().toLowerCase(); loadAdminData();" class="liquid-glass-input w-full rounded-xl p-2.5 text-xs text-gray-800">`;
+        controls.classList.remove("hidden");
+      } else {
+        controls.classList.add("hidden");
+        controls.innerHTML = "";
+      }
+
       loadAdminData();
     };
+
     async function loadAdminData() {
-      const el = document.getElementById("admin-content"); el.innerHTML = '<p class="text-gray-500 text-center py-4 font-medium">読み込み中...</p>';
+      const el = document.getElementById("admin-content"); 
+      el.innerHTML = '<div class="flex justify-center items-center h-full"><p class="text-gray-500 font-medium">⏳ データ読み込み中...</p></div>';
+      
       try {
-        if (adminTab === "broadcast") {
+        // --- 📊 統計タブ ---
+        if (adminTab === "stats") {
+          const d = new Date(); d.setDate(1); d.setHours(0,0,0,0);
+          const [tradesSnap, usersSnap, postsSnap] = await Promise.all([
+            getDocs(collection(db, "trades")),
+            getDocs(collection(db, "users")),
+            getDocs(collection(db, "posts"))
+          ]);
+          
+          let platformTotal = 0; let thisMonthTotal = 0; let completedCount = 0;
+          tradesSnap.docs.forEach(docSnap => {
+            const t = docSnap.data(); 
+            const tDate = t.createdAt?.toDate ? t.createdAt.toDate() : new Date();
+            if (t.status === "completed") {
+              const price = Number(t.postPrice || 0);
+              platformTotal += price;
+              completedCount++;
+              if (tDate >= d) thisMonthTotal += price;
+            }
+          });
+
           el.innerHTML = `
-            <div class="space-y-4">
-              <div class="bg-red-50/80 border border-red-200 rounded-xl p-3 text-[11px] text-red-700 font-medium">⚠️ ここに入力した内容が全ユーザーの通知一覧に追加されます。</div>
-              <div>
-                <label class="block font-medium text-gray-700 mb-1 text-xs">通知メッセージ</label>
-                <textarea id="admin-broadcast-msg" rows="5" maxlength="300" placeholder="例: メンテナンスのお知らせ" class="liquid-glass-input w-full rounded-xl p-3 text-sm text-gray-800"></textarea>
+            <div class="grid grid-cols-2 gap-3">
+              <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-4 text-white shadow-md">
+                <div class="text-[10px] opacity-80 font-medium">総ユーザー数</div>
+                <div class="text-2xl font-bold">${usersSnap.size} 人</div>
               </div>
-              <button onclick="sendBroadcast()" id="broadcast-send-btn" class="w-full bg-gradient-to-r from-red-500 to-pink-500 text-white font-medium py-3 rounded-full hover:opacity-90 transition shadow-md border border-white/30">📢 全員に通知を送信する</button>
-              <p id="broadcast-status" class="text-xs text-center text-gray-500 font-medium"></p>
+              <div class="bg-gradient-to-br from-pink-400 to-pink-500 rounded-xl p-4 text-white shadow-md">
+                <div class="text-[10px] opacity-80 font-medium">総出品数</div>
+                <div class="text-2xl font-bold">${postsSnap.size} 件</div>
+              </div>
+              <div class="bg-gradient-to-br from-teal-400 to-teal-500 rounded-xl p-4 text-white shadow-md col-span-2">
+                <div class="text-[10px] opacity-80 font-medium">プラットフォーム累計取引額 (成立済)</div>
+                <div class="text-3xl font-bold">￥${platformTotal.toLocaleString()}</div>
+                <div class="flex justify-between mt-2 text-xs opacity-90 border-t border-white/30 pt-2">
+                  <span>今月の取引額: ￥${thisMonthTotal.toLocaleString()}</span>
+                  <span>成立件数: ${completedCount} 件</span>
+                </div>
+              </div>
             </div>`;
           return;
         }
-        if (adminTab === "inquiries") {
+
+        // --- 👥 ユーザー管理タブ ---
+        if (adminTab === "users") {
+          const snap = await getDocs(collection(db, "users")); 
+          const suspSnap = await getDocs(collection(db, "suspensions"));
+          const suspSet = new Set(suspSnap.docs.map(x => x.id));
+          
+          let users = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          if (adminSearchQuery) {
+            users = users.filter(u => 
+              (u.profile?.nickname || '').toLowerCase().includes(adminSearchQuery) || 
+              u.id.toLowerCase().includes(adminSearchQuery)
+            );
+          }
+
+          if (users.length === 0) { el.innerHTML = '<p class="text-gray-500 text-center py-4">該当するユーザーがいません。</p>'; return; }
+
+          el.innerHTML = users.map(u => {
+            const isSuspended = suspSet.has(u.id);
+            const isAdminUser = ADMIN_UIDS.includes(u.id);
+            return `
+            <div class="bg-white/80 border ${isSuspended ? 'border-red-300' : 'border-purple-200'} rounded-xl p-3 space-y-2 shadow-sm">
+              <div class="flex justify-between items-start">
+                <div>
+                  <span class="font-bold text-gray-800 text-sm">${escapeHtml(u.profile?.nickname || '名無し')}</span>
+                  ${isAdminUser ? '<span class="bg-yellow-100 text-yellow-800 text-[9px] px-2 py-0.5 rounded-full ml-1">Admin</span>' : ''}
+                  ${isSuspended ? '<span class="bg-red-100 text-red-800 text-[9px] px-2 py-0.5 rounded-full ml-1">停止中</span>' : ''}
+                  <div class="text-[10px] text-gray-400 mt-0.5 flex items-center gap-1 font-mono">UID: ${u.id.slice(0,12)}... <button onclick="navigator.clipboard.writeText('${u.id}')" class="hover:text-gray-700">📋</button></div>
+                </div>
+              </div>
+              ${!isAdminUser ? `
+              <div class="flex justify-end gap-1.5 pt-2 border-t border-gray-100">
+                <button onclick="adminSendWarning('${u.id}', '${escapeHtml(u.profile?.nickname || '')}')" class="bg-yellow-100 text-yellow-700 hover:bg-yellow-200 font-medium px-3 py-1.5 rounded-lg text-[10px] transition">⚠️ 警告通知</button>
+                ${isSuspended 
+                  ? `<button onclick="adminUnsuspendUser('${u.id}')" class="bg-green-100 text-green-700 hover:bg-green-200 font-medium px-3 py-1.5 rounded-lg text-[10px] transition">🔓 停止解除</button>` 
+                  : `<button onclick="adminSuspendUser('${u.id}', '${escapeHtml(u.profile?.nickname || '')}')" class="bg-red-100 text-red-700 hover:bg-red-200 font-medium px-3 py-1.5 rounded-lg text-[10px] transition">🚫 アカウント停止</button>`
+                }
+              </div>` : ''}
+            </div>`;
+          }).join("");
+          return;
+        }
+
+        // --- 📦 投稿管理タブ ---
+        if (adminTab === "posts") {
+          const snap = await getDocs(query(collection(db, "posts"), orderBy("createdAt", "desc")));
+          let posts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          
+          if (adminSearchQuery) {
+            posts = posts.filter(p => 
+              (p.give || '').toLowerCase().includes(adminSearchQuery) || 
+              (p.want || '').toLowerCase().includes(adminSearchQuery) ||
+              (p.userName || '').toLowerCase().includes(adminSearchQuery)
+            );
+          }
+
+          if (posts.length === 0) { el.innerHTML = '<p class="text-gray-500 text-center py-4">投稿がありません。</p>'; return; }
+
+          el.innerHTML = posts.map(p => `
+            <div class="bg-white/80 border ${p.status === 'active' ? 'border-purple-200' : 'border-gray-300 opacity-70'} rounded-xl p-3 flex gap-3 shadow-sm">
+              ${p.thumb ? `<img src="${p.thumb}" class="w-16 h-16 object-cover rounded-lg border border-gray-200 shrink-0">` : '<div class="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center text-xs text-gray-400">No Image</div>'}
+              <div class="flex-1 min-w-0 flex flex-col justify-between">
+                <div>
+                  <div class="text-[10px] text-gray-500 mb-0.5 flex justify-between"><span>${escapeHtml(p.userName)}</span> <span class="${p.status==='active'?'text-green-600':'text-gray-500'}">${p.status}</span></div>
+                  <div class="font-bold text-xs text-gray-800 truncate">譲: ${escapeHtml(p.give)}</div>
+                  ${p.want ? `<div class="text-[11px] text-gray-600 truncate">求: ${escapeHtml(p.want)}</div>` : ''}
+                </div>
+                <div class="flex justify-end gap-2 mt-2">
+                  <button onclick="adminDeletePost('${p.id}')" class="bg-red-500 text-white font-medium px-3 py-1 rounded-md text-[10px] shadow-sm hover:bg-red-600">強制削除</button>
+                </div>
+              </div>
+            </div>`).join("");
+          return;
+        }
+
+        // --- 💬 取引監視タブ ---
+        if (adminTab === "trades") {
+          const snap = await getDocs(query(collection(db, "trades"), orderBy("createdAt", "desc")));
+          let trades = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+          if (adminSearchQuery) {
+            trades = trades.filter(t => 
+              (t.ownerName || '').toLowerCase().includes(adminSearchQuery) || 
+              (t.applicantName || '').toLowerCase().includes(adminSearchQuery) ||
+              (t.id).toLowerCase().includes(adminSearchQuery)
+            );
+          }
+
+          if (trades.length === 0) { el.innerHTML = '<p class="text-gray-500 text-center py-4">取引データがありません。</p>'; return; }
+
+          el.innerHTML = trades.map(t => {
+            const statColor = t.status === 'completed' ? 'text-green-600' : t.status === 'cancelled' ? 'text-gray-500' : 'text-blue-600';
+            return `
+            <div class="bg-white/80 border border-purple-200 rounded-xl p-3 shadow-sm text-xs space-y-1.5">
+              <div class="flex justify-between items-center border-b border-gray-100 pb-1">
+                <span class="font-mono text-[9px] text-gray-400">ID: ${t.id.slice(0,8)}</span>
+                <span class="font-bold ${statColor}">${STATUS_LABEL[t.status] || t.status}</span>
+              </div>
+              <div class="font-medium text-gray-800 truncate">商品: ${escapeHtml(t.postGive || '不明')}</div>
+              <div class="flex justify-between items-center text-gray-600 bg-gray-50 p-1.5 rounded">
+                <span>出品: ${escapeHtml(t.ownerName)}</span>
+                <span class="text-[9px]">↔</span>
+                <span>申込: ${escapeHtml(t.applicantName)}</span>
+              </div>
+              ${t.status !== 'completed' && t.status !== 'cancelled' ? `
+              <div class="flex justify-end pt-1">
+                <button onclick="adminForceCancelTrade('${t.id}')" class="bg-red-500 text-white px-3 py-1 rounded text-[10px] font-medium hover:bg-red-600 shadow-sm">強制キャンセル介入</button>
+              </div>` : ''}
+            </div>`;
+          }).join("");
+          return;
+        }
+
+        // --- 既存のタブ ---
+        if (adminTab === "reports") {
+          const snap = await getDocs(query(collection(db, "reports"), orderBy("createdAt", "desc")));
+          if (snap.empty) { el.innerHTML = '<p class="text-gray-500 text-center py-6 font-medium">通報はありません。</p>'; return; }
+          el.innerHTML = snap.docs.map(d => `<div class="bg-red-50 border border-red-200 rounded-xl p-3 space-y-1.5 shadow-sm"><div class="flex justify-between items-center text-[10px] text-red-700"><span>通報者: ${escapeHtml(d.data().reporterName)}</span><span>${fmtTime(d.data().createdAt)}</span></div><div class="font-bold text-gray-800 text-xs">対象: ${escapeHtml(d.data().postGive)}</div><div class="text-red-700 bg-white p-2 rounded-lg border border-red-100 text-xs">理由: ${escapeHtml(d.data().reason)}</div><div class="flex justify-end pt-1"><button onclick="deleteReportedPost('${d.data().postId}', '${d.id}')" class="bg-red-500 text-white font-medium px-3 py-1.5 rounded-md text-[10px] hover:bg-red-600 shadow-sm">対象の投稿を強制削除</button></div></div>`).join("");
+        }
+        else if (adminTab === "inquiries") {
           const snap = await getDocs(query(collection(db, "inquiries"), orderBy("createdAt", "desc")));
           if (snap.empty) { el.innerHTML = '<p class="text-gray-500 text-center py-6 font-medium">問い合わせはありません。</p>'; return; }
           el.innerHTML = snap.docs.map(d => {
             const data = d.data();
             const subj = INQUIRY_SUBJECT_LABEL[data.subject] || data.subject;
-            return `<div class="bg-white/80 border border-purple-200 rounded-xl p-3 space-y-1">
-              <div class="flex justify-between items-center text-[10px] text-gray-500"><span class="font-medium text-illit-darkPurple">${escapeHtml(subj)}</span><span>${fmtTime(data.createdAt)}</span></div>
-              <div class="font-medium text-gray-800">${escapeHtml(data.userName || "")}</div>
-              <div class="text-gray-700 bg-white/80 p-2 rounded border border-purple-100 whitespace-pre-wrap">${escapeHtml(data.body || "")}</div>
-              <div class="flex justify-end pt-1"><button onclick="markInquiryDone('${d.id}')" class="bg-green-500 text-white font-medium px-3 py-1 rounded-full text-[11px]">対応済み</button></div>
+            return `<div class="bg-white/80 border border-purple-200 rounded-xl p-3 space-y-1.5 shadow-sm">
+              <div class="flex justify-between items-center text-[10px] text-gray-500"><span class="font-bold text-illit-darkPurple bg-purple-50 px-2 py-0.5 rounded">${escapeHtml(subj)}</span><span>${fmtTime(data.createdAt)}</span></div>
+              <div class="font-bold text-gray-800 text-xs">${escapeHtml(data.userName || "")}</div>
+              <div class="text-gray-700 bg-white p-2 rounded-lg border border-gray-200 whitespace-pre-wrap text-xs leading-relaxed">${escapeHtml(data.body || "")}</div>
+              <div class="flex justify-end pt-1"><button onclick="markInquiryDone('${d.id}')" class="bg-green-500 hover:bg-green-600 text-white font-medium px-4 py-1.5 rounded-md text-[10px] shadow-sm">対応済みにする</button></div>
             </div>`;
           }).join("");
-          return;
         }
-        if (adminTab === "stats") {
-          const d = new Date(); d.setDate(1); d.setHours(0,0,0,0);
-          const snap = await getDocs(collection(db, "trades"));
-          let platformTotal = 0; let platformCount = 0;
-          snap.docs.forEach(docSnap => {
-            const t = docSnap.data(); const tDate = t.createdAt?.toDate ? t.createdAt.toDate() : new Date();
-            if (tDate >= d && t.postPrice > 0 && t.status === "completed") { platformTotal += Number(t.postPrice); platformCount++; }
-          });
-          el.innerHTML = `<div class="bg-gradient-to-r from-teal-400 to-teal-500 rounded-xl p-4 text-white shadow-sm space-y-1"><div class="text-xs font-medium opacity-90">今月の取引総額</div><div class="text-2xl font-bold">￥${platformTotal.toLocaleString()}</div><div class="text-xs mt-1">成立件数: ${platformCount}件</div></div>`;
-          return;
+        else if (adminTab === "broadcast") {
+          el.innerHTML = `
+            <div class="space-y-4">
+              <div class="bg-red-50/80 border border-red-200 rounded-xl p-3 text-xs text-red-700 font-medium">⚠️ 送信した内容は全ユーザーの「通知一覧」に追加されます。</div>
+              <div>
+                <label class="block font-medium text-gray-700 mb-1 text-xs">通知メッセージ内容</label>
+                <textarea id="admin-broadcast-msg" rows="5" maxlength="300" placeholder="例: メンテナンスのお知らせ" class="liquid-glass-input w-full rounded-xl p-3 text-sm text-gray-800 focus:ring-2 focus:ring-purple-400"></textarea>
+              </div>
+              <button onclick="sendBroadcast()" id="broadcast-send-btn" class="w-full bg-gradient-to-r from-red-500 to-pink-500 text-white font-bold py-3.5 rounded-xl hover:opacity-90 transition shadow-md border border-white/30 text-sm">📢 全員に通知を送信する</button>
+              <p id="broadcast-status" class="text-xs text-center text-gray-500 font-medium"></p>
+            </div>`;
         }
-        if (adminTab === "reports") {
-          const snap = await getDocs(query(collection(db, "reports"), orderBy("createdAt", "desc")));
-          if (snap.empty) { el.innerHTML = '<p class="text-gray-500 text-center py-6 font-medium">通報はありません。</p>'; return; }
-          el.innerHTML = snap.docs.map(d => `<div class="bg-red-50/90 border border-red-200 rounded-xl p-3 space-y-1"><div class="flex justify-between items-center text-[10px] text-red-700"><span>通報: ${escapeHtml(d.data().reporterName)}</span><span>${fmtTime(d.data().createdAt)}</span></div><div class="font-medium text-gray-800">対象: ${escapeHtml(d.data().postGive)}</div><div class="text-red-600 bg-white/80 p-2 rounded border border-red-100">理由: ${escapeHtml(d.data().reason)}</div><div class="flex justify-end pt-1"><button onclick="deleteReportedPost('${d.data().postId}', '${d.id}')" class="bg-red-500 text-white font-medium px-3 py-1 rounded-full text-[11px]">強制削除</button></div></div>`).join("");
-        } else if (adminTab === "suspended") {
-          const snap = await getDocs(collection(db, "suspensions"));
-          if (snap.empty) { el.innerHTML = '<p class="text-gray-500 text-center py-6 font-medium">停止中アカウントなし</p>'; return; }
-          el.innerHTML = snap.docs.map(d => `<div class="bg-white/80 border border-red-200 rounded-xl p-3 space-y-1"><div class="flex justify-between items-center font-medium text-gray-800"><span>${escapeHtml(d.data().name||'')}</span><span class="text-[10px] text-gray-400">UID: ${d.id.slice(0, 8)}</span></div><div class="text-red-600 bg-white p-2 rounded border border-red-100">理由: ${escapeHtml(d.data().reason||'')}</div><div class="flex justify-end pt-1"><button onclick="adminUnsuspendUser('${d.id}')" class="bg-green-500 text-white font-medium px-3 py-1 rounded-full text-[11px]">解除</button></div></div>`).join("");
-        } else {
-          const snap = await getDocs(collection(db, "users")); const suspSnap = await getDocs(collection(db, "suspensions"));
-          const suspSet = new Set(suspSnap.docs.map(x => x.id));
-          el.innerHTML = snap.docs.map(d => `<div class="bg-white/80 border border-purple-200 rounded-xl p-3 space-y-1"><div class="flex justify-between items-center font-medium text-gray-800"><span>${escapeHtml(d.data().profile?.nickname||'名無し')}</span><span class="text-[10px] text-gray-400">UID: ${d.id.slice(0, 8)}</span></div>${ADMIN_UIDS.includes(d.id)?'':`<div class="flex justify-end pt-1">${suspSet.has(d.id)?`<button onclick="adminUnsuspendUser('${d.id}')" class="bg-green-500 text-white font-medium px-3 py-1 rounded-full text-[11px]">解除</button>`:`<button onclick="adminSuspendUser('${d.id}', '')" class="bg-gray-800 text-white font-medium px-3 py-1 rounded-full text-[11px]">停止</button>`}</div>`}</div>`).join("");
-        }
-      } catch(e){}
+
+      } catch(e) {
+        console.error(e);
+        el.innerHTML = '<p class="text-red-500 text-center py-4 font-bold">データの取得に失敗しました。</p>';
+      }
     }
+
+    // 特定のユーザーへ警告通知を送信
+    window.adminSendWarning = async function(uid, name) {
+      const msg = prompt(`【${name}】への警告メッセージを入力してください:\n(相手の通知一覧に運営からのメッセージとして届きます)`);
+      if (!msg) return;
+      try {
+        const userRef = doc(db, "users", uid);
+        const snap = await getDoc(userRef);
+        const data = snap.exists() ? snap.data() : {};
+        const list = Array.isArray(data.notifications) ? [...data.notifications] : [];
+        list.unshift({ 
+          id: "admin_warn_" + Date.now(), 
+          text: `【運営より警告】${msg}`, 
+          type: "admin", 
+          read: false, 
+          createdAt: Date.now() 
+        });
+        if (list.length > MAX_NOTIFICATIONS) list.length = MAX_NOTIFICATIONS;
+        await updateDoc(userRef, { notifications: list });
+        alert("警告を送信しました。");
+      } catch (e) { alert("送信に失敗しました。"); }
+    };
+
+    // ユーザーのアカウント手動停止
+    window.adminSuspendUser = async function(uid, name) {
+      const reason = prompt(`【${name}】のアカウントを停止する理由を入力してください:`);
+      if (!reason) return;
+      try {
+        await setDoc(doc(db, "suspensions", uid), { reason, name, createdAt: serverTimestamp() });
+        alert("アカウントを停止しました。");
+        loadAdminData();
+      } catch(e) { alert("失敗しました。"); }
+    };
+
+    // ユーザーのアカウント停止解除
+    window.adminUnsuspendUser = async function(uid) {
+      if (!confirm("アカウント停止を解除しますか？")) return;
+      try {
+        await deleteDoc(doc(db, "suspensions", uid));
+        alert("停止を解除しました。");
+        loadAdminData();
+      } catch(e) { alert("失敗しました。"); }
+    };
+
+    // 投稿の強制削除
+    window.adminDeletePost = async function(postId) {
+      if(!confirm("この投稿を強制的に削除しますか？\n(画像や共同購入の参加データも削除されます)")) return;
+      try {
+        const snap = await getDocs(collection(db, "posts", postId, "photos")); 
+        await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
+        const js = await getDocs(collection(db, "posts", postId, "joins")); 
+        await Promise.all(js.docs.map(d => deleteDoc(d.ref)));
+        
+        await deleteDoc(doc(db, "posts", postId)); 
+        delete photoCache[postId];
+        alert("削除しました。"); 
+        loadAdminData();
+      } catch(e){ alert("削除に失敗しました。"); }
+    };
+
+    // 取引の強制キャンセル
+    window.adminForceCancelTrade = async function(tradeId) {
+      if(!confirm("運営権限でこの取引を強制的にキャンセルしますか？\n（トラブル対応用です）")) return;
+      try {
+        await updateDoc(doc(db, "trades", tradeId), { 
+          status: "cancelled", 
+          adminCancelled: true,
+          updatedAt: serverTimestamp() 
+        });
+        
+        const tradeSnap = await getDoc(doc(db, "trades", tradeId));
+        if(tradeSnap.exists()) {
+          const tData = tradeSnap.data();
+          if (tData.postId && tData.kind !== "group") {
+            try { await updateDoc(doc(db, "posts", tData.postId), { status: "active" }); } catch(err){}
+          }
+        }
+        alert("取引を強制キャンセルしました。");
+        loadAdminData();
+      } catch(e) { alert("処理に失敗しました。"); }
+    };
 
     window.markInquiryDone = async function(id) {
       if (!confirm("対応済みにしますか？（削除されます）")) return;
@@ -2098,3 +2366,4 @@
   </script>
 </body>
 </html>
+
