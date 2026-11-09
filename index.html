@@ -79,6 +79,10 @@
     }
     .toast-enter { animation: toastIn 0.28s ease forwards; }
     .toast-leave { animation: toastOut 0.25s ease forwards; }
+
+    .filter-chip {
+      @apply text-xs font-bold px-3 py-1.5 rounded-full transition border;
+    }
   </style>
 </head>
 <body class="bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 text-gray-800 min-h-screen font-sans relative overflow-x-hidden">
@@ -174,12 +178,39 @@
         <span class="text-xs font-bold text-illit-accent bg-white/50 px-2 py-1 rounded-full border border-white">手数料 0円</span>
       </div>
 
-      <div class="space-y-2">
-        <input type="text" id="search-input" oninput="setSearch(this.value)" placeholder="🔍 譲・求・出品者名で検索" class="w-full liquid-glass-input rounded-2xl p-3 text-xs md:text-sm outline-none text-gray-700 placeholder-gray-500 shadow-inner">
-        <div id="kind-filters" class="flex gap-2 flex-wrap"></div>
-        <div id="sort-filters" class="flex gap-2 flex-wrap"></div>
-        <div id="bundle-filters" class="hidden flex gap-2 flex-wrap"></div>
-        <div id="member-filters" class="flex flex-wrap gap-2"></div>
+      <!-- 絞り込み（整理版） -->
+      <div class="liquid-glass rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-gray-700">🔍 絞り込み</span>
+          <button onclick="resetFilters()" class="text-[11px] font-bold text-illit-darkPurple underline">リセット</button>
+        </div>
+
+        <!-- 検索 -->
+        <input type="text" id="search-input" oninput="setSearch(this.value)" placeholder="譲・求・出品者名で検索" class="w-full liquid-glass-input rounded-xl p-2.5 text-xs outline-none text-gray-700 placeholder-gray-500">
+
+        <!-- 並び順 -->
+        <div>
+          <div class="text-[10px] font-bold text-gray-500 mb-1.5">並び順</div>
+          <div id="sort-filters" class="flex gap-2 flex-wrap"></div>
+        </div>
+
+        <!-- 種類 -->
+        <div>
+          <div class="text-[10px] font-bold text-gray-500 mb-1.5">種類</div>
+          <div id="kind-filters" class="flex gap-2 flex-wrap"></div>
+        </div>
+
+        <!-- メンバー -->
+        <div>
+          <div class="text-[10px] font-bold text-gray-500 mb-1.5">メンバー</div>
+          <div id="member-filters" class="flex flex-wrap gap-2"></div>
+        </div>
+
+        <!-- 抱き合わせ（共同購入時のみ） -->
+        <div id="bundle-filters-wrap" class="hidden">
+          <div class="text-[10px] font-bold text-gray-500 mb-1.5">抱き合わせ</div>
+          <div id="bundle-filters" class="flex gap-2 flex-wrap"></div>
+        </div>
       </div>
 
       <div id="posts-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -215,8 +246,91 @@
 
   <footer class="max-w-4xl mx-auto px-4 pb-32 text-center text-[11px] text-gray-500 space-x-3 drop-shadow-sm font-bold">
     <a href="#" onclick="openTerms(true); return false;" class="underline hover:text-gray-700">利用規約</a>
+    <a href="#" onclick="openFaq(); return false;" class="underline hover:text-gray-700">FAQ</a>
+    <a href="#" onclick="openInquiry(); return false;" class="underline hover:text-gray-700">お問い合わせ</a>
     <span>ILLIT Trade（ファン有志による非公式サービス）</span>
   </footer>
+
+  <!-- ========== FAQモーダル ========== -->
+  <div id="faq-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
+    <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[90vh] flex flex-col">
+      <div class="flex justify-between items-center border-b border-purple-200/50 pb-3 shrink-0">
+        <h3 class="font-bold text-base text-gray-800">❓ よくある質問（FAQ）</h3>
+        <button onclick="closeFaq()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
+      </div>
+      <div class="flex-1 overflow-y-auto space-y-3 text-xs leading-relaxed">
+        <div class="liquid-glass-input rounded-xl p-3">
+          <p class="font-bold text-gray-800 mb-1">Q. 手数料はかかりますか？</p>
+          <p class="text-gray-600">A. 一切かかりません。ファン同士の直接取引のため、運営は手数料を取っていません。</p>
+        </div>
+        <div class="liquid-glass-input rounded-xl p-3">
+          <p class="font-bold text-gray-800 mb-1">Q. 支払い方法は？</p>
+          <p class="text-gray-600">A. 原則PayPayです。取引ルーム内でPayPay IDや請求リンクを共有してください。</p>
+        </div>
+        <div class="liquid-glass-input rounded-xl p-3">
+          <p class="font-bold text-gray-800 mb-1">Q. 商品が届かない・連絡が取れない場合は？</p>
+          <p class="text-gray-600">A. まずは取引ルームで催促してください。解決しない場合は「お問い合わせ」から運営に連絡できます。ただし運営は仲介・補償は行いません。</p>
+        </div>
+        <div class="liquid-glass-input rounded-xl p-3">
+          <p class="font-bold text-gray-800 mb-1">Q. アカウントを複数作れますか？</p>
+          <p class="text-gray-600">A. 禁止しています。端末ロックにより、同じ端末からの複数登録を制限しています。</p>
+        </div>
+        <div class="liquid-glass-input rounded-xl p-3">
+          <p class="font-bold text-gray-800 mb-1">Q. 新規アカウントで出品できない？</p>
+          <p class="text-gray-600">A. 評価が0件の新規アカウントは、同時に複数の出品ができません。1件ずつ取引を完了させて評価を積み上げてください。</p>
+        </div>
+        <div class="liquid-glass-input rounded-xl p-3">
+          <p class="font-bold text-gray-800 mb-1">Q. 写真は必須ですか？</p>
+          <p class="text-gray-600">A. トレカ・アルバム・DEARLITの売却・交換は写真必須です。買取希望のみ任意です。</p>
+        </div>
+        <div class="liquid-glass-input rounded-xl p-3">
+          <p class="font-bold text-gray-800 mb-1">Q. 共同購入の「抱き合わせ」とは？</p>
+          <p class="text-gray-600">A. 主催者が複数商品をセットで募集する場合の条件です。「限定」は必ずセット、「優先」は希望者が優先、「可」はどちらでもOK、「不可」は単品のみです。</p>
+        </div>
+        <div class="liquid-glass-input rounded-xl p-3">
+          <p class="font-bold text-gray-800 mb-1">Q. 運営に問い合わせしたい</p>
+          <p class="text-gray-600">A. フッターまたはマイページから「お問い合わせ」を利用してください。返信には数日かかる場合があります。</p>
+        </div>
+      </div>
+      <button onclick="closeFaq()" class="w-full bg-white/60 text-gray-700 border border-white font-bold py-2.5 rounded-xl hover:bg-white transition text-sm shadow-sm shrink-0">閉じる</button>
+    </div>
+  </div>
+
+  <!-- ========== お問い合わせモーダル ========== -->
+  <div id="inquiry-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
+    <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-purple-200/50 pb-3">
+        <h3 class="font-bold text-base text-gray-800">📩 運営に問い合わせ</h3>
+        <button onclick="closeInquiry()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
+      </div>
+
+      <div class="bg-amber-50/80 border border-amber-200 rounded-xl p-3 text-[11px] text-amber-800 leading-relaxed">
+        <p class="font-bold mb-1">⚠️ ご注意</p>
+        <p>運営は有志で活動しており、<b>返信には数日〜1週間程度お時間をいただく場合があります。</b>お急ぎの内容には対応できないことがあります。また、ユーザー間のトラブルに関する仲裁・補償は一切行っておりません。</p>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block font-bold text-gray-700 mb-1">件名</label>
+          <select id="inquiry-subject" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800">
+            <option value="bug">不具合・バグ報告</option>
+            <option value="account">アカウント関連</option>
+            <option value="report">悪質ユーザー報告</option>
+            <option value="other">その他</option>
+          </select>
+        </div>
+        <div>
+          <label class="block font-bold text-gray-700 mb-1">内容 <span class="text-pink-600">必須</span></label>
+          <textarea id="inquiry-body" rows="5" maxlength="800" placeholder="できるだけ詳しくご記入ください（取引IDや相手の名前などがあると助かります）" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></textarea>
+        </div>
+      </div>
+
+      <div class="flex space-x-2 pt-2">
+        <button onclick="closeInquiry()" class="flex-1 bg-white/60 text-gray-700 border border-white font-bold py-3 rounded-xl hover:bg-white transition shadow-sm">キャンセル</button>
+        <button onclick="submitInquiry()" id="inquiry-submit-btn" class="flex-1 bg-gradient-to-r from-illit-purple to-illit-accent text-white font-bold py-3 rounded-xl hover:opacity-90 transition shadow-md border border-white/30">送信する</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ========== マイページ ========== -->
   <div id="mypage-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
@@ -262,6 +376,14 @@
         </button>
         <button onclick="closeMyPage(); openWalletModal()" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left">
           <span class="font-bold text-sm text-gray-800">👛 おさいふ・売上管理</span>
+          <span class="text-gray-400">›</span>
+        </button>
+        <button onclick="closeMyPage(); openFaq()" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left">
+          <span class="font-bold text-sm text-gray-800">❓ FAQ</span>
+          <span class="text-gray-400">›</span>
+        </button>
+        <button onclick="closeMyPage(); openInquiry()" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left">
+          <span class="font-bold text-sm text-gray-800">📩 運営に問い合わせ</span>
           <span class="text-gray-400">›</span>
         </button>
         <button onclick="closeMyPage(); openTerms(true)" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left">
@@ -325,7 +447,7 @@
     </div>
   </div>
 
-  <!-- 👑 管理者パネル（一斉通知タブ追加） -->
+  <!-- 👑 管理者パネル -->
   <div id="admin-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
     <div class="liquid-glass-heavy w-full max-w-lg rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[90vh] flex flex-col">
       <div class="flex justify-between items-center border-b border-purple-200/50 pb-3 shrink-0">
@@ -334,6 +456,7 @@
       </div>
       <div class="flex border-b border-purple-200/50 text-[10px] md:text-xs font-bold shrink-0 overflow-x-auto">
         <button onclick="switchAdminTab('reports')" id="admin-tab-reports" class="flex-1 py-2 px-1 border-b-2 border-red-500 text-red-600 shrink-0 whitespace-nowrap">🚨 通報</button>
+        <button onclick="switchAdminTab('inquiries')" id="admin-tab-inquiries" class="flex-1 py-2 px-1 border-b-2 border-transparent text-gray-500 shrink-0 whitespace-nowrap">📩 問合せ</button>
         <button onclick="switchAdminTab('users')" id="admin-tab-users" class="flex-1 py-2 px-1 border-b-2 border-transparent text-gray-500 shrink-0 whitespace-nowrap">👥 ユーザー</button>
         <button onclick="switchAdminTab('suspended')" id="admin-tab-suspended" class="flex-1 py-2 px-1 border-b-2 border-transparent text-gray-500 shrink-0 whitespace-nowrap">🚫 停止中</button>
         <button onclick="switchAdminTab('stats')" id="admin-tab-stats" class="flex-1 py-2 px-1 border-b-2 border-transparent text-gray-500 shrink-0 whitespace-nowrap">📊 統計</button>
@@ -649,28 +772,70 @@
     </div>
   </div>
 
-  <!-- 利用規約 -->
+  <!-- 利用規約（拡充版） -->
   <div id="terms-modal" class="fixed inset-0 modal-backdrop hidden z-[70] flex items-center justify-center p-4">
     <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-5 space-y-3 shadow-xl max-h-[92vh] flex flex-col">
       <div class="flex justify-between items-center border-b border-purple-200/50 pb-2 shrink-0">
         <h3 class="font-bold text-base text-gray-800">📜 ご利用規約</h3>
         <button id="terms-close-btn" onclick="closeTerms()" class="hidden text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
       </div>
-      <p id="terms-lead" class="text-xs text-gray-600 shrink-0 font-bold">ご利用の前に、以下の規約をお読みのうえ、同意をお願いします。</p>
-      <div class="flex-1 overflow-y-auto text-[12px] text-gray-700 leading-relaxed space-y-3 bg-white/40 border border-white/60 rounded-xl p-3 shadow-inner">
-        <div><p class="font-bold text-gray-800">1. 本サービスについて</p><p>ファン有志が運営する非公式のサービスです。手数料は無料です。</p></div>
-        <div><p class="font-bold text-gray-800">2. 免責事項</p><p>ユーザー間のトラブルや損害について、<b>運営は一切の責任を負いません。</b></p></div>
+      <p id="terms-lead" class="text-xs text-gray-600 shrink-0 font-bold">ご利用の前に、以下の規約をすべてお読みのうえ、同意をお願いします。</p>
+      <div class="flex-1 overflow-y-auto text-[12px] text-gray-700 leading-relaxed space-y-4 bg-white/40 border border-white/60 rounded-xl p-3 shadow-inner">
+        
         <div>
-          <p class="font-bold text-gray-800">3. 禁止事項</p>
-          <ul class="list-disc pl-4 space-y-0.5">
-            <li>詐欺、虚偽の内容での出品・申込</li>
-            <li>連絡放棄・未発送</li>
-            <li>偽造品の出品、不正シリアルの譲渡</li>
-            <li>誹謗中傷・嫌がらせ</li>
-            <li>個人情報の目的外利用や提供</li>
-            <li>複数アカウント作成、法令違反</li>
+          <p class="font-bold text-gray-800 mb-1">1. 本サービスについて</p>
+          <p>ILLIT Trade（以下「本サービス」）は、K-POPグループ ILLIT のファン有志が運営する非公式の交流・取引プラットフォームです。公式とは一切関係ありません。手数料は無料です。本サービスの内容は予告なく変更・終了する場合があります。</p>
+        </div>
+
+        <div>
+          <p class="font-bold text-gray-800 mb-1">2. 免責事項</p>
+          <p>本サービスはユーザー同士の情報交換・取引の場を提供するのみです。ユーザー間で発生したトラブル、損害、未発送、詐欺、商品の品質不良、個人情報の漏洩などについて、<b>運営は一切の責任を負いません。</b>取引はすべて自己責任で行ってください。運営は仲裁・補償・返金対応を行いません。</p>
+        </div>
+
+        <div>
+          <p class="font-bold text-gray-800 mb-1">3. 禁止事項</p>
+          <ul class="list-disc pl-4 space-y-1">
+            <li>詐欺、虚偽の内容での出品・申込、連絡放棄、未発送</li>
+            <li>偽造品・不正シリアルの出品・譲渡</li>
+            <li>誹謗中傷、嫌がらせ、脅迫</li>
+            <li>個人情報の目的外利用・第三者への提供</li>
+            <li>複数アカウントの作成、なりすまし</li>
+            <li>商業目的の大量出品・転売行為（ファン同士の範囲を超えるもの）</li>
+            <li>法令・公序良俗に反する行為</li>
+            <li>本サービスの運営を妨害する行為</li>
           </ul>
         </div>
+
+        <div>
+          <p class="font-bold text-gray-800 mb-1">4. アカウントについて</p>
+          <p>Googleアカウントでのログインが必要です。同一端末からの複数アカウント作成は制限しています。評価が0件の新規アカウントは、同時に複数の出品ができません。利用規約違反が認められた場合、事前通知なくアカウントを停止・削除する場合があります。</p>
+        </div>
+
+        <div>
+          <p class="font-bold text-gray-800 mb-1">5. 取引について</p>
+          <p>代金のやり取りは原則PayPayとします。商品の状態は出品時に正確に記載し、写真を添付してください。取引成立後は速やかに発送・受取確認を行ってください。5日以上進行しない取引はキャンセル可能です。</p>
+        </div>
+
+        <div>
+          <p class="font-bold text-gray-800 mb-1">6. 個人情報の取り扱い</p>
+          <p>住所・電話番号などは取引に必要な範囲でのみ相手に共有されます。運営は収集した情報をサービス運営以外の目的で使用しません。ただし、法令に基づく開示請求があった場合はこの限りではありません。</p>
+        </div>
+
+        <div>
+          <p class="font-bold text-gray-800 mb-1">7. 通知・お問い合わせ</p>
+          <p>運営からの一斉通知は通知一覧に表示されます。お問い合わせには返信に数日〜1週間程度かかる場合があります。ユーザー間トラブルの仲裁は行いません。</p>
+        </div>
+
+        <div>
+          <p class="font-bold text-gray-800 mb-1">8. 規約の変更</p>
+          <p>本規約は必要に応じて改定します。改定後も本サービスを利用した場合、改定後の規約に同意したものとみなします。</p>
+        </div>
+
+        <div>
+          <p class="font-bold text-gray-800 mb-1">9. 準拠法</p>
+          <p>本規約は日本法に準拠します。</p>
+        </div>
+
       </div>
       <div id="terms-agree-area" class="space-y-2 shrink-0">
         <label class="flex items-start space-x-2 text-xs text-gray-700 font-bold">
@@ -721,16 +886,17 @@
       { key: "serial_buy", label: "💳 シリアル買取" },
       { key: "serial_sell", label: "💰 シリアル売却" },
       { key: "group_buy", label: "🛍 共同購入" },
-      { key: "likes", label: "♡ いいね一覧" }
+      { key: "likes", label: "♡ いいね" }
     ];
     const BUNDLE_FILTERS = [
-      { key: "all", label: "抱き合わせ: すべて" }, { key: "only", label: "🔒 限定" },
+      { key: "all", label: "すべて" }, { key: "only", label: "🔒 限定" },
       { key: "prefer", label: "⭐ 優先" }, { key: "ok", label: "🔗 可" }, { key: "ng", label: "🚫 不可" }
     ];
     const BUNDLE_LABEL = { only: "🔒 抱き合わせ限定", prefer: "⭐ 抱き合わせ優先", ok: "🔗 どちらでも可", ng: "🚫 単品のみ（抱き合わせ不可）" };
     const BUNDLE_CLASS = { only: "bg-purple-100 border-purple-200 text-purple-700", prefer: "bg-pink-100 border-pink-200 text-pink-700", ok: "bg-green-100 border-green-200 text-green-700", ng: "bg-gray-100 border-gray-200 text-gray-500" };
     const CONDITION_LABEL = { s: "S：新品同様・未使用", a: "A：美品", b: "B：傷・汚れあり", c: "C：状態要確認" };
     const CONDITION_CLASS = { s: "bg-emerald-100 text-emerald-800 border-emerald-200", a: "bg-blue-100 text-blue-800 border-blue-200", b: "bg-amber-100 text-amber-800 border-amber-200", c: "bg-gray-100 text-gray-700 border-gray-200" };
+    const INQUIRY_SUBJECT_LABEL = { bug: "不具合・バグ報告", account: "アカウント関連", report: "悪質ユーザー報告", other: "その他" };
 
     const IMAGE_PREFIX = "data:image/jpeg;base64,";
     const PHOTO_FULL = { maxSide: 900, quality: 0.72, maxChars: 380000 };
@@ -842,6 +1008,45 @@
       renderNotificationsList();
     };
 
+    // FAQ
+    window.openFaq = function() { document.getElementById("faq-modal").classList.remove("hidden"); };
+    window.closeFaq = function() { document.getElementById("faq-modal").classList.add("hidden"); };
+
+    // お問い合わせ
+    window.openInquiry = function() {
+      if (!currentUser) return alert("ログインが必要です。");
+      document.getElementById("inquiry-body").value = "";
+      document.getElementById("inquiry-subject").value = "other";
+      document.getElementById("inquiry-modal").classList.remove("hidden");
+    };
+    window.closeInquiry = function() { document.getElementById("inquiry-modal").classList.add("hidden"); };
+    window.submitInquiry = async function() {
+      if (!currentUser) return;
+      const subject = document.getElementById("inquiry-subject").value;
+      const body = document.getElementById("inquiry-body").value.trim();
+      if (!body) return alert("内容を入力してください。");
+      if (body.length < 10) return alert("もう少し詳しくご記入ください。");
+
+      const btn = document.getElementById("inquiry-submit-btn");
+      btn.disabled = true; btn.innerText = "送信中…";
+      try {
+        await addDoc(collection(db, "inquiries"), {
+          userId: currentUser.uid,
+          userName: getMyDisplayName(),
+          subject,
+          body,
+          status: "open",
+          createdAt: serverTimestamp()
+        });
+        showToast("お問い合わせを送信しました。返信をお待ちください。", "success");
+        closeInquiry();
+      } catch (e) {
+        alert("送信に失敗しました。");
+      } finally {
+        btn.disabled = false; btn.innerText = "送信する";
+      }
+    };
+
     window.openMyPage = function() {
       if (!currentUser) return alert("ログインが必要です。");
       const nameEl = document.getElementById("mypage-name");
@@ -881,7 +1086,7 @@
 
       if(tab === 'likes') { kindFilter = 'likes'; document.getElementById("list-section-title").innerText = "♡ いいねした募集"; }
       else if (tab === 'home') { kindFilter = 'all'; document.getElementById("list-section-title").innerText = "最新の募集"; }
-      renderPosts(); window.scrollTo({top: 0, behavior: 'smooth'});
+      renderFilters(); renderPosts(); window.scrollTo({top: 0, behavior: 'smooth'});
     };
 
     function getOrCreateDeviceId() {
@@ -961,7 +1166,7 @@
     window.closeAdminModal = function() { document.getElementById("admin-modal").classList.add("hidden"); };
     window.switchAdminTab = function(tab) {
       adminTab = tab;
-      ["reports", "users", "suspended", "stats", "broadcast"].forEach((k) => {
+      ["reports", "inquiries", "users", "suspended", "stats", "broadcast"].forEach((k) => {
         const el = document.getElementById("admin-tab-" + k);
         if (el) el.className = "flex-1 py-2 px-1 border-b-2 whitespace-nowrap " + (tab === k ? 'border-red-500 text-red-600 font-bold' : 'border-transparent text-gray-500');
       });
@@ -978,8 +1183,7 @@
               </div>
               <div>
                 <label class="block font-bold text-gray-700 mb-1 text-xs">通知メッセージ</label>
-                <textarea id="admin-broadcast-msg" rows="5" maxlength="300" placeholder="例: メンテナンスのお知らせ&#10;○月○日 2:00〜4:00 の間、サービスを一時停止します。" class="liquid-glass-input w-full rounded-xl p-3 text-sm text-gray-800"></textarea>
-                <p class="text-[10px] text-gray-500 mt-1">最大300文字</p>
+                <textarea id="admin-broadcast-msg" rows="5" maxlength="300" placeholder="例: メンテナンスのお知らせ" class="liquid-glass-input w-full rounded-xl p-3 text-sm text-gray-800"></textarea>
               </div>
               <button onclick="sendBroadcast()" id="broadcast-send-btn" class="w-full bg-gradient-to-r from-red-500 to-pink-500 text-white font-bold py-3 rounded-xl hover:opacity-90 transition shadow-md border border-white/30">
                 📢 全員に通知を送信する
@@ -987,6 +1191,26 @@
               <p id="broadcast-status" class="text-xs text-center text-gray-500 font-bold"></p>
             </div>
           `;
+          return;
+        }
+        if (adminTab === "inquiries") {
+          const snap = await getDocs(query(collection(db, "inquiries"), orderBy("createdAt", "desc")));
+          if (snap.empty) { el.innerHTML = '<p class="text-gray-500 text-center py-6 font-bold">問い合わせはありません。</p>'; return; }
+          el.innerHTML = snap.docs.map(d => {
+            const data = d.data();
+            const subj = INQUIRY_SUBJECT_LABEL[data.subject] || data.subject;
+            return `<div class="bg-white/80 border border-purple-200 rounded-xl p-3 space-y-1">
+              <div class="flex justify-between items-center text-[10px] text-gray-500">
+                <span class="font-bold text-illit-darkPurple">${escapeHtml(subj)}</span>
+                <span>${fmtTime(data.createdAt)}</span>
+              </div>
+              <div class="font-bold text-gray-800">${escapeHtml(data.userName || "")}</div>
+              <div class="text-gray-700 bg-white/80 p-2 rounded border border-purple-100 whitespace-pre-wrap">${escapeHtml(data.body || "")}</div>
+              <div class="flex justify-end pt-1">
+                <button onclick="markInquiryDone('${d.id}')" class="bg-green-500 text-white font-bold px-3 py-1 rounded-lg text-[11px]">対応済み</button>
+              </div>
+            </div>`;
+          }).join("");
           return;
         }
         if (adminTab === "stats") {
@@ -1016,7 +1240,11 @@
       } catch(e){}
     }
 
-    // ===== 一斉通知機能 =====
+    window.markInquiryDone = async function(id) {
+      if (!confirm("対応済みにしますか？（削除されます）")) return;
+      try { await deleteDoc(doc(db, "inquiries", id)); loadAdminData(); } catch(e) {}
+    };
+
     window.sendBroadcast = async function() {
       if (!isAdmin()) return;
       const msgEl = document.getElementById("admin-broadcast-msg");
@@ -1048,7 +1276,6 @@
           createdAt: Date.now()
         };
 
-        // 並列で更新（一度に多すぎないよう少しずつ）
         const docs = usersSnap.docs;
         const chunkSize = 20;
         for (let i = 0; i < docs.length; i += chunkSize) {
@@ -1060,9 +1287,7 @@
               list.unshift(notifItem);
               if (list.length > MAX_NOTIFICATIONS) list.length = MAX_NOTIFICATIONS;
               await updateDoc(doc(db, "users", userDoc.id), { notifications: list });
-            } catch (e) {
-              console.warn("通知送信失敗:", userDoc.id, e);
-            }
+            } catch (e) {}
             done++;
             statusEl.innerText = `送信中… ${done} / ${total}`;
           }));
@@ -1072,7 +1297,6 @@
         showToast("一斉通知を送信しました！", "success");
         msgEl.value = "";
       } catch (e) {
-        console.error(e);
         statusEl.innerText = "送信に失敗しました。";
         alert("送信に失敗しました。");
       } finally {
@@ -1452,21 +1676,39 @@
       } catch(e) { alert("失敗しました"); } finally { submittingGroup = false; btn.disabled = false; btn.innerText = "主催する"; }
     };
 
+    // 絞り込み（整理版）
     function renderFilters() {
-      document.getElementById("member-filters").innerHTML = MEMBERS.map((m, i) => `<button onclick="setMember(${i})" class="${m === selectedMember ? 'bg-gradient-to-r from-illit-purple to-illit-accent text-white border-white/50 shadow-md' : 'bg-white/60 text-gray-700 border border-white hover:bg-white shadow-sm'} text-xs font-bold px-3 py-1.5 rounded-full transition">${m.split(" ")[0]}</button>`).join("");
-      document.getElementById("kind-filters").innerHTML = KINDS.map(k => `<button onclick="setKind('${k.key}')" class="${k.key === kindFilter ? 'bg-gray-800 text-white shadow-md' : 'bg-white/60 text-gray-700 border border-white hover:bg-white shadow-sm'} text-xs font-bold px-3 py-1.5 rounded-full transition">${k.label}</button>`).join("");
+      const activeChip = "bg-gradient-to-r from-illit-purple to-illit-accent text-white border-white/50 shadow-md";
+      const normalChip = "bg-white/70 text-gray-700 border border-white hover:bg-white shadow-sm";
+
       document.getElementById("sort-filters").innerHTML = [
         { key: "new", label: "🕒 新着" },
         { key: "popular", label: "🔥 人気" }
-      ].map(s => `<button onclick="setSort('${s.key}')" class="${s.key === sortFilter ? 'bg-gradient-to-r from-pink-400 to-pink-500 text-white shadow-md border border-white/40' : 'bg-white/60 text-gray-700 border border-white hover:bg-white shadow-sm'} text-xs font-bold px-3 py-1.5 rounded-full transition">${s.label}</button>`).join("");
-      const bf = document.getElementById("bundle-filters"); bf.classList.toggle("hidden", kindFilter !== "group_buy");
-      bf.innerHTML = BUNDLE_FILTERS.map(b => `<button onclick="setBundle('${b.key}')" class="${b.key === bundleFilter ? 'bg-teal-500 text-white shadow-md' : 'bg-white/60 text-teal-800 border border-white hover:bg-white shadow-sm'} text-xs font-bold px-3 py-1.5 rounded-full transition">${b.label}</button>`).join("");
+      ].map(s => `<button onclick="setSort('${s.key}')" class="filter-chip ${s.key === sortFilter ? 'bg-gradient-to-r from-pink-400 to-pink-500 text-white border-white/40 shadow-md' : normalChip}">${s.label}</button>`).join("");
+
+      document.getElementById("kind-filters").innerHTML = KINDS.map(k => `<button onclick="setKind('${k.key}')" class="filter-chip ${k.key === kindFilter ? 'bg-gray-800 text-white shadow-md' : normalChip}">${k.label}</button>`).join("");
+
+      document.getElementById("member-filters").innerHTML = MEMBERS.map((m, i) => `<button onclick="setMember(${i})" class="filter-chip ${m === selectedMember ? activeChip : normalChip}">${m.split(" ")[0]}</button>`).join("");
+
+      const wrap = document.getElementById("bundle-filters-wrap");
+      wrap.classList.toggle("hidden", kindFilter !== "group_buy");
+      document.getElementById("bundle-filters").innerHTML = BUNDLE_FILTERS.map(b => `<button onclick="setBundle('${b.key}')" class="filter-chip ${b.key === bundleFilter ? 'bg-teal-500 text-white shadow-md' : 'bg-white/70 text-teal-800 border border-white hover:bg-white shadow-sm'}">${b.label}</button>`).join("");
     }
     window.setMember = function(i) { selectedMember = MEMBERS[i]; renderFilters(); renderPosts(); };
     window.setKind = function(k) { kindFilter = k; renderFilters(); renderPosts(); };
     window.setSort = function(k) { sortFilter = k; renderFilters(); renderPosts(); };
     window.setBundle = function(k) { bundleFilter = k; renderFilters(); renderPosts(); };
     window.setSearch = function(v) { searchText = v.trim().toLowerCase(); renderPosts(); };
+    window.resetFilters = function() {
+      selectedMember = "すべて";
+      kindFilter = "all";
+      sortFilter = "new";
+      bundleFilter = "all";
+      searchText = "";
+      document.getElementById("search-input").value = "";
+      renderFilters();
+      renderPosts();
+    };
 
     function getPostTypeKey(p) {
       if (p.kind === "group") return "group_buy";
