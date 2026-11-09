@@ -853,7 +853,8 @@
     function tsMillis(ts) { return ts && ts.toMillis ? ts.toMillis() : 0; }
     function todayStr() { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
     function isExpired(p) { return !!(p && p.deadline && p.deadline < todayStr()); }
-    function isJpegData(s) { return typeof s === "string" && s.startsWith(IMAGE_PREFIX); }
+    const JPEG_DATA_RE = /^data:image\/jpeg;base64,[A-Za-z0-9+\/=]+$/;
+    function isJpegData(s) { return typeof s === "string" && s.length < 1000000 && JPEG_DATA_RE.test(s); }
     function isPayTrade(t) { return !!(t && (t.isBuy || t.isSell || t.kind === "group")); }
     function joinsOf(postId) { return groupJoins[postId] || []; }
     function needsCondition(kind) { return kind === "card" || kind === "album" || kind === "dearlit"; }
@@ -1067,6 +1068,15 @@
     let adminTab = "stats";
     let adminSearchQuery = "";
 
+    // 管理画面のボタンは data属性 + イベント委譲で処理（文字列をJSに埋め込まない）
+    const ADMIN_ALLOWED_ACTIONS = ["adminSendWarning", "adminSuspendUser", "adminUnsuspendUser", "adminDeletePost", "adminForceCancelTrade", "deleteReportedPost", "markInquiryDone", "copyText"];
+    window.copyText = function(t) { navigator.clipboard.writeText(String(t || "")).catch(() => {}); };
+    document.getElementById("admin-content").addEventListener("click", (e) => {
+      const b = e.target.closest("[data-act]"); if (!b || !isAdmin()) return;
+      const fn = b.dataset.act; if (!ADMIN_ALLOWED_ACTIONS.includes(fn) || typeof window[fn] !== "function") return;
+      window[fn](b.dataset.a1, b.dataset.a2);
+    });
+
     window.openAdminModal = function() { 
       if (!isAdmin()) return; 
       document.getElementById("admin-modal").classList.remove("hidden"); 
@@ -1181,15 +1191,15 @@
                   <span class="font-bold text-gray-800 text-sm">${escapeHtml(u.profile?.nickname || '名無し')}</span>
                   ${isAdminUser ? '<span class="bg-yellow-100 text-yellow-800 text-[9px] px-2 py-0.5 rounded-full ml-1">Admin</span>' : ''}
                   ${isSuspended ? '<span class="bg-red-100 text-red-800 text-[9px] px-2 py-0.5 rounded-full ml-1">停止中</span>' : ''}
-                  <div class="text-[10px] text-gray-400 mt-0.5 flex items-center gap-1 font-mono">UID: ${u.id.slice(0,12)}... <button onclick="navigator.clipboard.writeText('${u.id}')" class="hover:text-gray-700">📋</button></div>
+                  <div class="text-[10px] text-gray-400 mt-0.5 flex items-center gap-1 font-mono">UID: ${u.id.slice(0,12)}... <button data-act="copyText" data-a1="${escapeHtml(u.id)}" class="hover:text-gray-700">📋</button></div>
                 </div>
               </div>
               ${!isAdminUser ? `
               <div class="flex justify-end gap-1.5 pt-2 border-t border-gray-100">
-                <button onclick="adminSendWarning('${u.id}', '${escapeHtml(u.profile?.nickname || '')}')" class="bg-yellow-100 text-yellow-700 hover:bg-yellow-200 font-medium px-3 py-1.5 rounded-lg text-[10px] transition">⚠️ 警告通知</button>
+                <button data-act="adminSendWarning" data-a1="${escapeHtml(u.id)}" data-a2="${escapeHtml(u.profile?.nickname || '')}" class="bg-yellow-100 text-yellow-700 hover:bg-yellow-200 font-medium px-3 py-1.5 rounded-lg text-[10px] transition">⚠️ 警告通知</button>
                 ${isSuspended 
-                  ? `<button onclick="adminUnsuspendUser('${u.id}')" class="bg-green-100 text-green-700 hover:bg-green-200 font-medium px-3 py-1.5 rounded-lg text-[10px] transition">🔓 停止解除</button>` 
-                  : `<button onclick="adminSuspendUser('${u.id}', '${escapeHtml(u.profile?.nickname || '')}')" class="bg-red-100 text-red-700 hover:bg-red-200 font-medium px-3 py-1.5 rounded-lg text-[10px] transition">🚫 アカウント停止</button>`
+                  ? `<button data-act="adminUnsuspendUser" data-a1="${escapeHtml(u.id)}" class="bg-green-100 text-green-700 hover:bg-green-200 font-medium px-3 py-1.5 rounded-lg text-[10px] transition">🔓 停止解除</button>` 
+                  : `<button data-act="adminSuspendUser" data-a1="${escapeHtml(u.id)}" data-a2="${escapeHtml(u.profile?.nickname || '')}" class="bg-red-100 text-red-700 hover:bg-red-200 font-medium px-3 py-1.5 rounded-lg text-[10px] transition">🚫 アカウント停止</button>`
                 }
               </div>` : ''}
             </div>`;
@@ -1214,15 +1224,15 @@
 
           el.innerHTML = posts.map(p => `
             <div class="bg-white/80 border ${p.status === 'active' ? 'border-purple-200' : 'border-gray-300 opacity-70'} rounded-xl p-3 flex gap-3 shadow-sm">
-              ${p.thumb ? `<img src="${p.thumb}" class="w-16 h-16 object-cover rounded-lg border border-gray-200 shrink-0">` : '<div class="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center text-xs text-gray-400">No Image</div>'}
+              ${isJpegData(p.thumb) ? `<img src="${p.thumb}" class="w-16 h-16 object-cover rounded-lg border border-gray-200 shrink-0">` : '<div class="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center text-xs text-gray-400">No Image</div>'}
               <div class="flex-1 min-w-0 flex flex-col justify-between">
                 <div>
-                  <div class="text-[10px] text-gray-500 mb-0.5 flex justify-between"><span>${escapeHtml(p.userName)}</span> <span class="${p.status==='active'?'text-green-600':'text-gray-500'}">${p.status}</span></div>
+                  <div class="text-[10px] text-gray-500 mb-0.5 flex justify-between"><span>${escapeHtml(p.userName)}</span> <span class="${p.status==='active'?'text-green-600':'text-gray-500'}">${escapeHtml(p.status)}</span></div>
                   <div class="font-bold text-xs text-gray-800 truncate">譲: ${escapeHtml(p.give)}</div>
                   ${p.want ? `<div class="text-[11px] text-gray-600 truncate">求: ${escapeHtml(p.want)}</div>` : ''}
                 </div>
                 <div class="flex justify-end gap-2 mt-2">
-                  <button onclick="adminDeletePost('${p.id}')" class="bg-red-500 text-white font-medium px-3 py-1 rounded-md text-[10px] shadow-sm hover:bg-red-600">強制削除</button>
+                  <button data-act="adminDeletePost" data-a1="${escapeHtml(p.id)}" class="bg-red-500 text-white font-medium px-3 py-1 rounded-md text-[10px] shadow-sm hover:bg-red-600">強制削除</button>
                 </div>
               </div>
             </div>`).join("");
@@ -1250,7 +1260,7 @@
             <div class="bg-white/80 border border-purple-200 rounded-xl p-3 shadow-sm text-xs space-y-1.5">
               <div class="flex justify-between items-center border-b border-gray-100 pb-1">
                 <span class="font-mono text-[9px] text-gray-400">ID: ${t.id.slice(0,8)}</span>
-                <span class="font-bold ${statColor}">${STATUS_LABEL[t.status] || t.status}</span>
+                <span class="font-bold ${statColor}">${STATUS_LABEL[t.status] || escapeHtml(t.status)}</span>
               </div>
               <div class="font-medium text-gray-800 truncate">商品: ${escapeHtml(t.postGive || '不明')}</div>
               <div class="flex justify-between items-center text-gray-600 bg-gray-50 p-1.5 rounded">
@@ -1260,7 +1270,7 @@
               </div>
               ${t.status !== 'completed' && t.status !== 'cancelled' ? `
               <div class="flex justify-end pt-1">
-                <button onclick="adminForceCancelTrade('${t.id}')" class="bg-red-500 text-white px-3 py-1 rounded text-[10px] font-medium hover:bg-red-600 shadow-sm">強制キャンセル介入</button>
+                <button data-act="adminForceCancelTrade" data-a1="${escapeHtml(t.id)}" class="bg-red-500 text-white px-3 py-1 rounded text-[10px] font-medium hover:bg-red-600 shadow-sm">強制キャンセル介入</button>
               </div>` : ''}
             </div>`;
           }).join("");
@@ -1271,7 +1281,7 @@
         if (adminTab === "reports") {
           const snap = await getDocs(query(collection(db, "reports"), orderBy("createdAt", "desc")));
           if (snap.empty) { el.innerHTML = '<p class="text-gray-500 text-center py-6 font-medium">通報はありません。</p>'; return; }
-          el.innerHTML = snap.docs.map(d => `<div class="bg-red-50 border border-red-200 rounded-xl p-3 space-y-1.5 shadow-sm"><div class="flex justify-between items-center text-[10px] text-red-700"><span>通報者: ${escapeHtml(d.data().reporterName)}</span><span>${fmtTime(d.data().createdAt)}</span></div><div class="font-bold text-gray-800 text-xs">対象: ${escapeHtml(d.data().postGive)}</div><div class="text-red-700 bg-white p-2 rounded-lg border border-red-100 text-xs">理由: ${escapeHtml(d.data().reason)}</div><div class="flex justify-end pt-1"><button onclick="deleteReportedPost('${d.data().postId}', '${d.id}')" class="bg-red-500 text-white font-medium px-3 py-1.5 rounded-md text-[10px] hover:bg-red-600 shadow-sm">対象の投稿を強制削除</button></div></div>`).join("");
+          el.innerHTML = snap.docs.map(d => `<div class="bg-red-50 border border-red-200 rounded-xl p-3 space-y-1.5 shadow-sm"><div class="flex justify-between items-center text-[10px] text-red-700"><span>通報者: ${escapeHtml(d.data().reporterName)}</span><span>${fmtTime(d.data().createdAt)}</span></div><div class="font-bold text-gray-800 text-xs">対象: ${escapeHtml(d.data().postGive)}</div><div class="text-red-700 bg-white p-2 rounded-lg border border-red-100 text-xs">理由: ${escapeHtml(d.data().reason)}</div><div class="flex justify-end pt-1"><button data-act="deleteReportedPost" data-a1="${escapeHtml(d.data().postId)}" data-a2="${escapeHtml(d.id)}" class="bg-red-500 text-white font-medium px-3 py-1.5 rounded-md text-[10px] hover:bg-red-600 shadow-sm">対象の投稿を強制削除</button></div></div>`).join("");
         }
         else if (adminTab === "inquiries") {
           const snap = await getDocs(query(collection(db, "inquiries"), orderBy("createdAt", "desc")));
@@ -1283,7 +1293,7 @@
               <div class="flex justify-between items-center text-[10px] text-gray-500"><span class="font-bold text-illit-darkPurple bg-purple-50 px-2 py-0.5 rounded">${escapeHtml(subj)}</span><span>${fmtTime(data.createdAt)}</span></div>
               <div class="font-bold text-gray-800 text-xs">${escapeHtml(data.userName || "")}</div>
               <div class="text-gray-700 bg-white p-2 rounded-lg border border-gray-200 whitespace-pre-wrap text-xs leading-relaxed">${escapeHtml(data.body || "")}</div>
-              <div class="flex justify-end pt-1"><button onclick="markInquiryDone('${d.id}')" class="bg-green-500 hover:bg-green-600 text-white font-medium px-4 py-1.5 rounded-md text-[10px] shadow-sm">対応済みにする</button></div>
+              <div class="flex justify-end pt-1"><button data-act="markInquiryDone" data-a1="${escapeHtml(d.id)}" class="bg-green-500 hover:bg-green-600 text-white font-medium px-4 py-1.5 rounded-md text-[10px] shadow-sm">対応済みにする</button></div>
             </div>`;
           }).join("");
         }
@@ -2122,12 +2132,15 @@
 
     window.openTradesModal = function() { renderTradesList(); document.getElementById("trades-modal").classList.remove("hidden"); };
     window.closeTradesModal = function() { document.getElementById("trades-modal").classList.add("hidden"); };
+    document.getElementById("trades-list").addEventListener("click", (e) => {
+      const b = e.target.closest("[data-trade-id]"); if (b) openTrade(b.dataset.tradeId);
+    });
     window.renderTradesList = function() {
       const el = document.getElementById("trades-list");
       if (myTrades.length === 0) { el.innerHTML = '<p class="text-xs text-gray-500 text-center py-6 font-medium bg-white/30 rounded-xl p-4 shadow-inner">取引はありません。</p>'; return; }
       el.innerHTML = myTrades.map((t) => {
         const otherName = currentUser.uid === t.ownerId ? t.applicantName : t.ownerName;
-        return `<button onclick="openTrade('${t.id}')" class="w-full text-left liquid-glass-input rounded-2xl p-4 hover:bg-white/70 transition space-y-2 shadow-sm relative overflow-hidden group">
+        return `<button data-trade-id="${escapeHtml(t.id)}" class="w-full text-left liquid-glass-input rounded-2xl p-4 hover:bg-white/70 transition space-y-2 shadow-sm relative overflow-hidden group">
             <div class="flex justify-between items-center relative z-10"><span class="text-xs text-gray-700 font-medium">${escapeHtml(otherName)} さん</span><span class="flex items-center gap-1">${t.lastSenderId !== currentUser.uid && isUnread(t) ? '<span class="bg-pink-500 text-white text-[10px] font-medium px-2 py-0.5 rounded-full shadow-sm border border-white/50">新着</span>' : ''}<span class="text-[10px] font-medium px-2.5 py-0.5 rounded-full border shadow-sm ${STATUS_CLASS[t.status] || ''}">${STATUS_LABEL[t.status] || ""}</span></span></div>
             <div class="text-sm font-medium text-gray-900 relative z-10">${escapeHtml(t.postGive)}</div>
           </button>`;
@@ -2336,14 +2349,15 @@
         let textContent = escapeHtml(m.text);
         if (m.text && m.text.includes("【PayPay受取用 ID】")) {
           const lines = m.text.split("\n"), paypayId = lines[1] ? lines[1].trim() : "";
-          if (paypayId) textContent = `【PayPay受取用 ID】<br><b class="text-pink-600">${escapeHtml(paypayId)}</b><br><button onclick="copyPayPayId('${escapeHtml(paypayId)}')" class="mt-2 bg-white/80 text-pink-600 border border-white font-medium text-[10px] px-3 py-1.5 rounded-full shadow-sm hover:bg-white">📋 コピー</button>`;
+          if (paypayId) textContent = `【PayPay受取用 ID】<br><b class="text-pink-600">${escapeHtml(paypayId)}</b><br><button data-copy-paypay="${escapeHtml(paypayId)}" class="mt-2 bg-white/80 text-pink-600 border border-white font-medium text-[10px] px-3 py-1.5 rounded-full shadow-sm hover:bg-white">📋 コピー</button>`;
         } else if (m.text && m.text.startsWith("【PayPay請求リンク】")) {
           const lines = m.text.split("\n"), url = (lines[1] || "").trim(), amountLine = lines[2] || "";
-          if (PAYPAY_LINK_RE.test(url)) textContent = `【PayPay請求リンク】<br><b class="text-pink-600">${escapeHtml(amountLine)}</b><br><a href="${escapeHtml(url)}" target="_blank" class="inline-block mt-2 bg-gradient-to-r from-pink-400 to-pink-500 text-white font-medium text-xs px-4 py-2 rounded-full no-underline shadow-md border border-white/50">⚡ 支払う</a>`;
+          if (PAYPAY_LINK_RE.test(url)) textContent = `【PayPay請求リンク】<br><b class="text-pink-600">${escapeHtml(amountLine)}</b><br><a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="inline-block mt-2 bg-gradient-to-r from-pink-400 to-pink-500 text-white font-medium text-xs px-4 py-2 rounded-full no-underline shadow-md border border-white/50">⚡ 支払う</a>`;
         }
         const textHtml = m.text ? `<div class="${bubble} px-4 py-2.5 rounded-[1.5rem] ${mine ? 'rounded-br-md' : 'rounded-bl-md'} text-[13px] whitespace-pre-wrap break-words font-medium leading-relaxed">${textContent}</div>` : "";
         return `<div class="flex ${mine ? 'justify-end' : 'justify-start'} mb-1"><div class="max-w-[82%] flex flex-col ${mine ? 'items-end' : 'items-start'}">${!mine ? `<div class="text-[10px] font-medium text-gray-600 mb-1 ml-1">${escapeHtml(m.senderName)}</div>` : ''}${imgHtml}${textHtml}<div class="text-[9px] text-gray-500 mt-1 font-medium">${fmtTime(m.createdAt)}</div></div></div>`;
       }).join("");
+      el.querySelectorAll("[data-copy-paypay]").forEach(b => b.addEventListener("click", () => copyPayPayId(b.dataset.copyPaypay)));
       el.scrollTop = el.scrollHeight;
     };
 
