@@ -944,6 +944,12 @@
     function joinsOf(postId) { return groupJoins[postId] || []; }
     function needsCondition(kind) { return kind === "card" || kind === "album" || kind === "dearlit"; }
 
+    window.shareToX = function(text) {
+      const appUrl = location.origin;
+      const tweetText = encodeURIComponent(text + "\n\n🔗 アプリで確認・直接取引する👇\n" + appUrl + "\n#ILLIT #ILLIT交換 #ILLIT買取 #ILLIT共同購入");
+      window.open(`https://twitter.com/intent/tweet?text=${tweetText}`, '_blank');
+    };
+
     function showToast(message, type = "info") {
       const container = document.getElementById("toast-container");
       if (!container) return;
@@ -1864,7 +1870,13 @@
           likesCount: 0, createdAt: serverTimestamp()
         });
         for (let i = 0; i < postPhotos.length; i++) await addDoc(collection(db, "posts", ref.id, "photos"), { data: postPhotos[i].full, order: i, createdAt: serverTimestamp() });
+        
         showToast("出品が完了しました！", "success");
+        if (confirm("出品が完了しました！\nX（旧Twitter）でシェアしますか？")) {
+            const shareText = `【譲】${give}\n【求】${(isBuy || isSell) ? price + "円(PayPay)" : want}\nILLIT Tradeで出品しました！`;
+            shareToX(shareText);
+        }
+        
         closePostModal(); switchTab('home');
       } catch(e) { alert("失敗しました"); } finally { submittingPost = false; btn.disabled = false; btn.innerText = "出品する"; }
     };
@@ -1893,7 +1905,13 @@
           userId: currentUser.uid, userName: getMyDisplayName(), userPhoto: getMyProfile()?.photo || "",
           likesCount: 0, createdAt: serverTimestamp()
         });
+        
         showToast("出品が完了しました！", "success");
+        if (confirm("出品が完了しました！\nX（旧Twitter）でシェアしますか？")) {
+            const shareText = `🎫 シリアル${isSell ? '売却' : (isBuy ? '買取' : '交換')}募集\n【譲】${give}\n【求】${(isBuy || isSell) ? price + "円(PayPay)" : want}\nILLIT Tradeに出品しました！`;
+            shareToX(shareText);
+        }
+        
         closeSerialPostModal(); switchTab('home');
       } catch(e) { alert("失敗しました"); }
     };
@@ -1923,7 +1941,13 @@
           likesCount: 0, createdAt: serverTimestamp()
         });
         for (let i = 0; i < postPhotos.length; i++) await addDoc(collection(db, "posts", ref.id, "photos"), { data: postPhotos[i].full, order: i, createdAt: serverTimestamp() });
+        
         showToast("共同購入の募集を開始しました！", "success");
+        if (confirm("募集を開始しました！\nX（旧Twitter）でシェアして参加者を集めますか？")) {
+            const shareText = `🛍 共同購入の募集\n【商品】${give}\n【金額】${price}円 / ${target}人募集\n手数料無料のILLIT Tradeで主催しています！`;
+            shareToX(shareText);
+        }
+        
         closeGroupPostModal(); switchTab('home');
       } catch(e) { alert("失敗しました"); } finally { submittingGroup = false; btn.disabled = false; btn.innerText = "主催する"; }
     };
