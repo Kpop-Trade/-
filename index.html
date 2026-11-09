@@ -143,7 +143,7 @@
       </div>
     </section>
 
-    <!-- 出品メニュー（アルバム交換・DEARLIT交換削除済み） -->
+    <!-- 出品メニュー -->
     <section id="post-menu-section" class="hidden bg-gradient-to-r from-illit-accent/70 to-illit-pink/70 backdrop-blur-xl border border-white/50 p-4 md:p-6 rounded-3xl text-white shadow-xl space-y-4">
       <div>
         <h3 class="font-bold text-base md:text-lg drop-shadow-md">トレード・買取・共同購入に出す</h3>
@@ -325,7 +325,7 @@
     </div>
   </div>
 
-  <!-- 👑 管理者パネル -->
+  <!-- 👑 管理者パネル（一斉通知タブ追加） -->
   <div id="admin-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
     <div class="liquid-glass-heavy w-full max-w-lg rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[90vh] flex flex-col">
       <div class="flex justify-between items-center border-b border-purple-200/50 pb-3 shrink-0">
@@ -337,6 +337,7 @@
         <button onclick="switchAdminTab('users')" id="admin-tab-users" class="flex-1 py-2 px-1 border-b-2 border-transparent text-gray-500 shrink-0 whitespace-nowrap">👥 ユーザー</button>
         <button onclick="switchAdminTab('suspended')" id="admin-tab-suspended" class="flex-1 py-2 px-1 border-b-2 border-transparent text-gray-500 shrink-0 whitespace-nowrap">🚫 停止中</button>
         <button onclick="switchAdminTab('stats')" id="admin-tab-stats" class="flex-1 py-2 px-1 border-b-2 border-transparent text-gray-500 shrink-0 whitespace-nowrap">📊 統計</button>
+        <button onclick="switchAdminTab('broadcast')" id="admin-tab-broadcast" class="flex-1 py-2 px-1 border-b-2 border-transparent text-gray-500 shrink-0 whitespace-nowrap">📢 一斉通知</button>
       </div>
       <div id="admin-content" class="flex-1 overflow-y-auto space-y-2 text-xs"></div>
       <div class="pt-2 border-t border-purple-200/50 shrink-0">
@@ -822,9 +823,10 @@
       el.innerHTML = list.map(n => {
         const time = new Date(n.createdAt);
         const timeStr = (time.getMonth()+1) + "/" + time.getDate() + " " + String(time.getHours()).padStart(2,"0") + ":" + String(time.getMinutes()).padStart(2,"0");
-        return `<div class="liquid-glass-input rounded-xl p-3 ${n.read ? 'opacity-70' : 'border-pink-200'}">
+        const isAdminNotif = n.type === "admin";
+        return `<div class="liquid-glass-input rounded-xl p-3 ${n.read ? 'opacity-70' : (isAdminNotif ? 'border-red-300 bg-red-50/50' : 'border-pink-200')}">
           <div class="flex justify-between items-start gap-2">
-            <p class="text-xs font-bold text-gray-800 leading-relaxed flex-1">${escapeHtml(n.text)}</p>
+            <p class="text-xs font-bold text-gray-800 leading-relaxed flex-1">${isAdminNotif ? '<span class="text-red-600">[運営]</span> ' : ''}${escapeHtml(n.text)}</p>
             ${!n.read ? '<span class="shrink-0 w-2 h-2 rounded-full bg-pink-500 mt-1"></span>' : ''}
           </div>
           <div class="text-[10px] text-gray-500 mt-1 font-bold">${timeStr}</div>
@@ -959,12 +961,34 @@
     window.closeAdminModal = function() { document.getElementById("admin-modal").classList.add("hidden"); };
     window.switchAdminTab = function(tab) {
       adminTab = tab;
-      ["reports", "users", "suspended", "stats"].forEach((k) => { const el = document.getElementById("admin-tab-" + k); if(el) el.className = "flex-1 py-2 px-1 border-b-2 whitespace-nowrap " + (tab === k ? 'border-red-500 text-red-600 font-bold' : 'border-transparent text-gray-500'); });
+      ["reports", "users", "suspended", "stats", "broadcast"].forEach((k) => {
+        const el = document.getElementById("admin-tab-" + k);
+        if (el) el.className = "flex-1 py-2 px-1 border-b-2 whitespace-nowrap " + (tab === k ? 'border-red-500 text-red-600 font-bold' : 'border-transparent text-gray-500');
+      });
       loadAdminData();
     };
     async function loadAdminData() {
       const el = document.getElementById("admin-content"); el.innerHTML = '<p class="text-gray-500 text-center py-4 font-bold">読み込み中...</p>';
       try {
+        if (adminTab === "broadcast") {
+          el.innerHTML = `
+            <div class="space-y-4">
+              <div class="bg-red-50/80 border border-red-200 rounded-xl p-3 text-[11px] text-red-700 font-bold">
+                ⚠️ ここに入力した内容が全ユーザーの通知一覧に追加されます。慎重に送信してください。
+              </div>
+              <div>
+                <label class="block font-bold text-gray-700 mb-1 text-xs">通知メッセージ</label>
+                <textarea id="admin-broadcast-msg" rows="5" maxlength="300" placeholder="例: メンテナンスのお知らせ&#10;○月○日 2:00〜4:00 の間、サービスを一時停止します。" class="liquid-glass-input w-full rounded-xl p-3 text-sm text-gray-800"></textarea>
+                <p class="text-[10px] text-gray-500 mt-1">最大300文字</p>
+              </div>
+              <button onclick="sendBroadcast()" id="broadcast-send-btn" class="w-full bg-gradient-to-r from-red-500 to-pink-500 text-white font-bold py-3 rounded-xl hover:opacity-90 transition shadow-md border border-white/30">
+                📢 全員に通知を送信する
+              </button>
+              <p id="broadcast-status" class="text-xs text-center text-gray-500 font-bold"></p>
+            </div>
+          `;
+          return;
+        }
         if (adminTab === "stats") {
           const d = new Date(); d.setDate(1); d.setHours(0,0,0,0);
           const snap = await getDocs(collection(db, "trades"));
@@ -991,6 +1015,72 @@
         }
       } catch(e){}
     }
+
+    // ===== 一斉通知機能 =====
+    window.sendBroadcast = async function() {
+      if (!isAdmin()) return;
+      const msgEl = document.getElementById("admin-broadcast-msg");
+      const statusEl = document.getElementById("broadcast-status");
+      const btn = document.getElementById("broadcast-send-btn");
+      if (!msgEl) return;
+
+      const message = msgEl.value.trim();
+      if (!message) return alert("メッセージを入力してください。");
+      if (message.length > 300) return alert("300文字以内で入力してください。");
+
+      if (!confirm(`以下の内容を全ユーザーに通知します。よろしいですか？\n\n「${message}」`)) return;
+
+      btn.disabled = true;
+      btn.innerText = "送信中…";
+      statusEl.innerText = "ユーザーを取得しています…";
+
+      try {
+        const usersSnap = await getDocs(collection(db, "users"));
+        const total = usersSnap.size;
+        let done = 0;
+        statusEl.innerText = `送信中… 0 / ${total}`;
+
+        const notifItem = {
+          id: "b_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7),
+          text: message,
+          type: "admin",
+          read: false,
+          createdAt: Date.now()
+        };
+
+        // 並列で更新（一度に多すぎないよう少しずつ）
+        const docs = usersSnap.docs;
+        const chunkSize = 20;
+        for (let i = 0; i < docs.length; i += chunkSize) {
+          const chunk = docs.slice(i, i + chunkSize);
+          await Promise.all(chunk.map(async (userDoc) => {
+            try {
+              const data = userDoc.data() || {};
+              const list = Array.isArray(data.notifications) ? [...data.notifications] : [];
+              list.unshift(notifItem);
+              if (list.length > MAX_NOTIFICATIONS) list.length = MAX_NOTIFICATIONS;
+              await updateDoc(doc(db, "users", userDoc.id), { notifications: list });
+            } catch (e) {
+              console.warn("通知送信失敗:", userDoc.id, e);
+            }
+            done++;
+            statusEl.innerText = `送信中… ${done} / ${total}`;
+          }));
+        }
+
+        statusEl.innerText = `✅ 完了！ ${total}人に送信しました。`;
+        showToast("一斉通知を送信しました！", "success");
+        msgEl.value = "";
+      } catch (e) {
+        console.error(e);
+        statusEl.innerText = "送信に失敗しました。";
+        alert("送信に失敗しました。");
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "📢 全員に通知を送信する";
+      }
+    };
+
     window.deleteReportedPost = async function(postId, reportId) {
       if(!confirm("強制削除しますか？")) return;
       try {
@@ -1213,7 +1303,7 @@
       subscribePosts(); subscribeJoins();
     });
 
-    // ===== 出品モーダル（トレカ / アルバム売却 / DEARLIT売却） =====
+    // ===== 出品モーダル =====
     window.openPostModal = async function(mode) {
       if (!currentUser) return alert("ログインが必要です。");
       if (!(await checkDeviceLock())) return;
