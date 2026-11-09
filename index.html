@@ -16,17 +16,16 @@
       theme: {
         extend: {
           fontFamily: {
-            // 丸みを帯びた可愛いフォントを全体に適用
             sans: ['"M PLUS Rounded 1c"', 'sans-serif'],
           },
           colors: {
             illit: {
-              purple: '#c084fc', // 少し明るくドリーミーな紫
+              purple: '#c084fc',
               darkPurple: '#9333ea',
               accent: '#a855f7',
               pink: '#f472b6',
-              bg: '#fdf4ff', // ほんのりピンクがかった背景
-              card: 'rgba(255, 255, 255, 0.85)', // すりガラス風の白
+              bg: '#fdf4ff',
+              card: 'rgba(255, 255, 255, 0.85)',
             }
           }
         }
@@ -34,7 +33,6 @@
     }
   </script>
 </head>
-<!-- 👇ふんわりしたパステルグラデーション背景 -->
 <body class="bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 text-gray-800 min-h-screen font-sans bg-fixed">
 
   <!-- ヘッダー -->
@@ -54,7 +52,7 @@
           <button id="admin-panel-btn" onclick="openAdminModal()" class="hidden bg-red-100 text-red-700 text-xs font-bold px-2.5 py-1.5 rounded-full hover:bg-red-200 transition" title="管理者パネル">
             👑 管理
           </button>
-          <button onclick="openTradesModal()" class="relative bg-purple-100 text-illit-darkPurple text-xs font-bold px-3 py-1.5 rounded-full hover:bg-purple-200 transition">
+          <button onclick="openTradesModal()" class="relative hidden md:block bg-purple-100 text-illit-darkPurple text-xs font-bold px-3 py-1.5 rounded-full hover:bg-purple-200 transition">
             💬 取引
             <span id="trades-badge" class="hidden absolute -top-1.5 -right-1.5 bg-pink-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-sm">0</span>
           </button>
@@ -142,15 +140,33 @@
     </section>
   </main>
 
-  <!-- 👇画面右下に浮かぶ出品（＋）ボタン（スマホで超使いやすい！） -->
-  <div class="fixed bottom-6 right-4 md:right-8 z-40 flex flex-col items-end space-y-2">
-    <button onclick="openPostModal('exchange')" class="bg-gradient-to-r from-illit-accent to-illit-pink text-white w-14 h-14 md:w-16 md:h-16 rounded-full shadow-lg shadow-purple-300 flex flex-col items-center justify-center hover:scale-110 active:scale-95 transition-transform duration-200">
-      <span class="text-xl md:text-2xl leading-none font-bold">+</span>
-      <span class="text-[9px] md:text-[10px] font-bold mt-0.5">出品</span>
+  <!-- 👇 画面下部のフローティングナビゲーション（オークションなし4項目） -->
+  <nav class="fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-[380px] bg-white/95 backdrop-blur-md rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.1)] border border-gray-100 z-40 flex justify-between items-center px-2 py-1.5 md:hidden">
+    <!-- ホーム -->
+    <button onclick="window.scrollTo({top: 0, behavior: 'smooth'}); setKind('all');" class="flex flex-col items-center justify-center w-[72px] h-[52px] bg-gray-100 text-gray-900 rounded-full transition">
+      <svg class="w-6 h-6 mb-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+      <span class="text-[9px] font-bold">ホーム</span>
     </button>
-  </div>
+    <!-- いいね！ -->
+    <button onclick="setKind('likes')" class="flex flex-col items-center justify-center w-[72px] h-[52px] text-gray-500 hover:text-gray-900 transition">
+      <svg class="w-6 h-6 mb-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+      <span class="text-[9px] font-bold">いいね！</span>
+    </button>
+    <!-- 出品 -->
+    <button onclick="openPostModal('exchange')" class="flex flex-col items-center justify-center w-[72px] h-[52px] text-gray-500 hover:text-gray-900 transition">
+      <svg class="w-6 h-6 mb-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><circle cx="12" cy="13" r="4" /></svg>
+      <span class="text-[9px] font-bold">出品</span>
+    </button>
+    <!-- おさいふ -->
+    <button onclick="openTradesModal()" class="relative flex flex-col items-center justify-center w-[72px] h-[52px] text-gray-500 hover:text-gray-900 transition">
+      <svg class="w-6 h-6 mb-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
+      <span class="text-[9px] font-bold">おさいふ</span>
+      <span id="nav-trades-badge" class="hidden absolute top-1 right-3.5 bg-pink-500 text-white text-[8px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center border border-white"></span>
+    </button>
+  </nav>
 
-  <footer class="max-w-4xl mx-auto px-4 pb-8 text-center text-[11px] text-gray-400 space-x-3">
+  <!-- ナビゲーションバーが被らないようにフッターの余白を調整 -->
+  <footer class="max-w-4xl mx-auto px-4 pb-28 text-center text-[11px] text-gray-400 space-x-3">
     <a href="#" onclick="openTerms(true); return false;" class="underline hover:text-gray-600">利用規約</a>
     <span>ILLIT Trade（ファン有志による非公式サービス）</span>
   </footer>
@@ -2456,10 +2472,20 @@
       const unread = myTrades.filter((t) => isUnread(t)).length;
       const active = myTrades.filter((t) => t.status === "negotiating" || t.status === "shipping").length;
       const n = unread > 0 ? unread : active;
-      const badge = document.getElementById("trades-badge");
-      badge.innerText = n;
-      badge.className = "absolute -top-1.5 -right-1.5 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-sm " +
-        (unread > 0 ? "bg-pink-500" : "bg-gray-400") + (n === 0 ? " hidden" : "");
+      
+      const badge1 = document.getElementById("trades-badge");
+      if (badge1) {
+        badge1.innerText = n;
+        badge1.className = "absolute -top-1.5 -right-1.5 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-sm " +
+          (unread > 0 ? "bg-pink-500" : "bg-gray-400") + (n === 0 ? " hidden" : "");
+      }
+      
+      const badge2 = document.getElementById("nav-trades-badge");
+      if (badge2) {
+        badge2.innerText = n;
+        badge2.className = "absolute top-1 right-3.5 text-white text-[8px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center border border-white " +
+          (unread > 0 ? "bg-pink-500" : "bg-gray-400") + (n === 0 ? " hidden" : "");
+      }
     }
 
     window.openTradesModal = function() {
