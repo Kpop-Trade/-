@@ -817,7 +817,8 @@
     const db = getFirestore(app);
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: "select_account" });
-    const VAPID_KEY = "ここにVAPIDキーを貼る";
+    const VAPID_KEY = "Firebaseコンソールで生成した公開キー（Bから始まる長い文字列）";
+
 
     const ADMIN_UIDS = ["Ay6VCS8HTgM3RqjDYZ0wKdHrSKz1", "GvVhAmT56GZjsWrl1YRaStB81im1"];
     function isAdmin() { return currentUser && ADMIN_UIDS.includes(currentUser.uid); }
