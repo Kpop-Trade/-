@@ -233,7 +233,7 @@
     <span class="w-full mt-2 block">ILLIT Trade（ファン有志による非公式サービス）</span>
   </footer>
 
-  <!-- アプリ登録（ホーム画面に追加）案内モーダル -->
+  <!-- アプリ登録案内モーダル -->
   <div id="pwa-modal" class="fixed inset-0 modal-backdrop hidden z-[75] flex items-center justify-center p-4">
     <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[92vh] flex flex-col">
       <div class="flex justify-between items-center border-b border-purple-200/50 pb-3 shrink-0">
@@ -1126,10 +1126,13 @@
       const ref = doc(db, "users", currentUser.uid);
       unsubUser = onSnapshot(ref, (snap) => {
         const d = snap.exists() ? snap.data() : {};
-        if (!d.migrated && !migratingLocal) {
+        if (d.migrated === undefined && !migratingLocal) {
           migratingLocal = true;
           const read = (k, def) => { try { const v = JSON.parse(localStorage.getItem(k + currentUser.uid)); return v ?? def; } catch(e){ return def; } };
-          setDoc(ref, { migrated: true, profile: read("illit_profile_", {}), blocked: read("illit_blocked_", []), likes: read("illit_likes_", []) }, { merge: true }).finally(() => migratingLocal = false);
+          const p = Object.keys(d.profile || {}).length > 0 ? d.profile : read("illit_profile_", {});
+          const b = (d.blocked && d.blocked.length > 0) ? d.blocked : read("illit_blocked_", []);
+          const l = (d.likes && d.likes.length > 0) ? d.likes : read("illit_likes_", []);
+          setDoc(ref, { migrated: true, profile: p, blocked: b, likes: l }, { merge: true }).finally(() => migratingLocal = false);
         }
         userData = { profile: d.profile || {}, blocked: d.blocked || [], likes: d.likes || [], reads: d.reads || {}, notifications: d.notifications || [], cancelHistory: d.cancelHistory || [] };
         if (currentUser) {
