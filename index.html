@@ -1,0 +1,2367 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ILLIT Trade (ILLIT交換・買取・共同購入)</title>
+  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#c084fc">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['"M PLUS Rounded 1c"', 'sans-serif'] },
+          colors: {
+            illit: {
+              purple: '#c084fc', darkPurple: '#9333ea', accent: '#a855f7',
+              pink: '#f472b6', bg: '#fdf4ff', card: 'rgba(255, 255, 255, 0.85)'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @keyframes blob {
+      0% { transform: translate(0px, 0px) scale(1); }
+      33% { transform: translate(30px, -50px) scale(1.1); }
+      66% { transform: translate(-20px, 20px) scale(0.9); }
+      100% { transform: translate(0px, 0px) scale(1); }
+    }
+    .animate-blob { animation: blob 10s infinite alternate; }
+    .animation-delay-2000 { animation-delay: 2s; }
+    .animation-delay-4000 { animation-delay: 4s; }
+    
+    .liquid-glass {
+      background: rgba(255, 255, 255, 0.35);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      box-shadow: 0 8px 32px 0 rgba(192, 132, 252, 0.15);
+    }
+    .liquid-glass-heavy {
+      background: rgba(255, 255, 255, 0.65);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      box-shadow: 0 12px 40px 0 rgba(192, 132, 252, 0.2);
+    }
+    .liquid-glass-input {
+      background: rgba(255, 255, 255, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      transition: all 0.3s ease;
+    }
+    .liquid-glass-input:focus {
+      background: rgba(255, 255, 255, 0.7);
+      box-shadow: 0 0 0 2px #c084fc;
+    }
+    .modal-backdrop {
+      background: rgba(0, 0, 0, 0.25);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateY(-16px) scale(0.96); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @keyframes toastOut {
+      from { opacity: 1; transform: translateY(0) scale(1); }
+      to { opacity: 0; transform: translateY(-12px) scale(0.96); }
+    }
+    .toast-enter { animation: toastIn 0.28s ease forwards; }
+    .toast-leave { animation: toastOut 0.25s ease forwards; }
+
+    .filter-chip {
+      font-family: "M PLUS Rounded 1c", sans-serif;
+      font-weight: 500;
+      font-size: 12px;
+      letter-spacing: 0.03em;
+      padding: 0.4rem 0.95rem;
+      border-radius: 9999px;
+      transition: all 0.2s ease;
+      border: 1px solid rgba(255, 255, 255, 0.75);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      line-height: 1.3;
+    }
+    .filter-chip:active {
+      transform: scale(0.96);
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 text-gray-800 min-h-screen font-sans relative overflow-x-hidden">
+
+  <div class="fixed top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
+    <div class="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-pink-300/40 rounded-full mix-blend-multiply filter blur-[80px] animate-blob"></div>
+    <div class="absolute top-[20%] right-[-10%] w-[60vw] h-[60vw] bg-purple-300/40 rounded-full mix-blend-multiply filter blur-[80px] animate-blob animation-delay-2000"></div>
+    <div class="absolute bottom-[-20%] left-[10%] w-[50vw] h-[50vw] bg-blue-300/40 rounded-full mix-blend-multiply filter blur-[100px] animate-blob animation-delay-4000"></div>
+  </div>
+
+  <div id="toast-container" class="fixed top-20 left-1/2 -translate-x-1/2 z-[110] space-y-2 w-[92%] max-w-sm pointer-events-none"></div>
+
+  <header class="liquid-glass sticky top-0 z-40 border-b-0 rounded-b-2xl mb-4">
+    <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center space-x-2">
+        <span class="bg-gradient-to-r from-illit-purple to-illit-accent text-white font-bold text-xs px-2.5 py-1 rounded-full shadow-sm">ILLIT</span>
+        <h1 class="text-xl font-bold bg-gradient-to-r from-illit-darkPurple to-illit-accent bg-clip-text text-transparent drop-shadow-sm">ILLIT Trade</h1>
+      </div>
+      <div id="auth-container" class="flex items-center space-x-2">
+        <button id="login-btn" onclick="loginWithGoogle()" class="bg-white/80 backdrop-blur border border-white text-illit-darkPurple text-xs md:text-sm font-bold py-2 px-4 rounded-full transition shadow-sm hover:bg-white">Googleログイン</button>
+        <div id="user-profile" class="hidden flex items-center space-x-2">
+          <button id="admin-panel-btn" onclick="openAdminModal()" class="hidden bg-red-100/80 text-red-700 text-xs font-bold px-2.5 py-1.5 rounded-full hover:bg-red-200 transition" title="管理者パネル">👑</button>
+          <button onclick="openNotificationsModal()" class="relative bg-white/70 border border-white text-illit-darkPurple text-xs font-bold w-9 h-9 rounded-full flex items-center justify-center hover:bg-white transition shadow-sm" title="通知">
+            🔔
+            <span id="notif-badge" class="hidden absolute -top-1 -right-1 bg-pink-500 text-white text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 border border-white">0</span>
+          </button>
+          <button onclick="openTradesModal()" class="relative hidden md:block bg-purple-100/80 backdrop-blur text-illit-darkPurple text-xs font-bold px-3 py-1.5 rounded-full hover:bg-purple-200 transition border border-white">
+            💬 取引
+            <span id="trades-badge" class="hidden absolute -top-1.5 -right-1.5 bg-pink-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-sm border border-white">0</span>
+          </button>
+          <img id="user-avatar" src="" alt="" class="w-7 h-7 rounded-full object-cover border-2 border-white shadow-sm hidden cursor-pointer" onclick="openMyPage()">
+          <span id="user-name" class="text-xs md:text-sm font-bold text-gray-700 max-w-[70px] truncate cursor-pointer" onclick="openMyPage()"></span>
+          <button onclick="logout()" class="text-[10px] text-gray-500 hover:text-gray-700 underline">ログアウト</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto px-4 pb-6 space-y-6">
+    <section class="liquid-glass p-4 md:p-6 rounded-3xl space-y-3 transition duration-300 hover:shadow-[0_12px_40px_rgba(192,132,252,0.25)]">
+      <div class="flex items-start space-x-3">
+        <div class="text-2xl drop-shadow-md">🤝</div>
+        <div>
+          <h2 class="font-bold text-base md:text-lg text-gray-900">ファン同士で直接トレカ・シリアル・アルバム・DEARLIT交換・買取・共同購入</h2>
+          <p class="text-xs md:text-sm text-gray-600 mt-1">写真付き出品・チャット・評価まで、すべてサイト内で完結。手数料0円のプラットフォームです。</p>
+        </div>
+      </div>
+      <div class="liquid-glass-input rounded-xl p-3 text-[11px] text-gray-600 leading-relaxed border-white/60">
+        <p class="font-bold text-gray-700 mb-0.5">⚠️ 免責事項（ご利用規約）</p>
+        <p>本サービスはファン同士の交流および情報交換の場を提供するものです。ユーザー間のトラブルや損害につきましては、<b>運営は一切の責任を負いません。</b>お互いの評価や商品の状態を十分に確認のうえ、自己責任にてご利用ください。</p>
+      </div>
+    </section>
+
+    <section id="post-menu-section" class="hidden bg-gradient-to-r from-illit-accent/70 to-illit-pink/70 backdrop-blur-xl border border-white/50 p-4 md:p-6 rounded-3xl text-white shadow-xl space-y-4">
+      <div>
+        <h3 class="font-bold text-base md:text-lg drop-shadow-md">トレード・買取・共同購入に出す</h3>
+        <p class="text-xs text-white/90 mt-0.5 drop-shadow-sm">手数料完全無料！ファン同士でスムーズに取引</p>
+      </div>
+      <div class="flex space-x-2">
+        <button onclick="openPostModal('exchange')" class="flex-1 bg-white/90 text-illit-darkPurple font-bold text-xs md:text-sm px-3 py-3 rounded-2xl shadow hover:bg-white hover:scale-105 active:scale-95 transition-all border border-white">🃏 トレカ交換</button>
+        <button onclick="openPostModal('buy')" class="flex-1 bg-pink-100/90 text-pink-700 font-bold text-xs md:text-sm px-3 py-3 rounded-2xl shadow hover:bg-pink-50 hover:scale-105 active:scale-95 transition-all border border-white">💳 トレカ買取</button>
+      </div>
+      <div class="flex space-x-2">
+        <button onclick="openPostModal('album_sell')" class="flex-1 bg-indigo-50/90 text-indigo-900 font-bold text-xs md:text-sm px-3 py-3 rounded-2xl shadow hover:bg-white hover:scale-105 active:scale-95 transition-all border border-white">💿 アルバム売却</button>
+        <button onclick="openPostModal('dearlit_sell')" class="flex-1 bg-rose-100/90 text-rose-800 font-bold text-xs md:text-sm px-3 py-3 rounded-2xl shadow hover:bg-rose-50 hover:scale-105 active:scale-95 transition-all border border-white">🎁 DEARLIT売却</button>
+      </div>
+      <div class="flex space-x-2">
+        <button onclick="openSerialPostModal('exchange')" class="flex-1 bg-yellow-300/90 text-yellow-900 font-bold text-xs md:text-sm px-3 py-3 rounded-2xl shadow hover:bg-yellow-200 hover:scale-105 active:scale-95 transition-all border border-white">🎫 シリアル➡トレカ</button>
+        <button onclick="openSerialPostModal('buy')" class="flex-1 bg-yellow-100/90 text-yellow-900 font-bold text-xs md:text-sm px-3 py-3 rounded-2xl shadow hover:bg-white hover:scale-105 active:scale-95 transition-all border border-white">💳 シリアル買取</button>
+      </div>
+      <div class="flex space-x-2">
+        <button onclick="openSerialPostModal('sell')" class="flex-1 bg-yellow-200/90 text-yellow-900 font-bold text-xs md:text-sm px-3 py-3 rounded-2xl shadow hover:bg-yellow-100 hover:scale-105 active:scale-95 transition-all border border-white">💰 シリアル売却</button>
+        <button onclick="openGroupPostModal()" class="flex-1 bg-teal-100/90 text-teal-800 font-bold text-xs md:text-sm px-3 py-3 rounded-2xl shadow hover:bg-teal-50 hover:scale-105 active:scale-95 transition-all border border-white">🛍 共同購入を主催</button>
+      </div>
+    </section>
+
+    <section id="post-list-section" class="space-y-4">
+      <div class="flex justify-between items-center px-2">
+        <h3 id="list-section-title" class="font-bold text-base text-gray-800 drop-shadow-sm">最新の募集</h3>
+        <span class="text-xs font-bold text-illit-accent bg-white/50 px-2 py-1 rounded-full border border-white">手数料 0円</span>
+      </div>
+
+      <div class="liquid-glass rounded-2xl px-3 py-2.5 flex items-center justify-between gap-2">
+        <label class="flex items-center gap-2 cursor-pointer select-none">
+          <input type="checkbox" id="active-only-check" onchange="setActiveOnly(this.checked)" class="w-4 h-4 rounded border-gray-300 text-illit-accent focus:ring-illit-purple">
+          <span class="text-xs font-medium text-gray-700">販売中のみ</span>
+        </label>
+        <div class="flex items-center gap-2">
+          <button onclick="cycleSort()" class="flex items-center gap-1 text-xs font-medium text-gray-600 hover:text-illit-darkPurple transition rounded-full px-2.5 py-1.5 hover:bg-white/50">
+            <span>↑↓</span>
+            <span id="sort-label">新着順</span>
+          </button>
+          <button onclick="openFilterModal()" class="flex items-center gap-1 text-xs font-medium text-gray-600 hover:text-illit-darkPurple transition rounded-full px-2.5 py-1.5 hover:bg-white/50">
+            <span>🎛</span>
+            <span>絞り込み</span>
+          </button>
+        </div>
+      </div>
+
+      <div id="posts-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <p class="text-xs text-gray-500 col-span-2 text-center py-4 font-bold">読み込み中...</p>
+      </div>
+    </section>
+  </main>
+
+  <nav class="liquid-glass-heavy fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-[380px] rounded-[2rem] z-40 flex justify-between items-center px-2 py-1.5 md:hidden">
+    <button id="nav-home" onclick="switchTab('home')" class="flex flex-col items-center justify-center w-[60px] h-[52px] bg-white/70 shadow-sm text-illit-darkPurple rounded-[1.5rem] transition">
+      <svg class="w-6 h-6 mb-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+      <span class="text-[9px] font-bold">ホーム</span>
+    </button>
+    <button id="nav-likes" onclick="switchTab('likes')" class="flex flex-col items-center justify-center w-[60px] h-[52px] text-gray-500 hover:text-gray-900 hover:bg-white/40 rounded-[1.5rem] transition">
+      <svg class="w-6 h-6 mb-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+      <span class="text-[9px] font-bold">いいね</span>
+    </button>
+    <button id="nav-post" onclick="switchTab('post')" class="flex flex-col items-center justify-center w-[60px] h-[52px] text-gray-500 hover:text-gray-900 hover:bg-white/40 rounded-[1.5rem] transition">
+      <svg class="w-6 h-6 mb-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="4"/></svg>
+      <span class="text-[9px] font-bold">出品</span>
+    </button>
+    <button onclick="openTradesModal()" class="relative flex flex-col items-center justify-center w-[60px] h-[52px] text-gray-500 hover:text-gray-900 hover:bg-white/40 rounded-[1.5rem] transition">
+      <svg class="w-6 h-6 mb-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+      <span class="text-[9px] font-bold">取引</span>
+      <span id="nav-trades-badge" class="hidden absolute top-1 right-2.5 bg-pink-500 text-white text-[8px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center border border-white"></span>
+    </button>
+    <button onclick="openMyPage()" class="flex flex-col items-center justify-center w-[60px] h-[52px] text-gray-500 hover:text-gray-900 hover:bg-white/40 rounded-[1.5rem] transition">
+      <svg class="w-6 h-6 mb-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+      <span class="text-[9px] font-bold">マイページ</span>
+    </button>
+  </nav>
+
+  <footer class="max-w-4xl mx-auto px-4 pb-32 text-center text-[11px] text-gray-500 space-x-3 drop-shadow-sm font-bold">
+    <a href="#" onclick="openTerms(true); return false;" class="underline hover:text-gray-700">利用規約</a>
+    <a href="#" onclick="openFaq(); return false;" class="underline hover:text-gray-700">FAQ</a>
+    <a href="#" onclick="openInquiry(); return false;" class="underline hover:text-gray-700">お問い合わせ</a>
+    <span>ILLIT Trade（ファン有志による非公式サービス）</span>
+  </footer>
+
+  <!-- 絞り込みモーダル -->
+  <div id="filter-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-end md:items-center justify-center p-0 md:p-4">
+    <div class="liquid-glass-heavy w-full max-w-md rounded-t-[2rem] md:rounded-[2rem] p-5 space-y-4 shadow-2xl max-h-[85vh] flex flex-col">
+      <div class="flex justify-between items-center border-b border-purple-200/50 pb-3 shrink-0">
+        <h3 class="font-bold text-base text-gray-800">🎛 絞り込み</h3>
+        <button onclick="closeFilterModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
+      </div>
+      <div class="flex-1 overflow-y-auto space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-gray-700 mb-2">検索</label>
+          <input type="text" id="search-input" oninput="setSearch(this.value)" placeholder="譲・求・出品者名で検索" class="w-full liquid-glass-input rounded-xl p-2.5 text-xs outline-none text-gray-700 placeholder-gray-500">
+        </div>
+        <div>
+          <div class="text-xs font-medium text-gray-700 mb-2">種類</div>
+          <div id="kind-filters" class="flex gap-2 flex-wrap"></div>
+        </div>
+        <div>
+          <div class="text-xs font-medium text-gray-700 mb-2">メンバー</div>
+          <div id="member-filters" class="flex flex-wrap gap-2"></div>
+        </div>
+        <div id="bundle-filters-wrap" class="hidden">
+          <div class="text-xs font-medium text-gray-700 mb-2">抱き合わせ</div>
+          <div id="bundle-filters" class="flex gap-2 flex-wrap"></div>
+        </div>
+      </div>
+      <div class="flex gap-2 shrink-0 pt-2 border-t border-purple-200/50">
+        <button onclick="resetFilters()" class="flex-1 bg-white/60 text-gray-700 border border-white font-medium py-3 rounded-full hover:bg-white transition text-sm">リセット</button>
+        <button onclick="closeFilterModal()" class="flex-1 bg-gradient-to-r from-illit-purple to-illit-accent text-white font-medium py-3 rounded-full hover:opacity-90 transition text-sm shadow-md border border-white/30">適用</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FAQ -->
+  <div id="faq-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
+    <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[90vh] flex flex-col">
+      <div class="flex justify-between items-center border-b border-purple-200/50 pb-3 shrink-0">
+        <h3 class="font-bold text-base text-gray-800">❓ よくある質問（FAQ）</h3>
+        <button onclick="closeFaq()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
+      </div>
+      <div class="flex-1 overflow-y-auto space-y-3 text-xs leading-relaxed">
+        <div class="liquid-glass-input rounded-xl p-3"><p class="font-bold text-gray-800 mb-1">Q. 手数料はかかりますか？</p><p class="text-gray-600">A. 一切かかりません。</p></div>
+        <div class="liquid-glass-input rounded-xl p-3"><p class="font-bold text-gray-800 mb-1">Q. 支払い方法は？</p><p class="text-gray-600">A. 原則PayPayです。合意後の取引ルーム内で共有してください。</p></div>
+        <div class="liquid-glass-input rounded-xl p-3"><p class="font-bold text-gray-800 mb-1">Q. キャンセルについて</p><p class="text-gray-600">A. 合意後のキャンセルは申請→相手の同意が必要です。申請した側にペナルティが付きます（月3回で警告、8回超で一時停止）。</p></div>
+        <div class="liquid-glass-input rounded-xl p-3"><p class="font-bold text-gray-800 mb-1">Q. 商品が届かない場合は？</p><p class="text-gray-600">A. まずは取引ルームで催促してください。運営は仲介・補償を行いません。</p></div>
+        <div class="liquid-glass-input rounded-xl p-3"><p class="font-bold text-gray-800 mb-1">Q. 新規アカウントで出品できない？</p><p class="text-gray-600">A. 評価が0件の新規アカウントは同時に複数出品できません。</p></div>
+        <div class="liquid-glass-input rounded-xl p-3"><p class="font-bold text-gray-800 mb-1">Q. 運営に問い合わせしたい</p><p class="text-gray-600">A. フッターまたはマイページから利用してください。返信には数日かかる場合があります。</p></div>
+      </div>
+      <button onclick="closeFaq()" class="w-full bg-white/60 text-gray-700 border border-white font-medium py-2.5 rounded-full hover:bg-white transition text-sm shadow-sm shrink-0">閉じる</button>
+    </div>
+  </div>
+
+  <!-- お問い合わせ -->
+  <div id="inquiry-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
+    <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-purple-200/50 pb-3">
+        <h3 class="font-bold text-base text-gray-800">📩 運営に問い合わせ</h3>
+        <button onclick="closeInquiry()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
+      </div>
+      <div class="bg-amber-50/80 border border-amber-200 rounded-xl p-3 text-[11px] text-amber-800 leading-relaxed">
+        <p class="font-bold mb-1">⚠️ ご注意</p>
+        <p>運営は有志で活動しており、<b>返信には数日〜1週間程度お時間をいただく場合があります。</b>ユーザー間のトラブルに関する仲裁・補償は一切行っておりません。</p>
+      </div>
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block font-medium text-gray-700 mb-1">件名</label>
+          <select id="inquiry-subject" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800">
+            <option value="bug">不具合・バグ報告</option>
+            <option value="account">アカウント関連</option>
+            <option value="report">悪質ユーザー報告</option>
+            <option value="other">その他</option>
+          </select>
+        </div>
+        <div>
+          <label class="block font-medium text-gray-700 mb-1">内容 <span class="text-pink-600">必須</span></label>
+          <textarea id="inquiry-body" rows="5" maxlength="800" placeholder="できるだけ詳しくご記入ください" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></textarea>
+        </div>
+      </div>
+      <div class="flex space-x-2 pt-2">
+        <button onclick="closeInquiry()" class="flex-1 bg-white/60 text-gray-700 border border-white font-medium py-3 rounded-full hover:bg-white transition shadow-sm">キャンセル</button>
+        <button onclick="submitInquiry()" id="inquiry-submit-btn" class="flex-1 bg-gradient-to-r from-illit-purple to-illit-accent text-white font-medium py-3 rounded-full hover:opacity-90 transition shadow-md border border-white/30">送信する</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- キャンセル申請 -->
+  <div id="cancel-modal" class="fixed inset-0 modal-backdrop hidden z-[60] flex items-center justify-center p-4">
+    <div class="liquid-glass-heavy w-full max-w-sm rounded-[2rem] p-5 space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center border-b border-purple-200/50 pb-3">
+        <h3 class="font-bold text-base text-gray-800">キャンセル申請</h3>
+        <button onclick="closeCancelModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
+      </div>
+      <div class="bg-red-50/80 border border-red-200 rounded-xl p-3 text-[11px] text-red-700 leading-relaxed">
+        <p class="font-bold mb-1">⚠️ ペナルティについて</p>
+        <p>合意後のキャンセル申請は、<b>申請した側にペナルティ</b>が付きます。<br>・1ヶ月に3回以上 → 警告<br>・8回を超える → 一時アカウント停止</p>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-700 mb-1">キャンセル理由 <span class="text-pink-600">必須</span></label>
+        <select id="cancel-reason" class="liquid-glass-input w-full rounded-xl p-2.5 text-sm text-gray-800">
+          <option value="">選択してください</option>
+          <option value="no_contact">相手から連絡がない</option>
+          <option value="condition">商品の状態が説明と違う</option>
+          <option value="personal">都合が悪くなった</option>
+          <option value="other">その他</option>
+        </select>
+      </div>
+      <div id="cancel-other-box" class="hidden">
+        <input type="text" id="cancel-other" maxlength="100" placeholder="理由を入力" class="liquid-glass-input w-full rounded-xl p-2.5 text-sm text-gray-800">
+      </div>
+      <div class="flex space-x-2">
+        <button onclick="closeCancelModal()" class="flex-1 bg-white/60 text-gray-700 border border-white font-medium py-3 rounded-full hover:bg-white transition text-sm">戻る</button>
+        <button onclick="submitCancelRequest()" class="flex-1 bg-red-500 text-white font-medium py-3 rounded-full hover:bg-red-600 transition text-sm shadow-md">申請する</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- マイページ -->
+  <div id="mypage-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
+    <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-purple-200/50 pb-3">
+        <h3 class="font-bold text-base text-gray-800">👤 マイページ</h3>
+        <button onclick="closeMyPage()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
+      </div>
+      <div class="flex items-center space-x-4 bg-white/40 rounded-2xl p-4 border border-white/60">
+        <img id="mypage-avatar" src="" alt="" class="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md hidden">
+        <div id="mypage-avatar-placeholder" class="w-16 h-16 rounded-full bg-white/60 border border-white flex items-center justify-center text-2xl">👤</div>
+        <div class="flex-1 min-w-0">
+          <div id="mypage-name" class="font-bold text-gray-900 truncate">ゲスト</div>
+          <div class="text-[11px] text-gray-500 mt-0.5">タップして各設定へ</div>
+        </div>
+      </div>
+      <div class="space-y-2">
+        <button onclick="closeMyPage(); openProfileModal('basic')" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">✏️ プロフィール・写真</span><span class="text-gray-400">›</span></button>
+        <button onclick="closeMyPage(); openProfileModal('address')" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">📦 住所・配送先</span><span class="text-gray-400">›</span></button>
+        <button onclick="closeMyPage(); openProfileModal('paypay')" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">💳 PayPay ID</span><span class="text-gray-400">›</span></button>
+        <button onclick="closeMyPage(); openNotificationsModal()" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">🔔 通知一覧</span><span class="text-gray-400">›</span></button>
+        <button onclick="closeMyPage(); openProfileModal('push')" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">📢 プッシュ通知設定</span><span class="text-gray-400">›</span></button>
+        <button onclick="closeMyPage(); openProfileModal('block')" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">🚫 ブロック管理</span><span class="text-gray-400">›</span></button>
+        <button onclick="closeMyPage(); openWalletModal()" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">👛 おさいふ・売上管理</span><span class="text-gray-400">›</span></button>
+        <button onclick="closeMyPage(); openFaq()" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">❓ FAQ</span><span class="text-gray-400">›</span></button>
+        <button onclick="closeMyPage(); openInquiry()" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">📩 運営に問い合わせ</span><span class="text-gray-400">›</span></button>
+        <button onclick="closeMyPage(); openTerms(true)" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">📜 利用規約</span><span class="text-gray-400">›</span></button>
+      </div>
+      <button onclick="closeMyPage()" class="w-full bg-white/60 text-gray-700 border border-white font-medium py-3 rounded-full hover:bg-white transition text-sm shadow-sm">閉じる</button>
+    </div>
+  </div>
+
+  <!-- 通知一覧 -->
+  <div id="notifications-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
+    <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[85vh] flex flex-col">
+      <div class="flex justify-between items-center border-b border-purple-200/50 pb-3 shrink-0">
+        <h3 class="font-bold text-base text-gray-800">🔔 通知一覧</h3>
+        <div class="flex items-center gap-2">
+          <button onclick="markAllNotificationsRead()" class="text-[11px] font-medium text-illit-darkPurple underline">すべて既読</button>
+          <button onclick="closeNotificationsModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
+        </div>
+      </div>
+      <div id="notifications-list" class="flex-1 overflow-y-auto space-y-2"></div>
+    </div>
+  </div>
+
+  <!-- おさいふ -->
+  <div id="wallet-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
+    <div class="liquid-glass-heavy w-full max-w-sm rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[90vh] flex flex-col">
+      <div class="flex justify-between items-center border-b border-purple-200/50 pb-3 shrink-0">
+        <h3 class="font-bold text-base text-gray-800">👛 おさいふ・売上管理</h3>
+        <button onclick="closeWalletModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
+      </div>
+      <div class="flex-1 overflow-y-auto space-y-4">
+        <div>
+          <h4 id="wallet-month-title" class="text-xs font-medium text-gray-500 mb-2">〇月のアナリティクス</h4>
+          <div class="bg-gradient-to-br from-pink-400/90 to-pink-500/90 backdrop-blur border border-white/40 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden">
+            <div class="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white opacity-20 rounded-full blur-xl"></div>
+            <p class="text-xs font-medium opacity-90 mb-1 drop-shadow">今月の確定売上（PayPay受取）</p>
+            <div class="flex items-baseline space-x-1"><span id="wallet-total" class="text-3xl font-bold tracking-tight drop-shadow-md">￥0</span></div>
+            <div class="mt-3 pt-3 border-t border-white/30 flex justify-between items-center text-xs font-medium"><span>成立した取引数</span><span id="wallet-count">0 件</span></div>
+          </div>
+        </div>
+        <div class="liquid-glass-input rounded-xl p-4 flex justify-between items-center">
+          <div><p class="text-[11px] font-medium text-gray-600">進行中の売上見込み</p><p class="text-[9px] text-gray-500">（まだ受取完了していない取引）</p></div>
+          <span id="wallet-pending" class="text-lg font-bold text-gray-800">￥0</span>
+        </div>
+        <p class="text-[10px] text-gray-500 leading-relaxed text-center font-medium">※代金はすべてPayPayで直接やり取りされます。</p>
+      </div>
+      <div class="pt-2 border-t border-purple-200/50 shrink-0">
+        <button onclick="closeWalletModal()" class="w-full bg-white/60 text-gray-700 border border-white font-medium py-2.5 rounded-full hover:bg-white transition text-sm shadow-sm">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 管理者パネル (強化版) -->
+  <div id="admin-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
+    <div class="liquid-glass-heavy w-full max-w-2xl rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[90vh] flex flex-col">
+      <div class="flex justify-between items-center border-b border-purple-200/50 pb-3 shrink-0">
+        <h3 class="font-bold text-lg text-gray-800 flex items-center gap-2">👑 運営ダッシュボード</h3>
+        <button onclick="closeAdminModal()" class="text-gray-400 hover:text-gray-600 font-bold text-2xl leading-none">&times;</button>
+      </div>
+      
+      <!-- タブメニュー -->
+      <div class="flex border-b border-purple-200/50 text-[11px] md:text-xs font-bold shrink-0 overflow-x-auto hide-scrollbar gap-1">
+        <button onclick="switchAdminTab('stats')" id="admin-tab-stats" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">📊 統計</button>
+        <button onclick="switchAdminTab('reports')" id="admin-tab-reports" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">🚨 通報</button>
+        <button onclick="switchAdminTab('inquiries')" id="admin-tab-inquiries" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">📩 問合せ</button>
+        <button onclick="switchAdminTab('users')" id="admin-tab-users" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">👥 ユーザー</button>
+        <button onclick="switchAdminTab('posts')" id="admin-tab-posts" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">📦 投稿管理</button>
+        <button onclick="switchAdminTab('trades')" id="admin-tab-trades" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">💬 取引監視</button>
+        <button onclick="switchAdminTab('broadcast')" id="admin-tab-broadcast" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">📢 一斉通知</button>
+      </div>
+
+      <!-- サブコントロール (ユーザー検索など用) -->
+      <div id="admin-controls" class="hidden shrink-0 mt-2"></div>
+
+      <!-- コンテンツエリア -->
+      <div id="admin-content" class="flex-1 overflow-y-auto space-y-3 text-sm bg-white/40 p-3 rounded-xl border border-white/50 shadow-inner"></div>
+      
+      <div class="pt-2 border-t border-purple-200/50 shrink-0">
+        <button onclick="closeAdminModal()" class="w-full bg-white/80 text-gray-700 border border-white font-medium py-3 rounded-full hover:bg-white transition text-sm shadow-sm">ダッシュボードを閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- プロフィール設定 -->
+  <div id="profile-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
+    <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-purple-200/50 pb-3">
+        <h3 id="profile-modal-title" class="font-bold text-base text-gray-800">⚙️ プロフィール・設定</h3>
+        <button onclick="closeProfileModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
+      </div>
+      <div id="profile-section-basic" class="space-y-3 text-xs md:text-sm hidden">
+        <div><label class="block font-medium text-gray-700 mb-1">サイト内ニックネーム</label><input type="text" id="profile-nickname" maxlength="30" placeholder="例: 芋けんぴ推し" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
+        <div>
+          <label class="block font-medium text-gray-700 mb-1">プロフィール写真</label>
+          <div class="flex items-center space-x-3">
+            <div id="profile-photo-preview" class="w-16 h-16 rounded-full bg-white/50 border border-white overflow-hidden flex items-center justify-center text-2xl text-gray-400 shrink-0">👤</div>
+            <div class="flex-1 space-y-1.5">
+              <input id="profile-photo-input" type="file" accept="image/*" class="hidden" onchange="handleProfilePhoto(this)">
+              <button type="button" onclick="document.getElementById('profile-photo-input').click()" class="w-full bg-white/80 border border-white text-illit-darkPurple text-xs font-medium py-2 rounded-full hover:bg-white transition">📷 写真を選択</button>
+              <button type="button" id="profile-photo-clear" onclick="clearProfilePhoto()" class="hidden w-full bg-white/60 text-gray-500 text-xs font-medium py-1.5 rounded-full hover:bg-white transition">写真を削除</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="profile-section-address" class="space-y-3 text-xs md:text-sm hidden">
+        <div><label class="block font-medium text-gray-700 mb-1">お名前（郵送時の宛名）</label><input type="text" id="profile-name" maxlength="50" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
+        <div><label class="block font-medium text-gray-700 mb-1">郵便番号</label><input type="text" id="profile-zip" maxlength="10" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
+        <div><label class="block font-medium text-gray-700 mb-1">都道府県・市区町村・番地</label><input type="text" id="profile-address1" maxlength="100" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
+        <div><label class="block font-medium text-gray-700 mb-1">建物名・部屋番号（任意）</label><input type="text" id="profile-address2" maxlength="100" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
+        <div><label class="block font-medium text-gray-700 mb-1">電話番号（任意・伝票用）</label><input type="text" id="profile-phone" maxlength="20" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
+      </div>
+      <div id="profile-section-paypay" class="space-y-3 text-xs md:text-sm hidden">
+        <div><label class="block font-medium text-gray-700 mb-1">💳 PayPay ID（受取用）</label><input type="text" id="profile-paypay" maxlength="50" placeholder="例: paypay_id_123" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"><p class="text-[10px] text-gray-500 mt-1">取引時に相手に共有されます。</p></div>
+      </div>
+      <div id="profile-section-push" class="space-y-3 text-xs md:text-sm hidden">
+        <div>
+          <label class="block font-medium text-gray-700 mb-1">🔔 プッシュ通知</label>
+          <p id="push-status" class="text-[11px] text-gray-600 mb-2 font-medium"></p>
+          <button id="push-on-btn" onclick="enablePush()" class="w-full bg-purple-100/80 backdrop-blur border border-purple-200 text-illit-darkPurple font-medium py-2.5 rounded-full hover:bg-purple-200 transition shadow-sm">🔔 この端末で通知をオンにする</button>
+          <button id="push-off-btn" onclick="disablePush()" class="hidden w-full bg-white/60 border border-white text-gray-600 font-medium py-2.5 rounded-full hover:bg-white transition shadow-sm">通知をオフにする</button>
+        </div>
+      </div>
+      <div id="profile-section-block" class="space-y-3 text-xs md:text-sm hidden">
+        <div>
+          <label class="block font-medium text-gray-700 mb-1">🚫 ブロック管理</label>
+          <div id="blocked-users-box" class="text-xs font-medium text-gray-600 liquid-glass-input p-2 rounded-xl mb-2">なし</div>
+          <button onclick="clearBlockedUsers()" class="text-xs text-red-500 underline font-medium">ブロックをすべて解除する</button>
+        </div>
+      </div>
+      <div class="flex space-x-2 pt-2">
+        <button onclick="closeProfileModal()" class="flex-1 bg-white/60 text-gray-700 border border-white font-medium py-3 rounded-full hover:bg-white transition shadow-sm">キャンセル</button>
+        <button onclick="saveProfile()" class="flex-1 bg-gradient-to-r from-illit-purple to-illit-accent text-white font-medium py-3 rounded-full hover:opacity-90 transition shadow-md border border-white/30">保存する</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 出品モーダル -->
+  <div id="post-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
+    <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-purple-200/50 pb-3">
+        <h3 id="post-modal-title" class="font-bold text-base text-gray-800">🃏 トレカの出品</h3>
+        <button onclick="closePostModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
+      </div>
+      <div class="space-y-3 text-xs md:text-sm">
+        <div>
+          <label class="block font-medium text-gray-700 mb-1">対象メンバー</label>
+          <select id="input-member" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800">
+            <option value="ウォニ (Wonhee)">ウォニ (Wonhee)</option>
+            <option value="ミンジュ (Minju)">ミンジュ (Minju)</option>
+            <option value="イロハ (Iroha)">イロハ (Iroha)</option>
+            <option value="モカ (Moka)">モカ (Moka)</option>
+            <option value="ユナ (Yuna)">ユナ (Yuna)</option>
+            <option value="指定なし">指定なし</option>
+          </select>
+        </div>
+        <div><label id="label-give" class="block font-medium text-gray-700 mb-1">【譲】（出すもの）</label><input type="text" id="input-give" maxlength="100" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
+        <div id="want-container"><label id="label-want" class="block font-medium text-gray-700 mb-1">【求】（希望するもの）</label><input type="text" id="input-want" maxlength="100" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
+        <div id="price-container" class="hidden"><label class="block font-medium text-gray-700 mb-1">希望価格（円・PayPay送金）</label><input type="number" id="input-price" min="1" max="100000" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
+        <div id="condition-container">
+          <label class="block font-medium text-gray-700 mb-1">商品の状態 <span class="text-pink-600">必須</span></label>
+          <select id="input-condition" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800">
+            <option value="">選択してください</option>
+            <option value="s">S：新品同様・未使用</option>
+            <option value="a">A：美品</option>
+            <option value="b">B：傷・汚れあり</option>
+            <option value="c">C：状態要確認</option>
+          </select>
+        </div>
+        <div><label class="block font-medium text-gray-700 mb-1">説明文・備考（任意）</label><textarea id="input-desc" maxlength="200" rows="2" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></textarea></div>
+        <div>
+          <label class="block font-medium text-gray-700 mb-1">📷 写真 <span id="photo-req-label" class="text-pink-600">（必須・最大3枚）</span></label>
+          <input id="post-photo-input" type="file" accept="image/*" multiple class="hidden" onchange="addPostPhotos(this)">
+          <div id="post-photo-preview" class="flex flex-wrap gap-2 mt-2"></div>
+        </div>
+      </div>
+      <div class="flex space-x-2 pt-2">
+        <button onclick="closePostModal()" class="flex-1 bg-white/60 text-gray-700 border border-white font-medium py-3 rounded-full hover:bg-white transition shadow-sm">キャンセル</button>
+        <button id="post-submit-btn" onclick="submitPost()" class="flex-1 bg-gradient-to-r from-illit-purple to-illit-accent text-white font-medium py-3 rounded-full hover:opacity-90 transition shadow-md border border-white/30">出品する</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- シリアル出品 -->
+  <div id="serial-post-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
+    <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-purple-200/50 pb-3">
+        <h3 id="serial-modal-title" class="font-bold text-base text-gray-800">🎫 シリアルでトレカを求める</h3>
+        <button onclick="closeSerialPostModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
+      </div>
+      <div class="space-y-3 text-xs md:text-sm">
+        <div><label class="block font-medium text-gray-700 mb-1">対象メンバー</label><select id="serial-member" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"><option value="指定なし">指定なし</option><option value="ウォニ (Wonhee)">ウォニ (Wonhee)</option><option value="ミンジュ (Minju)">ミンジュ (Minju)</option><option value="イロハ (Iroha)">イロハ (Iroha)</option><option value="モカ (Moka)">モカ (Moka)</option><option value="ユナ (Yuna)">ユナ (Yuna)</option></select></div>
+        <div><label id="serial-label-give" class="block font-medium text-gray-700 mb-1">【譲】出せるシリアル</label><input type="text" id="serial-give" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
+        <div id="serial-want-container"><label id="serial-label-want" class="block font-medium text-gray-700 mb-1">【求】求めたいトレカ</label><input type="text" id="serial-want" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
+        <div id="serial-price-container" class="hidden"><label class="block font-medium text-gray-700 mb-1">希望価格</label><input type="number" id="serial-price" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
+        <div><label class="block font-medium text-gray-700 mb-1">有効期限（任意）</label><input type="date" id="serial-deadline" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
+        <div><label class="block font-medium text-gray-700 mb-1">説明文</label><textarea id="serial-note" rows="2" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></textarea></div>
+      </div>
+      <div class="flex space-x-2 pt-2">
+        <button onclick="closeSerialPostModal()" class="flex-1 bg-white/60 text-gray-700 border border-white font-medium py-3 rounded-full hover:bg-white transition shadow-sm">キャンセル</button>
+        <button onclick="submitSerialPost()" class="flex-1 bg-gradient-to-r from-yellow-400 to-yellow-500 text-yellow-900 font-medium py-3 rounded-full hover:opacity-90 transition shadow-md border border-white/30">出品する</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 共同購入 -->
+  <div id="group-post-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
+    <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-purple-200/50 pb-3">
+        <h3 class="font-bold text-base text-gray-800">🛍 共同購入を主催する</h3>
+        <button onclick="closeGroupPostModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
+      </div>
+      <div class="space-y-3 text-xs md:text-sm">
+        <div><label class="block font-medium text-gray-700 mb-1">対象メンバー</label><select id="group-member" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"><option value="指定なし">指定なし</option><option value="ウォニ (Wonhee)">ウォニ (Wonhee)</option><option value="ミンジュ (Minju)">ミンジュ (Minju)</option><option value="イロハ (Iroha)">イロハ (Iroha)</option><option value="モカ (Moka)">モカ (Moka)</option><option value="ユナ (Yuna)">ユナ (Yuna)</option></select></div>
+        <div><label class="block font-medium text-gray-700 mb-1">【商品】</label><input type="text" id="group-give" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
+        <div><label class="block font-medium text-gray-700 mb-1">1人あたりの金額（円）</label><input type="number" id="group-price" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
+        <div><label class="block font-medium text-gray-700 mb-1">募集人数</label><input type="number" id="group-target" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
+        <div><label class="block font-medium text-gray-700 mb-1">🔗 抱き合わせ</label><select id="group-bundle" onchange="onGroupBundleChange()" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"><option value="only">🔒 抱き合わせ限定</option><option value="prefer">⭐ 抱き合わせ優先</option><option value="ok">🔗 どちらでも可</option><option value="ng">🚫 単品のみ</option></select></div>
+        <div id="group-bundle-note-box"><label class="block font-medium text-gray-700 mb-1">抱き合わせの内容</label><input type="text" id="group-bundle-note" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
+        <div><label class="block font-medium text-gray-700 mb-1">📦 送料</label><select id="group-shipping" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"><option value="organizer">主催者負担</option><option value="split">参加者で割り勘</option><option value="self">各自負担</option></select></div>
+        <div><label class="block font-medium text-gray-700 mb-1">説明文</label><textarea id="group-desc" rows="3" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></textarea></div>
+        <div><label class="block font-medium text-gray-700 mb-1">📷 写真（任意・最大3枚）</label><div id="group-photo-preview" class="flex flex-wrap gap-2"></div></div>
+      </div>
+      <div class="flex space-x-2 pt-2">
+        <button onclick="closeGroupPostModal()" class="flex-1 bg-white/60 text-gray-700 border border-white font-medium py-3 rounded-full hover:bg-white transition shadow-sm">キャンセル</button>
+        <button id="group-submit-btn" onclick="submitGroupPost()" class="flex-1 bg-gradient-to-r from-teal-400 to-teal-500 text-white font-medium py-3 rounded-full hover:opacity-90 transition shadow-md border border-white/30">主催する</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 編集モーダル -->
+  <div id="edit-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
+    <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-purple-200/50 pb-3">
+        <h3 class="font-bold text-base text-gray-800">✏️ 募集の編集</h3>
+        <button onclick="closeEditModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
+      </div>
+      <div class="space-y-3 text-xs md:text-sm">
+        <div><label class="block font-medium text-gray-700 mb-1">【譲】</label><input type="text" id="edit-give" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
+        <div id="edit-want-container"><label class="block font-medium text-gray-700 mb-1">【求】</label><input type="text" id="edit-want" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
+        <div id="edit-price-container" class="hidden"><label class="block font-medium text-gray-700 mb-1">希望価格</label><input type="number" id="edit-price" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
+        <div id="edit-condition-container" class="hidden">
+          <label class="block font-medium text-gray-700 mb-1">商品の状態</label>
+          <select id="edit-condition" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800">
+            <option value="s">S：新品同様・未使用</option>
+            <option value="a">A：美品</option>
+            <option value="b">B：傷・汚れあり</option>
+            <option value="c">C：状態要確認</option>
+          </select>
+        </div>
+        <div id="edit-group-container" class="hidden space-y-3">
+          <div><label class="block font-medium text-gray-700 mb-1">募集人数</label><input type="number" id="edit-target" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
+          <div><label class="block font-medium text-gray-700 mb-1">🔗 抱き合わせ</label><select id="edit-bundle" onchange="onEditBundleChange()" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"><option value="only">🔒 限定</option><option value="prefer">⭐ 優先</option><option value="ok">🔗 可</option><option value="ng">🚫 不可</option></select></div>
+          <div id="edit-bundle-note-box"><label class="block font-medium text-gray-700 mb-1">抱き合わせ内容</label><input type="text" id="edit-bundle-note" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
+        </div>
+        <div id="edit-deadline-container" class="hidden"><label class="block font-medium text-gray-700 mb-1">有効期限・締切</label><input type="date" id="edit-deadline" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
+        <div><label class="block font-medium text-gray-700 mb-1">説明文・備考</label><textarea id="edit-desc" rows="3" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></textarea></div>
+      </div>
+      <div class="flex space-x-2 pt-2">
+        <button onclick="closeEditModal()" class="flex-1 bg-white/60 text-gray-700 border border-white font-medium py-3 rounded-full hover:bg-white transition shadow-sm">キャンセル</button>
+        <button onclick="submitEditPost()" class="flex-1 bg-gradient-to-r from-illit-purple to-illit-accent text-white font-medium py-3 rounded-full hover:opacity-90 transition shadow-md border border-white/30">保存する</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 詳細モーダル -->
+  <div id="detail-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
+    <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-purple-200/50 pb-3">
+        <h3 id="detail-title" class="font-bold text-base text-gray-800">募集の詳細</h3>
+        <button onclick="closeDetailModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
+      </div>
+      <div class="space-y-3 text-xs md:text-sm">
+        <div id="detail-photos"></div>
+        <div class="bg-white/40 border border-white/60 p-4 rounded-[1.5rem] space-y-2 shadow-inner">
+          <div class="font-medium text-gray-700">メンバー: <span id="detail-member" class="text-gray-900"></span></div>
+          <div id="detail-give-box"><span class="bg-pink-100 border border-pink-200 text-pink-700 text-xs font-medium px-2.5 py-0.5 rounded-full shadow-sm">譲</span> <span id="detail-give" class="font-medium text-gray-900 ml-1"></span></div>
+          <div id="detail-want-box"><span class="bg-purple-100 border border-purple-200 text-illit-darkPurple text-xs font-medium px-2.5 py-0.5 rounded-full shadow-sm">求</span> <span id="detail-want" class="font-medium text-gray-900 ml-1"></span></div>
+          <div id="detail-price-box" class="hidden"><span class="bg-gradient-to-r from-pink-400 to-pink-500 text-white text-xs font-medium px-2.5 py-0.5 rounded-full shadow-sm border border-white/50">価格</span> <span id="detail-price" class="font-bold text-pink-600 ml-1 text-base"></span></div>
+          <div id="detail-condition-box" class="hidden"><span class="bg-gray-100 border border-gray-200 text-gray-700 text-xs font-medium px-2.5 py-0.5 rounded-full shadow-sm">状態</span> <span id="detail-condition" class="font-medium text-gray-900 ml-1"></span></div>
+          <div id="detail-desc-box" class="pt-2 border-t border-white/50 text-gray-800 text-xs whitespace-pre-wrap font-medium leading-relaxed"></div>
+          <div id="detail-extra" class="text-xs text-gray-700 space-y-1 font-medium pt-1"></div>
+        </div>
+        <div class="flex justify-between items-center bg-white/30 p-3 rounded-2xl border border-white/50 shadow-sm">
+          <div class="px-1 flex items-center gap-2.5">
+            <img id="detail-user-avatar" src="" alt="" class="w-8 h-8 rounded-full object-cover border-2 border-white shadow-sm hidden">
+            <div id="detail-user-avatar-placeholder" class="w-8 h-8 rounded-full bg-white/70 border border-white flex items-center justify-center text-sm text-gray-400">👤</div>
+            <div>
+              <span class="font-medium text-gray-700 text-xs">出品者</span>
+              <div class="flex items-center gap-1.5">
+                <span id="detail-user" class="text-gray-900 font-medium text-sm"></span>
+                <span id="detail-rating" class="text-yellow-500 font-medium text-[11px]"></span>
+              </div>
+            </div>
+          </div>
+          <button id="detail-like-btn" onclick="toggleDetailLike()" class="bg-white/80 text-pink-500 font-medium px-4 py-2 rounded-full text-xs border border-white hover:bg-white transition flex items-center space-x-1 shadow-md">
+            <span>♡</span> <span id="detail-like-count">いいね</span>
+          </button>
+        </div>
+      </div>
+      <div id="detail-actions" class="space-y-2 pt-2"></div>
+      <button onclick="closeDetailModal()" class="w-full bg-white/60 text-gray-700 border border-white font-medium py-3 rounded-full hover:bg-white transition text-sm shadow-sm">閉じる</button>
+    </div>
+  </div>
+
+  <!-- 取引一覧 -->
+  <div id="trades-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
+    <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[85vh] flex flex-col">
+      <div class="flex justify-between items-center border-b border-purple-200/50 pb-3 shrink-0">
+        <h3 class="font-bold text-base text-gray-800">💬 あなたの取引</h3>
+        <button onclick="closeTradesModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
+      </div>
+      <div id="trades-list" class="space-y-3 overflow-y-auto"></div>
+    </div>
+  </div>
+
+  <!-- 取引ルーム -->
+  <div id="room-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center md:p-4">
+    <div class="liquid-glass-heavy w-full max-w-md h-full md:h-[90vh] md:rounded-[2rem] shadow-2xl flex flex-col overflow-hidden">
+      <div class="flex justify-between items-center px-5 py-4 border-b border-white/50 shrink-0 bg-white/40 backdrop-blur">
+        <h3 id="room-title" class="font-bold text-sm text-gray-900 truncate drop-shadow-sm"></h3>
+        <button onclick="closeRoom()" class="text-gray-500 hover:text-gray-700 font-bold text-xl leading-none bg-white/50 w-8 h-8 rounded-full border border-white shadow-sm">&times;</button>
+      </div>
+      <div class="p-4 space-y-3 border-b border-white/50 bg-white/20 overflow-y-auto shrink-0 max-h-[52%]" id="room-top-box">
+        <div id="room-info"></div>
+        <div id="room-paypay-box"></div>
+        <div id="room-photos"></div>
+        <div id="room-address-box"></div>
+        <div id="room-steps"></div>
+        <div id="room-actions" class="space-y-2"></div>
+      </div>
+      <div class="px-3 py-2 bg-white/30 border-b border-white/50 flex gap-2 overflow-x-auto shrink-0 text-[11px] hide-scrollbar">
+        <button onclick="sendQuickMsg('よろしくおねがいします！')" class="bg-white/80 border border-white px-3 py-1.5 rounded-full text-purple-700 font-medium shrink-0 hover:bg-white shadow-sm transition">👋 よろしくお願いします</button>
+        <button onclick="sendQuickMsg('PayPayで送金しますので、リンクまたはPayPay IDを教えてください！')" class="bg-pink-50 border border-white px-3 py-1.5 rounded-full text-pink-700 font-medium shrink-0 hover:bg-pink-100 shadow-sm transition">💳 PayPay案内</button>
+        <button onclick="sendQuickMsg('水濡れ・折れ防止をして発送いたします！')" class="bg-white/80 border border-white px-3 py-1.5 rounded-full text-purple-700 font-medium shrink-0 hover:bg-white shadow-sm transition">📦 梱包します</button>
+        <button onclick="sendQuickMsg('本日発送いたしました！到着までお待ちください。')" class="bg-white/80 border border-white px-3 py-1.5 rounded-full text-purple-700 font-medium shrink-0 hover:bg-white shadow-sm transition">📮 発送完了</button>
+        <button onclick="sendQuickMsg('無事に受け取りました！丁寧な取引ありがとうございました✨')" class="bg-white/80 border border-white px-3 py-1.5 rounded-full text-purple-700 font-medium shrink-0 hover:bg-white shadow-sm transition">✨ 受取完了</button>
+      </div>
+      <div id="room-messages" class="flex-1 overflow-y-auto p-4 space-y-3 bg-white/40"></div>
+      <div class="p-3 border-t border-white/50 flex items-center space-x-2 shrink-0 bg-white/60 backdrop-blur-md">
+        <input id="image-input" type="file" accept="image/*" class="hidden" onchange="sendImage(this)">
+        <button id="room-photo" onclick="document.getElementById('image-input').click()" class="text-xl px-2.5 py-2 rounded-2xl bg-white/80 border border-white hover:bg-white text-purple-600 transition shadow-sm" title="写真を送る">📷</button>
+        <input id="room-input" type="text" maxlength="1000" placeholder="メッセージを入力" onkeydown="if(event.key==='Enter'&&!event.isComposing){sendMessage();}" class="flex-1 min-w-0 border border-white/70 rounded-2xl p-3 bg-white/70 focus:bg-white focus:ring-2 focus:ring-illit-purple focus:outline-none text-sm shadow-inner transition">
+        <button id="room-send" onclick="sendMessage()" class="bg-gradient-to-r from-illit-purple to-illit-accent text-white font-medium text-sm px-5 py-3 rounded-2xl hover:opacity-90 transition shadow-md border border-white/40">送信</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="image-viewer" class="fixed inset-0 bg-black/90 backdrop-blur-md hidden z-[80] flex items-center justify-center p-2" onclick="closeImageViewer()">
+    <img id="image-viewer-img" src="" alt="" class="max-w-full max-h-full object-contain rounded-2xl shadow-2xl">
+    <button class="absolute top-6 right-6 text-white text-5xl font-bold leading-none hover:scale-110 transition drop-shadow-md" onclick="closeImageViewer()">&times;</button>
+  </div>
+
+  <div id="suspended-modal" class="fixed inset-0 modal-backdrop hidden z-[80] flex items-center justify-center p-4">
+    <div class="liquid-glass-heavy w-full max-w-sm rounded-[2rem] p-6 space-y-3 shadow-xl text-center">
+      <div class="text-4xl">🚫</div>
+      <h3 class="font-bold text-base text-gray-800">アカウント停止中</h3>
+      <p class="text-xs text-gray-600">利用規約違反により停止されています。</p>
+      <div class="bg-red-50/80 border border-red-200 rounded-xl p-3 text-xs text-red-700 text-left"><span class="font-bold">理由:</span> <span id="suspended-reason"></span></div>
+      <button onclick="logout()" class="w-full bg-white/80 text-gray-600 font-medium py-2.5 rounded-full hover:bg-white transition text-sm">ログアウト</button>
+    </div>
+  </div>
+
+  <!-- 利用規約 -->
+  <div id="terms-modal" class="fixed inset-0 modal-backdrop hidden z-[70] flex items-center justify-center p-4">
+    <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-5 space-y-3 shadow-xl max-h-[92vh] flex flex-col">
+      <div class="flex justify-between items-center border-b border-purple-200/50 pb-2 shrink-0">
+        <h3 class="font-bold text-base text-gray-800">📜 ご利用規約</h3>
+        <button id="terms-close-btn" onclick="closeTerms()" class="hidden text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
+      </div>
+      <p id="terms-lead" class="text-xs text-gray-600 shrink-0 font-medium">ご利用の前に、以下の規約をすべてお読みのうえ、同意をお願いします。</p>
+      <div class="flex-1 overflow-y-auto text-[12px] text-gray-700 leading-relaxed space-y-4 bg-white/40 border border-white/60 rounded-xl p-3 shadow-inner">
+        <div><p class="font-bold text-gray-800 mb-1">1. 本サービスについて</p><p>ILLIT Tradeは、ILLITのファン有志が運営する非公式の交流・取引プラットフォームです。公式とは一切関係ありません。手数料は無料です。</p></div>
+        <div><p class="font-bold text-gray-800 mb-1">2. 免責事項</p><p>ユーザー間で発生したトラブル・損害・未発送・詐欺などについて、<b>運営は一切の責任を負いません。</b>取引はすべて自己責任で行ってください。</p></div>
+        <div><p class="font-bold text-gray-800 mb-1">3. 禁止事項</p><ul class="list-disc pl-4 space-y-1"><li>詐欺、虚偽の出品、連絡放棄、未発送</li><li>偽造品・不正シリアルの出品</li><li>誹謗中傷、嫌がらせ</li><li>複数アカウントの作成、なりすまし</li><li>商業目的の大量出品・転売</li></ul></div>
+        <div><p class="font-bold text-gray-800 mb-1">4. アカウントについて</p><p>Googleアカウントでのログインが必要です。評価が0件の新規アカウントは同時に複数出品できません。</p></div>
+        <div><p class="font-bold text-gray-800 mb-1">5. 取引について</p><p>代金のやり取りは原則PayPayとします。合意前であれば双方合意でキャンセル可能です。</p></div>
+        <div>
+          <p class="font-bold text-gray-800 mb-1">6. 合意後のキャンセルとペナルティ</p>
+          <p>合意後（発送段階）にキャンセルを申請する場合は、相手の同意が必要です。<b>申請した側にペナルティが付きます。</b></p>
+          <ul class="list-disc pl-4 space-y-1 mt-1">
+            <li>1ヶ月以内に3回以上申請した場合：警告通知</li>
+            <li>1ヶ月以内に8回を超えた場合：一時的なアカウント停止</li>
+          </ul>
+        </div>
+        <div><p class="font-bold text-gray-800 mb-1">7. 個人情報の取り扱い</p><p>住所・電話番号などは取引に必要な範囲でのみ相手に共有されます。</p></div>
+        <div><p class="font-bold text-gray-800 mb-1">8. 通知・お問い合わせ</p><p>お問い合わせには返信に数日〜1週間程度かかる場合があります。ユーザー間トラブルの仲裁は行いません。</p></div>
+        <div><p class="font-bold text-gray-800 mb-1">9. 規約の変更</p><p>本規約は必要に応じて改定します。</p></div>
+        <div><p class="font-bold text-gray-800 mb-1">10. 準拠法</p><p>本規約は日本法に準拠します。</p></div>
+      </div>
+      <div id="terms-agree-area" class="space-y-2 shrink-0">
+        <label class="flex items-start space-x-2 text-xs text-gray-700 font-medium">
+          <input type="checkbox" id="terms-check" onchange="onTermsCheck()" class="mt-0.5 rounded">
+          <span>利用規約をすべて読み、同意します。</span>
+        </label>
+        <div class="flex space-x-2">
+          <button onclick="declineTerms()" class="flex-1 bg-white/60 text-gray-700 border border-white font-medium py-2.5 rounded-full hover:bg-white transition text-sm">同意しない</button>
+          <button id="terms-agree-btn" onclick="agreeTerms()" disabled class="flex-1 bg-gradient-to-r from-illit-purple to-illit-accent text-white font-medium py-2.5 rounded-full hover:opacity-90 transition text-sm disabled:opacity-40 disabled:cursor-not-allowed shadow-sm border border-white/30">同意して利用する</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getFirestore, collection, collectionGroup, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, where, orderBy, onSnapshot, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getMessaging, getToken, deleteToken } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBB1_QTcXpF0Ap72tDaf5_CCUtNBwSlXCs",
+      authDomain: "illit-7ecd4.firebaseapp.com",
+      projectId: "illit-7ecd4",
+      storageBucket: "illit-7ecd4.firebasestorage.app",
+      messagingSenderId: "1060277997826",
+      appId: "1:1060277997826:web:e47d21d9edc538bb86321b"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
+    const VAPID_KEY = "ここにVAPIDキーを貼る";
+
+    const ADMIN_UIDS = ["Ay6VCS8HTgM3RqjDYZ0wKdHrSKz1", "GvVhAmT56GZjsWrl1YRaStB81im1"];
+    function isAdmin() { return currentUser && ADMIN_UIDS.includes(currentUser.uid); }
+
+    const MEMBERS = ["すべて", "ウォニ (Wonhee)", "ミンジュ (Minju)", "イロハ (Iroha)", "モカ (Moka)", "ユナ (Yuna)"];
+    const KINDS = [
+      { key: "all", label: "すべて" },
+      { key: "card_exchange", label: "🃏 トレカ交換" },
+      { key: "card_buy", label: "💳 トレカ買取" },
+      { key: "album", label: "💿 アルバム" },
+      { key: "dearlit", label: "🎁 DEARLIT" },
+      { key: "serial_exchange", label: "🎫 シリアル➡求" },
+      { key: "serial_buy", label: "💳 シリアル買取" },
+      { key: "serial_sell", label: "💰 シリアル売却" },
+      { key: "group_buy", label: "🛍 共同購入" },
+      { key: "likes", label: "♡ いいね" }
+    ];
+    const BUNDLE_FILTERS = [
+      { key: "all", label: "すべて" }, { key: "only", label: "🔒 限定" },
+      { key: "prefer", label: "⭐ 優先" }, { key: "ok", label: "🔗 可" }, { key: "ng", label: "🚫 不可" }
+    ];
+    const BUNDLE_LABEL = { only: "🔒 抱き合わせ限定", prefer: "⭐ 抱き合わせ優先", ok: "🔗 どちらでも可", ng: "🚫 単品のみ" };
+    const BUNDLE_CLASS = { only: "bg-purple-100 border-purple-200 text-purple-700", prefer: "bg-pink-100 border-pink-200 text-pink-700", ok: "bg-green-100 border-green-200 text-green-700", ng: "bg-gray-100 border-gray-200 text-gray-500" };
+    const CONDITION_LABEL = { s: "S：新品同様・未使用", a: "A：美品", b: "B：傷・汚れあり", c: "C：状態要確認" };
+    const CONDITION_CLASS = { s: "bg-emerald-100 text-emerald-800 border-emerald-200", a: "bg-blue-100 text-blue-800 border-blue-200", b: "bg-amber-100 text-amber-800 border-amber-200", c: "bg-gray-100 text-gray-700 border-gray-200" };
+    const INQUIRY_SUBJECT_LABEL = { bug: "不具合・バグ報告", account: "アカウント関連", report: "悪質ユーザー報告", other: "その他" };
+    const CANCEL_REASON_LABEL = { no_contact: "相手から連絡がない", condition: "商品の状態が説明と違う", personal: "都合が悪くなった", other: "その他" };
+    const SORT_OPTIONS = [{ key: "new", label: "新着順" }, { key: "popular", label: "人気順" }];
+
+    const IMAGE_PREFIX = "data:image/jpeg;base64,";
+    const PHOTO_FULL = { maxSide: 900, quality: 0.72, maxChars: 380000 };
+    const PHOTO_THUMB = { maxSide: 260, quality: 0.6, maxChars: 40000 };
+    const CHAT_PHOTO = { maxSide: 1000, quality: 0.75, maxChars: 600000 };
+    const PROFILE_PHOTO = { maxSide: 300, quality: 0.72, maxChars: 90000 };
+    const MAX_POST_PHOTOS = 3;
+    const MAX_NOTIFICATIONS = 50;
+
+    let currentUser = null, allPosts = [], unsubPosts = null, selectedMember = "すべて", kindFilter = "all", sortFilter = "new", bundleFilter = "all", searchText = "", activeOnly = false, currentDetailIndex = -1;
+    let postMode = "exchange", postPhotos = [], processingPhotos = false, submittingPost = false, submittingGroup = false, detailPhotos = [], roomPhotos = [], roomPhotosFor = null;
+    let myTrades = [], unsubTrades = null, groupJoins = {}, unsubJoins = null, currentTrade = null, roomMessages = [], unsubRoom = null, unsubMsgs = null;
+    let reviewState = { tradeId: null, done: null }, selectedRating = 0, sendingImage = false, roomBoxKey = null, userData = { profile: {}, blocked: [], likes: [], reads: {}, notifications: [], cancelHistory: [] };
+    let unsubUser = null, editingPostId = null, migratingLocal = false, photoCache = {};
+    let pendingProfilePhoto = null;
+    let prevUnreadCount = -1;
+    let prevTradeCountAsOwner = -1;
+    let profileSection = "basic";
+
+    const STATUS_LABEL = { negotiating: "交渉中", shipping: "取引・発送中", completed: "完了", cancelled: "キャンセル" };
+    const STATUS_CLASS = { negotiating: "bg-yellow-400 text-yellow-900 border-yellow-200", shipping: "bg-blue-400 text-white border-blue-300", completed: "bg-green-400 text-white border-green-300", cancelled: "bg-gray-300 text-gray-700 border-gray-200" };
+
+    function escapeHtml(str) { return String(str ?? "").replace(/[&<>'"]/g, t => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[t] || t)); }
+    function fmtTime(ts) {
+      if (!ts || !ts.toDate) return "";
+      const d = ts.toDate(); return (d.getMonth() + 1) + "/" + d.getDate() + " " + String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+    }
+    function tsValue(ts) { return ts && ts.toMillis ? ts.toMillis() : Number.MAX_SAFE_INTEGER; }
+    function tsMillis(ts) { return ts && ts.toMillis ? ts.toMillis() : 0; }
+    function todayStr() { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+    function isExpired(p) { return !!(p && p.deadline && p.deadline < todayStr()); }
+    function isJpegData(s) { return typeof s === "string" && s.startsWith(IMAGE_PREFIX); }
+    function isPayTrade(t) { return !!(t && (t.isBuy || t.isSell || t.kind === "group")); }
+    function joinsOf(postId) { return groupJoins[postId] || []; }
+    function needsCondition(kind) { return kind === "card" || kind === "album" || kind === "dearlit"; }
+
+    function showToast(message, type = "info") {
+      const container = document.getElementById("toast-container");
+      if (!container) return;
+      const toast = document.createElement("div");
+      const colorMap = {
+        success: "bg-gradient-to-r from-green-400 to-green-500 text-white border-green-300",
+        error: "bg-gradient-to-r from-red-400 to-red-500 text-white border-red-300",
+        info: "bg-gradient-to-r from-illit-purple to-illit-accent text-white border-white/40"
+      };
+      toast.className = `pointer-events-auto px-5 py-3 rounded-2xl shadow-xl text-sm font-bold text-center border toast-enter ${colorMap[type] || colorMap.info}`;
+      toast.textContent = message;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.classList.remove("toast-enter");
+        toast.classList.add("toast-leave");
+        setTimeout(() => toast.remove(), 260);
+      }, 3400);
+    }
+
+    function addNotification(text, type = "info") {
+      if (!currentUser) return;
+      const list = [...(userData.notifications || [])];
+      const item = { id: "n_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7), text, type, read: false, createdAt: Date.now() };
+      list.unshift(item);
+      if (list.length > MAX_NOTIFICATIONS) list.length = MAX_NOTIFICATIONS;
+      userData.notifications = list;
+      saveUserData({ notifications: list }).catch(() => {});
+      updateNotifBadge();
+    }
+
+    function updateNotifBadge() {
+      const badge = document.getElementById("notif-badge");
+      if (!badge) return;
+      const unread = (userData.notifications || []).filter(n => !n.read).length;
+      badge.innerText = unread > 99 ? "99+" : unread;
+      badge.classList.toggle("hidden", unread === 0);
+    }
+
+    window.openNotificationsModal = function() {
+      if (!currentUser) return alert("ログインが必要です。");
+      renderNotificationsList();
+      document.getElementById("notifications-modal").classList.remove("hidden");
+    };
+    window.closeNotificationsModal = function() { document.getElementById("notifications-modal").classList.add("hidden"); };
+    function renderNotificationsList() {
+      const el = document.getElementById("notifications-list");
+      const list = userData.notifications || [];
+      if (list.length === 0) {
+        el.innerHTML = '<p class="text-xs text-gray-500 text-center py-8 font-medium bg-white/30 rounded-xl">通知はありません</p>';
+        return;
+      }
+      el.innerHTML = list.map(n => {
+        const time = new Date(n.createdAt);
+        const timeStr = (time.getMonth()+1) + "/" + time.getDate() + " " + String(time.getHours()).padStart(2,"0") + ":" + String(time.getMinutes()).padStart(2,"0");
+        const isAdminNotif = n.type === "admin";
+        return `<div class="liquid-glass-input rounded-xl p-3 ${n.read ? 'opacity-70' : (isAdminNotif ? 'border-red-300 bg-red-50/50' : 'border-pink-200')}">
+          <div class="flex justify-between items-start gap-2">
+            <p class="text-xs font-medium text-gray-800 leading-relaxed flex-1">${isAdminNotif ? '<span class="text-red-600">[運営]</span> ' : ''}${escapeHtml(n.text)}</p>
+            ${!n.read ? '<span class="shrink-0 w-2 h-2 rounded-full bg-pink-500 mt-1"></span>' : ''}
+          </div>
+          <div class="text-[10px] text-gray-500 mt-1 font-medium">${timeStr}</div>
+        </div>`;
+      }).join("");
+    }
+    window.markAllNotificationsRead = async function() {
+      if (!currentUser) return;
+      const list = (userData.notifications || []).map(n => ({ ...n, read: true }));
+      userData.notifications = list;
+      try { await saveUserData({ notifications: list }); } catch(e) {}
+      updateNotifBadge();
+      renderNotificationsList();
+    };
+
+    window.openFaq = function() { document.getElementById("faq-modal").classList.remove("hidden"); };
+    window.closeFaq = function() { document.getElementById("faq-modal").classList.add("hidden"); };
+    window.openInquiry = function() {
+      if (!currentUser) return alert("ログインが必要です。");
+      document.getElementById("inquiry-body").value = "";
+      document.getElementById("inquiry-subject").value = "other";
+      document.getElementById("inquiry-modal").classList.remove("hidden");
+    };
+    window.closeInquiry = function() { document.getElementById("inquiry-modal").classList.add("hidden"); };
+    window.submitInquiry = async function() {
+      if (!currentUser) return;
+      const subject = document.getElementById("inquiry-subject").value;
+      const body = document.getElementById("inquiry-body").value.trim();
+      if (!body) return alert("内容を入力してください。");
+      if (body.length < 10) return alert("もう少し詳しくご記入ください。");
+      const btn = document.getElementById("inquiry-submit-btn");
+      btn.disabled = true; btn.innerText = "送信中…";
+      try {
+        await addDoc(collection(db, "inquiries"), {
+          userId: currentUser.uid, userName: getMyDisplayName(), subject, body, status: "open", createdAt: serverTimestamp()
+        });
+        showToast("お問い合わせを送信しました。返信をお待ちください。", "success");
+        closeInquiry();
+      } catch (e) { alert("送信に失敗しました。"); }
+      finally { btn.disabled = false; btn.innerText = "送信する"; }
+    };
+
+    window.openMyPage = function() {
+      if (!currentUser) return alert("ログインが必要です。");
+      const nameEl = document.getElementById("mypage-name");
+      const avatar = document.getElementById("mypage-avatar");
+      const placeholder = document.getElementById("mypage-avatar-placeholder");
+      nameEl.innerText = getMyDisplayName();
+      const photo = getMyProfile()?.photo;
+      if (photo && isJpegData(photo)) {
+        avatar.src = photo; avatar.classList.remove("hidden"); placeholder.classList.add("hidden");
+      } else {
+        avatar.classList.add("hidden"); placeholder.classList.remove("hidden");
+      }
+      document.getElementById("mypage-modal").classList.remove("hidden");
+    };
+    window.closeMyPage = function() { document.getElementById("mypage-modal").classList.add("hidden"); };
+
+    window.switchTab = function(tab) {
+      document.getElementById("post-menu-section").classList.toggle("hidden", tab !== 'post');
+      document.getElementById("post-list-section").classList.toggle("hidden", tab === 'post');
+      document.getElementById("nav-home").classList.toggle("bg-white/70", tab === 'home');
+      document.getElementById("nav-home").classList.toggle("text-illit-darkPurple", tab === 'home');
+      document.getElementById("nav-home").classList.toggle("text-gray-500", tab !== 'home');
+      document.getElementById("nav-likes").classList.toggle("bg-white/70", tab === 'likes');
+      document.getElementById("nav-likes").classList.toggle("text-pink-500", tab === 'likes');
+      document.getElementById("nav-likes").classList.toggle("text-gray-500", tab !== 'likes');
+      document.getElementById("nav-post").classList.toggle("bg-white/70", tab === 'post');
+      document.getElementById("nav-post").classList.toggle("text-illit-darkPurple", tab === 'post');
+      document.getElementById("nav-post").classList.toggle("text-gray-500", tab !== 'post');
+      if(tab === 'likes') { kindFilter = 'likes'; document.getElementById("list-section-title").innerText = "♡ いいねした募集"; }
+      else if (tab === 'home') { kindFilter = 'all'; document.getElementById("list-section-title").innerText = "最新の募集"; }
+      renderFilters(); renderPosts(); window.scrollTo({top: 0, behavior: 'smooth'});
+    };
+
+    function getOrCreateDeviceId() {
+      let did = localStorage.getItem("illit_device_id");
+      if (!did) { did = "dev_" + Math.random().toString(36).substring(2) + Date.now().toString(36); localStorage.setItem("illit_device_id", did); }
+      return did;
+    }
+    async function checkDeviceLock() {
+      if (!currentUser || isAdmin()) return true;
+      try {
+        const ref = doc(db, "devices", getOrCreateDeviceId()); const snap = await getDoc(ref);
+        if (!snap.exists()) { await setDoc(ref, { uid: currentUser.uid, updatedAt: serverTimestamp() }); return true; }
+        if (snap.data().uid === currentUser.uid) return true;
+        alert("⚠️ セキュリティ制限\nこの端末からはすでに別のアカウントで登録が行われています。"); return false;
+      } catch (e) { return true; }
+    }
+    async function checkPostLimit() {
+      if (isAdmin()) return true;
+      try {
+        const rSnap = await getDocs(query(collection(db, "reviews"), where("toId", "==", currentUser.uid)));
+        if (rSnap.size === 0) {
+          const pSnap = await getDocs(query(collection(db, "posts"), where("userId", "==", currentUser.uid), where("status", "==", "active")));
+          if (pSnap.size >= 1) { alert("⚠️ 評価が0件の新規アカウントは、同時に複数の出品を行えません。"); return false; }
+        }
+      } catch (e) {} return true;
+    }
+    function saveUserData(data) { return setDoc(doc(db, "users", currentUser.uid), data, { merge: true }); }
+    function updateUserAvatar() {
+      const avatar = document.getElementById("user-avatar");
+      if (!avatar) return;
+      const photo = getMyProfile()?.photo;
+      if (photo && isJpegData(photo)) {
+        avatar.src = photo; avatar.classList.remove("hidden");
+      } else {
+        avatar.classList.add("hidden"); avatar.removeAttribute("src");
+      }
+    }
+    function subscribeUserData() {
+      if (unsubUser) unsubUser();
+      const ref = doc(db, "users", currentUser.uid);
+      unsubUser = onSnapshot(ref, (snap) => {
+        const d = snap.exists() ? snap.data() : {};
+        if (!d.migrated && !migratingLocal) {
+          migratingLocal = true;
+          const read = (k, def) => { try { const v = JSON.parse(localStorage.getItem(k + currentUser.uid)); return v ?? def; } catch(e){ return def; } };
+          setDoc(ref, { migrated: true, profile: read("illit_profile_", {}), blocked: read("illit_blocked_", []), likes: read("illit_likes_", []) }, { merge: true }).finally(() => migratingLocal = false);
+        }
+        userData = { profile: d.profile || {}, blocked: d.blocked || [], likes: d.likes || [], reads: d.reads || {}, notifications: d.notifications || [], cancelHistory: d.cancelHistory || [] };
+        if (currentUser) {
+          document.getElementById("user-name").innerText = getMyDisplayName();
+          updateUserAvatar();
+        }
+        syncTermsRecord(d);
+        const adminBtn = document.getElementById("admin-panel-btn"); if (adminBtn) adminBtn.classList.toggle("hidden", !isAdmin());
+        renderPosts(); renderBlockedBox(); updateBadge(); updateNotifBadge();
+        if (!document.getElementById("trades-modal").classList.contains("hidden")) renderTradesList();
+        if (!document.getElementById("wallet-modal").classList.contains("hidden")) renderWallet();
+        if (!document.getElementById("notifications-modal").classList.contains("hidden")) renderNotificationsList();
+      });
+    }
+    function subscribeJoins() {
+      if (unsubJoins) { unsubJoins(); unsubJoins = null; }
+      unsubJoins = onSnapshot(collectionGroup(db, "joins"), (snap) => {
+        const m = {};
+        snap.docs.forEach((d) => {
+          const parent = d.ref.parent.parent; if (!parent) return;
+          (m[parent.id] = m[parent.id] || []).push({ id: d.id, ...d.data() });
+        });
+        groupJoins = m; renderPosts();
+      });
+    }
+
+    // ==============================================
+    // 管理者用機能（ダッシュボード）
+    // ==============================================
+    let adminTab = "stats";
+    let adminSearchQuery = "";
+
+    window.openAdminModal = function() { 
+      if (!isAdmin()) return; 
+      document.getElementById("admin-modal").classList.remove("hidden"); 
+      switchAdminTab('stats'); // デフォルトを統計に
+    };
+    
+    window.closeAdminModal = function() { 
+      document.getElementById("admin-modal").classList.add("hidden"); 
+    };
+
+    window.switchAdminTab = function(tab) {
+      adminTab = tab;
+      adminSearchQuery = ""; // タブ切り替えで検索リセット
+      const tabs = ["reports", "inquiries", "users", "posts", "trades", "stats", "broadcast"];
+      tabs.forEach((k) => {
+        const el = document.getElementById("admin-tab-" + k);
+        if (el) {
+          if (tab === k) {
+            el.classList.remove("border-transparent", "text-gray-500");
+            el.classList.add("border-illit-darkPurple", "text-illit-darkPurple");
+          } else {
+            el.classList.add("border-transparent", "text-gray-500");
+            el.classList.remove("border-illit-darkPurple", "text-illit-darkPurple");
+          }
+        }
+      });
+
+      // 検索バーの表示制御
+      const controls = document.getElementById("admin-controls");
+      if (tab === "users" || tab === "posts" || tab === "trades") {
+        controls.innerHTML = `<input type="text" placeholder="名前, UID, またはキーワードで検索..." oninput="adminSearchQuery = this.value.trim().toLowerCase(); loadAdminData();" class="liquid-glass-input w-full rounded-xl p-2.5 text-xs text-gray-800">`;
+        controls.classList.remove("hidden");
+      } else {
+        controls.classList.add("hidden");
+        controls.innerHTML = "";
+      }
+
+      loadAdminData();
+    };
+
+    async function loadAdminData() {
+      const el = document.getElementById("admin-content"); 
+      el.innerHTML = '<div class="flex justify-center items-center h-full"><p class="text-gray-500 font-medium">⏳ データ読み込み中...</p></div>';
+      
+      try {
+        // --- 📊 統計タブ ---
+        if (adminTab === "stats") {
+          const d = new Date(); d.setDate(1); d.setHours(0,0,0,0);
+          const [tradesSnap, usersSnap, postsSnap] = await Promise.all([
+            getDocs(collection(db, "trades")),
+            getDocs(collection(db, "users")),
+            getDocs(collection(db, "posts"))
+          ]);
+          
+          let platformTotal = 0; let thisMonthTotal = 0; let completedCount = 0;
+          tradesSnap.docs.forEach(docSnap => {
+            const t = docSnap.data(); 
+            const tDate = t.createdAt?.toDate ? t.createdAt.toDate() : new Date();
+            if (t.status === "completed") {
+              const price = Number(t.postPrice || 0);
+              platformTotal += price;
+              completedCount++;
+              if (tDate >= d) thisMonthTotal += price;
+            }
+          });
+
+          el.innerHTML = `
+            <div class="grid grid-cols-2 gap-3">
+              <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-4 text-white shadow-md">
+                <div class="text-[10px] opacity-80 font-medium">総ユーザー数</div>
+                <div class="text-2xl font-bold">${usersSnap.size} 人</div>
+              </div>
+              <div class="bg-gradient-to-br from-pink-400 to-pink-500 rounded-xl p-4 text-white shadow-md">
+                <div class="text-[10px] opacity-80 font-medium">総出品数</div>
+                <div class="text-2xl font-bold">${postsSnap.size} 件</div>
+              </div>
+              <div class="bg-gradient-to-br from-teal-400 to-teal-500 rounded-xl p-4 text-white shadow-md col-span-2">
+                <div class="text-[10px] opacity-80 font-medium">プラットフォーム累計取引額 (成立済)</div>
+                <div class="text-3xl font-bold">￥${platformTotal.toLocaleString()}</div>
+                <div class="flex justify-between mt-2 text-xs opacity-90 border-t border-white/30 pt-2">
+                  <span>今月の取引額: ￥${thisMonthTotal.toLocaleString()}</span>
+                  <span>成立件数: ${completedCount} 件</span>
+                </div>
+              </div>
+            </div>`;
+          return;
+        }
+
+        // --- 👥 ユーザー管理タブ ---
+        if (adminTab === "users") {
+          const snap = await getDocs(collection(db, "users")); 
+          const suspSnap = await getDocs(collection(db, "suspensions"));
+          const suspSet = new Set(suspSnap.docs.map(x => x.id));
+          
+          let users = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          if (adminSearchQuery) {
+            users = users.filter(u => 
+              (u.profile?.nickname || '').toLowerCase().includes(adminSearchQuery) || 
+              u.id.toLowerCase().includes(adminSearchQuery)
+            );
+          }
+
+          if (users.length === 0) { el.innerHTML = '<p class="text-gray-500 text-center py-4">該当するユーザーがいません。</p>'; return; }
+
+          el.innerHTML = users.map(u => {
+            const isSuspended = suspSet.has(u.id);
+            const isAdminUser = ADMIN_UIDS.includes(u.id);
+            return `
+            <div class="bg-white/80 border ${isSuspended ? 'border-red-300' : 'border-purple-200'} rounded-xl p-3 space-y-2 shadow-sm">
+              <div class="flex justify-between items-start">
+                <div>
+                  <span class="font-bold text-gray-800 text-sm">${escapeHtml(u.profile?.nickname || '名無し')}</span>
+                  ${isAdminUser ? '<span class="bg-yellow-100 text-yellow-800 text-[9px] px-2 py-0.5 rounded-full ml-1">Admin</span>' : ''}
+                  ${isSuspended ? '<span class="bg-red-100 text-red-800 text-[9px] px-2 py-0.5 rounded-full ml-1">停止中</span>' : ''}
+                  <div class="text-[10px] text-gray-400 mt-0.5 flex items-center gap-1 font-mono">UID: ${u.id.slice(0,12)}... <button onclick="navigator.clipboard.writeText('${u.id}')" class="hover:text-gray-700">📋</button></div>
+                </div>
+              </div>
+              ${!isAdminUser ? `
+              <div class="flex justify-end gap-1.5 pt-2 border-t border-gray-100">
+                <button onclick="adminSendWarning('${u.id}', '${escapeHtml(u.profile?.nickname || '')}')" class="bg-yellow-100 text-yellow-700 hover:bg-yellow-200 font-medium px-3 py-1.5 rounded-lg text-[10px] transition">⚠️ 警告通知</button>
+                ${isSuspended 
+                  ? `<button onclick="adminUnsuspendUser('${u.id}')" class="bg-green-100 text-green-700 hover:bg-green-200 font-medium px-3 py-1.5 rounded-lg text-[10px] transition">🔓 停止解除</button>` 
+                  : `<button onclick="adminSuspendUser('${u.id}', '${escapeHtml(u.profile?.nickname || '')}')" class="bg-red-100 text-red-700 hover:bg-red-200 font-medium px-3 py-1.5 rounded-lg text-[10px] transition">🚫 アカウント停止</button>`
+                }
+              </div>` : ''}
+            </div>`;
+          }).join("");
+          return;
+        }
+
+        // --- 📦 投稿管理タブ ---
+        if (adminTab === "posts") {
+          const snap = await getDocs(query(collection(db, "posts"), orderBy("createdAt", "desc")));
+          let posts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          
+          if (adminSearchQuery) {
+            posts = posts.filter(p => 
+              (p.give || '').toLowerCase().includes(adminSearchQuery) || 
+              (p.want || '').toLowerCase().includes(adminSearchQuery) ||
+              (p.userName || '').toLowerCase().includes(adminSearchQuery)
+            );
+          }
+
+          if (posts.length === 0) { el.innerHTML = '<p class="text-gray-500 text-center py-4">投稿がありません。</p>'; return; }
+
+          el.innerHTML = posts.map(p => `
+            <div class="bg-white/80 border ${p.status === 'active' ? 'border-purple-200' : 'border-gray-300 opacity-70'} rounded-xl p-3 flex gap-3 shadow-sm">
+              ${p.thumb ? `<img src="${p.thumb}" class="w-16 h-16 object-cover rounded-lg border border-gray-200 shrink-0">` : '<div class="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center text-xs text-gray-400">No Image</div>'}
+              <div class="flex-1 min-w-0 flex flex-col justify-between">
+                <div>
+                  <div class="text-[10px] text-gray-500 mb-0.5 flex justify-between"><span>${escapeHtml(p.userName)}</span> <span class="${p.status==='active'?'text-green-600':'text-gray-500'}">${p.status}</span></div>
+                  <div class="font-bold text-xs text-gray-800 truncate">譲: ${escapeHtml(p.give)}</div>
+                  ${p.want ? `<div class="text-[11px] text-gray-600 truncate">求: ${escapeHtml(p.want)}</div>` : ''}
+                </div>
+                <div class="flex justify-end gap-2 mt-2">
+                  <button onclick="adminDeletePost('${p.id}')" class="bg-red-500 text-white font-medium px-3 py-1 rounded-md text-[10px] shadow-sm hover:bg-red-600">強制削除</button>
+                </div>
+              </div>
+            </div>`).join("");
+          return;
+        }
+
+        // --- 💬 取引監視タブ ---
+        if (adminTab === "trades") {
+          const snap = await getDocs(query(collection(db, "trades"), orderBy("createdAt", "desc")));
+          let trades = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+          if (adminSearchQuery) {
+            trades = trades.filter(t => 
+              (t.ownerName || '').toLowerCase().includes(adminSearchQuery) || 
+              (t.applicantName || '').toLowerCase().includes(adminSearchQuery) ||
+              (t.id).toLowerCase().includes(adminSearchQuery)
+            );
+          }
+
+          if (trades.length === 0) { el.innerHTML = '<p class="text-gray-500 text-center py-4">取引データがありません。</p>'; return; }
+
+          el.innerHTML = trades.map(t => {
+            const statColor = t.status === 'completed' ? 'text-green-600' : t.status === 'cancelled' ? 'text-gray-500' : 'text-blue-600';
+            return `
+            <div class="bg-white/80 border border-purple-200 rounded-xl p-3 shadow-sm text-xs space-y-1.5">
+              <div class="flex justify-between items-center border-b border-gray-100 pb-1">
+                <span class="font-mono text-[9px] text-gray-400">ID: ${t.id.slice(0,8)}</span>
+                <span class="font-bold ${statColor}">${STATUS_LABEL[t.status] || t.status}</span>
+              </div>
+              <div class="font-medium text-gray-800 truncate">商品: ${escapeHtml(t.postGive || '不明')}</div>
+              <div class="flex justify-between items-center text-gray-600 bg-gray-50 p-1.5 rounded">
+                <span>出品: ${escapeHtml(t.ownerName)}</span>
+                <span class="text-[9px]">↔</span>
+                <span>申込: ${escapeHtml(t.applicantName)}</span>
+              </div>
+              ${t.status !== 'completed' && t.status !== 'cancelled' ? `
+              <div class="flex justify-end pt-1">
+                <button onclick="adminForceCancelTrade('${t.id}')" class="bg-red-500 text-white px-3 py-1 rounded text-[10px] font-medium hover:bg-red-600 shadow-sm">強制キャンセル介入</button>
+              </div>` : ''}
+            </div>`;
+          }).join("");
+          return;
+        }
+
+        // --- 既存のタブ ---
+        if (adminTab === "reports") {
+          const snap = await getDocs(query(collection(db, "reports"), orderBy("createdAt", "desc")));
+          if (snap.empty) { el.innerHTML = '<p class="text-gray-500 text-center py-6 font-medium">通報はありません。</p>'; return; }
+          el.innerHTML = snap.docs.map(d => `<div class="bg-red-50 border border-red-200 rounded-xl p-3 space-y-1.5 shadow-sm"><div class="flex justify-between items-center text-[10px] text-red-700"><span>通報者: ${escapeHtml(d.data().reporterName)}</span><span>${fmtTime(d.data().createdAt)}</span></div><div class="font-bold text-gray-800 text-xs">対象: ${escapeHtml(d.data().postGive)}</div><div class="text-red-700 bg-white p-2 rounded-lg border border-red-100 text-xs">理由: ${escapeHtml(d.data().reason)}</div><div class="flex justify-end pt-1"><button onclick="deleteReportedPost('${d.data().postId}', '${d.id}')" class="bg-red-500 text-white font-medium px-3 py-1.5 rounded-md text-[10px] hover:bg-red-600 shadow-sm">対象の投稿を強制削除</button></div></div>`).join("");
+        }
+        else if (adminTab === "inquiries") {
+          const snap = await getDocs(query(collection(db, "inquiries"), orderBy("createdAt", "desc")));
+          if (snap.empty) { el.innerHTML = '<p class="text-gray-500 text-center py-6 font-medium">問い合わせはありません。</p>'; return; }
+          el.innerHTML = snap.docs.map(d => {
+            const data = d.data();
+            const subj = INQUIRY_SUBJECT_LABEL[data.subject] || data.subject;
+            return `<div class="bg-white/80 border border-purple-200 rounded-xl p-3 space-y-1.5 shadow-sm">
+              <div class="flex justify-between items-center text-[10px] text-gray-500"><span class="font-bold text-illit-darkPurple bg-purple-50 px-2 py-0.5 rounded">${escapeHtml(subj)}</span><span>${fmtTime(data.createdAt)}</span></div>
+              <div class="font-bold text-gray-800 text-xs">${escapeHtml(data.userName || "")}</div>
+              <div class="text-gray-700 bg-white p-2 rounded-lg border border-gray-200 whitespace-pre-wrap text-xs leading-relaxed">${escapeHtml(data.body || "")}</div>
+              <div class="flex justify-end pt-1"><button onclick="markInquiryDone('${d.id}')" class="bg-green-500 hover:bg-green-600 text-white font-medium px-4 py-1.5 rounded-md text-[10px] shadow-sm">対応済みにする</button></div>
+            </div>`;
+          }).join("");
+        }
+        else if (adminTab === "broadcast") {
+          el.innerHTML = `
+            <div class="space-y-4">
+              <div class="bg-red-50/80 border border-red-200 rounded-xl p-3 text-xs text-red-700 font-medium">⚠️ 送信した内容は全ユーザーの「通知一覧」に追加されます。</div>
+              <div>
+                <label class="block font-medium text-gray-700 mb-1 text-xs">通知メッセージ内容</label>
+                <textarea id="admin-broadcast-msg" rows="5" maxlength="300" placeholder="例: メンテナンスのお知らせ" class="liquid-glass-input w-full rounded-xl p-3 text-sm text-gray-800 focus:ring-2 focus:ring-purple-400"></textarea>
+              </div>
+              <button onclick="sendBroadcast()" id="broadcast-send-btn" class="w-full bg-gradient-to-r from-red-500 to-pink-500 text-white font-bold py-3.5 rounded-xl hover:opacity-90 transition shadow-md border border-white/30 text-sm">📢 全員に通知を送信する</button>
+              <p id="broadcast-status" class="text-xs text-center text-gray-500 font-medium"></p>
+            </div>`;
+        }
+
+      } catch(e) {
+        console.error(e);
+        el.innerHTML = '<p class="text-red-500 text-center py-4 font-bold">データの取得に失敗しました。</p>';
+      }
+    }
+
+    // 特定のユーザーへ警告通知を送信
+    window.adminSendWarning = async function(uid, name) {
+      const msg = prompt(`【${name}】への警告メッセージを入力してください:\n(相手の通知一覧に運営からのメッセージとして届きます)`);
+      if (!msg) return;
+      try {
+        const userRef = doc(db, "users", uid);
+        const snap = await getDoc(userRef);
+        const data = snap.exists() ? snap.data() : {};
+        const list = Array.isArray(data.notifications) ? [...data.notifications] : [];
+        list.unshift({ 
+          id: "admin_warn_" + Date.now(), 
+          text: `【運営より警告】${msg}`, 
+          type: "admin", 
+          read: false, 
+          createdAt: Date.now() 
+        });
+        if (list.length > MAX_NOTIFICATIONS) list.length = MAX_NOTIFICATIONS;
+        await updateDoc(userRef, { notifications: list });
+        alert("警告を送信しました。");
+      } catch (e) { alert("送信に失敗しました。"); }
+    };
+
+    // ユーザーのアカウント手動停止
+    window.adminSuspendUser = async function(uid, name) {
+      const reason = prompt(`【${name}】のアカウントを停止する理由を入力してください:`);
+      if (!reason) return;
+      try {
+        await setDoc(doc(db, "suspensions", uid), { reason, name, createdAt: serverTimestamp() });
+        alert("アカウントを停止しました。");
+        loadAdminData();
+      } catch(e) { alert("失敗しました。"); }
+    };
+
+    // ユーザーのアカウント停止解除
+    window.adminUnsuspendUser = async function(uid) {
+      if (!confirm("アカウント停止を解除しますか？")) return;
+      try {
+        await deleteDoc(doc(db, "suspensions", uid));
+        alert("停止を解除しました。");
+        loadAdminData();
+      } catch(e) { alert("失敗しました。"); }
+    };
+
+    // 投稿の強制削除
+    window.adminDeletePost = async function(postId) {
+      if(!confirm("この投稿を強制的に削除しますか？\n(画像や共同購入の参加データも削除されます)")) return;
+      try {
+        const snap = await getDocs(collection(db, "posts", postId, "photos")); 
+        await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
+        const js = await getDocs(collection(db, "posts", postId, "joins")); 
+        await Promise.all(js.docs.map(d => deleteDoc(d.ref)));
+        
+        await deleteDoc(doc(db, "posts", postId)); 
+        delete photoCache[postId];
+        alert("削除しました。"); 
+        loadAdminData();
+      } catch(e){ alert("削除に失敗しました。"); }
+    };
+
+    // 取引の強制キャンセル
+    window.adminForceCancelTrade = async function(tradeId) {
+      if(!confirm("運営権限でこの取引を強制的にキャンセルしますか？\n（トラブル対応用です）")) return;
+      try {
+        await updateDoc(doc(db, "trades", tradeId), { 
+          status: "cancelled", 
+          adminCancelled: true,
+          updatedAt: serverTimestamp() 
+        });
+        
+        const tradeSnap = await getDoc(doc(db, "trades", tradeId));
+        if(tradeSnap.exists()) {
+          const tData = tradeSnap.data();
+          if (tData.postId && tData.kind !== "group") {
+            try { await updateDoc(doc(db, "posts", tData.postId), { status: "active" }); } catch(err){}
+          }
+        }
+        alert("取引を強制キャンセルしました。");
+        loadAdminData();
+      } catch(e) { alert("処理に失敗しました。"); }
+    };
+
+    window.markInquiryDone = async function(id) {
+      if (!confirm("対応済みにしますか？（削除されます）")) return;
+      try { await deleteDoc(doc(db, "inquiries", id)); loadAdminData(); } catch(e) {}
+    };
+
+    window.sendBroadcast = async function() {
+      if (!isAdmin()) return;
+      const msgEl = document.getElementById("admin-broadcast-msg");
+      const statusEl = document.getElementById("broadcast-status");
+      const btn = document.getElementById("broadcast-send-btn");
+      if (!msgEl) return;
+      const message = msgEl.value.trim();
+      if (!message) return alert("メッセージを入力してください。");
+      if (message.length > 300) return alert("300文字以内で入力してください。");
+      if (!confirm(`以下の内容を全ユーザーに通知します。よろしいですか？\n\n「${message}」`)) return;
+      btn.disabled = true; btn.innerText = "送信中…"; statusEl.innerText = "ユーザーを取得しています…";
+      try {
+        const usersSnap = await getDocs(collection(db, "users"));
+        const total = usersSnap.size; let done = 0;
+        statusEl.innerText = `送信中… 0 / ${total}`;
+        const notifItem = { id: "b_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7), text: message, type: "admin", read: false, createdAt: Date.now() };
+        const docs = usersSnap.docs; const chunkSize = 20;
+        for (let i = 0; i < docs.length; i += chunkSize) {
+          const chunk = docs.slice(i, i + chunkSize);
+          await Promise.all(chunk.map(async (userDoc) => {
+            try {
+              const data = userDoc.data() || {};
+              const list = Array.isArray(data.notifications) ? [...data.notifications] : [];
+              list.unshift(notifItem);
+              if (list.length > MAX_NOTIFICATIONS) list.length = MAX_NOTIFICATIONS;
+              await updateDoc(doc(db, "users", userDoc.id), { notifications: list });
+            } catch (e) {}
+            done++; statusEl.innerText = `送信中… ${done} / ${total}`;
+          }));
+        }
+        statusEl.innerText = `✅ 完了！ ${total}人に送信しました。`;
+        showToast("一斉通知を送信しました！", "success");
+        msgEl.value = "";
+      } catch (e) {
+        statusEl.innerText = "送信に失敗しました。";
+        alert("送信に失敗しました。");
+      } finally {
+        btn.disabled = false; btn.innerText = "📢 全員に通知を送信する";
+      }
+    };
+
+    window.deleteReportedPost = async function(postId, reportId) {
+      if(!confirm("強制削除しますか？")) return;
+      try {
+        const snap = await getDocs(collection(db, "posts", postId, "photos")); await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
+        const js = await getDocs(collection(db, "posts", postId, "joins")); await Promise.all(js.docs.map(d => deleteDoc(d.ref)));
+        await deleteDoc(doc(db, "posts", postId)); delete photoCache[postId];
+        await deleteDoc(doc(db, "reports", reportId)); alert("削除しました。"); loadAdminData();
+      } catch(e){}
+    };
+    
+    function isUnread(t) { return currentUser && t && t.lastMessageAt && t.lastSenderId !== currentUser.uid && tsMillis(t.lastMessageAt) > ((userData.reads || {})[t.id] || 0); }
+    function markTradeRead(t) {
+      if (!currentUser || !t || !isUnread(t)) return;
+      const ms = tsMillis(t.lastMessageAt); userData.reads = { ...(userData.reads || {}), [t.id]: ms };
+      saveUserData({ reads: { [t.id]: ms } }).catch(()=>{});
+    }
+    async function postMessage(data) {
+      const t = currentTrade; if (!t || !currentUser) return;
+      await addDoc(collection(db, "trades", t.id, "messages"), { ...data, senderId: currentUser.uid, senderName: getMyDisplayName(), createdAt: serverTimestamp() });
+      try { await updateDoc(doc(db, "trades", t.id), { lastMessageAt: serverTimestamp(), lastSenderId: currentUser.uid }); } catch (e) {}
+    }
+
+    function getBlockedUsers() { return userData.blocked || []; }
+    window.blockUser = async function(userId, userName) {
+      if (!currentUser || !userId || !confirm(`「${userName}」さんをブロックしますか？`)) return;
+      const list = [...getBlockedUsers()];
+      if (!list.includes(userId)) { list.push(userId); userData.blocked = list; try { await saveUserData({ blocked: list }); } catch(e){return;} }
+      alert("ブロックしました。"); closeDetailModal(); renderPosts();
+    };
+    window.clearBlockedUsers = async function() {
+      if (!currentUser || !confirm("すべてクリアしますか？")) return;
+      userData.blocked = []; try { await saveUserData({ blocked: [] }); } catch(e){}
+      alert("解除しました。"); renderBlockedBox(); renderPosts();
+    };
+    function renderBlockedBox() { const el = document.getElementById("blocked-users-box"); if (el) el.innerText = getBlockedUsers().length === 0 ? "なし" : `${getBlockedUsers().length}人をブロック中`; }
+    function getMyLikes() { return userData.likes || []; }
+    window.toggleDetailLike = async function() {
+      if (!currentUser) return alert("ログインが必要です。");
+      const p = allPosts[currentDetailIndex]; if (!p) return;
+      let likes = [...getMyLikes()]; const idx = likes.indexOf(p.id);
+      const wasLiked = idx >= 0;
+      if (wasLiked) likes.splice(idx, 1); else likes.push(p.id);
+      userData.likes = likes;
+      saveUserData({ likes }).catch(()=>{});
+      try { await updateDoc(doc(db, "posts", p.id), { likesCount: increment(wasLiked ? -1 : 1) }); } catch (e) {}
+      updateDetailLikeUI(p.id); renderPosts();
+    };
+    function updateDetailLikeUI(postId) {
+      const liked = getMyLikes().includes(postId); const btn = document.getElementById("detail-like-btn"); if (!btn) return;
+      btn.className = liked ? "bg-pink-500 text-white font-medium px-4 py-2 rounded-full text-xs border border-pink-500 transition shadow-md flex items-center space-x-1" : "bg-white/80 text-pink-500 font-medium px-4 py-2 rounded-full text-xs border border-white hover:bg-white transition flex items-center space-x-1 shadow-md";
+      btn.querySelector("span").innerText = liked ? "♥" : "♡";
+    }
+
+    window.openProfileModal = function(section = "basic") {
+      if (!currentUser) return;
+      profileSection = section;
+      const titles = { basic: "✏️ プロフィール・写真", address: "📦 住所・配送先", paypay: "💳 PayPay ID", push: "📢 プッシュ通知", block: "🚫 ブロック管理" };
+      document.getElementById("profile-modal-title").innerText = titles[section] || "設定";
+      ["basic","address","paypay","push","block"].forEach(s => {
+        const el = document.getElementById("profile-section-" + s);
+        if (el) el.classList.toggle("hidden", s !== section);
+      });
+      const s = userData.profile || {};
+      pendingProfilePhoto = null;
+      document.getElementById("profile-nickname").value = s.nickname || "";
+      document.getElementById("profile-paypay").value = s.paypay || "";
+      document.getElementById("profile-name").value = s.name || currentUser.displayName || "";
+      document.getElementById("profile-zip").value = s.zip || "";
+      document.getElementById("profile-address1").value = s.address1 || "";
+      document.getElementById("profile-address2").value = s.address2 || "";
+      document.getElementById("profile-phone").value = s.phone || "";
+      const preview = document.getElementById("profile-photo-preview");
+      const clearBtn = document.getElementById("profile-photo-clear");
+      if (s.photo && isJpegData(s.photo)) {
+        preview.innerHTML = `<img src="${s.photo}" class="w-full h-full object-cover">`;
+        clearBtn.classList.remove("hidden");
+      } else {
+        preview.innerHTML = "👤"; clearBtn.classList.add("hidden");
+      }
+      renderBlockedBox(); updatePushUI();
+      document.getElementById("profile-modal").classList.remove("hidden");
+    };
+    window.closeProfileModal = function() { document.getElementById("profile-modal").classList.add("hidden"); pendingProfilePhoto = null; };
+
+    window.handleProfilePhoto = async function(inputEl) {
+      const file = inputEl.files && inputEl.files[0]; inputEl.value = "";
+      if (!file || !file.type.startsWith("image/")) return;
+      try {
+        const img = await loadImageFromFile(file);
+        const data = compressFromImage(img, PROFILE_PHOTO);
+        pendingProfilePhoto = data;
+        const preview = document.getElementById("profile-photo-preview");
+        preview.innerHTML = `<img src="${data}" class="w-full h-full object-cover">`;
+        document.getElementById("profile-photo-clear").classList.remove("hidden");
+      } catch (e) { alert("画像の処理に失敗しました。"); }
+    };
+    window.clearProfilePhoto = function() {
+      pendingProfilePhoto = "";
+      document.getElementById("profile-photo-preview").innerHTML = "👤";
+      document.getElementById("profile-photo-clear").classList.add("hidden");
+    };
+
+    window.saveProfile = async function() {
+      if (!currentUser) return;
+      const p = {
+        nickname: document.getElementById("profile-nickname").value.trim(),
+        paypay: document.getElementById("profile-paypay").value.trim(),
+        name: document.getElementById("profile-name").value.trim(),
+        zip: document.getElementById("profile-zip").value.trim(),
+        address1: document.getElementById("profile-address1").value.trim(),
+        address2: document.getElementById("profile-address2").value.trim(),
+        phone: document.getElementById("profile-phone").value.trim()
+      };
+      if (pendingProfilePhoto !== null) p.photo = pendingProfilePhoto;
+      else p.photo = userData.profile?.photo || "";
+      userData.profile = { ...(userData.profile || {}), ...p };
+      try { await saveUserData({ profile: userData.profile }); } catch (e) { return alert("失敗しました。"); }
+      showToast("設定を保存しました！", "success");
+      closeProfileModal();
+      if (currentUser) {
+        document.getElementById("user-name").innerText = p.nickname || currentUser.displayName || "匿名";
+        updateUserAvatar();
+      }
+      if (currentTrade) { renderRoomAddressBox(); renderRoomPayPayBox(); }
+    };
+    function getMyProfile() { return currentUser && userData.profile && Object.keys(userData.profile).length ? userData.profile : null; }
+    function getMyDisplayName() { return getMyProfile()?.nickname || currentUser?.displayName || "匿名ファン"; }
+
+    window.sendMyAddress = async function() {
+      if (!currentTrade || !currentUser) return;
+      const p = getMyProfile(); if (!p || !p.zip || !p.address1 || !p.name) { alert("マイページから住所を入力してください。"); openProfileModal("address"); return; }
+      try { await postMessage({ senderId: currentUser.uid, senderName: getMyDisplayName(), text: `【配送先情報】\nお名前: ${p.name}\n郵便番号: 〒${p.zip}\n住所: ${p.address1} ${p.address2 || ''}\n電話番号: ${p.phone || 'なし'}`, createdAt: serverTimestamp() }); } catch(e){}
+    };
+    window.copyPayPayId = function(idStr) { navigator.clipboard.writeText(idStr).then(()=>alert("コピーしました！")).catch(()=>{}); };
+
+    function loadImageFromFile(file) {
+      return new Promise((res, rej) => {
+        const reader = new FileReader(); reader.onerror = rej;
+        reader.onload = () => { const img = new Image(); img.onerror = rej; img.onload = () => res(img); img.src = reader.result; };
+        reader.readAsDataURL(file);
+      });
+    }
+    function compressFromImage(img, opt) {
+      let maxSide = opt.maxSide, quality = opt.quality;
+      for (let i = 0; i < 7; i++) {
+        const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas"); canvas.width = Math.max(1, img.width * scale); canvas.height = Math.max(1, img.height * scale);
+        const ctx = canvas.getContext("2d"); ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const out = canvas.toDataURL("image/jpeg", quality); if (out.length < opt.maxChars) return out;
+        maxSide = Math.round(maxSide * 0.8); quality = Math.max(0.4, quality - 0.07);
+      } throw new Error("画像大");
+    }
+    async function compressImage(file, opt) { return compressFromImage(await loadImageFromFile(file), opt); }
+
+    function pushStorageKey() { return "illit_push_" + currentUser.uid; }
+    function updatePushUI() {
+      const onBtn = document.getElementById("push-on-btn"), offBtn = document.getElementById("push-off-btn"), status = document.getElementById("push-status");
+      if (!onBtn || !currentUser) return;
+      const on = !!localStorage.getItem(pushStorageKey());
+      onBtn.classList.toggle("hidden", on); offBtn.classList.toggle("hidden", !on);
+      status.innerText = on ? "この端末：通知オン ✅" : "この端末：通知オフ";
+    }
+    async function saveToken() {
+      const reg = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
+      const token = await getToken(getMessaging(app), { vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
+      if (!token) throw new Error("トークンなし");
+      await setDoc(doc(db, "users", currentUser.uid, "tokens", token), { token, ua: navigator.userAgent.slice(0, 120), updatedAt: serverTimestamp() });
+      localStorage.setItem(pushStorageKey(), token);
+    }
+    window.enablePush = async function() {
+      if (!currentUser || !("Notification" in window) || !("serviceWorker" in navigator)) return alert("非対応ブラウザ");
+      if (await Notification.requestPermission() !== "granted") return alert("通知許可が必要です");
+      try { await saveToken(); updatePushUI(); alert("通知をオンにしました！"); } catch(e){ alert("失敗しました"); }
+    };
+    async function removePushToken() {
+      if (!currentUser) return;
+      const token = localStorage.getItem(pushStorageKey());
+      try { if (token) await deleteDoc(doc(db, "users", currentUser.uid, "tokens", token)); if ("serviceWorker" in navigator && "Notification" in window) await deleteToken(getMessaging(app)); } catch(e){}
+      localStorage.removeItem(pushStorageKey());
+    }
+    window.disablePush = async function() { await removePushToken(); updatePushUI(); alert("通知をオフにしました。"); };
+
+    window.loginWithGoogle = function() { signInWithPopup(auth, provider).catch(e => alert("ログインエラー: " + e.message)); };
+    window.logout = async function() { closeRoom(); await removePushToken(); signOut(auth); };
+
+    onAuthStateChanged(auth, (user) => {
+      currentUser = user;
+      const loginBtn = document.getElementById("login-btn"), userProfile = document.getElementById("user-profile");
+      if (user) {
+        loginBtn.classList.add("hidden"); userProfile.classList.remove("hidden");
+        document.getElementById("user-name").innerText = getMyDisplayName();
+        updateUserAvatar();
+        subscribeUserData(); subscribeTrades();
+        if ("Notification" in window && Notification.permission === "granted" && localStorage.getItem(pushStorageKey())) saveToken().catch(()=>{});
+      } else {
+        loginBtn.classList.remove("hidden"); userProfile.classList.add("hidden");
+        if (unsubTrades) unsubTrades(); if (unsubUser) unsubUser(); unsubTrades=null; unsubUser=null;
+        userData = { profile: {}, blocked: [], likes: [], reads: {}, notifications: [], cancelHistory: [] }; myTrades = []; updateBadge(); updateNotifBadge();
+        prevUnreadCount = -1; prevTradeCountAsOwner = -1;
+        updateUserAvatar();
+      }
+      subscribePosts(); subscribeJoins();
+    });
+
+    window.openPostModal = async function(mode) {
+      if (!currentUser) return alert("ログインが必要です。");
+      if (!(await checkDeviceLock())) return;
+      postMode = mode;
+      const isBuy = mode === "buy";
+      const isAlbum = mode.startsWith("album");
+      const isDearlit = mode.startsWith("dearlit");
+      const isSell = mode.endsWith("_sell") || mode === "buy";
+      let title = "🃏 トレカ交換の出品";
+      if (mode === "buy") title = "💳 トレカの買取（購入希望）";
+      else if (mode === "album_sell") title = "💿 アルバム売却";
+      else if (mode === "dearlit_sell") title = "🎁 DEARLIT売却";
+      document.getElementById("post-modal-title").innerText = title;
+      document.getElementById("label-give").innerText = isBuy ? "【求】（買いたいもの）" : "【譲】（出すもの）";
+      document.getElementById("want-container").classList.toggle("hidden", isBuy || isSell);
+      document.getElementById("price-container").classList.toggle("hidden", !(isBuy || isSell));
+      document.getElementById("photo-req-label").innerText = (isBuy) ? "（任意・最大3枚）" : "（必須・最大3枚）";
+      document.getElementById("condition-container").classList.remove("hidden");
+      document.getElementById("input-give").value = "";
+      document.getElementById("input-want").value = "";
+      document.getElementById("input-price").value = "";
+      document.getElementById("input-desc").value = "";
+      document.getElementById("input-condition").value = "";
+      postPhotos = []; renderPostPhotoPreview();
+      document.getElementById("post-modal").classList.remove("hidden");
+    };
+    window.closePostModal = function() { document.getElementById("post-modal").classList.add("hidden"); };
+
+    function renderPostPhotoPreview() {
+      const el1 = document.getElementById("post-photo-preview"), el2 = document.getElementById("group-photo-preview");
+      let html = postPhotos.map((p, i) => `<div class="relative w-20 h-20"><img src="${p.thumb}" class="w-20 h-20 object-cover rounded-xl shadow-sm border border-white/50"><button onclick="removePostPhoto(${i})" class="absolute -top-1.5 -right-1.5 bg-gray-700/80 backdrop-blur text-white text-xs font-bold w-5 h-5 rounded-full hover:scale-110">×</button></div>`).join("");
+      if (processingPhotos) html += '<div class="w-20 h-20 rounded-xl bg-white/50 flex items-center justify-center text-xl shadow-sm">⏳</div>';
+      else if (postPhotos.length < MAX_POST_PHOTOS) html += `<button onclick="document.getElementById('post-photo-input').click()" class="w-20 h-20 rounded-xl border border-white bg-white/40 text-purple-600 text-xs font-medium flex flex-col items-center justify-center hover:bg-white/60 transition shadow-sm"><span class="text-2xl leading-none">＋</span>追加</button>`;
+      if (el1) el1.innerHTML = html; if (el2) el2.innerHTML = html;
+    }
+    window.addPostPhotos = async function(inputEl) {
+      const files = Array.from(inputEl.files || []); inputEl.value = "";
+      if (files.length === 0 || processingPhotos) return;
+      const targets = files.filter(f => f.type.startsWith("image/")).slice(0, MAX_POST_PHOTOS - postPhotos.length);
+      if (targets.length === 0) return;
+      processingPhotos = true; renderPostPhotoPreview();
+      try {
+        for (const f of targets) { const img = await loadImageFromFile(f); postPhotos.push({ full: compressFromImage(img, PHOTO_FULL), thumb: compressFromImage(img, PHOTO_THUMB) }); }
+      } catch(e) {} finally { processingPhotos = false; renderPostPhotoPreview(); }
+    };
+    window.removePostPhoto = function(i) { postPhotos.splice(i, 1); renderPostPhotoPreview(); };
+
+    window.submitPost = async function() {
+      if (submittingPost || processingPhotos || !(await checkDeviceLock()) || !(await checkPostLimit())) return;
+      const isBuy = postMode === "buy";
+      const isAlbum = postMode.startsWith("album");
+      const isDearlit = postMode.startsWith("dearlit");
+      const isSell = postMode.endsWith("_sell") || postMode === "buy";
+      let kind = "card";
+      if (isAlbum) kind = "album";
+      else if (isDearlit) kind = "dearlit";
+      const member = document.getElementById("input-member").value;
+      const give = document.getElementById("input-give").value.trim();
+      const want = document.getElementById("input-want").value.trim();
+      const price = (isBuy || isSell) ? Number(document.getElementById("input-price").value) : 0;
+      const desc = document.getElementById("input-desc").value.trim().slice(0, 200);
+      const condition = document.getElementById("input-condition").value;
+      if (!give) return alert("内容を入力してください。");
+      if (!isBuy && !isSell && !want) return alert("【求】を入力してください。");
+      if ((isBuy || isSell) && (!price || price <= 0)) return alert("価格を正しく入力してください。");
+      if (!condition) return alert("商品の状態を選択してください。");
+      if (!isBuy && postPhotos.length < 1) return alert("写真を1枚以上追加してください。");
+      submittingPost = true; const btn = document.getElementById("post-submit-btn"); btn.disabled = true; btn.innerText = "投稿中…";
+      try {
+        const ref = await addDoc(collection(db, "posts"), {
+          kind, isBuy, isSell: isSell && !isBuy, member, give, want: (isBuy || isSell) ? "" : want,
+          price: (isBuy || isSell) ? price : 0, description: desc, condition,
+          status: "active", photoCount: postPhotos.length, thumb: postPhotos.length > 0 ? postPhotos[0].thumb : "",
+          userId: currentUser.uid, userName: getMyDisplayName(), userPhoto: getMyProfile()?.photo || "",
+          likesCount: 0, createdAt: serverTimestamp()
+        });
+        for (let i = 0; i < postPhotos.length; i++) await addDoc(collection(db, "posts", ref.id, "photos"), { data: postPhotos[i].full, order: i, createdAt: serverTimestamp() });
+        showToast("出品が完了しました！", "success");
+        closePostModal(); switchTab('home');
+      } catch(e) { alert("失敗しました"); } finally { submittingPost = false; btn.disabled = false; btn.innerText = "出品する"; }
+    };
+
+    window.openSerialPostModal = async function(mode) {
+      if (!currentUser) return alert("ログインが必要です。");
+      if (!(await checkDeviceLock())) return;
+      postMode = mode;
+      document.getElementById("serial-modal-title").innerText = mode === "buy" ? "💳 シリアルの買取" : (mode === "sell" ? "💰 シリアルを売る" : "🎫 シリアルでトレカを求める");
+      document.getElementById("serial-label-give").innerText = mode === "buy" ? "【求】（買いたいシリアル）" : (mode === "sell" ? "【譲】売りたいシリアル" : "【譲】出せるシリアル");
+      document.getElementById("serial-want-container").classList.toggle("hidden", mode === "buy" || mode === "sell");
+      document.getElementById("serial-price-container").classList.toggle("hidden", mode !== "buy" && mode !== "sell");
+      document.getElementById("serial-give").value = ""; document.getElementById("serial-want").value = ""; document.getElementById("serial-price").value = ""; document.getElementById("serial-deadline").value = ""; document.getElementById("serial-note").value = "";
+      document.getElementById("serial-post-modal").classList.remove("hidden");
+    };
+    window.closeSerialPostModal = function() { document.getElementById("serial-post-modal").classList.add("hidden"); };
+    window.submitSerialPost = async function() {
+      if (!(await checkDeviceLock()) || !(await checkPostLimit())) return;
+      const isSell = postMode === "sell", isBuy = postMode === "buy";
+      const member = document.getElementById("serial-member").value, give = document.getElementById("serial-give").value.trim(), want = document.getElementById("serial-want").value.trim(), price = Number(document.getElementById("serial-price").value), dl = document.getElementById("serial-deadline").value, note = document.getElementById("serial-note").value.trim().slice(0, 200);
+      if (!give || (!isBuy && !isSell && !want) || ((isBuy || isSell) && (!price || price <= 0)) || (dl && dl < todayStr())) return alert("正しく入力してください。");
+      try {
+        await addDoc(collection(db, "posts"), {
+          kind: "serial", isBuy, isSell, member, give, want: (isBuy || isSell) ? "" : want, price: (isBuy || isSell) ? price : 0,
+          deadline: dl, description: note, status: "active",
+          userId: currentUser.uid, userName: getMyDisplayName(), userPhoto: getMyProfile()?.photo || "",
+          likesCount: 0, createdAt: serverTimestamp()
+        });
+        showToast("出品が完了しました！", "success");
+        closeSerialPostModal(); switchTab('home');
+      } catch(e) { alert("失敗しました"); }
+    };
+
+    window.onGroupBundleChange = function() { document.getElementById("group-bundle-note-box").classList.toggle("hidden", document.getElementById("group-bundle").value === "ng"); };
+    window.openGroupPostModal = async function() {
+      if (!currentUser) return alert("ログインが必要です。");
+      if (!(await checkDeviceLock())) return;
+      document.getElementById("group-give").value = ""; document.getElementById("group-price").value = ""; document.getElementById("group-target").value = ""; document.getElementById("group-bundle").value = "ok"; document.getElementById("group-bundle-note").value = ""; document.getElementById("group-desc").value = "";
+      postPhotos = []; renderPostPhotoPreview(); onGroupBundleChange();
+      document.getElementById("group-post-modal").classList.remove("hidden");
+    };
+    window.closeGroupPostModal = function() { document.getElementById("group-post-modal").classList.add("hidden"); };
+    window.submitGroupPost = async function() {
+      if (submittingGroup || processingPhotos || !(await checkDeviceLock()) || !(await checkPostLimit())) return;
+      const member = document.getElementById("group-member").value, give = document.getElementById("group-give").value.trim(), price = Number(document.getElementById("group-price").value), target = Number(document.getElementById("group-target").value), bundle = document.getElementById("group-bundle").value, bundleNote = document.getElementById("group-bundle-note").value.trim().slice(0, 100), ship = document.getElementById("group-shipping").value, dl = document.getElementById("group-deadline")?.value, desc = document.getElementById("group-desc").value.trim().slice(0, 200);
+      if (!give || !price || price <= 0 || !Number.isInteger(target) || target < 1 || target > 100) return alert("正しく入力してください。");
+      submittingGroup = true; const btn = document.getElementById("group-submit-btn"); btn.disabled = true; btn.innerText = "投稿中…";
+      try {
+        const ref = await addDoc(collection(db, "posts"), {
+          kind: "group", photoCount: postPhotos.length, thumb: postPhotos.length > 0 ? postPhotos[0].thumb : "",
+          isBuy: false, member, give, want: "", price, target, bundle, bundleNote: bundle === "ng" ? "" : bundleNote,
+          shipping: ship, deadline: dl || "", description: desc, status: "active",
+          userId: currentUser.uid, userName: getMyDisplayName(), userPhoto: getMyProfile()?.photo || "",
+          likesCount: 0, createdAt: serverTimestamp()
+        });
+        for (let i = 0; i < postPhotos.length; i++) await addDoc(collection(db, "posts", ref.id, "photos"), { data: postPhotos[i].full, order: i, createdAt: serverTimestamp() });
+        showToast("共同購入の募集を開始しました！", "success");
+        closeGroupPostModal(); switchTab('home');
+      } catch(e) { alert("失敗しました"); } finally { submittingGroup = false; btn.disabled = false; btn.innerText = "主催する"; }
+    };
+
+    function renderFilters() {
+      const activeChip = "filter-chip bg-gradient-to-r from-illit-purple to-illit-accent text-white border-white/50 shadow-md";
+      const normalChip = "filter-chip bg-white/70 text-gray-700 hover:bg-white";
+      document.getElementById("kind-filters").innerHTML = KINDS.map(k =>
+        `<button onclick="setKind('${k.key}')" class="${k.key === kindFilter ? activeChip : normalChip}">${k.label}</button>`
+      ).join("");
+      document.getElementById("member-filters").innerHTML = MEMBERS.map((m, i) =>
+        `<button onclick="setMember(${i})" class="${m === selectedMember ? activeChip : normalChip}">${m.split(" ")[0]}</button>`
+      ).join("");
+      const wrap = document.getElementById("bundle-filters-wrap");
+      wrap.classList.toggle("hidden", kindFilter !== "group_buy");
+      document.getElementById("bundle-filters").innerHTML = BUNDLE_FILTERS.map(b =>
+        `<button onclick="setBundle('${b.key}')" class="filter-chip ${b.key === bundleFilter ? 'bg-teal-500 text-white shadow-md' : 'bg-white/70 text-teal-800 hover:bg-white'}">${b.label}</button>`
+      ).join("");
+      const sortOpt = SORT_OPTIONS.find(s => s.key === sortFilter) || SORT_OPTIONS[0];
+      document.getElementById("sort-label").innerText = sortOpt.label;
+    }
+    window.setMember = function(i) { selectedMember = MEMBERS[i]; renderFilters(); renderPosts(); };
+    window.setKind = function(k) { kindFilter = k; renderFilters(); renderPosts(); };
+    window.setBundle = function(k) { bundleFilter = k; renderFilters(); renderPosts(); };
+    window.setSearch = function(v) { searchText = v.trim().toLowerCase(); renderPosts(); };
+    window.setActiveOnly = function(v) { activeOnly = !!v; renderPosts(); };
+    window.cycleSort = function() {
+      const idx = SORT_OPTIONS.findIndex(s => s.key === sortFilter);
+      sortFilter = SORT_OPTIONS[(idx + 1) % SORT_OPTIONS.length].key;
+      renderFilters(); renderPosts();
+    };
+    window.openFilterModal = function() { renderFilters(); document.getElementById("filter-modal").classList.remove("hidden"); };
+    window.closeFilterModal = function() { document.getElementById("filter-modal").classList.add("hidden"); renderPosts(); };
+    window.resetFilters = function() {
+      selectedMember = "すべて"; kindFilter = "all"; sortFilter = "new"; bundleFilter = "all"; searchText = ""; activeOnly = false;
+      document.getElementById("search-input").value = "";
+      document.getElementById("active-only-check").checked = false;
+      renderFilters(); renderPosts();
+    };
+
+    function getPostTypeKey(p) {
+      if (p.kind === "group") return "group_buy";
+      if (p.kind === "album") return "album";
+      if (p.kind === "dearlit") return "dearlit";
+      if (p.isSell) return "serial_sell";
+      if (p.isBuy) return p.kind === "serial" ? "serial_buy" : "card_buy";
+      if (p.kind === "serial") return "serial_exchange";
+      return "card_exchange";
+    }
+
+    function renderPosts() {
+      const container = document.getElementById("posts-container");
+      const blocked = userData.blocked || []; const likes = userData.likes || [];
+      const filtered = [];
+      allPosts.forEach((p, index) => {
+        if (blocked.includes(p.userId) || p.status === "traded") return;
+        if (activeOnly && p.status !== "active") return;
+        if (p.kind === "group" && Number(p.target || 0) > 0 && joinsOf(p.id).length >= Number(p.target) && !(currentUser && (p.userId === currentUser.uid || isAdmin()))) return;
+        const type = getPostTypeKey(p);
+        const okKind = kindFilter === "all" || (kindFilter === "likes" ? likes.includes(p.id) : kindFilter === type);
+        const okMember = selectedMember === "すべて" || p.member === selectedMember;
+        const okBundle = kindFilter !== "group_buy" || bundleFilter === "all" || p.bundle === bundleFilter;
+        const okText = !searchText || (p.give + " " + p.want + " " + p.userName + " " + (p.price || "")).toLowerCase().includes(searchText);
+        if (!okKind || !okMember || !okText || !okBundle) return;
+        filtered.push({ p, index });
+      });
+      if (sortFilter === "popular") {
+        filtered.sort((a, b) => {
+          const likeDiff = (Number(b.p.likesCount) || 0) - (Number(a.p.likesCount) || 0);
+          if (likeDiff !== 0) return likeDiff;
+          return tsMillis(b.p.createdAt) - tsMillis(a.p.createdAt);
+        });
+      }
+      const cards = filtered.map(({ p, index }) => {
+        const isLiked = likes.includes(p.id); const isGroup = p.kind === "group"; const joins = isGroup ? joinsOf(p.id) : []; const target = Number(p.target || 0); const full = isGroup && target > 0 && joins.length >= target; const closed = isGroup && p.status === "closed"; const dim = isExpired(p) || closed;
+        let badgeHtml = "";
+        if (isGroup) badgeHtml = `<span class="bg-teal-50 border border-teal-200 text-teal-800 font-medium px-2.5 py-0.5 rounded-full text-[11px] shadow-sm">🛍 共同購入（¥${Number(p.price || 0).toLocaleString()}）</span>`;
+        else if (p.kind === "album") badgeHtml = `<span class="bg-indigo-50 border border-indigo-200 text-indigo-800 font-medium px-2.5 py-0.5 rounded-full text-[11px] shadow-sm">💿 アルバム${p.isSell || p.isBuy ? "（¥" + Number(p.price||0).toLocaleString() + "）" : ""}</span>`;
+        else if (p.kind === "dearlit") badgeHtml = `<span class="bg-rose-50 border border-rose-200 text-rose-800 font-medium px-2.5 py-0.5 rounded-full text-[11px] shadow-sm">🎁 DEARLIT${p.isSell || p.isBuy ? "（¥" + Number(p.price||0).toLocaleString() + "）" : ""}</span>`;
+        else if (p.isSell) badgeHtml = `<span class="bg-yellow-50 border border-yellow-300 text-yellow-900 font-medium px-2.5 py-0.5 rounded-full text-[11px] shadow-sm">💰 シリアル売却（¥${Number(p.price || 0).toLocaleString()}）</span>`;
+        else if (p.isBuy && p.kind === "serial") badgeHtml = `<span class="bg-yellow-50 border border-yellow-300 text-yellow-900 font-medium px-2.5 py-0.5 rounded-full text-[11px] shadow-sm">💳 シリアル買取（¥${Number(p.price || 0).toLocaleString()}）</span>`;
+        else if (p.isBuy) badgeHtml = `<span class="bg-pink-50 border border-pink-200 text-pink-700 font-medium px-2.5 py-0.5 rounded-full text-[11px] shadow-sm">💳 買取希望（¥${Number(p.price || 0).toLocaleString()}）</span>`;
+        else if (p.kind === "serial") badgeHtml = `<span class="bg-yellow-50 border border-yellow-300 text-yellow-900 font-medium px-2.5 py-0.5 rounded-full text-[11px] shadow-sm">🎫 シリアルでトレカ求む</span>`;
+        else badgeHtml = `<span class="bg-purple-50 border border-purple-200 text-purple-700 font-medium px-2.5 py-0.5 rounded-full text-[11px] shadow-sm">🃏 トレカ交換</span>`;
+        let photoHtml = (!isGroup && p.kind === "serial") ? "" : ((p.photoCount && isJpegData(p.thumb)) ? `<div class="relative"><img src="${p.thumb}" alt="" onclick="openDetailModal(${index})" class="w-full h-40 object-cover rounded-2xl cursor-pointer shadow-sm border border-white/50 hover:opacity-90 transition">${p.photoCount > 1 ? `<span class="absolute bottom-1.5 right-1.5 bg-black/50 text-white text-[10px] font-medium px-2 py-0.5 rounded-full backdrop-blur-md">📷 ${p.photoCount}</span>` : ''}</div>` : "");
+        const memberLabel = p.member && p.member !== "指定なし" ? ` <span class="text-xs text-gray-500 font-normal">(${escapeHtml(p.member)})</span>` : "";
+        let groupHtml = "";
+        if (isGroup) {
+          const pct = target > 0 ? Math.min(100, Math.round(joins.length / target * 100)) : 0;
+          groupHtml = `<div class="space-y-1.5 relative z-10 bg-white/40 p-2 rounded-2xl border border-white/50 shadow-inner"><div class="flex justify-between text-[11px] text-gray-700 font-medium"><span>👥 参加 ${joins.length} / ${target}人</span><span class="${closed ? 'text-gray-600' : (full ? 'text-green-700' : 'text-teal-700')}">${closed ? "🔒 終了" : (full ? "🎉 満員" : "募集中")}</span></div><div class="w-full h-2 bg-white rounded-full overflow-hidden border border-white/50"><div class="h-2 bg-gradient-to-r from-teal-400 to-teal-500" style="width:${pct}%"></div></div><div class="flex flex-wrap gap-1"><span class="${BUNDLE_CLASS[p.bundle]||BUNDLE_CLASS.ng} text-[10px] font-medium px-2 py-0.5 rounded-full shadow-sm">${BUNDLE_LABEL[p.bundle]||BUNDLE_LABEL.ng}</span></div></div>`;
+        }
+        const conditionHtml = p.condition && CONDITION_LABEL[p.condition]
+          ? `<span class="${CONDITION_CLASS[p.condition] || ''} text-[10px] font-medium px-2 py-0.5 rounded-full border shadow-sm">${CONDITION_LABEL[p.condition]}</span>`
+          : "";
+        const avatarHtml = (p.userPhoto && isJpegData(p.userPhoto))
+          ? `<img src="${p.userPhoto}" class="w-6 h-6 rounded-full object-cover border-2 border-white shadow-sm shrink-0" alt="">`
+          : `<div class="w-6 h-6 rounded-full bg-white/70 border border-white flex items-center justify-center text-[10px] text-gray-400 shrink-0">👤</div>`;
+        return `
+          <div class="liquid-glass p-4 rounded-3xl flex flex-col justify-between space-y-3 ${dim ? 'opacity-60' : ''} transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_40px_rgba(192,132,252,0.3)] group relative overflow-hidden">
+            <div class="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent opacity-0 group-hover:opacity-100 transition duration-300 pointer-events-none"></div>
+            <div class="flex items-center justify-between relative z-10 flex-wrap gap-1">${badgeHtml}<div class="flex items-center space-x-2">${conditionHtml}${p.deadline ? `<span class="text-[11px] font-medium ${isExpired(p) ? 'text-red-500' : 'text-gray-600'}">期限: ${escapeHtml(p.deadline)}</span>` : ''}<span class="text-pink-500 font-medium text-sm bg-white/70 px-2 py-0.5 rounded-full shadow-sm">${isLiked ? '♥' : '♡'}${p.likesCount ? ` ${p.likesCount}` : ''}</span></div></div>
+            ${photoHtml}
+            <div class="flex items-center space-x-2 relative z-10"><span class="${isGroup ? 'bg-teal-100 text-teal-800' : 'bg-yellow-100 text-yellow-800'} border border-white text-xs font-medium px-2 py-0.5 rounded-full shadow-sm">${isGroup ? '商品' : '譲'}</span> <span class="font-medium text-sm text-gray-900">${escapeHtml(p.give)}${memberLabel}</span></div>
+            ${(!p.isBuy && !isGroup && !p.isSell) ? `<div class="flex items-center space-x-2 relative z-10"><span class="bg-purple-100 border border-white text-illit-darkPurple text-xs font-medium px-2 py-0.5 rounded-full shadow-sm">求</span> <span class="font-medium text-sm text-gray-900">${escapeHtml(p.want)}</span></div>` : ''}
+            ${groupHtml}
+            ${p.description ? `<p class="text-xs text-gray-600 font-medium line-clamp-1 relative z-10">💬 ${escapeHtml(p.description)}</p>` : ""}
+            <div class="pt-3 mt-1 border-t border-white/50 flex justify-between items-center text-xs text-gray-700 font-medium relative z-10">
+              <span class="flex items-center gap-2 truncate max-w-[150px]">${avatarHtml}<span class="truncate">${escapeHtml(p.userName)}</span></span>
+              <button onclick="openDetailModal(${index})" class="bg-white/80 border border-white text-illit-darkPurple hover:bg-white font-medium px-4 py-2 rounded-full transition shadow-md">${isGroup ? '詳細・参加' : '詳細'}</button>
+            </div>
+          </div>
+        `;
+      });
+      container.innerHTML = cards.length === 0 ? '<p class="text-xs text-gray-500 col-span-2 text-center py-4 font-medium bg-white/30 rounded-xl p-4 shadow-inner">条件に合う募集はありません。</p>' : cards.join("");
+    }
+
+    function subscribePosts() {
+      if (unsubPosts) unsubPosts();
+      unsubPosts = onSnapshot(query(collection(db, "posts"), orderBy("createdAt", "desc")), (snap) => { allPosts = snap.docs.map(d => ({ id: d.id, ...d.data() })); renderPosts(); });
+    }
+
+    async function getPhotos(postId) {
+      if (photoCache[postId]) return photoCache[postId];
+      try { const snap = await getDocs(collection(db, "posts", postId, "photos")); const list = snap.docs.map(d => d.data()).sort((a,b)=>(a.order||0)-(b.order||0)).map(d=>d.data).filter(isJpegData); photoCache[postId] = list; return list; } catch(e) { return []; }
+    }
+    window.viewPhoto = function(kind, i) { const arr = kind === "room" ? roomPhotos : detailPhotos; if (isJpegData(arr[i])) { document.getElementById("image-viewer-img").src = arr[i]; document.getElementById("image-viewer").classList.remove("hidden"); } };
+    async function loadDetailPhotos(p, index) {
+      const el = document.getElementById("detail-photos"); detailPhotos = [];
+      if (p.kind === "serial" || !p.photoCount) { el.innerHTML = ""; return; }
+      el.innerHTML = isJpegData(p.thumb) ? `<img src="${p.thumb}" class="w-full h-48 object-cover rounded-2xl opacity-60 shadow-sm">` : '';
+      try { const list = await getPhotos(p.id); if (currentDetailIndex !== index) return; detailPhotos = list; if (list.length === 0) { el.innerHTML = ""; return; }
+        el.innerHTML = `<div class="grid ${list.length===1?'grid-cols-1':list.length===2?'grid-cols-2':'grid-cols-3'} gap-2">${list.map((src, i) => `<img src="${src}" onclick="viewPhoto('detail', ${i})" class="w-full ${list.length===1?'h-64':'h-32'} object-cover rounded-2xl cursor-pointer hover:opacity-90 shadow-md border border-white/50">`).join("")}</div>`;
+      } catch(e){}
+    }
+
+    window.openDetailModal = function(index) {
+      const p = allPosts[index]; if (!p) return;
+      currentDetailIndex = index; const isGroup = p.kind === "group", isBuy = !!p.isBuy;
+      let title = "募集の詳細";
+      if (isGroup) title = "🛍 共同購入の詳細";
+      else if (p.kind === "album") title = "💿 アルバムの詳細";
+      else if (p.kind === "dearlit") title = "🎁 DEARLITの詳細";
+      else if (isBuy) title = "💳 買取（購入希望）の詳細";
+      else if (p.isSell) title = "💰 売却の詳細";
+      document.getElementById("detail-title").innerText = title;
+      document.getElementById("detail-give").innerText = p.give;
+      document.getElementById("detail-want").innerText = p.want || "（なし）";
+      document.getElementById("detail-member").innerText = p.member || "指定なし";
+      document.getElementById("detail-user").innerText = p.userName;
+      updateDetailLikeUI(p.id);
+      const avatarEl = document.getElementById("detail-user-avatar");
+      const placeholder = document.getElementById("detail-user-avatar-placeholder");
+      if (p.userPhoto && isJpegData(p.userPhoto)) {
+        avatarEl.src = p.userPhoto; avatarEl.classList.remove("hidden"); placeholder.classList.add("hidden");
+      } else {
+        avatarEl.classList.add("hidden"); avatarEl.removeAttribute("src"); placeholder.classList.remove("hidden");
+      }
+      document.getElementById("detail-give-box").querySelector("span").innerText = isGroup ? "商品" : (isBuy ? "求" : "譲");
+      document.getElementById("detail-want-box").classList.toggle("hidden", isBuy || isGroup || p.isSell);
+      document.getElementById("detail-price-box").classList.toggle("hidden", !(isBuy || isGroup || p.isSell));
+      if (isGroup || isBuy || p.isSell) document.getElementById("detail-price").innerText = "￥" + Number(p.price || 0).toLocaleString() + "（PayPay）";
+      const condBox = document.getElementById("detail-condition-box");
+      if (p.condition && CONDITION_LABEL[p.condition]) {
+        condBox.classList.remove("hidden");
+        document.getElementById("detail-condition").innerText = CONDITION_LABEL[p.condition];
+      } else condBox.classList.add("hidden");
+      const descBox = document.getElementById("detail-desc-box");
+      if (p.description) { descBox.classList.remove("hidden"); descBox.innerHTML = `💬 ${escapeHtml(p.description)}`; }
+      else { descBox.classList.add("hidden"); }
+      const joins = isGroup ? joinsOf(p.id) : []; const target = Number(p.target || 0); const full = isGroup && target > 0 && joins.length >= target; const closed = isGroup && p.status === "closed"; const joined = !!(isGroup && currentUser && joins.some(j => j.id === currentUser.uid));
+      let extra = "";
+      if (p.kind === "serial" && p.deadline) extra += `<div>有効期限: <b>${escapeHtml(p.deadline)}</b></div>`;
+      if (isGroup) {
+        extra += `<div>👥 参加: <b>${joins.length} / ${target}人</b></div>`;
+        extra += `<div>🔗 抱き合わせ: <span class="${BUNDLE_CLASS[p.bundle]||BUNDLE_CLASS.ng} px-2 py-0.5 rounded-full text-[10px] shadow-sm">${BUNDLE_LABEL[p.bundle]||BUNDLE_LABEL.ng}</span></div>`;
+        if (p.bundle !== "ng" && p.bundleNote) extra += `<div class="bg-white/60 rounded-xl p-2 border border-white mt-2 shadow-inner">内容: <b>${escapeHtml(p.bundleNote)}</b></div>`;
+        if (currentUser && p.userId === currentUser.uid) extra += `<div class="pt-2 mt-2 border-t border-white/50"><div class="text-xs text-gray-700 mb-1">参加者一覧</div>${joins.map(j => `<div>・${escapeHtml(j.userName)}</div>`).join("")}</div>`;
+      }
+      document.getElementById("detail-extra").innerHTML = extra;
+      const actions = document.getElementById("detail-actions");
+      if (!currentUser) actions.innerHTML = `<button onclick="loginWithGoogle()" class="w-full bg-gradient-to-r from-illit-purple to-illit-accent text-white font-medium py-3 rounded-full shadow-md border border-white/30">ログインして申込</button>`;
+      else if (p.userId === currentUser.uid) actions.innerHTML = `${isGroup ? `<button onclick="toggleGroupClosed(${index})" class="w-full bg-teal-50 text-teal-700 border border-teal-200 font-medium py-3 rounded-full hover:bg-teal-100 transition shadow-sm mb-2">${closed ? '🔓 募集再開' : '🔒 募集締切'}</button>` : ''}<button onclick="openEditPost(${index})" class="w-full bg-white/80 border border-white text-illit-darkPurple font-medium py-3 rounded-full hover:bg-white transition shadow-sm">✏️ 編集</button><button onclick="deletePost(${index})" class="w-full bg-red-50 text-red-500 font-medium py-3 rounded-full border border-red-200 hover:bg-red-100 transition mt-2 shadow-sm">削除</button>`;
+      else {
+        if (isGroup && joined) actions.innerHTML = `<button onclick="openMyGroupTrade(${index})" class="w-full bg-gradient-to-r from-teal-400 to-teal-500 text-white font-medium py-3 rounded-full shadow-md border border-white/30">💬 取引ルーム</button>`;
+        else if (isGroup && (closed || full)) actions.innerHTML = `<p class="text-xs text-gray-500 font-medium text-center bg-white/50 p-2 rounded-xl border border-white">終了または満員です</p>`;
+        else if (isExpired(p)) actions.innerHTML = `<p class="text-xs text-red-400 font-medium text-center bg-white/50 p-2 rounded-xl border border-white">期限切れです</p>`;
+        else actions.innerHTML = `<button onclick="${isGroup ? `joinGroup(${index})` : `applyToPost(${index})`}" class="w-full bg-gradient-to-r ${isGroup ? 'from-teal-400 to-teal-500' : 'from-illit-purple to-illit-accent'} text-white font-medium py-3 rounded-full shadow-md border border-white/30">${isGroup ? '🛍 参加する' : '申し込む'}</button>`;
+      }
+      document.getElementById("detail-modal").classList.remove("hidden"); loadDetailPhotos(p, index); if (p.userId) loadRating(p.userId, index);
+    };
+    window.closeDetailModal = function() { document.getElementById("detail-modal").classList.add("hidden"); currentDetailIndex = -1; };
+
+    async function loadRating(userId, index) {
+      try {
+        const snap = await getDocs(query(collection(db, "reviews"), where("toId", "==", userId)));
+        if (currentDetailIndex !== index) return;
+        const el = document.getElementById("detail-rating"); if (snap.empty) { el.innerText = "評価なし"; return; }
+        let sum = 0; snap.forEach(d => { sum += d.data().rating || 0; }); el.innerText = "⭐ " + (sum / snap.size).toFixed(1) + "（" + snap.size + "）";
+      } catch(e){}
+    }
+
+    window.deletePost = async function(index) {
+      const p = allPosts[index]; if (!p || !confirm("削除しますか？")) return;
+      try { await deleteDoc(doc(db, "posts", p.id)); closeDetailModal(); } catch(e) { alert("失敗しました。"); }
+    };
+    window.toggleGroupClosed = async function(index) {
+      const p = allPosts[index]; if (!p || !currentUser || p.userId !== currentUser.uid) return;
+      try { await updateDoc(doc(db, "posts", p.id), { status: p.status === "closed" ? "active" : "closed" }); closeDetailModal(); } catch(e) {}
+    };
+
+    window.onEditBundleChange = function() { document.getElementById("edit-bundle-note-box").classList.toggle("hidden", document.getElementById("edit-bundle").value === "ng"); };
+    window.openEditPost = function(index) {
+      const p = allPosts[index]; if (!p || !currentUser || (p.userId !== currentUser.uid && !isAdmin())) return;
+      closeDetailModal(); editingPostId = p.id;
+      document.getElementById("edit-give").value = p.give || ""; document.getElementById("edit-want").value = p.want || ""; document.getElementById("edit-price").value = p.price || ""; document.getElementById("edit-deadline").value = p.deadline || ""; document.getElementById("edit-desc").value = p.description || "";
+      document.getElementById("edit-want-container").classList.toggle("hidden", !!p.isBuy || p.kind === "group" || !!p.isSell);
+      document.getElementById("edit-price-container").classList.toggle("hidden", !(!!p.isBuy || p.kind === "group" || !!p.isSell));
+      document.getElementById("edit-deadline-container").classList.toggle("hidden", !(p.kind === "serial" || p.kind === "group"));
+      document.getElementById("edit-group-container").classList.toggle("hidden", p.kind !== "group");
+      document.getElementById("edit-condition-container").classList.toggle("hidden", !needsCondition(p.kind));
+      if (p.condition) document.getElementById("edit-condition").value = p.condition;
+      if (p.kind === "group") { document.getElementById("edit-target").value = p.target || ""; document.getElementById("edit-bundle").value = p.bundle || "ok"; document.getElementById("edit-bundle-note").value = p.bundleNote || ""; onEditBundleChange(); }
+      document.getElementById("edit-modal").classList.remove("hidden");
+    };
+    window.closeEditModal = function() { document.getElementById("edit-modal").classList.add("hidden"); editingPostId = null; };
+    window.submitEditPost = async function() {
+      const p = allPosts.find(x => x.id === editingPostId); if (!p || !currentUser || (p.userId !== currentUser.uid && !isAdmin())) return;
+      const data = { give: document.getElementById("edit-give").value.trim(), want: (!!p.isBuy || p.kind === "group" || !!p.isSell) ? "" : document.getElementById("edit-want").value.trim(), price: (!!p.isBuy || p.kind === "group" || !!p.isSell) ? Number(document.getElementById("edit-price").value) : 0, description: document.getElementById("edit-desc").value.trim().slice(0, 200), editedAt: serverTimestamp() };
+      if (!data.give) return alert("内容を入力してください。");
+      if (needsCondition(p.kind)) {
+        data.condition = document.getElementById("edit-condition").value;
+        if (!data.condition) return alert("状態を選択してください。");
+      }
+      if (p.kind === "serial" || p.kind === "group") data.deadline = document.getElementById("edit-deadline").value;
+      if (p.kind === "group") { data.target = Number(document.getElementById("edit-target").value); data.bundle = document.getElementById("edit-bundle").value; data.bundleNote = data.bundle === "ng" ? "" : document.getElementById("edit-bundle-note").value.trim().slice(0, 100); }
+      try { await updateDoc(doc(db, "posts", p.id), data); alert("更新しました！"); closeEditModal(); } catch(e) { alert("更新失敗"); }
+    };
+
+    window.applyToPost = async function(index) {
+      const p = allPosts[index]; if (!currentUser || !p || !p.userId) return;
+      if (p.kind === "group") return joinGroup(index);
+      if (!(await checkDeviceLock())) return;
+      try {
+        const ref = await addDoc(collection(db, "trades"), { kind: p.kind, isBuy: !!p.isBuy, isSell: !!p.isSell, postId: p.id, postGive: p.give, postWant: p.want || "", postPrice: p.price || 0, postMember: p.member || "指定なし", postDeadline: p.deadline || "", postPhotoCount: p.photoCount || 0, postCondition: p.condition || "", ownerId: p.userId, ownerName: p.userName, applicantId: currentUser.uid, applicantName: getMyDisplayName(), participants: [p.userId, currentUser.uid], status: "negotiating", agreed: {}, shipped: {}, received: {}, disputed: {}, lastMessageAt: serverTimestamp(), lastSenderId: currentUser.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+        closeDetailModal(); openTrade(ref.id);
+      } catch(e) { alert("失敗しました。"); }
+    };
+    window.joinGroup = async function(index) {
+      const p = allPosts[index]; if (!currentUser || !p || !p.userId || p.kind !== "group" || !(await checkDeviceLock())) return;
+      if (p.status === "closed" || isExpired(p)) return alert("募集終了。");
+      const joins = joinsOf(p.id); if (joins.some(j => j.id === currentUser.uid)) return alert("参加済みです。");
+      if (joins.length >= Number(p.target || 0)) return alert("満員です。");
+      const bc = p.bundle === "ng" ? "none" : (p.bundle === "only" ? "want" : "none");
+      try {
+        await setDoc(doc(db, "posts", p.id, "joins", currentUser.uid), { uid: currentUser.uid, userName: getMyDisplayName(), bundleChoice: bc, createdAt: serverTimestamp() });
+        const ref = await addDoc(collection(db, "trades"), { kind: "group", isBuy: false, postId: p.id, postGive: p.give, postWant: "", postPrice: p.price || 0, postMember: p.member || "指定なし", postDeadline: p.deadline || "", postPhotoCount: p.photoCount || 0, postTarget: p.target || 0, postBundle: p.bundle || "ng", postBundleNote: p.bundleNote || "", bundleChoice: bc, ownerId: p.userId, ownerName: p.userName, applicantId: currentUser.uid, applicantName: getMyDisplayName(), participants: [p.userId, currentUser.uid], status: "negotiating", agreed: {}, shipped: {}, received: {}, disputed: {}, lastMessageAt: serverTimestamp(), lastSenderId: currentUser.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+        closeDetailModal(); openTrade(ref.id);
+      } catch(e) { alert("失敗しました。"); }
+    };
+    window.openMyGroupTrade = function(index) {
+      const p = allPosts[index]; if (!p || !currentUser) return;
+      const t = myTrades.find(x => x.postId === p.id && x.applicantId === currentUser.uid && x.status !== "cancelled");
+      if (t) { closeDetailModal(); openTrade(t.id); } else alert("取引ルームが見つかりません。");
+    };
+
+    window.openWalletModal = function() { if (!currentUser) return alert("ログインが必要です。"); renderWallet(); document.getElementById("wallet-modal").classList.remove("hidden"); };
+    window.closeWalletModal = function() { document.getElementById("wallet-modal").classList.add("hidden"); };
+    function renderWallet() {
+      const now = new Date(); let totalCompleted = 0, totalPending = 0, completedCount = 0;
+      myTrades.forEach(t => {
+        if (t.ownerId !== currentUser.uid || !isPayTrade(t) || t.isBuy) return;
+        const d = t.createdAt?.toDate ? t.createdAt.toDate() : new Date();
+        if (d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()) {
+          const p = Number(t.postPrice || 0);
+          if (t.status === "completed") { totalCompleted += p; completedCount++; } else if (t.status === "negotiating" || t.status === "shipping") { totalPending += p; }
+        }
+      });
+      document.getElementById("wallet-month-title").innerText = `${now.getFullYear()}年${now.getMonth() + 1}月 のアナリティクス`;
+      document.getElementById("wallet-total").innerText = `￥${totalCompleted.toLocaleString()}`;
+      document.getElementById("wallet-pending").innerText = `￥${totalPending.toLocaleString()}`;
+      document.getElementById("wallet-count").innerText = `${completedCount} 件`;
+    }
+
+    function subscribeTrades() {
+      if (unsubTrades) unsubTrades();
+      unsubTrades = onSnapshot(query(collection(db, "trades"), where("participants", "array-contains", currentUser.uid)), (snap) => {
+        myTrades = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const lastAct = t => Math.max(tsValue(t.updatedAt), tsMillis(t.lastMessageAt));
+        myTrades.sort((a, b) => lastAct(b) - lastAct(a));
+        const unread = myTrades.filter(t => isUnread(t)).length;
+        const ownerNegotiating = myTrades.filter(t => t.ownerId === currentUser.uid && t.status === "negotiating").length;
+        if (prevUnreadCount >= 0 && unread > prevUnreadCount) {
+          showToast("💬 新しいメッセージがあります！", "info");
+          addNotification("新しいメッセージが届きました", "info");
+        }
+        if (prevTradeCountAsOwner >= 0 && ownerNegotiating > prevTradeCountAsOwner) {
+          showToast("📥 新しい申し込みがありました！", "success");
+          addNotification("あなたの出品に新しい申し込みがありました", "success");
+        }
+        prevUnreadCount = unread;
+        prevTradeCountAsOwner = ownerNegotiating;
+        updateBadge();
+        if (!document.getElementById("trades-modal").classList.contains("hidden")) renderTradesList();
+        if (!document.getElementById("wallet-modal").classList.contains("hidden")) renderWallet();
+      });
+    }
+    function updateBadge() {
+      const unread = myTrades.filter(t => isUnread(t)).length, active = myTrades.filter(t => t.status === "negotiating" || t.status === "shipping").length;
+      const n = unread > 0 ? unread : active; const b1 = document.getElementById("trades-badge"), b2 = document.getElementById("nav-trades-badge");
+      if (b1) { b1.innerText = n; b1.className = "absolute -top-1.5 -right-1.5 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-sm border border-white " + (unread > 0 ? "bg-pink-500" : "bg-gray-400") + (n === 0 ? " hidden" : ""); }
+      if (b2) { b2.innerText = n; b2.className = "absolute top-1 right-2.5 text-white text-[8px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center border border-white " + (unread > 0 ? "bg-pink-500" : "bg-gray-400") + (n === 0 ? " hidden" : ""); }
+    }
+
+    window.openTradesModal = function() { renderTradesList(); document.getElementById("trades-modal").classList.remove("hidden"); };
+    window.closeTradesModal = function() { document.getElementById("trades-modal").classList.add("hidden"); };
+    window.renderTradesList = function() {
+      const el = document.getElementById("trades-list");
+      if (myTrades.length === 0) { el.innerHTML = '<p class="text-xs text-gray-500 text-center py-6 font-medium bg-white/30 rounded-xl p-4 shadow-inner">取引はありません。</p>'; return; }
+      el.innerHTML = myTrades.map((t) => {
+        const otherName = currentUser.uid === t.ownerId ? t.applicantName : t.ownerName;
+        return `<button onclick="openTrade('${t.id}')" class="w-full text-left liquid-glass-input rounded-2xl p-4 hover:bg-white/70 transition space-y-2 shadow-sm relative overflow-hidden group">
+            <div class="flex justify-between items-center relative z-10"><span class="text-xs text-gray-700 font-medium">${escapeHtml(otherName)} さん</span><span class="flex items-center gap-1">${t.lastSenderId !== currentUser.uid && isUnread(t) ? '<span class="bg-pink-500 text-white text-[10px] font-medium px-2 py-0.5 rounded-full shadow-sm border border-white/50">新着</span>' : ''}<span class="text-[10px] font-medium px-2.5 py-0.5 rounded-full border shadow-sm ${STATUS_CLASS[t.status] || ''}">${STATUS_LABEL[t.status] || ""}</span></span></div>
+            <div class="text-sm font-medium text-gray-900 relative z-10">${escapeHtml(t.postGive)}</div>
+          </button>`;
+      }).join("");
+    };
+
+    function cleanupRoom() {
+      if (unsubRoom) { unsubRoom(); unsubRoom = null; }
+      if (unsubMsgs) { unsubMsgs(); unsubMsgs = null; }
+      currentTrade = null; roomMessages = []; roomPhotos = []; roomPhotosFor = null; roomBoxKey = null; reviewState = { tradeId: null, done: null }; selectedRating = 0;
+    }
+    async function loadRoomPhotos(t) {
+      const el = document.getElementById("room-photos"); if (t.kind === "serial" || !t.postPhotoCount) { el.innerHTML = ""; return; }
+      try { const list = await getPhotos(t.postId); if (currentTrade?.id !== t.id) return; roomPhotos = list; if (list.length === 0) { el.innerHTML = ""; return; } el.innerHTML = `<div><div class="text-[11px] font-medium text-gray-700 mb-1">📷 出品時の写真</div><div class="flex gap-2 overflow-x-auto pb-1 hide-scrollbar">${list.map((src, i) => `<img src="${src}" onclick="viewPhoto('room', ${i})" class="w-20 h-20 object-cover rounded-xl border border-white/50 cursor-pointer shadow-sm hover:opacity-80 transition">`).join("")}</div></div>`; } catch(e){ el.innerHTML = ""; }
+    }
+    function renderRoomAddressBox() {
+      const el = document.getElementById("room-address-box");
+      if (!currentTrade || currentTrade.status !== "shipping") { el.innerHTML = ""; return; }
+      el.innerHTML = `<div class="bg-white/60 rounded-xl p-3 border border-white flex items-center justify-between shadow-sm"><div class="text-xs font-medium text-gray-800">📦 配送先の共有</div><button onclick="sendMyAddress()" class="bg-white/80 hover:bg-white text-illit-darkPurple font-medium text-xs px-4 py-2 rounded-full transition shadow-md border border-white">住所を送る</button></div>`;
+    }
+    const PAYPAY_LINK_RE = /^https:\/\/(pay\.)?paypay\.ne\.jp\/[^\s]+$/;
+    async function renderRoomPayPayBox() {
+      const el = document.getElementById("room-paypay-box");
+      if (!currentTrade || currentTrade.status !== "shipping") { el.innerHTML = ""; return; }
+      const myPayPay = getMyProfile()?.paypay || "";
+      const showLink = currentTrade.isBuy || ((currentTrade.kind === "group" || currentTrade.isSell) && currentUser.uid === currentTrade.ownerId);
+      const amtTxt = isPayTrade(currentTrade) ? '￥' + Number(currentTrade.postPrice || 0).toLocaleString() : '';
+      el.innerHTML = `<div class="bg-pink-100/70 backdrop-blur rounded-xl p-4 border border-pink-200 space-y-3 shadow-sm"><div class="flex items-center justify-between"><div class="text-xs font-medium text-pink-800">💳 PayPay送金</div><span class="text-[11px] font-medium text-pink-700 bg-white/70 px-2 py-0.5 rounded-full shadow-sm">${amtTxt}</span></div><div class="flex items-center space-x-2"><input type="text" id="chat-paypay-input" value="${escapeHtml(myPayPay)}" placeholder="あなたのPayPay ID" class="liquid-glass-input flex-1 rounded-xl p-2 text-xs focus:ring-pink-400"><button onclick="sendMyPayPayId()" class="bg-pink-500 hover:bg-pink-600 text-white font-medium text-xs px-3 py-2 rounded-full transition shadow-md border border-pink-400">IDを送る</button></div>${showLink ? `<div class="border-t border-pink-300 pt-3 space-y-2"><div class="text-[11px] font-medium text-pink-800">⚡ ワンタップ送金リンク</div><div class="flex items-center space-x-2"><input type="text" id="chat-paypay-link" placeholder="https://pay.paypay.ne.jp/..." class="liquid-glass-input flex-1 rounded-xl p-2 text-xs focus:ring-pink-400"><button onclick="sendPayPayLink()" class="bg-pink-500 hover:bg-pink-600 text-white font-medium text-xs px-3 py-2 rounded-full transition shadow-md border border-pink-400">リンク送信</button></div></div>` : ''}</div>`;
+    }
+    window.sendPayPayLink = async function() {
+      if (!currentTrade || !currentUser) return; const url = document.getElementById("chat-paypay-link")?.value.trim();
+      if (!PAYPAY_LINK_RE.test(url)) return alert("PayPayのリンクを貼り付けてください。");
+      try { await postMessage({ senderId: currentUser.uid, senderName: getMyDisplayName(), text: `【PayPay請求リンク】\n${url}\n金額: ￥${Number(currentTrade.postPrice || 0).toLocaleString()}`, createdAt: serverTimestamp() }); alert("送信しました！"); } catch(e){}
+    };
+    window.sendMyPayPayId = async function() {
+      if (!currentTrade || !currentUser) return; const idVal = document.getElementById("chat-paypay-input")?.value.trim();
+      if (!idVal) return alert("PayPay IDを入力してください。");
+      try { await postMessage({ senderId: currentUser.uid, senderName: getMyDisplayName(), text: `【PayPay受取用 ID】\n${idVal}\n（タップしてコピーしてください）`, createdAt: serverTimestamp() }); alert("送信しました！"); } catch(e){}
+    };
+    window.copyAmount = function(amt) { navigator.clipboard.writeText(String(amt)).then(()=>alert(`コピー完了`)).catch(()=>{}); };
+
+    window.openTrade = function(id) {
+      closeTradesModal(); closeDetailModal(); cleanupRoom();
+      document.getElementById("room-messages").innerHTML = ""; document.getElementById("room-modal").classList.remove("hidden");
+      unsubRoom = onSnapshot(doc(db, "trades", id), (snap) => {
+        if (!snap.exists()) { closeRoom(); return; } currentTrade = { id: snap.id, ...snap.data() };
+        renderRoom();
+        const boxKey = currentTrade.id + ":" + currentTrade.status;
+        if (boxKey !== roomBoxKey) { roomBoxKey = boxKey; renderRoomAddressBox(); renderRoomPayPayBox(); }
+        markTradeRead(currentTrade);
+        if (roomPhotosFor !== currentTrade.id) { roomPhotosFor = currentTrade.id; loadRoomPhotos(currentTrade); }
+        advanceIfNeeded(); checkReview();
+      });
+      unsubMsgs = onSnapshot(query(collection(db, "trades", id, "messages"), orderBy("createdAt", "asc")), (snap) => { roomMessages = snap.docs.map(d => d.data()); renderMessages(); });
+    };
+    window.closeRoom = function() { document.getElementById("room-modal").classList.add("hidden"); closeImageViewer(); cleanupRoom(); };
+
+    function flag(t, field, uid) { return !!(t[field] && t[field][uid]); }
+    async function advanceIfNeeded() {
+      const t = currentTrade; if (!t) return;
+      const both = f => flag(t, f, t.ownerId) && flag(t, f, t.applicantId); let next = null;
+      if (t.status === "negotiating" && both("agreed")) {
+        next = "shipping";
+        if (t.postId && t.kind !== "group") try { await updateDoc(doc(db, "posts", t.postId), { status: "traded" }); } catch(e){}
+      } else if (t.status === "shipping" && both("received")) { next = "completed"; }
+      if (next) updateDoc(doc(db, "trades", t.id), { status: next, updatedAt: serverTimestamp() }).catch(()=>{});
+    }
+    function checkReview() {
+      const t = currentTrade; if (!t || t.status !== "completed" || reviewState.tradeId === t.id) return;
+      reviewState = { tradeId: t.id, done: null };
+      getDoc(doc(db, "reviews", t.id + "_" + currentUser.uid)).then(s => { if (currentTrade && currentTrade.id === t.id) { reviewState.done = s.exists(); renderRoom(); } });
+    }
+
+    window.openCancelModal = function() {
+      if (!currentTrade || currentTrade.status !== "shipping") return;
+      document.getElementById("cancel-reason").value = "";
+      document.getElementById("cancel-other").value = "";
+      document.getElementById("cancel-other-box").classList.add("hidden");
+      document.getElementById("cancel-modal").classList.remove("hidden");
+    };
+    window.closeCancelModal = function() { document.getElementById("cancel-modal").classList.add("hidden"); };
+    document.getElementById("cancel-reason")?.addEventListener("change", function() {
+      document.getElementById("cancel-other-box").classList.toggle("hidden", this.value !== "other");
+    });
+
+    window.submitCancelRequest = async function() {
+      if (!currentTrade || !currentUser) return;
+      const reason = document.getElementById("cancel-reason").value;
+      if (!reason) return alert("理由を選択してください。");
+      let reasonText = CANCEL_REASON_LABEL[reason] || reason;
+      if (reason === "other") {
+        const other = document.getElementById("cancel-other").value.trim();
+        if (!other) return alert("理由を入力してください。");
+        reasonText = other;
+      }
+      if (!confirm("キャンセルを申請しますか？\n申請した側にペナルティが付きます。")) return;
+      try {
+        await updateDoc(doc(db, "trades", currentTrade.id), {
+          cancelRequest: { by: currentUser.uid, byName: getMyDisplayName(), reason: reason, reasonText: reasonText, at: Date.now() },
+          updatedAt: serverTimestamp()
+        });
+        closeCancelModal();
+        showToast("キャンセルを申請しました。相手の同意をお待ちください。", "info");
+      } catch (e) { alert("申請に失敗しました。"); }
+    };
+
+    window.agreeCancel = async function() {
+      if (!currentTrade || !currentTrade.cancelRequest) return;
+      if (!confirm("キャンセル申請に同意しますか？\n取引がキャンセルされます。")) return;
+      const initiatorId = currentTrade.cancelRequest.by;
+      try {
+        if (currentTrade.kind === "group" && currentTrade.postId && currentTrade.applicantId) {
+          try { await deleteDoc(doc(db, "posts", currentTrade.postId, "joins", currentTrade.applicantId)); } catch(err){}
+        } else if (currentTrade.postId) {
+          try { await updateDoc(doc(db, "posts", currentTrade.postId), { status: "active" }); } catch(err){}
+        }
+        await updateDoc(doc(db, "trades", currentTrade.id), { status: "cancelled", cancelAgreed: true, updatedAt: serverTimestamp() });
+        await applyCancelPenalty(initiatorId, currentTrade.id);
+        showToast("取引がキャンセルされました。", "info");
+      } catch (e) { alert("処理に失敗しました。"); }
+    };
+
+    async function applyCancelPenalty(uid, tradeId) {
+      try {
+        const userRef = doc(db, "users", uid);
+        const snap = await getDoc(userRef);
+        const data = snap.exists() ? snap.data() : {};
+        const history = Array.isArray(data.cancelHistory) ? [...data.cancelHistory] : [];
+        const now = Date.now();
+        history.push({ tradeId, at: now });
+        const monthAgo = now - 30 * 24 * 60 * 60 * 1000;
+        const recent = history.filter(h => h.at >= monthAgo);
+        await updateDoc(userRef, { cancelHistory: recent });
+        const count = recent.length;
+        if (count >= 8) {
+          await setDoc(doc(db, "suspensions", uid), {
+            reason: `合意後キャンセルが1ヶ月で${count}回を超えたため一時停止`,
+            name: data.profile?.nickname || "",
+            createdAt: serverTimestamp()
+          }, { merge: true });
+          const list = Array.isArray(data.notifications) ? [...data.notifications] : [];
+          list.unshift({ id: "p_" + Date.now(), text: `合意後キャンセルが${count}回に達したため、アカウントが一時停止されました。`, type: "admin", read: false, createdAt: Date.now() });
+          if (list.length > MAX_NOTIFICATIONS) list.length = MAX_NOTIFICATIONS;
+          await updateDoc(userRef, { notifications: list });
+        } else if (count >= 3) {
+          const list = Array.isArray(data.notifications) ? [...data.notifications] : [];
+          list.unshift({ id: "p_" + Date.now(), text: `合意後キャンセルが${count}回になりました。8回を超えると一時停止されます。`, type: "admin", read: false, createdAt: Date.now() });
+          if (list.length > MAX_NOTIFICATIONS) list.length = MAX_NOTIFICATIONS;
+          await updateDoc(userRef, { notifications: list });
+        }
+      } catch (e) { console.error("penalty error", e); }
+    }
+
+    function renderRoom() {
+      const t = currentTrade; if (!t) return;
+      const uid = currentUser.uid, iAmOwner = uid === t.ownerId, otherId = iAmOwner ? t.applicantId : t.ownerId, otherName = iAmOwner ? t.applicantName : t.ownerName, payFlow = isPayTrade(t);
+      document.getElementById("room-title").innerText = otherName + " さんとの取引";
+      const order = ["negotiating", "shipping", "completed"], labels = payFlow ? ["① 条件確認", "② 送金・発送", "③ 完了"] : ["① 交渉・合意", "② 発送・受取", "③ 完了"];
+      const idx = order.indexOf(t.status); const on = payFlow ? "bg-gradient-to-r from-pink-400 to-pink-500 text-white shadow-md border border-white/50" : "bg-gradient-to-r from-illit-purple to-illit-accent text-white shadow-md border border-white/50";
+      document.getElementById("room-steps").innerHTML = t.status === "cancelled" ? '<div class="text-xs font-medium text-gray-600 bg-white/60 border border-white rounded-xl p-2 text-center shadow-sm">この取引はキャンセルされました</div>' : '<div class="flex space-x-2">' + labels.map((l, i) => `<div class="flex-1 text-center text-[10px] font-medium py-2 rounded-xl border ${i <= idx ? on : "bg-white/40 border-white text-gray-500"}">${l}</div>`).join("") + "</div>";
+      document.getElementById("room-info").innerHTML = `<div class="bg-white/60 backdrop-blur rounded-xl p-3 text-xs space-y-1 border shadow-sm border-white"><div class="font-medium text-gray-900">${escapeHtml(t.postGive)}</div></div>`;
+      const mark = b => b ? "✅" : "⏳";
+      const btn = "w-full font-medium py-3 rounded-full text-sm transition shadow-md border border-white/40 ", primary = btn + "bg-gradient-to-r from-illit-purple to-illit-accent text-white hover:opacity-90", pinkBtn = btn + "bg-gradient-to-r from-pink-400 to-pink-500 text-white hover:opacity-90";
+      let html = "";
+      if (t.cancelRequest && t.status === "shipping") {
+        const isInitiator = t.cancelRequest.by === uid;
+        html += `<div class="bg-red-50/80 border border-red-200 rounded-xl p-3 text-xs text-red-700 space-y-2">
+          <p class="font-medium">⚠️ キャンセル申請中</p>
+          <p>申請者: ${escapeHtml(t.cancelRequest.byName || "")}</p>
+          <p>理由: ${escapeHtml(t.cancelRequest.reasonText || CANCEL_REASON_LABEL[t.cancelRequest.reason] || "")}</p>
+          ${isInitiator ? '<p class="text-[11px]">相手の同意をお待ちください。</p>' : `<button onclick="agreeCancel()" class="${btn} bg-red-500 text-white hover:bg-red-600">キャンセルに同意する</button>`}
+        </div>`;
+      }
+      if (t.status === "negotiating") {
+        const my = flag(t, "agreed", uid), other = flag(t, "agreed", otherId);
+        html += `<div class="text-xs text-gray-700 font-medium bg-white/50 p-2 rounded-lg border border-white shadow-inner">合意: あなた ${mark(my)} ／ 相手 ${mark(other)}</div>${my ? '<p class="text-xs text-gray-500 text-center font-medium">相手の合意を待っています…</p>' : `<button onclick="tradeAction('agreed')" class="${payFlow ? pinkBtn : primary}">合意する</button>`}<button onclick="cancelTrade()" class="${btn} bg-white/70 text-gray-500 border border-white hover:bg-white mt-2">キャンセル</button>`;
+      } else if (t.status === "shipping") {
+        const myS = flag(t, "shipped", uid), otherS = flag(t, "shipped", otherId);
+        const myR = flag(t, "received", uid), otherR = flag(t, "received", otherId);
+        html += `<div class="text-xs text-gray-700 font-medium bg-white/50 p-3 rounded-lg border border-white shadow-inner space-y-1"><div>送金/発送: あなた ${mark(myS)} ／ 相手 ${mark(otherS)}</div><div>受取確認: あなた ${mark(myR)} ／ 相手 ${mark(otherR)}</div></div>${!myS ? `<button onclick="tradeAction('shipped')" class="${payFlow ? pinkBtn : primary} mt-2">${payFlow ? (iAmOwner ? '送った・確認した' : '送金した') : '発送した'}</button>` : ''}${otherS && !myR ? `<button onclick="tradeAction('received')" class="${btn} bg-gradient-to-r from-green-400 to-green-500 text-white hover:opacity-90 mt-2">完了確認</button>` : ''}`;
+        if (!t.cancelRequest) {
+          html += `<div class="mt-3 pt-3 border-t border-red-200/50">
+            <p class="text-[10px] text-red-600 mb-2 font-medium bg-white/50 p-2 rounded-lg border border-red-200 shadow-inner">※合意後のキャンセルは申請した側にペナルティが付きます（月3回で警告・8回超で一時停止）</p>
+            <button onclick="openCancelModal()" class="${btn} bg-white/80 text-red-500 border border-red-300 hover:bg-white">キャンセルを申請する</button>
+          </div>`;
+        }
+      } else if (t.status === "completed") {
+        html += `<p class="text-xs text-green-700 font-medium text-center bg-white/60 p-3 rounded-xl border border-white shadow-sm">🎉 取引が完了しました！</p>`;
+        if (reviewState.done === false) html += `<div class="bg-white/80 rounded-2xl p-4 border border-white space-y-3 shadow-md mt-4"><div class="text-xs font-medium text-gray-700 text-center">相手を評価してください</div><div class="flex justify-center space-x-2">${[1,2,3,4,5].map(n => `<button data-star="${n}" onclick="setRating(${n})" class="text-3xl text-gray-300 hover:scale-110 transition drop-shadow-sm">★</button>`).join("")}</div><button onclick="submitReview()" class="${primary}">評価を送信</button></div>`;
+      }
+      document.getElementById("room-actions").innerHTML = html; if (selectedRating > 0) setRating(selectedRating);
+      const disabled = t.status === "cancelled"; document.getElementById("room-input").disabled = disabled; document.getElementById("room-send").disabled = disabled; document.getElementById("room-photo").disabled = disabled;
+      setTimeout(() => { const topBox = document.getElementById("room-top-box"), actionsBox = document.getElementById("room-actions"); if (topBox && actionsBox && t.status !== "completed" && t.status !== "cancelled") topBox.scrollTo({ top: actionsBox.offsetTop, behavior: "smooth" }); }, 300);
+    }
+
+    window.renderMessages = function() {
+      const el = document.getElementById("room-messages"); if (!currentUser) return;
+      if (roomMessages.length === 0) { el.innerHTML = '<p class="text-xs text-gray-600 text-center py-6 font-medium bg-white/30 rounded-xl p-4 shadow-inner">メッセージを送信してみましょう 👋</p>'; return; }
+      el.innerHTML = roomMessages.map((m) => {
+        const mine = m.senderId === currentUser.uid;
+        const bubble = mine ? "bg-gradient-to-br from-illit-purple/90 to-illit-accent/90 backdrop-blur text-white border border-white/40 shadow-md" : "bg-white/80 backdrop-blur border border-white text-gray-800 shadow-sm";
+        const imgHtml = isJpegData(m.image) ? `<img src="${m.image}" onclick="viewImage(${roomMessages.indexOf(m)})" class="rounded-2xl max-h-48 w-auto cursor-pointer shadow-md border border-white/50 ${m.text ? 'mb-2' : ''}">` : "";
+        let textContent = escapeHtml(m.text);
+        if (m.text && m.text.includes("【PayPay受取用 ID】")) {
+          const lines = m.text.split("\n"), paypayId = lines[1] ? lines[1].trim() : "";
+          if (paypayId) textContent = `【PayPay受取用 ID】<br><b class="text-pink-600">${escapeHtml(paypayId)}</b><br><button onclick="copyPayPayId('${escapeHtml(paypayId)}')" class="mt-2 bg-white/80 text-pink-600 border border-white font-medium text-[10px] px-3 py-1.5 rounded-full shadow-sm hover:bg-white">📋 コピー</button>`;
+        } else if (m.text && m.text.startsWith("【PayPay請求リンク】")) {
+          const lines = m.text.split("\n"), url = (lines[1] || "").trim(), amountLine = lines[2] || "";
+          if (PAYPAY_LINK_RE.test(url)) textContent = `【PayPay請求リンク】<br><b class="text-pink-600">${escapeHtml(amountLine)}</b><br><a href="${escapeHtml(url)}" target="_blank" class="inline-block mt-2 bg-gradient-to-r from-pink-400 to-pink-500 text-white font-medium text-xs px-4 py-2 rounded-full no-underline shadow-md border border-white/50">⚡ 支払う</a>`;
+        }
+        const textHtml = m.text ? `<div class="${bubble} px-4 py-2.5 rounded-[1.5rem] ${mine ? 'rounded-br-md' : 'rounded-bl-md'} text-[13px] whitespace-pre-wrap break-words font-medium leading-relaxed">${textContent}</div>` : "";
+        return `<div class="flex ${mine ? 'justify-end' : 'justify-start'} mb-1"><div class="max-w-[82%] flex flex-col ${mine ? 'items-end' : 'items-start'}">${!mine ? `<div class="text-[10px] font-medium text-gray-600 mb-1 ml-1">${escapeHtml(m.senderName)}</div>` : ''}${imgHtml}${textHtml}<div class="text-[9px] text-gray-500 mt-1 font-medium">${fmtTime(m.createdAt)}</div></div></div>`;
+      }).join("");
+      el.scrollTop = el.scrollHeight;
+    };
+
+    window.sendMessage = async function() {
+      const input = document.getElementById("room-input"), text = input.value.trim(); if (!text || !currentTrade || currentTrade.status === "cancelled") return;
+      input.value = ""; try { await postMessage({ senderId: currentUser.uid, senderName: getMyDisplayName(), text: text.slice(0, 1000), createdAt: serverTimestamp() }); } catch(e) { input.value = text; }
+    };
+    window.sendQuickMsg = async function(text) { if (!currentTrade || currentTrade.status === "cancelled") return; try { await postMessage({ senderId: currentUser.uid, senderName: getMyDisplayName(), text: text, createdAt: serverTimestamp() }); } catch(e){} };
+    window.sendImage = async function(inputEl) {
+      const file = inputEl.files && inputEl.files[0]; inputEl.value = ""; if (!file || !currentTrade || currentTrade.status === "cancelled" || sendingImage) return;
+      sendingImage = true; try { const dataUrl = await compressImage(file, CHAT_PHOTO); await postMessage({ senderId: currentUser.uid, senderName: getMyDisplayName(), text: "", image: dataUrl, createdAt: serverTimestamp() }); } catch(e) { alert("送信失敗"); } finally { sendingImage = false; }
+    };
+    window.viewImage = function(i) { const m = roomMessages[i]; if (!m || !isJpegData(m.image)) return; document.getElementById("image-viewer-img").src = m.image; document.getElementById("image-viewer").classList.remove("hidden"); };
+    window.closeImageViewer = function() { document.getElementById("image-viewer").classList.add("hidden"); };
+
+    window.tradeAction = async function(field) {
+      if (!currentTrade) return; try { const updateData = {}; updateData[`${field}.${currentUser.uid}`] = true; updateData.updatedAt = serverTimestamp(); await updateDoc(doc(db, "trades", currentTrade.id), updateData); } catch(e) { alert("失敗しました。"); }
+    };
+    window.cancelTrade = async function() {
+      if (!currentTrade || !confirm("キャンセルしますか？")) return;
+      try {
+        if (currentTrade.kind === "group" && currentTrade.postId && currentTrade.applicantId) { try { await deleteDoc(doc(db, "posts", currentTrade.postId, "joins", currentTrade.applicantId)); } catch(err){} }
+        else if (currentTrade.postId) { try { await updateDoc(doc(db, "posts", currentTrade.postId), { status: "active" }); } catch(err){} }
+        await updateDoc(doc(db, "trades", currentTrade.id), { status: "cancelled", updatedAt: serverTimestamp() });
+      } catch(e) {}
+    };
+
+    window.setRating = function(n) { selectedRating = n; document.querySelectorAll("[data-star]").forEach(b => b.className = "text-3xl transition drop-shadow-sm hover:scale-110 " + (Number(b.dataset.star) <= n ? "text-yellow-400" : "text-gray-300")); };
+    window.submitReview = async function() {
+      const t = currentTrade; if (!t) return; if (selectedRating < 1) return alert("星を選んでください。");
+      const toId = currentUser.uid === t.ownerId ? t.applicantId : t.ownerId;
+      try { await setDoc(doc(db, "reviews", t.id + "_" + currentUser.uid), { tradeId: t.id, fromId: currentUser.uid, toId: toId, rating: selectedRating, createdAt: serverTimestamp() }); reviewState.done = true; renderRoom(); } catch(e) { alert("失敗しました。"); }
+    };
+
+    const TERMS_VERSION = "2026-11-09", TERMS_KEY = "illit_terms_version"; let termsSaving = false;
+    function hasAgreedLocally() { try { return localStorage.getItem(TERMS_KEY) === TERMS_VERSION; } catch(e){ return false; } }
+    window.openTerms = function(readOnly) {
+      const view = !!readOnly && hasAgreedLocally();
+      document.getElementById("terms-agree-area").classList.toggle("hidden", view); document.getElementById("terms-close-btn").classList.toggle("hidden", !view); document.getElementById("terms-lead").classList.toggle("hidden", view);
+      document.getElementById("terms-check").checked = false; document.getElementById("terms-agree-btn").disabled = true; document.getElementById("terms-modal").classList.remove("hidden");
+    };
+    window.closeTerms = function() { if (hasAgreedLocally()) document.getElementById("terms-modal").classList.add("hidden"); };
+    window.onTermsCheck = function() { document.getElementById("terms-agree-btn").disabled = !document.getElementById("terms-check").checked; };
+    window.declineTerms = function() { alert("利用規約に同意いただけない場合は、本サービスをご利用いただけません。"); };
+    window.agreeTerms = async function() {
+      if (!document.getElementById("terms-check").checked) return;
+      try { localStorage.setItem(TERMS_KEY, TERMS_VERSION); } catch(e){}
+      document.getElementById("terms-modal").classList.add("hidden");
+      if (currentUser) try { await saveUserData({ terms: { version: TERMS_VERSION, agreedAt: serverTimestamp() } }); } catch(e){}
+    };
+    function syncTermsRecord(d) {
+      if (!currentUser) return; const recorded = d && d.terms && d.terms.version === TERMS_VERSION;
+      if (recorded && !hasAgreedLocally()) { try { localStorage.setItem(TERMS_KEY, TERMS_VERSION); } catch(e){} document.getElementById("terms-modal").classList.add("hidden"); }
+      else if (!recorded && hasAgreedLocally() && !termsSaving) { termsSaving = true; saveUserData({ terms: { version: TERMS_VERSION, agreedAt: serverTimestamp() } }).finally(() => { termsSaving = false; }); }
+    }
+
+    if (!hasAgreedLocally()) openTerms(false);
+    renderFilters(); subscribePosts(); switchTab('home');
+  </script>
+</body>
+</html>
+これに、共同購入の時に重複や遅延で定員オーバーしないようにして
