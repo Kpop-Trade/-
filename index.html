@@ -584,6 +584,7 @@
         <div><label class="block font-medium text-gray-700 mb-1">【商品】</label><input type="text" id="group-give" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
         <div><label class="block font-medium text-gray-700 mb-1">1人あたりの金額（円）</label><input type="number" id="group-price" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
         <div><label class="block font-medium text-gray-700 mb-1">募集人数</label><input type="number" id="group-target" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
+        <div><label class="block font-medium text-gray-700 mb-1">募集締切 <span class="text-pink-600">必須</span></label><input type="date" id="group-deadline" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
         <div><label class="block font-medium text-gray-700 mb-1">🔗 抱き合わせ</label><select id="group-bundle" onchange="onGroupBundleChange()" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"><option value="only">🔒 抱き合わせ限定</option><option value="prefer">⭐ 抱き合わせ優先</option><option value="ok">🔗 どちらでも可</option><option value="ng">🚫 単品のみ</option></select></div>
         <div id="group-bundle-note-box"><label class="block font-medium text-gray-700 mb-1">抱き合わせの内容</label><input type="text" id="group-bundle-note" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
         <div><label class="block font-medium text-gray-700 mb-1">📦 送料</label><select id="group-shipping" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"><option value="organizer">主催者負担</option><option value="split">参加者で割り勘</option><option value="self">各自負担</option></select></div>
@@ -773,7 +774,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { getFirestore, collection, collectionGroup, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, where, orderBy, onSnapshot, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, collectionGroup, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, where, orderBy, onSnapshot, serverTimestamp, increment, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getMessaging, getToken, deleteToken } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js";
 
     const firebaseConfig = {
@@ -1375,7 +1376,12 @@
         const tradeSnap = await getDoc(doc(db, "trades", tradeId));
         if(tradeSnap.exists()) {
           const tData = tradeSnap.data();
-          if (tData.postId && tData.kind !== "group") {
+          if (tData.kind === "group" && tData.postId && tData.applicantId) {
+            try {
+              await deleteDoc(doc(db, "posts", tData.postId, "joins", tData.applicantId));
+              await updateDoc(doc(db, "posts", tData.postId), { joinsCount: increment(-1) });
+            } catch(err){}
+          } else if (tData.postId && tData.kind !== "group") {
             try { await updateDoc(doc(db, "posts", tData.postId), { status: "active" }); } catch(err){}
           }
         }
@@ -1749,21 +1755,23 @@
     window.openGroupPostModal = async function() {
       if (!currentUser) return alert("ログインが必要です。");
       if (!(await checkDeviceLock())) return;
-      document.getElementById("group-give").value = ""; document.getElementById("group-price").value = ""; document.getElementById("group-target").value = ""; document.getElementById("group-bundle").value = "ok"; document.getElementById("group-bundle-note").value = ""; document.getElementById("group-desc").value = "";
+      document.getElementById("group-give").value = ""; document.getElementById("group-price").value = ""; document.getElementById("group-target").value = ""; document.getElementById("group-deadline").value = ""; document.getElementById("group-bundle").value = "ok"; document.getElementById("group-bundle-note").value = ""; document.getElementById("group-desc").value = "";
       postPhotos = []; renderPostPhotoPreview(); onGroupBundleChange();
       document.getElementById("group-post-modal").classList.remove("hidden");
     };
     window.closeGroupPostModal = function() { document.getElementById("group-post-modal").classList.add("hidden"); };
     window.submitGroupPost = async function() {
       if (submittingGroup || processingPhotos || !(await checkDeviceLock()) || !(await checkPostLimit())) return;
-      const member = document.getElementById("group-member").value, give = document.getElementById("group-give").value.trim(), price = Number(document.getElementById("group-price").value), target = Number(document.getElementById("group-target").value), bundle = document.getElementById("group-bundle").value, bundleNote = document.getElementById("group-bundle-note").value.trim().slice(0, 100), ship = document.getElementById("group-shipping").value, dl = document.getElementById("group-deadline")?.value, desc = document.getElementById("group-desc").value.trim().slice(0, 200);
+      const member = document.getElementById("group-member").value, give = document.getElementById("group-give").value.trim(), price = Number(document.getElementById("group-price").value), target = Number(document.getElementById("group-target").value), bundle = document.getElementById("group-bundle").value, bundleNote = document.getElementById("group-bundle-note").value.trim().slice(0, 100), ship = document.getElementById("group-shipping").value, dl = document.getElementById("group-deadline").value, desc = document.getElementById("group-desc").value.trim().slice(0, 200);
       if (!give || !price || price <= 0 || !Number.isInteger(target) || target < 1 || target > 100) return alert("正しく入力してください。");
+      if (!dl) return alert("募集締切を設定してください。");
+      if (dl < todayStr()) return alert("締切は今日以降の日付を指定してください。");
       submittingGroup = true; const btn = document.getElementById("group-submit-btn"); btn.disabled = true; btn.innerText = "投稿中…";
       try {
         const ref = await addDoc(collection(db, "posts"), {
           kind: "group", photoCount: postPhotos.length, thumb: postPhotos.length > 0 ? postPhotos[0].thumb : "",
           isBuy: false, member, give, want: "", price, target, bundle, bundleNote: bundle === "ng" ? "" : bundleNote,
-          shipping: ship, deadline: dl || "", description: desc, status: "active",
+          shipping: ship, deadline: dl, description: desc, status: "active", joinsCount: 0,
           userId: currentUser.uid, userName: getMyDisplayName(), userPhoto: getMyProfile()?.photo || "",
           likesCount: 0, createdAt: serverTimestamp()
         });
@@ -1826,7 +1834,10 @@
       allPosts.forEach((p, index) => {
         if (blocked.includes(p.userId) || p.status === "traded") return;
         if (activeOnly && p.status !== "active") return;
-        if (p.kind === "group" && Number(p.target || 0) > 0 && joinsOf(p.id).length >= Number(p.target) && !(currentUser && (p.userId === currentUser.uid || isAdmin()))) return;
+        if (p.kind === "group" && Number(p.target || 0) > 0) {
+          const jcnt = Math.max(0, typeof p.joinsCount === "number" ? p.joinsCount : joinsOf(p.id).length);
+          if (jcnt >= Number(p.target) && !(currentUser && (p.userId === currentUser.uid || isAdmin()))) return;
+        }
         const type = getPostTypeKey(p);
         const okKind = kindFilter === "all" || (kindFilter === "likes" ? likes.includes(p.id) : kindFilter === type);
         const okMember = selectedMember === "すべて" || p.member === selectedMember;
@@ -1843,7 +1854,7 @@
         });
       }
       const cards = filtered.map(({ p, index }) => {
-        const isLiked = likes.includes(p.id); const isGroup = p.kind === "group"; const joins = isGroup ? joinsOf(p.id) : []; const target = Number(p.target || 0); const full = isGroup && target > 0 && joins.length >= target; const closed = isGroup && p.status === "closed"; const dim = isExpired(p) || closed;
+        const isLiked = likes.includes(p.id); const isGroup = p.kind === "group"; const joins = isGroup ? joinsOf(p.id) : []; const target = Number(p.target || 0); const joinCount = isGroup ? Math.max(0, typeof p.joinsCount === "number" ? p.joinsCount : joins.length) : 0; const full = isGroup && target > 0 && joinCount >= target; const closed = isGroup && p.status === "closed"; const dim = isExpired(p) || closed;
         let badgeHtml = "";
         if (isGroup) badgeHtml = `<span class="bg-teal-50 border border-teal-200 text-teal-800 font-medium px-2.5 py-0.5 rounded-full text-[11px] shadow-sm">🛍 共同購入（¥${Number(p.price || 0).toLocaleString()}）</span>`;
         else if (p.kind === "album") badgeHtml = `<span class="bg-indigo-50 border border-indigo-200 text-indigo-800 font-medium px-2.5 py-0.5 rounded-full text-[11px] shadow-sm">💿 アルバム${p.isSell || p.isBuy ? "（¥" + Number(p.price||0).toLocaleString() + "）" : ""}</span>`;
@@ -1857,8 +1868,8 @@
         const memberLabel = p.member && p.member !== "指定なし" ? ` <span class="text-xs text-gray-500 font-normal">(${escapeHtml(p.member)})</span>` : "";
         let groupHtml = "";
         if (isGroup) {
-          const pct = target > 0 ? Math.min(100, Math.round(joins.length / target * 100)) : 0;
-          groupHtml = `<div class="space-y-1.5 relative z-10 bg-white/40 p-2 rounded-2xl border border-white/50 shadow-inner"><div class="flex justify-between text-[11px] text-gray-700 font-medium"><span>👥 参加 ${joins.length} / ${target}人</span><span class="${closed ? 'text-gray-600' : (full ? 'text-green-700' : 'text-teal-700')}">${closed ? "🔒 終了" : (full ? "🎉 満員" : "募集中")}</span></div><div class="w-full h-2 bg-white rounded-full overflow-hidden border border-white/50"><div class="h-2 bg-gradient-to-r from-teal-400 to-teal-500" style="width:${pct}%"></div></div><div class="flex flex-wrap gap-1"><span class="${BUNDLE_CLASS[p.bundle]||BUNDLE_CLASS.ng} text-[10px] font-medium px-2 py-0.5 rounded-full shadow-sm">${BUNDLE_LABEL[p.bundle]||BUNDLE_LABEL.ng}</span></div></div>`;
+          const pct = target > 0 ? Math.min(100, Math.round(joinCount / target * 100)) : 0;
+          groupHtml = `<div class="space-y-1.5 relative z-10 bg-white/40 p-2 rounded-2xl border border-white/50 shadow-inner"><div class="flex justify-between text-[11px] text-gray-700 font-medium"><span>👥 参加 ${joinCount} / ${target}人</span><span class="${closed ? 'text-gray-600' : (full ? 'text-green-700' : 'text-teal-700')}">${closed ? "🔒 終了" : (full ? "🎉 満員" : "募集中")}</span></div><div class="w-full h-2 bg-white rounded-full overflow-hidden border border-white/50"><div class="h-2 bg-gradient-to-r from-teal-400 to-teal-500" style="width:${pct}%"></div></div><div class="flex flex-wrap gap-1"><span class="${BUNDLE_CLASS[p.bundle]||BUNDLE_CLASS.ng} text-[10px] font-medium px-2 py-0.5 rounded-full shadow-sm">${BUNDLE_LABEL[p.bundle]||BUNDLE_LABEL.ng}</span></div></div>`;
         }
         const conditionHtml = p.condition && CONDITION_LABEL[p.condition]
           ? `<span class="${CONDITION_CLASS[p.condition] || ''} text-[10px] font-medium px-2 py-0.5 rounded-full border shadow-sm">${CONDITION_LABEL[p.condition]}</span>`
@@ -1938,11 +1949,12 @@
       const descBox = document.getElementById("detail-desc-box");
       if (p.description) { descBox.classList.remove("hidden"); descBox.innerHTML = `💬 ${escapeHtml(p.description)}`; }
       else { descBox.classList.add("hidden"); }
-      const joins = isGroup ? joinsOf(p.id) : []; const target = Number(p.target || 0); const full = isGroup && target > 0 && joins.length >= target; const closed = isGroup && p.status === "closed"; const joined = !!(isGroup && currentUser && joins.some(j => j.id === currentUser.uid));
+      const joins = isGroup ? joinsOf(p.id) : []; const target = Number(p.target || 0); const joinCount = isGroup ? Math.max(0, typeof p.joinsCount === "number" ? p.joinsCount : joins.length) : 0; const full = isGroup && target > 0 && joinCount >= target; const closed = isGroup && p.status === "closed"; const joined = !!(isGroup && currentUser && joins.some(j => j.id === currentUser.uid));
       let extra = "";
       if (p.kind === "serial" && p.deadline) extra += `<div>有効期限: <b>${escapeHtml(p.deadline)}</b></div>`;
       if (isGroup) {
-        extra += `<div>👥 参加: <b>${joins.length} / ${target}人</b></div>`;
+        if (p.deadline) extra += `<div>締切: <b>${escapeHtml(p.deadline)}</b></div>`;
+        extra += `<div>👥 参加: <b>${joinCount} / ${target}人</b></div>`;
         extra += `<div>🔗 抱き合わせ: <span class="${BUNDLE_CLASS[p.bundle]||BUNDLE_CLASS.ng} px-2 py-0.5 rounded-full text-[10px] shadow-sm">${BUNDLE_LABEL[p.bundle]||BUNDLE_LABEL.ng}</span></div>`;
         if (p.bundle !== "ng" && p.bundleNote) extra += `<div class="bg-white/60 rounded-xl p-2 border border-white mt-2 shadow-inner">内容: <b>${escapeHtml(p.bundleNote)}</b></div>`;
         if (currentUser && p.userId === currentUser.uid) extra += `<div class="pt-2 mt-2 border-t border-white/50"><div class="text-xs text-gray-700 mb-1">参加者一覧</div>${joins.map(j => `<div>・${escapeHtml(j.userName)}</div>`).join("")}</div>`;
@@ -2020,13 +2032,35 @@
       const p = allPosts[index]; if (!currentUser || !p || !p.userId || p.kind !== "group" || !(await checkDeviceLock())) return;
       if (p.status === "closed" || isExpired(p)) return alert("募集終了。");
       const joins = joinsOf(p.id); if (joins.some(j => j.id === currentUser.uid)) return alert("参加済みです。");
-      if (joins.length >= Number(p.target || 0)) return alert("満員です。");
+      const localCount = Math.max(0, typeof p.joinsCount === "number" ? p.joinsCount : joins.length);
+      if (localCount >= Number(p.target || 0)) return alert("満員です。");
       const bc = p.bundle === "ng" ? "none" : (p.bundle === "only" ? "want" : "none");
       try {
-        await setDoc(doc(db, "posts", p.id, "joins", currentUser.uid), { uid: currentUser.uid, userName: getMyDisplayName(), bundleChoice: bc, createdAt: serverTimestamp() });
+        const postRef = doc(db, "posts", p.id);
+        const joinRef = doc(db, "posts", p.id, "joins", currentUser.uid);
+        await runTransaction(db, async (transaction) => {
+          const postSnap = await transaction.get(postRef);
+          if (!postSnap.exists()) throw new Error("notfound");
+          const data = postSnap.data();
+          if (data.status === "closed") throw new Error("closed");
+          if (isExpired(data)) throw new Error("expired");
+          const joinSnap = await transaction.get(joinRef);
+          if (joinSnap.exists()) throw new Error("already");
+          const target = Number(data.target || 0);
+          const currentCount = typeof data.joinsCount === "number" ? data.joinsCount : 0;
+          if (currentCount >= target) throw new Error("full");
+          transaction.update(postRef, { joinsCount: increment(1) });
+          transaction.set(joinRef, { uid: currentUser.uid, userName: getMyDisplayName(), bundleChoice: bc, createdAt: serverTimestamp() });
+        });
         const ref = await addDoc(collection(db, "trades"), { kind: "group", isBuy: false, postId: p.id, postGive: p.give, postWant: "", postPrice: p.price || 0, postMember: p.member || "指定なし", postDeadline: p.deadline || "", postPhotoCount: p.photoCount || 0, postTarget: p.target || 0, postBundle: p.bundle || "ng", postBundleNote: p.bundleNote || "", bundleChoice: bc, ownerId: p.userId, ownerName: p.userName, applicantId: currentUser.uid, applicantName: getMyDisplayName(), participants: [p.userId, currentUser.uid], status: "negotiating", agreed: {}, shipped: {}, received: {}, disputed: {}, lastMessageAt: serverTimestamp(), lastSenderId: currentUser.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
         closeDetailModal(); openTrade(ref.id);
-      } catch(e) { alert("失敗しました。"); }
+      } catch(e) {
+        const msg = e && e.message;
+        if (msg === "full") alert("満員です。");
+        else if (msg === "already") alert("参加済みです。");
+        else if (msg === "closed" || msg === "expired") alert("募集終了。");
+        else alert("失敗しました。");
+      }
     };
     window.openMyGroupTrade = function(index) {
       const p = allPosts[index]; if (!p || !currentUser) return;
@@ -2202,7 +2236,10 @@
       const initiatorId = currentTrade.cancelRequest.by;
       try {
         if (currentTrade.kind === "group" && currentTrade.postId && currentTrade.applicantId) {
-          try { await deleteDoc(doc(db, "posts", currentTrade.postId, "joins", currentTrade.applicantId)); } catch(err){}
+          try {
+            await deleteDoc(doc(db, "posts", currentTrade.postId, "joins", currentTrade.applicantId));
+            await updateDoc(doc(db, "posts", currentTrade.postId), { joinsCount: increment(-1) });
+          } catch(err){}
         } else if (currentTrade.postId) {
           try { await updateDoc(doc(db, "posts", currentTrade.postId), { status: "active" }); } catch(err){}
         }
@@ -2324,7 +2361,12 @@
     window.cancelTrade = async function() {
       if (!currentTrade || !confirm("キャンセルしますか？")) return;
       try {
-        if (currentTrade.kind === "group" && currentTrade.postId && currentTrade.applicantId) { try { await deleteDoc(doc(db, "posts", currentTrade.postId, "joins", currentTrade.applicantId)); } catch(err){} }
+        if (currentTrade.kind === "group" && currentTrade.postId && currentTrade.applicantId) {
+          try {
+            await deleteDoc(doc(db, "posts", currentTrade.postId, "joins", currentTrade.applicantId));
+            await updateDoc(doc(db, "posts", currentTrade.postId), { joinsCount: increment(-1) });
+          } catch(err){}
+        }
         else if (currentTrade.postId) { try { await updateDoc(doc(db, "posts", currentTrade.postId), { status: "active" }); } catch(err){} }
         await updateDoc(doc(db, "trades", currentTrade.id), { status: "cancelled", updatedAt: serverTimestamp() });
       } catch(e) {}
@@ -2364,4 +2406,3 @@
   </script>
 </body>
 </html>
-これに、共同購入の時に重複や遅延で定員オーバーしないようにして
