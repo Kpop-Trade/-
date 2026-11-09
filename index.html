@@ -83,14 +83,14 @@
 </head>
 <body class="bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 text-gray-800 min-h-screen font-sans relative overflow-x-hidden">
 
-  <!-- ✨ 背景のオーブ（光の玉） -->
+  <!-- 背景オーブ -->
   <div class="fixed top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
     <div class="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-pink-300/40 rounded-full mix-blend-multiply filter blur-[80px] animate-blob"></div>
     <div class="absolute top-[20%] right-[-10%] w-[60vw] h-[60vw] bg-purple-300/40 rounded-full mix-blend-multiply filter blur-[80px] animate-blob animation-delay-2000"></div>
     <div class="absolute bottom-[-20%] left-[10%] w-[50vw] h-[50vw] bg-blue-300/40 rounded-full mix-blend-multiply filter blur-[100px] animate-blob animation-delay-4000"></div>
   </div>
 
-  <!-- トースト通知コンテナ -->
+  <!-- トースト -->
   <div id="toast-container" class="fixed top-20 left-1/2 -translate-x-1/2 z-[110] space-y-2 w-[92%] max-w-sm pointer-events-none"></div>
 
   <!-- ヘッダー -->
@@ -107,13 +107,20 @@
         </button>
         <div id="user-profile" class="hidden flex items-center space-x-2">
           <button id="admin-panel-btn" onclick="openAdminModal()" class="hidden bg-red-100/80 text-red-700 text-xs font-bold px-2.5 py-1.5 rounded-full hover:bg-red-200 transition" title="管理者パネル">👑</button>
+          
+          <!-- 通知一覧ボタン -->
+          <button onclick="openNotificationsModal()" class="relative bg-white/70 border border-white text-illit-darkPurple text-xs font-bold w-9 h-9 rounded-full flex items-center justify-center hover:bg-white transition shadow-sm" title="通知">
+            🔔
+            <span id="notif-badge" class="hidden absolute -top-1 -right-1 bg-pink-500 text-white text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 border border-white">0</span>
+          </button>
+
           <button onclick="openTradesModal()" class="relative hidden md:block bg-purple-100/80 backdrop-blur text-illit-darkPurple text-xs font-bold px-3 py-1.5 rounded-full hover:bg-purple-200 transition border border-white">
             💬 取引
             <span id="trades-badge" class="hidden absolute -top-1.5 -right-1.5 bg-pink-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-sm border border-white">0</span>
           </button>
-          <button onclick="openProfileModal()" class="bg-white/60 hover:bg-white/80 border border-white text-gray-700 text-xs font-bold px-2.5 py-1.5 rounded-full transition">⚙️ 設定</button>
-          <img id="user-avatar" src="" alt="" class="w-7 h-7 rounded-full object-cover border-2 border-white shadow-sm hidden">
-          <span id="user-name" class="text-xs md:text-sm font-bold text-gray-700 max-w-[70px] truncate"></span>
+          
+          <img id="user-avatar" src="" alt="" class="w-7 h-7 rounded-full object-cover border-2 border-white shadow-sm hidden cursor-pointer" onclick="openMyPage()">
+          <span id="user-name" class="text-xs md:text-sm font-bold text-gray-700 max-w-[70px] truncate cursor-pointer" onclick="openMyPage()"></span>
           <button onclick="logout()" class="text-[10px] text-gray-500 hover:text-gray-700 underline">ログアウト</button>
         </div>
       </div>
@@ -123,12 +130,11 @@
   <!-- メイン -->
   <main class="max-w-4xl mx-auto px-4 pb-6 space-y-6">
 
-    <!-- 案内・免責事項バナー -->
     <section class="liquid-glass p-4 md:p-6 rounded-3xl space-y-3 transition duration-300 hover:shadow-[0_12px_40px_rgba(192,132,252,0.25)]">
       <div class="flex items-start space-x-3">
         <div class="text-2xl drop-shadow-md">🤝</div>
         <div>
-          <h2 class="font-bold text-base md:text-lg text-gray-900">ファン同士で直接トレカ・シリアル交換・買取・共同購入</h2>
+          <h2 class="font-bold text-base md:text-lg text-gray-900">ファン同士で直接トレカ・シリアル・アルバム・DEARLIT交換・買取・共同購入</h2>
           <p class="text-xs md:text-sm text-gray-600 mt-1">写真付き出品・チャット・評価まで、すべてサイト内で完結。手数料0円のプラットフォームです。</p>
         </div>
       </div>
@@ -147,6 +153,14 @@
       <div class="flex space-x-2">
         <button onclick="openPostModal('exchange')" class="flex-1 bg-white/90 text-illit-darkPurple font-bold text-xs md:text-sm px-3 py-3 rounded-2xl shadow hover:bg-white hover:scale-105 active:scale-95 transition-all border border-white">🃏 トレカ交換</button>
         <button onclick="openPostModal('buy')" class="flex-1 bg-pink-100/90 text-pink-700 font-bold text-xs md:text-sm px-3 py-3 rounded-2xl shadow hover:bg-pink-50 hover:scale-105 active:scale-95 transition-all border border-white">💳 トレカ買取</button>
+      </div>
+      <div class="flex space-x-2">
+        <button onclick="openPostModal('album_exchange')" class="flex-1 bg-indigo-100/90 text-indigo-800 font-bold text-xs md:text-sm px-3 py-3 rounded-2xl shadow hover:bg-indigo-50 hover:scale-105 active:scale-95 transition-all border border-white">💿 アルバム交換</button>
+        <button onclick="openPostModal('album_sell')" class="flex-1 bg-indigo-50/90 text-indigo-900 font-bold text-xs md:text-sm px-3 py-3 rounded-2xl shadow hover:bg-white hover:scale-105 active:scale-95 transition-all border border-white">💿 アルバム売却</button>
+      </div>
+      <div class="flex space-x-2">
+        <button onclick="openPostModal('dearlit_exchange')" class="flex-1 bg-rose-100/90 text-rose-800 font-bold text-xs md:text-sm px-3 py-3 rounded-2xl shadow hover:bg-rose-50 hover:scale-105 active:scale-95 transition-all border border-white">🎁 DEARLIT交換</button>
+        <button onclick="openPostModal('dearlit_sell')" class="flex-1 bg-rose-50/90 text-rose-900 font-bold text-xs md:text-sm px-3 py-3 rounded-2xl shadow hover:bg-white hover:scale-105 active:scale-95 transition-all border border-white">🎁 DEARLIT売却</button>
       </div>
       <div class="flex space-x-2">
         <button onclick="openSerialPostModal('exchange')" class="flex-1 bg-yellow-300/90 text-yellow-900 font-bold text-xs md:text-sm px-3 py-3 rounded-2xl shadow hover:bg-yellow-200 hover:scale-105 active:scale-95 transition-all border border-white">🎫 シリアル➡トレカ</button>
@@ -198,9 +212,9 @@
       <span class="text-[9px] font-bold">取引</span>
       <span id="nav-trades-badge" class="hidden absolute top-1 right-2.5 bg-pink-500 text-white text-[8px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center border border-white"></span>
     </button>
-    <button onclick="openWalletModal()" class="relative flex flex-col items-center justify-center w-[60px] h-[52px] text-gray-500 hover:text-gray-900 hover:bg-white/40 rounded-[1.5rem] transition">
-      <svg class="w-6 h-6 mb-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
-      <span class="text-[9px] font-bold">おさいふ</span>
+    <button onclick="openMyPage()" class="flex flex-col items-center justify-center w-[60px] h-[52px] text-gray-500 hover:text-gray-900 hover:bg-white/40 rounded-[1.5rem] transition">
+      <svg class="w-6 h-6 mb-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+      <span class="text-[9px] font-bold">マイページ</span>
     </button>
   </nav>
 
@@ -209,7 +223,78 @@
     <span>ILLIT Trade（ファン有志による非公式サービス）</span>
   </footer>
 
-  <!-- 👛 おさいふ（アナリティクス）モーダル -->
+  <!-- ========== マイページ ========== -->
+  <div id="mypage-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
+    <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-purple-200/50 pb-3">
+        <h3 class="font-bold text-base text-gray-800">👤 マイページ</h3>
+        <button onclick="closeMyPage()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
+      </div>
+
+      <!-- プロフィール概要 -->
+      <div class="flex items-center space-x-4 bg-white/40 rounded-2xl p-4 border border-white/60">
+        <img id="mypage-avatar" src="" alt="" class="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md hidden">
+        <div id="mypage-avatar-placeholder" class="w-16 h-16 rounded-full bg-white/60 border border-white flex items-center justify-center text-2xl">👤</div>
+        <div class="flex-1 min-w-0">
+          <div id="mypage-name" class="font-bold text-gray-900 truncate">ゲスト</div>
+          <div class="text-[11px] text-gray-500 mt-0.5">タップして各設定へ</div>
+        </div>
+      </div>
+
+      <div class="space-y-2">
+        <button onclick="closeMyPage(); openProfileModal('basic')" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left">
+          <span class="font-bold text-sm text-gray-800">✏️ プロフィール・写真</span>
+          <span class="text-gray-400">›</span>
+        </button>
+        <button onclick="closeMyPage(); openProfileModal('address')" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left">
+          <span class="font-bold text-sm text-gray-800">📦 住所・配送先</span>
+          <span class="text-gray-400">›</span>
+        </button>
+        <button onclick="closeMyPage(); openProfileModal('paypay')" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left">
+          <span class="font-bold text-sm text-gray-800">💳 PayPay ID</span>
+          <span class="text-gray-400">›</span>
+        </button>
+        <button onclick="closeMyPage(); openNotificationsModal()" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left">
+          <span class="font-bold text-sm text-gray-800">🔔 通知一覧</span>
+          <span class="text-gray-400">›</span>
+        </button>
+        <button onclick="closeMyPage(); openProfileModal('push')" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left">
+          <span class="font-bold text-sm text-gray-800">📢 プッシュ通知設定</span>
+          <span class="text-gray-400">›</span>
+        </button>
+        <button onclick="closeMyPage(); openProfileModal('block')" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left">
+          <span class="font-bold text-sm text-gray-800">🚫 ブロック管理</span>
+          <span class="text-gray-400">›</span>
+        </button>
+        <button onclick="closeMyPage(); openWalletModal()" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left">
+          <span class="font-bold text-sm text-gray-800">👛 おさいふ・売上管理</span>
+          <span class="text-gray-400">›</span>
+        </button>
+        <button onclick="closeMyPage(); openTerms(true)" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left">
+          <span class="font-bold text-sm text-gray-800">📜 利用規約</span>
+          <span class="text-gray-400">›</span>
+        </button>
+      </div>
+
+      <button onclick="closeMyPage()" class="w-full bg-white/60 text-gray-700 border border-white font-bold py-3 rounded-xl hover:bg-white transition text-sm shadow-sm">閉じる</button>
+    </div>
+  </div>
+
+  <!-- ========== 通知一覧モーダル ========== -->
+  <div id="notifications-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
+    <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[85vh] flex flex-col">
+      <div class="flex justify-between items-center border-b border-purple-200/50 pb-3 shrink-0">
+        <h3 class="font-bold text-base text-gray-800">🔔 通知一覧</h3>
+        <div class="flex items-center gap-2">
+          <button onclick="markAllNotificationsRead()" class="text-[11px] font-bold text-illit-darkPurple underline">すべて既読</button>
+          <button onclick="closeNotificationsModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
+        </div>
+      </div>
+      <div id="notifications-list" class="flex-1 overflow-y-auto space-y-2"></div>
+    </div>
+  </div>
+
+  <!-- 👛 おさいふ -->
   <div id="wallet-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
     <div class="liquid-glass-heavy w-full max-w-sm rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[90vh] flex flex-col">
       <div class="flex justify-between items-center border-b border-purple-200/50 pb-3 shrink-0">
@@ -246,7 +331,7 @@
     </div>
   </div>
 
-  <!-- 👑 管理者パネルモーダル -->
+  <!-- 👑 管理者パネル -->
   <div id="admin-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
     <div class="liquid-glass-heavy w-full max-w-lg rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[90vh] flex flex-col">
       <div class="flex justify-between items-center border-b border-purple-200/50 pb-3 shrink-0">
@@ -266,15 +351,16 @@
     </div>
   </div>
 
-  <!-- プロフィール・設定モーダル -->
+  <!-- プロフィール・設定モーダル（タブ分岐） -->
   <div id="profile-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
     <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b border-purple-200/50 pb-3">
-        <h3 class="font-bold text-base text-gray-800">⚙️ プロフィール・設定</h3>
+        <h3 id="profile-modal-title" class="font-bold text-base text-gray-800">⚙️ プロフィール・設定</h3>
         <button onclick="closeProfileModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
       </div>
-      <p class="text-xs text-gray-600 font-bold">サイト内でのニックネームや、PayPay ID、配送先の管理ができます。</p>
-      <div class="space-y-3 text-xs md:text-sm">
+
+      <!-- 基本情報 -->
+      <div id="profile-section-basic" class="space-y-3 text-xs md:text-sm hidden">
         <div>
           <label class="block font-bold text-gray-700 mb-1">サイト内ニックネーム</label>
           <input type="text" id="profile-nickname" maxlength="30" placeholder="例: 芋けんぴ推し" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800">
@@ -290,30 +376,45 @@
             </div>
           </div>
         </div>
-        <div>
-          <label class="block font-bold text-gray-700 mb-1">💳 PayPay ID（受取用）</label>
-          <input type="text" id="profile-paypay" maxlength="50" placeholder="例: paypay_id_123" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800">
-        </div>
-        <hr class="border-purple-200/50 my-1">
+      </div>
+
+      <!-- 住所 -->
+      <div id="profile-section-address" class="space-y-3 text-xs md:text-sm hidden">
         <div><label class="block font-bold text-gray-700 mb-1">お名前（郵送時の宛名）</label><input type="text" id="profile-name" maxlength="50" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
         <div><label class="block font-bold text-gray-700 mb-1">郵便番号</label><input type="text" id="profile-zip" maxlength="10" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
         <div><label class="block font-bold text-gray-700 mb-1">都道府県・市区町村・番地</label><input type="text" id="profile-address1" maxlength="100" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
         <div><label class="block font-bold text-gray-700 mb-1">建物名・部屋番号（任意）</label><input type="text" id="profile-address2" maxlength="100" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
         <div><label class="block font-bold text-gray-700 mb-1">電話番号（任意・伝票用）</label><input type="text" id="profile-phone" maxlength="20" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
-        <hr class="border-purple-200/50 my-1">
+      </div>
+
+      <!-- PayPay -->
+      <div id="profile-section-paypay" class="space-y-3 text-xs md:text-sm hidden">
+        <div>
+          <label class="block font-bold text-gray-700 mb-1">💳 PayPay ID（受取用）</label>
+          <input type="text" id="profile-paypay" maxlength="50" placeholder="例: paypay_id_123" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800">
+          <p class="text-[10px] text-gray-500 mt-1">取引時に相手に共有されます。</p>
+        </div>
+      </div>
+
+      <!-- プッシュ -->
+      <div id="profile-section-push" class="space-y-3 text-xs md:text-sm hidden">
         <div>
           <label class="block font-bold text-gray-700 mb-1">🔔 プッシュ通知</label>
           <p id="push-status" class="text-[11px] text-gray-600 mb-2 font-bold"></p>
           <button id="push-on-btn" onclick="enablePush()" class="w-full bg-purple-100/80 backdrop-blur border border-purple-200 text-illit-darkPurple font-bold py-2.5 rounded-xl hover:bg-purple-200 transition shadow-sm">🔔 この端末で通知をオンにする</button>
           <button id="push-off-btn" onclick="disablePush()" class="hidden w-full bg-white/60 border border-white text-gray-600 font-bold py-2.5 rounded-xl hover:bg-white transition shadow-sm">通知をオフにする</button>
         </div>
-        <hr class="border-purple-200/50 my-1">
+      </div>
+
+      <!-- ブロック -->
+      <div id="profile-section-block" class="space-y-3 text-xs md:text-sm hidden">
         <div>
           <label class="block font-bold text-gray-700 mb-1">🚫 ブロック管理</label>
           <div id="blocked-users-box" class="text-xs font-bold text-gray-600 liquid-glass-input p-2 rounded-xl mb-2">なし</div>
           <button onclick="clearBlockedUsers()" class="text-xs text-red-500 underline font-bold drop-shadow-sm">ブロックをすべて解除する</button>
         </div>
       </div>
+
       <div class="flex space-x-2 pt-2">
         <button onclick="closeProfileModal()" class="flex-1 bg-white/60 text-gray-700 border border-white font-bold py-3 rounded-xl hover:bg-white transition shadow-sm">キャンセル</button>
         <button onclick="saveProfile()" class="flex-1 bg-gradient-to-r from-illit-purple to-illit-accent text-white font-bold py-3 rounded-xl hover:opacity-90 transition shadow-md border border-white/30">保存する</button>
@@ -321,7 +422,7 @@
     </div>
   </div>
 
-  <!-- トレカ出品モーダル -->
+  <!-- トレカ / アルバム / DEARLIT 出品モーダル -->
   <div id="post-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
     <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b border-purple-200/50 pb-3">
@@ -337,6 +438,7 @@
             <option value="イロハ (Iroha)">イロハ (Iroha)</option>
             <option value="モカ (Moka)">モカ (Moka)</option>
             <option value="ユナ (Yuna)">ユナ (Yuna)</option>
+            <option value="指定なし">指定なし</option>
           </select>
         </div>
         <div>
@@ -348,8 +450,19 @@
           <input type="text" id="input-want" maxlength="100" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800">
         </div>
         <div id="price-container" class="hidden">
-          <label class="block font-bold text-gray-700 mb-1">希望買取り価格（円・PayPay送金）</label>
+          <label class="block font-bold text-gray-700 mb-1">希望価格（円・PayPay送金）</label>
           <input type="number" id="input-price" min="1" max="100000" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800">
+        </div>
+        <!-- 状態（必須） -->
+        <div id="condition-container">
+          <label class="block font-bold text-gray-700 mb-1">商品の状態 <span class="text-pink-600">必須</span></label>
+          <select id="input-condition" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800">
+            <option value="">選択してください</option>
+            <option value="s">S：新品同様・未使用</option>
+            <option value="a">A：美品</option>
+            <option value="b">B：傷・汚れあり</option>
+            <option value="c">C：状態要確認</option>
+          </select>
         </div>
         <div>
           <label class="block font-bold text-gray-700 mb-1">説明文・備考（任意）</label>
@@ -390,7 +503,7 @@
     </div>
   </div>
 
-  <!-- 🛍 共同購入 主催モーダル -->
+  <!-- 共同購入 -->
   <div id="group-post-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
     <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b border-purple-200/50 pb-3">
@@ -415,7 +528,7 @@
     </div>
   </div>
 
-  <!-- 出品編集モーダル -->
+  <!-- 編集モーダル -->
   <div id="edit-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
     <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b border-purple-200/50 pb-3">
@@ -426,6 +539,15 @@
         <div><label class="block font-bold text-gray-700 mb-1">【譲】</label><input type="text" id="edit-give" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
         <div id="edit-want-container"><label class="block font-bold text-gray-700 mb-1">【求】</label><input type="text" id="edit-want" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
         <div id="edit-price-container" class="hidden"><label class="block font-bold text-gray-700 mb-1">希望価格</label><input type="number" id="edit-price" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
+        <div id="edit-condition-container" class="hidden">
+          <label class="block font-bold text-gray-700 mb-1">商品の状態</label>
+          <select id="edit-condition" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800">
+            <option value="s">S：新品同様・未使用</option>
+            <option value="a">A：美品</option>
+            <option value="b">B：傷・汚れあり</option>
+            <option value="c">C：状態要確認</option>
+          </select>
+        </div>
         <div id="edit-group-container" class="hidden space-y-3">
           <div><label class="block font-bold text-gray-700 mb-1">募集人数</label><input type="number" id="edit-target" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800 focus:ring-teal-400"></div>
           <div><label class="block font-bold text-gray-700 mb-1">🔗 抱き合わせ</label><select id="edit-bundle" onchange="onEditBundleChange()" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800 focus:ring-teal-400">
@@ -457,6 +579,7 @@
           <div id="detail-give-box"><span class="bg-pink-100 border border-pink-200 text-pink-700 text-xs font-bold px-2.5 py-0.5 rounded-full shadow-sm">譲</span> <span id="detail-give" class="font-bold text-gray-900 ml-1"></span></div>
           <div id="detail-want-box"><span class="bg-purple-100 border border-purple-200 text-illit-darkPurple text-xs font-bold px-2.5 py-0.5 rounded-full shadow-sm">求</span> <span id="detail-want" class="font-bold text-gray-900 ml-1"></span></div>
           <div id="detail-price-box" class="hidden"><span class="bg-gradient-to-r from-pink-400 to-pink-500 text-white text-xs font-bold px-2.5 py-0.5 rounded-full shadow-sm border border-white/50">価格</span> <span id="detail-price" class="font-bold text-pink-600 ml-1 text-base drop-shadow-sm"></span></div>
+          <div id="detail-condition-box" class="hidden"><span class="bg-gray-100 border border-gray-200 text-gray-700 text-xs font-bold px-2.5 py-0.5 rounded-full shadow-sm">状態</span> <span id="detail-condition" class="font-bold text-gray-900 ml-1"></span></div>
           <div id="detail-desc-box" class="pt-2 border-t border-white/50 text-gray-800 text-xs whitespace-pre-wrap font-bold leading-relaxed"></div>
           <div id="detail-extra" class="text-xs text-gray-700 space-y-1 font-bold pt-1"></div>
         </div>
@@ -478,7 +601,7 @@
     </div>
   </div>
 
-  <!-- 取引一覧モーダル -->
+  <!-- 取引一覧 -->
   <div id="trades-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
     <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[85vh] flex flex-col">
       <div class="flex justify-between items-center border-b border-purple-200/50 pb-3 shrink-0">
@@ -489,14 +612,13 @@
     </div>
   </div>
 
-  <!-- 取引ルーム（チャット） -->
+  <!-- 取引ルーム -->
   <div id="room-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center md:p-4">
     <div class="liquid-glass-heavy w-full max-w-md h-full md:h-[90vh] md:rounded-[2rem] shadow-2xl flex flex-col overflow-hidden">
       <div class="flex justify-between items-center px-5 py-4 border-b border-white/50 shrink-0 bg-white/40 backdrop-blur">
         <h3 id="room-title" class="font-bold text-sm text-gray-900 truncate drop-shadow-sm"></h3>
         <button onclick="closeRoom()" class="text-gray-500 hover:text-gray-700 font-bold text-xl leading-none bg-white/50 w-8 h-8 rounded-full border border-white shadow-sm">&times;</button>
       </div>
-
       <div class="p-4 space-y-3 border-b border-white/50 bg-white/20 overflow-y-auto shrink-0 max-h-[52%]" id="room-top-box">
         <div id="room-info"></div>
         <div id="room-paypay-box"></div>
@@ -505,7 +627,6 @@
         <div id="room-steps"></div>
         <div id="room-actions" class="space-y-2"></div>
       </div>
-
       <div class="px-3 py-2 bg-white/30 border-b border-white/50 flex gap-2 overflow-x-auto shrink-0 text-[11px] hide-scrollbar">
         <button onclick="sendQuickMsg('よろしくおねがいします！')" class="bg-white/80 border border-white px-3 py-1.5 rounded-full text-purple-700 font-bold shrink-0 hover:bg-white shadow-sm transition">👋 よろしくお願いします</button>
         <button onclick="sendQuickMsg('PayPayで送金しますので、リンクまたはPayPay IDを教えてください！')" class="bg-pink-50 border border-white px-3 py-1.5 rounded-full text-pink-700 font-bold shrink-0 hover:bg-pink-100 shadow-sm transition">💳 PayPay案内</button>
@@ -513,9 +634,7 @@
         <button onclick="sendQuickMsg('本日発送いたしました！到着までお待ちください。')" class="bg-white/80 border border-white px-3 py-1.5 rounded-full text-purple-700 font-bold shrink-0 hover:bg-white shadow-sm transition">📮 発送完了</button>
         <button onclick="sendQuickMsg('無事に受け取りました！丁寧な取引ありがとうございました✨')" class="bg-white/80 border border-white px-3 py-1.5 rounded-full text-purple-700 font-bold shrink-0 hover:bg-white shadow-sm transition">✨ 受取完了</button>
       </div>
-
       <div id="room-messages" class="flex-1 overflow-y-auto p-4 space-y-3 bg-white/40"></div>
-
       <div class="p-3 border-t border-white/50 flex items-center space-x-2 shrink-0 bg-white/60 backdrop-blur-md">
         <input id="image-input" type="file" accept="image/*" class="hidden" onchange="sendImage(this)">
         <button id="room-photo" onclick="document.getElementById('image-input').click()" class="text-xl px-2.5 py-2 rounded-2xl bg-white/80 border border-white hover:bg-white text-purple-600 transition shadow-sm" title="写真を送る">📷</button>
@@ -530,7 +649,7 @@
     <button class="absolute top-6 right-6 text-white text-5xl font-bold leading-none hover:scale-110 transition drop-shadow-md" onclick="closeImageViewer()">&times;</button>
   </div>
 
-  <!-- 🚫 アカウント停止モーダル -->
+  <!-- 停止モーダル -->
   <div id="suspended-modal" class="fixed inset-0 modal-backdrop hidden z-[80] flex items-center justify-center p-4">
     <div class="liquid-glass-heavy w-full max-w-sm rounded-[2rem] p-6 space-y-3 shadow-xl text-center">
       <div class="text-4xl">🚫</div>
@@ -541,7 +660,7 @@
     </div>
   </div>
 
-  <!-- 📜 利用規約モーダル -->
+  <!-- 利用規約 -->
   <div id="terms-modal" class="fixed inset-0 modal-backdrop hidden z-[70] flex items-center justify-center p-4">
     <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-5 space-y-3 shadow-xl max-h-[92vh] flex flex-col">
       <div class="flex justify-between items-center border-b border-purple-200/50 pb-2 shrink-0">
@@ -604,9 +723,16 @@
 
     const MEMBERS = ["すべて", "ウォニ (Wonhee)", "ミンジュ (Minju)", "イロハ (Iroha)", "モカ (Moka)", "ユナ (Yuna)"];
     const KINDS = [
-      { key: "all", label: "すべて" }, { key: "card_exchange", label: "🃏 トレカ交換" }, { key: "card_buy", label: "💳 トレカ買取" },
-      { key: "serial_exchange", label: "🎫 シリアル➡求" }, { key: "serial_buy", label: "💳 シリアル買取" },
-      { key: "serial_sell", label: "💰 シリアル売却" }, { key: "group_buy", label: "🛍 共同購入" }, { key: "likes", label: "♡ いいね一覧" }
+      { key: "all", label: "すべて" },
+      { key: "card_exchange", label: "🃏 トレカ交換" },
+      { key: "card_buy", label: "💳 トレカ買取" },
+      { key: "album", label: "💿 アルバム" },
+      { key: "dearlit", label: "🎁 DEARLIT" },
+      { key: "serial_exchange", label: "🎫 シリアル➡求" },
+      { key: "serial_buy", label: "💳 シリアル買取" },
+      { key: "serial_sell", label: "💰 シリアル売却" },
+      { key: "group_buy", label: "🛍 共同購入" },
+      { key: "likes", label: "♡ いいね一覧" }
     ];
     const BUNDLE_FILTERS = [
       { key: "all", label: "抱き合わせ: すべて" }, { key: "only", label: "🔒 限定" },
@@ -614,6 +740,8 @@
     ];
     const BUNDLE_LABEL = { only: "🔒 抱き合わせ限定", prefer: "⭐ 抱き合わせ優先", ok: "🔗 どちらでも可", ng: "🚫 単品のみ（抱き合わせ不可）" };
     const BUNDLE_CLASS = { only: "bg-purple-100 border-purple-200 text-purple-700", prefer: "bg-pink-100 border-pink-200 text-pink-700", ok: "bg-green-100 border-green-200 text-green-700", ng: "bg-gray-100 border-gray-200 text-gray-500" };
+    const CONDITION_LABEL = { s: "S：新品同様・未使用", a: "A：美品", b: "B：傷・汚れあり", c: "C：状態要確認" };
+    const CONDITION_CLASS = { s: "bg-emerald-100 text-emerald-800 border-emerald-200", a: "bg-blue-100 text-blue-800 border-blue-200", b: "bg-amber-100 text-amber-800 border-amber-200", c: "bg-gray-100 text-gray-700 border-gray-200" };
 
     const IMAGE_PREFIX = "data:image/jpeg;base64,";
     const PHOTO_FULL = { maxSide: 900, quality: 0.72, maxChars: 380000 };
@@ -621,15 +749,17 @@
     const CHAT_PHOTO = { maxSide: 1000, quality: 0.75, maxChars: 600000 };
     const PROFILE_PHOTO = { maxSide: 300, quality: 0.72, maxChars: 90000 };
     const MAX_POST_PHOTOS = 3;
+    const MAX_NOTIFICATIONS = 50;
 
     let currentUser = null, allPosts = [], unsubPosts = null, selectedMember = "すべて", kindFilter = "all", sortFilter = "new", bundleFilter = "all", searchText = "", currentDetailIndex = -1;
     let postMode = "exchange", postPhotos = [], processingPhotos = false, submittingPost = false, submittingGroup = false, detailPhotos = [], roomPhotos = [], roomPhotosFor = null;
     let myTrades = [], unsubTrades = null, groupJoins = {}, unsubJoins = null, currentTrade = null, roomMessages = [], unsubRoom = null, unsubMsgs = null;
-    let reviewState = { tradeId: null, done: null }, selectedRating = 0, sendingImage = false, roomBoxKey = null, userData = { profile: {}, blocked: [], likes: [], reads: {} };
+    let reviewState = { tradeId: null, done: null }, selectedRating = 0, sendingImage = false, roomBoxKey = null, userData = { profile: {}, blocked: [], likes: [], reads: {}, notifications: [] };
     let unsubUser = null, editingPostId = null, migratingLocal = false, photoCache = {};
-    let pendingProfilePhoto = null; // null=変更なし / ""=削除 / dataURL=新しい写真
+    let pendingProfilePhoto = null;
     let prevUnreadCount = -1;
     let prevTradeCountAsOwner = -1;
+    let profileSection = "basic";
 
     const STATUS_LABEL = { negotiating: "交渉中", shipping: "取引・発送中", completed: "完了", cancelled: "キャンセル" };
     const STATUS_CLASS = { negotiating: "bg-yellow-400 text-yellow-900 border-yellow-200", shipping: "bg-blue-400 text-white border-blue-300", completed: "bg-green-400 text-white border-green-300", cancelled: "bg-gray-300 text-gray-700 border-gray-200" };
@@ -646,8 +776,9 @@
     function isJpegData(s) { return typeof s === "string" && s.startsWith(IMAGE_PREFIX); }
     function isPayTrade(t) { return !!(t && (t.isBuy || t.isSell || t.kind === "group")); }
     function joinsOf(postId) { return groupJoins[postId] || []; }
+    function needsCondition(kind) { return kind === "card" || kind === "album" || kind === "dearlit"; }
 
-    // トースト通知
+    // ===== トースト & 通知 =====
     function showToast(message, type = "info") {
       const container = document.getElementById("toast-container");
       if (!container) return;
@@ -666,6 +797,83 @@
         setTimeout(() => toast.remove(), 260);
       }, 3400);
     }
+
+    function addNotification(text, type = "info") {
+      if (!currentUser) return;
+      const list = [...(userData.notifications || [])];
+      const item = { id: "n_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7), text, type, read: false, createdAt: Date.now() };
+      list.unshift(item);
+      if (list.length > MAX_NOTIFICATIONS) list.length = MAX_NOTIFICATIONS;
+      userData.notifications = list;
+      saveUserData({ notifications: list }).catch(() => {});
+      updateNotifBadge();
+    }
+
+    function updateNotifBadge() {
+      const badge = document.getElementById("notif-badge");
+      if (!badge) return;
+      const unread = (userData.notifications || []).filter(n => !n.read).length;
+      badge.innerText = unread > 99 ? "99+" : unread;
+      badge.classList.toggle("hidden", unread === 0);
+    }
+
+    window.openNotificationsModal = function() {
+      if (!currentUser) return alert("ログインが必要です。");
+      renderNotificationsList();
+      document.getElementById("notifications-modal").classList.remove("hidden");
+    };
+    window.closeNotificationsModal = function() {
+      document.getElementById("notifications-modal").classList.add("hidden");
+    };
+    function renderNotificationsList() {
+      const el = document.getElementById("notifications-list");
+      const list = userData.notifications || [];
+      if (list.length === 0) {
+        el.innerHTML = '<p class="text-xs text-gray-500 text-center py-8 font-bold bg-white/30 rounded-xl">通知はありません</p>';
+        return;
+      }
+      el.innerHTML = list.map(n => {
+        const time = new Date(n.createdAt);
+        const timeStr = (time.getMonth()+1) + "/" + time.getDate() + " " + String(time.getHours()).padStart(2,"0") + ":" + String(time.getMinutes()).padStart(2,"0");
+        return `<div class="liquid-glass-input rounded-xl p-3 ${n.read ? 'opacity-70' : 'border-pink-200'}">
+          <div class="flex justify-between items-start gap-2">
+            <p class="text-xs font-bold text-gray-800 leading-relaxed flex-1">${escapeHtml(n.text)}</p>
+            ${!n.read ? '<span class="shrink-0 w-2 h-2 rounded-full bg-pink-500 mt-1"></span>' : ''}
+          </div>
+          <div class="text-[10px] text-gray-500 mt-1 font-bold">${timeStr}</div>
+        </div>`;
+      }).join("");
+    }
+    window.markAllNotificationsRead = async function() {
+      if (!currentUser) return;
+      const list = (userData.notifications || []).map(n => ({ ...n, read: true }));
+      userData.notifications = list;
+      try { await saveUserData({ notifications: list }); } catch(e) {}
+      updateNotifBadge();
+      renderNotificationsList();
+    };
+
+    // ===== マイページ =====
+    window.openMyPage = function() {
+      if (!currentUser) return alert("ログインが必要です。");
+      const nameEl = document.getElementById("mypage-name");
+      const avatar = document.getElementById("mypage-avatar");
+      const placeholder = document.getElementById("mypage-avatar-placeholder");
+      nameEl.innerText = getMyDisplayName();
+      const photo = getMyProfile()?.photo;
+      if (photo && isJpegData(photo)) {
+        avatar.src = photo;
+        avatar.classList.remove("hidden");
+        placeholder.classList.add("hidden");
+      } else {
+        avatar.classList.add("hidden");
+        placeholder.classList.remove("hidden");
+      }
+      document.getElementById("mypage-modal").classList.remove("hidden");
+    };
+    window.closeMyPage = function() {
+      document.getElementById("mypage-modal").classList.add("hidden");
+    };
 
     window.switchTab = function(tab) {
       document.getElementById("post-menu-section").classList.toggle("hidden", tab !== 'post');
@@ -735,16 +943,17 @@
           const read = (k, def) => { try { const v = JSON.parse(localStorage.getItem(k + currentUser.uid)); return v ?? def; } catch(e){ return def; } };
           setDoc(ref, { migrated: true, profile: read("illit_profile_", {}), blocked: read("illit_blocked_", []), likes: read("illit_likes_", []) }, { merge: true }).finally(() => migratingLocal = false);
         }
-        userData = { profile: d.profile || {}, blocked: d.blocked || [], likes: d.likes || [], reads: d.reads || {} };
+        userData = { profile: d.profile || {}, blocked: d.blocked || [], likes: d.likes || [], reads: d.reads || {}, notifications: d.notifications || [] };
         if (currentUser) {
           document.getElementById("user-name").innerText = getMyDisplayName();
           updateUserAvatar();
         }
         syncTermsRecord(d);
         const adminBtn = document.getElementById("admin-panel-btn"); if (adminBtn) adminBtn.classList.toggle("hidden", !isAdmin());
-        renderPosts(); renderBlockedBox(); updateBadge();
+        renderPosts(); renderBlockedBox(); updateBadge(); updateNotifBadge();
         if (!document.getElementById("trades-modal").classList.contains("hidden")) renderTradesList();
         if (!document.getElementById("wallet-modal").classList.contains("hidden")) renderWallet();
+        if (!document.getElementById("notifications-modal").classList.contains("hidden")) renderNotificationsList();
       });
     }
     function subscribeJoins() {
@@ -840,7 +1049,6 @@
       if (wasLiked) likes.splice(idx, 1); else likes.push(p.id);
       userData.likes = likes;
       saveUserData({ likes }).catch(()=>{});
-      // 投稿側のいいね数を更新
       try {
         await updateDoc(doc(db, "posts", p.id), { likesCount: increment(wasLiked ? -1 : 1) });
       } catch (e) {}
@@ -853,8 +1061,18 @@
       btn.querySelector("span").innerText = liked ? "♥" : "♡";
     }
 
-    window.openProfileModal = function() {
+    // プロフィール（セクション分岐）
+    window.openProfileModal = function(section = "basic") {
       if (!currentUser) return;
+      profileSection = section;
+      const titles = { basic: "✏️ プロフィール・写真", address: "📦 住所・配送先", paypay: "💳 PayPay ID", push: "📢 プッシュ通知", block: "🚫 ブロック管理" };
+      document.getElementById("profile-modal-title").innerText = titles[section] || "設定";
+
+      ["basic","address","paypay","push","block"].forEach(s => {
+        const el = document.getElementById("profile-section-" + s);
+        if (el) el.classList.toggle("hidden", s !== section);
+      });
+
       const s = userData.profile || {};
       pendingProfilePhoto = null;
       document.getElementById("profile-nickname").value = s.nickname || "";
@@ -913,13 +1131,13 @@
         phone: document.getElementById("profile-phone").value.trim()
       };
       if (pendingProfilePhoto !== null) {
-        p.photo = pendingProfilePhoto; // "" で削除、dataURL で更新
+        p.photo = pendingProfilePhoto;
       } else {
         p.photo = userData.profile?.photo || "";
       }
-      userData.profile = p;
+      userData.profile = { ...(userData.profile || {}), ...p };
       try {
-        await saveUserData({ profile: p });
+        await saveUserData({ profile: userData.profile });
       } catch (e) {
         return alert("失敗しました。");
       }
@@ -936,7 +1154,7 @@
 
     window.sendMyAddress = async function() {
       if (!currentTrade || !currentUser) return;
-      const p = getMyProfile(); if (!p || !p.zip || !p.address1 || !p.name) { alert("設定画面から住所を入力してください。"); openProfileModal(); return; }
+      const p = getMyProfile(); if (!p || !p.zip || !p.address1 || !p.name) { alert("マイページから住所を入力してください。"); openProfileModal("address"); return; }
       try { await postMessage({ senderId: currentUser.uid, senderName: getMyDisplayName(), text: `【配送先情報】\nお名前: ${p.name}\n郵便番号: 〒${p.zip}\n住所: ${p.address1} ${p.address2 || ''}\n電話番号: ${p.phone || 'なし'}`, createdAt: serverTimestamp() }); } catch(e){}
     };
     window.copyPayPayId = function(idStr) { navigator.clipboard.writeText(idStr).then(()=>alert("コピーしました！")).catch(()=>{}); };
@@ -1003,24 +1221,43 @@
       } else {
         loginBtn.classList.remove("hidden"); userProfile.classList.add("hidden");
         if (unsubTrades) unsubTrades(); if (unsubUser) unsubUser(); unsubTrades=null; unsubUser=null;
-        userData = { profile: {}, blocked: [], likes: [], reads: {} }; myTrades = []; updateBadge();
+        userData = { profile: {}, blocked: [], likes: [], reads: {}, notifications: [] }; myTrades = []; updateBadge(); updateNotifBadge();
         prevUnreadCount = -1; prevTradeCountAsOwner = -1;
         updateUserAvatar();
       }
       subscribePosts(); subscribeJoins();
     });
 
+    // ===== 出品モーダル（トレカ / アルバム / DEARLIT） =====
     window.openPostModal = async function(mode) {
       if (!currentUser) return alert("ログインが必要です。");
       if (!(await checkDeviceLock())) return;
       postMode = mode;
-      document.getElementById("post-modal-title").innerText = mode === "buy" ? "💳 トレカの買取（購入希望）" : "🃏 トレカ交換の出品";
-      document.getElementById("label-give").innerText = mode === "buy" ? "【求】（買いたいトレカ）" : "【譲】（出すもの）";
-      document.getElementById("want-container").classList.toggle("hidden", mode === "buy");
-      document.getElementById("price-container").classList.toggle("hidden", mode !== "buy");
-      document.getElementById("photo-req-label").innerText = mode === "buy" ? "（任意・最大3枚）" : "（必須・最大3枚）";
-      document.getElementById("input-give").value = ""; document.getElementById("input-want").value = "";
-      document.getElementById("input-price").value = ""; document.getElementById("input-desc").value = "";
+
+      const isBuy = mode === "buy";
+      const isAlbum = mode.startsWith("album");
+      const isDearlit = mode.startsWith("dearlit");
+      const isSell = mode.endsWith("_sell") || mode === "buy";
+
+      let title = "🃏 トレカ交換の出品";
+      if (mode === "buy") title = "💳 トレカの買取（購入希望）";
+      else if (mode === "album_exchange") title = "💿 アルバム交換";
+      else if (mode === "album_sell") title = "💿 アルバム売却";
+      else if (mode === "dearlit_exchange") title = "🎁 DEARLIT交換";
+      else if (mode === "dearlit_sell") title = "🎁 DEARLIT売却";
+
+      document.getElementById("post-modal-title").innerText = title;
+      document.getElementById("label-give").innerText = isBuy ? "【求】（買いたいもの）" : "【譲】（出すもの）";
+      document.getElementById("want-container").classList.toggle("hidden", isBuy || isSell);
+      document.getElementById("price-container").classList.toggle("hidden", !(isBuy || isSell));
+      document.getElementById("photo-req-label").innerText = (isBuy) ? "（任意・最大3枚）" : "（必須・最大3枚）";
+      document.getElementById("condition-container").classList.remove("hidden");
+
+      document.getElementById("input-give").value = "";
+      document.getElementById("input-want").value = "";
+      document.getElementById("input-price").value = "";
+      document.getElementById("input-desc").value = "";
+      document.getElementById("input-condition").value = "";
       postPhotos = []; renderPostPhotoPreview();
       document.getElementById("post-modal").classList.remove("hidden");
     };
@@ -1047,14 +1284,35 @@
 
     window.submitPost = async function() {
       if (submittingPost || processingPhotos || !(await checkDeviceLock()) || !(await checkPostLimit())) return;
+
       const isBuy = postMode === "buy";
-      const member = document.getElementById("input-member").value, give = document.getElementById("input-give").value.trim(), want = document.getElementById("input-want").value.trim(), price = isBuy ? Number(document.getElementById("input-price").value) : 0, desc = document.getElementById("input-desc").value.trim().slice(0, 200);
-      if (!give || (!isBuy && !want) || (isBuy && (!price || price <= 0)) || (!isBuy && postPhotos.length < 1)) return alert("正しく入力してください。");
+      const isAlbum = postMode.startsWith("album");
+      const isDearlit = postMode.startsWith("dearlit");
+      const isSell = postMode.endsWith("_sell") || postMode === "buy";
+
+      let kind = "card";
+      if (isAlbum) kind = "album";
+      else if (isDearlit) kind = "dearlit";
+
+      const member = document.getElementById("input-member").value;
+      const give = document.getElementById("input-give").value.trim();
+      const want = document.getElementById("input-want").value.trim();
+      const price = (isBuy || isSell) ? Number(document.getElementById("input-price").value) : 0;
+      const desc = document.getElementById("input-desc").value.trim().slice(0, 200);
+      const condition = document.getElementById("input-condition").value;
+
+      if (!give) return alert("内容を入力してください。");
+      if (!isBuy && !isSell && !want) return alert("【求】を入力してください。");
+      if ((isBuy || isSell) && (!price || price <= 0)) return alert("価格を正しく入力してください。");
+      if (!condition) return alert("商品の状態を選択してください。");
+      if (!isBuy && postPhotos.length < 1) return alert("写真を1枚以上追加してください。");
+
       submittingPost = true; const btn = document.getElementById("post-submit-btn"); btn.disabled = true; btn.innerText = "投稿中…";
       try {
         const ref = await addDoc(collection(db, "posts"), {
-          kind: "card", isBuy, member, give, want: isBuy ? "" : want, price: isBuy ? price : 0, description: desc, status: "active",
-          photoCount: postPhotos.length, thumb: postPhotos.length > 0 ? postPhotos[0].thumb : "",
+          kind, isBuy, isSell: isSell && !isBuy, member, give, want: (isBuy || isSell) ? "" : want,
+          price: (isBuy || isSell) ? price : 0, description: desc, condition,
+          status: "active", photoCount: postPhotos.length, thumb: postPhotos.length > 0 ? postPhotos[0].thumb : "",
           userId: currentUser.uid, userName: getMyDisplayName(), userPhoto: getMyProfile()?.photo || "",
           likesCount: 0, createdAt: serverTimestamp()
         });
@@ -1064,6 +1322,7 @@
       } catch(e) { alert("失敗しました"); } finally { submittingPost = false; btn.disabled = false; btn.innerText = "出品する"; }
     };
 
+    // シリアル
     window.openSerialPostModal = async function(mode) {
       if (!currentUser) return alert("ログインが必要です。");
       if (!(await checkDeviceLock())) return;
@@ -1137,7 +1396,16 @@
     window.setBundle = function(k) { bundleFilter = k; renderFilters(); renderPosts(); };
     window.setSearch = function(v) { searchText = v.trim().toLowerCase(); renderPosts(); };
 
-    // 🔴 Glass風 募集一覧（Liquid Glassデザイン）
+    function getPostTypeKey(p) {
+      if (p.kind === "group") return "group_buy";
+      if (p.kind === "album") return "album";
+      if (p.kind === "dearlit") return "dearlit";
+      if (p.isSell) return "serial_sell";
+      if (p.isBuy) return p.kind === "serial" ? "serial_buy" : "card_buy";
+      if (p.kind === "serial") return "serial_exchange";
+      return "card_exchange";
+    }
+
     function renderPosts() {
       const container = document.getElementById("posts-container");
       const blocked = userData.blocked || []; const likes = userData.likes || [];
@@ -1146,7 +1414,7 @@
       allPosts.forEach((p, index) => {
         if (blocked.includes(p.userId) || p.status === "traded") return;
         if (p.kind === "group" && Number(p.target || 0) > 0 && joinsOf(p.id).length >= Number(p.target) && !(currentUser && (p.userId === currentUser.uid || isAdmin()))) return;
-        const type = p.kind === "group" ? "group_buy" : (p.isSell ? "serial_sell" : (p.isBuy ? (p.kind === "serial" ? "serial_buy" : "card_buy") : (p.kind === "serial" ? "serial_exchange" : "card_exchange")));
+        const type = getPostTypeKey(p);
         const okKind = kindFilter === "all" || (kindFilter === "likes" ? likes.includes(p.id) : kindFilter === type);
         const okMember = selectedMember === "すべて" || p.member === selectedMember;
         const okBundle = kindFilter !== "group_buy" || bundleFilter === "all" || p.bundle === bundleFilter;
@@ -1155,7 +1423,6 @@
         filtered.push({ p, index });
       });
 
-      // ソート
       if (sortFilter === "popular") {
         filtered.sort((a, b) => {
           const likeDiff = (Number(b.p.likesCount) || 0) - (Number(a.p.likesCount) || 0);
@@ -1163,12 +1430,13 @@
           return tsMillis(b.p.createdAt) - tsMillis(a.p.createdAt);
         });
       }
-      // 新着は allPosts が既に createdAt desc なのでそのまま
 
       const cards = filtered.map(({ p, index }) => {
         const isLiked = likes.includes(p.id); const isGroup = p.kind === "group"; const joins = isGroup ? joinsOf(p.id) : []; const target = Number(p.target || 0); const full = isGroup && target > 0 && joins.length >= target; const closed = isGroup && p.status === "closed"; const dim = isExpired(p) || closed;
         let badgeHtml = "";
         if (isGroup) badgeHtml = `<span class="bg-teal-50 border border-teal-200 text-teal-800 font-bold px-2.5 py-0.5 rounded-full text-[11px] shadow-sm">🛍 共同購入（¥${Number(p.price || 0).toLocaleString()}）</span>`;
+        else if (p.kind === "album") badgeHtml = `<span class="bg-indigo-50 border border-indigo-200 text-indigo-800 font-bold px-2.5 py-0.5 rounded-full text-[11px] shadow-sm">💿 アルバム${p.isSell || p.isBuy ? "（¥" + Number(p.price||0).toLocaleString() + "）" : ""}</span>`;
+        else if (p.kind === "dearlit") badgeHtml = `<span class="bg-rose-50 border border-rose-200 text-rose-800 font-bold px-2.5 py-0.5 rounded-full text-[11px] shadow-sm">🎁 DEARLIT${p.isSell || p.isBuy ? "（¥" + Number(p.price||0).toLocaleString() + "）" : ""}</span>`;
         else if (p.isSell) badgeHtml = `<span class="bg-yellow-50 border border-yellow-300 text-yellow-900 font-bold px-2.5 py-0.5 rounded-full text-[11px] shadow-sm">💰 シリアル売却（¥${Number(p.price || 0).toLocaleString()}）</span>`;
         else if (p.isBuy && p.kind === "serial") badgeHtml = `<span class="bg-yellow-50 border border-yellow-300 text-yellow-900 font-bold px-2.5 py-0.5 rounded-full text-[11px] shadow-sm">💳 シリアル買取（¥${Number(p.price || 0).toLocaleString()}）</span>`;
         else if (p.isBuy) badgeHtml = `<span class="bg-pink-50 border border-pink-200 text-pink-700 font-bold px-2.5 py-0.5 rounded-full text-[11px] shadow-sm">💳 買取希望（¥${Number(p.price || 0).toLocaleString()}）</span>`;
@@ -1184,6 +1452,10 @@
           groupHtml = `<div class="space-y-1.5 relative z-10 bg-white/40 p-2 rounded-2xl border border-white/50 shadow-inner"><div class="flex justify-between text-[11px] text-gray-700 font-bold"><span>👥 参加 ${joins.length} / ${target}人</span><span class="${closed ? 'text-gray-600' : (full ? 'text-green-700' : 'text-teal-700')}">${closed ? "🔒 終了" : (full ? "🎉 満員" : "募集中")}</span></div><div class="w-full h-2 bg-white rounded-full overflow-hidden border border-white/50"><div class="h-2 bg-gradient-to-r from-teal-400 to-teal-500" style="width:${pct}%"></div></div><div class="flex flex-wrap gap-1"><span class="${BUNDLE_CLASS[p.bundle]||BUNDLE_CLASS.ng} text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">${BUNDLE_LABEL[p.bundle]||BUNDLE_LABEL.ng}</span></div></div>`;
         }
 
+        const conditionHtml = p.condition && CONDITION_LABEL[p.condition]
+          ? `<span class="${CONDITION_CLASS[p.condition] || ''} text-[10px] font-bold px-2 py-0.5 rounded-full border shadow-sm">${CONDITION_LABEL[p.condition]}</span>`
+          : "";
+
         const avatarHtml = (p.userPhoto && isJpegData(p.userPhoto))
           ? `<img src="${p.userPhoto}" class="w-5 h-5 rounded-full object-cover border border-white shadow-sm shrink-0" alt="">`
           : "";
@@ -1191,7 +1463,7 @@
         return `
           <div class="liquid-glass p-4 rounded-3xl flex flex-col justify-between space-y-3 ${dim ? 'opacity-60' : ''} transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_40px_rgba(192,132,252,0.3)] group relative overflow-hidden">
             <div class="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent opacity-0 group-hover:opacity-100 transition duration-300 pointer-events-none"></div>
-            <div class="flex items-center justify-between relative z-10">${badgeHtml}<div class="flex items-center space-x-2">${p.deadline ? `<span class="text-[11px] font-bold ${isExpired(p) ? 'text-red-500' : 'text-gray-600'}">期限: ${escapeHtml(p.deadline)}</span>` : ''}<span class="text-pink-500 font-bold text-sm bg-white/70 px-2 py-0.5 rounded-full shadow-sm">${isLiked ? '♥' : '♡'}${p.likesCount ? ` ${p.likesCount}` : ''}</span></div></div>
+            <div class="flex items-center justify-between relative z-10 flex-wrap gap-1">${badgeHtml}<div class="flex items-center space-x-2">${conditionHtml}${p.deadline ? `<span class="text-[11px] font-bold ${isExpired(p) ? 'text-red-500' : 'text-gray-600'}">期限: ${escapeHtml(p.deadline)}</span>` : ''}<span class="text-pink-500 font-bold text-sm bg-white/70 px-2 py-0.5 rounded-full shadow-sm">${isLiked ? '♥' : '♡'}${p.likesCount ? ` ${p.likesCount}` : ''}</span></div></div>
             ${photoHtml}
             <div class="flex items-center space-x-2 relative z-10"><span class="${isGroup ? 'bg-teal-100 text-teal-800' : 'bg-yellow-100 text-yellow-800'} border border-white text-xs font-bold px-2 py-0.5 rounded-full shadow-sm">${isGroup ? '商品' : '譲'}</span> <span class="font-bold text-sm text-gray-900 drop-shadow-sm">${escapeHtml(p.give)}${memberLabel}</span></div>
             ${(!p.isBuy && !isGroup && !p.isSell) ? `<div class="flex items-center space-x-2 relative z-10"><span class="bg-purple-100 border border-white text-illit-darkPurple text-xs font-bold px-2 py-0.5 rounded-full shadow-sm">求</span> <span class="font-bold text-sm text-gray-900 drop-shadow-sm">${escapeHtml(p.want)}</span></div>` : ''}
@@ -1230,8 +1502,18 @@
     window.openDetailModal = function(index) {
       const p = allPosts[index]; if (!p) return;
       currentDetailIndex = index; const isGroup = p.kind === "group", isBuy = !!p.isBuy;
-      document.getElementById("detail-title").innerText = isGroup ? "🛍 共同購入の詳細" : (isBuy ? "💳 買取（購入希望）の詳細" : (p.isSell ? "💰 シリアル売却の詳細" : "募集の詳細"));
-      document.getElementById("detail-give").innerText = p.give; document.getElementById("detail-want").innerText = p.want || "（なし）"; document.getElementById("detail-member").innerText = p.member || "指定なし"; document.getElementById("detail-user").innerText = p.userName;
+      let title = "募集の詳細";
+      if (isGroup) title = "🛍 共同購入の詳細";
+      else if (p.kind === "album") title = "💿 アルバムの詳細";
+      else if (p.kind === "dearlit") title = "🎁 DEARLITの詳細";
+      else if (isBuy) title = "💳 買取（購入希望）の詳細";
+      else if (p.isSell) title = "💰 売却の詳細";
+      document.getElementById("detail-title").innerText = title;
+
+      document.getElementById("detail-give").innerText = p.give;
+      document.getElementById("detail-want").innerText = p.want || "（なし）";
+      document.getElementById("detail-member").innerText = p.member || "指定なし";
+      document.getElementById("detail-user").innerText = p.userName;
       updateDetailLikeUI(p.id);
 
       const avatarEl = document.getElementById("detail-user-avatar");
@@ -1244,9 +1526,21 @@
       }
 
       document.getElementById("detail-give-box").querySelector("span").innerText = isGroup ? "商品" : (isBuy ? "求" : "譲");
-      document.getElementById("detail-want-box").classList.toggle("hidden", isBuy || isGroup || p.isSell); document.getElementById("detail-price-box").classList.toggle("hidden", !(isBuy || isGroup || p.isSell));
+      document.getElementById("detail-want-box").classList.toggle("hidden", isBuy || isGroup || p.isSell);
+      document.getElementById("detail-price-box").classList.toggle("hidden", !(isBuy || isGroup || p.isSell));
       if (isGroup || isBuy || p.isSell) document.getElementById("detail-price").innerText = "￥" + Number(p.price || 0).toLocaleString() + "（PayPay）";
-      const descBox = document.getElementById("detail-desc-box"); if (p.description) { descBox.classList.remove("hidden"); descBox.innerHTML = `💬 ${escapeHtml(p.description)}`; } else { descBox.classList.add("hidden"); }
+
+      const condBox = document.getElementById("detail-condition-box");
+      if (p.condition && CONDITION_LABEL[p.condition]) {
+        condBox.classList.remove("hidden");
+        document.getElementById("detail-condition").innerText = CONDITION_LABEL[p.condition];
+      } else {
+        condBox.classList.add("hidden");
+      }
+
+      const descBox = document.getElementById("detail-desc-box");
+      if (p.description) { descBox.classList.remove("hidden"); descBox.innerHTML = `💬 ${escapeHtml(p.description)}`; }
+      else { descBox.classList.add("hidden"); }
       
       const joins = isGroup ? joinsOf(p.id) : []; const target = Number(p.target || 0); const full = isGroup && target > 0 && joins.length >= target; const closed = isGroup && p.status === "closed"; const joined = !!(isGroup && currentUser && joins.some(j => j.id === currentUser.uid));
       let extra = "";
@@ -1299,6 +1593,8 @@
       document.getElementById("edit-price-container").classList.toggle("hidden", !(!!p.isBuy || p.kind === "group" || !!p.isSell));
       document.getElementById("edit-deadline-container").classList.toggle("hidden", !(p.kind === "serial" || p.kind === "group"));
       document.getElementById("edit-group-container").classList.toggle("hidden", p.kind !== "group");
+      document.getElementById("edit-condition-container").classList.toggle("hidden", !needsCondition(p.kind));
+      if (p.condition) document.getElementById("edit-condition").value = p.condition;
       if (p.kind === "group") { document.getElementById("edit-target").value = p.target || ""; document.getElementById("edit-bundle").value = p.bundle || "ok"; document.getElementById("edit-bundle-note").value = p.bundleNote || ""; onEditBundleChange(); }
       document.getElementById("edit-modal").classList.remove("hidden");
     };
@@ -1307,6 +1603,10 @@
       const p = allPosts.find(x => x.id === editingPostId); if (!p || !currentUser || (p.userId !== currentUser.uid && !isAdmin())) return;
       const data = { give: document.getElementById("edit-give").value.trim(), want: (!!p.isBuy || p.kind === "group" || !!p.isSell) ? "" : document.getElementById("edit-want").value.trim(), price: (!!p.isBuy || p.kind === "group" || !!p.isSell) ? Number(document.getElementById("edit-price").value) : 0, description: document.getElementById("edit-desc").value.trim().slice(0, 200), editedAt: serverTimestamp() };
       if (!data.give) return alert("内容を入力してください。");
+      if (needsCondition(p.kind)) {
+        data.condition = document.getElementById("edit-condition").value;
+        if (!data.condition) return alert("状態を選択してください。");
+      }
       if (p.kind === "serial" || p.kind === "group") data.deadline = document.getElementById("edit-deadline").value;
       if (p.kind === "group") { data.target = Number(document.getElementById("edit-target").value); data.bundle = document.getElementById("edit-bundle").value; data.bundleNote = data.bundle === "ng" ? "" : document.getElementById("edit-bundle-note").value.trim().slice(0, 100); }
       try { await updateDoc(doc(db, "posts", p.id), data); alert("更新しました！"); closeEditModal(); } catch(e) { alert("更新失敗"); }
@@ -1317,7 +1617,7 @@
       if (p.kind === "group") return joinGroup(index);
       if (!(await checkDeviceLock())) return;
       try {
-        const ref = await addDoc(collection(db, "trades"), { kind: p.kind, isBuy: !!p.isBuy, isSell: !!p.isSell, postId: p.id, postGive: p.give, postWant: p.want || "", postPrice: p.price || 0, postMember: p.member || "指定なし", postDeadline: p.deadline || "", postPhotoCount: p.photoCount || 0, ownerId: p.userId, ownerName: p.userName, applicantId: currentUser.uid, applicantName: getMyDisplayName(), participants: [p.userId, currentUser.uid], status: "negotiating", agreed: {}, shipped: {}, received: {}, disputed: {}, lastMessageAt: serverTimestamp(), lastSenderId: currentUser.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+        const ref = await addDoc(collection(db, "trades"), { kind: p.kind, isBuy: !!p.isBuy, isSell: !!p.isSell, postId: p.id, postGive: p.give, postWant: p.want || "", postPrice: p.price || 0, postMember: p.member || "指定なし", postDeadline: p.deadline || "", postPhotoCount: p.photoCount || 0, postCondition: p.condition || "", ownerId: p.userId, ownerName: p.userName, applicantId: currentUser.uid, applicantName: getMyDisplayName(), participants: [p.userId, currentUser.uid], status: "negotiating", agreed: {}, shipped: {}, received: {}, disputed: {}, lastMessageAt: serverTimestamp(), lastSenderId: currentUser.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
         closeDetailModal(); openTrade(ref.id);
       } catch(e) { alert("失敗しました。"); }
     };
@@ -1364,15 +1664,16 @@
         const lastAct = t => Math.max(tsValue(t.updatedAt), tsMillis(t.lastMessageAt));
         myTrades.sort((a, b) => lastAct(b) - lastAct(a));
 
-        // トースト通知
         const unread = myTrades.filter(t => isUnread(t)).length;
         const ownerNegotiating = myTrades.filter(t => t.ownerId === currentUser.uid && t.status === "negotiating").length;
 
         if (prevUnreadCount >= 0 && unread > prevUnreadCount) {
           showToast("💬 新しいメッセージがあります！", "info");
+          addNotification("新しいメッセージが届きました", "info");
         }
         if (prevTradeCountAsOwner >= 0 && ownerNegotiating > prevTradeCountAsOwner) {
           showToast("📥 新しい申し込みがありました！", "success");
+          addNotification("あなたの出品に新しい申し込みがありました", "success");
         }
         prevUnreadCount = unread;
         prevTradeCountAsOwner = ownerNegotiating;
@@ -1389,7 +1690,6 @@
       if (b2) { b2.innerText = n; b2.className = "absolute top-1 right-2.5 text-white text-[8px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center border border-white " + (unread > 0 ? "bg-pink-500" : "bg-gray-400") + (n === 0 ? " hidden" : ""); }
     }
 
-    // 🔴 Glass風 取引リスト
     window.openTradesModal = function() { renderTradesList(); document.getElementById("trades-modal").classList.remove("hidden"); };
     window.closeTradesModal = function() { document.getElementById("trades-modal").classList.add("hidden"); };
     window.renderTradesList = function() {
@@ -1482,7 +1782,6 @@
       const btn = "w-full font-bold py-3 rounded-xl text-sm transition shadow-md border border-white/40 ", primary = btn + "bg-gradient-to-r from-illit-purple to-illit-accent text-white hover:opacity-90", pinkBtn = btn + "bg-gradient-to-r from-pink-400 to-pink-500 text-white hover:opacity-90";
       let html = "";
 
-      // 👇 5日未発送のキャンセル機能ロジック
       const updatedTime = t.updatedAt && t.updatedAt.toMillis ? t.updatedAt.toMillis() : Date.now();
       const daysSinceUpdate = (Date.now() - updatedTime) / (1000 * 60 * 60 * 24);
       const myS = flag(t, "shipped", uid), otherS = flag(t, "shipped", otherId);
@@ -1504,7 +1803,6 @@
       setTimeout(() => { const topBox = document.getElementById("room-top-box"), actionsBox = document.getElementById("room-actions"); if (topBox && actionsBox && t.status !== "completed" && t.status !== "cancelled") topBox.scrollTo({ top: actionsBox.offsetTop, behavior: "smooth" }); }, 300);
     }
 
-    // 🔴 Glass風 チャットバブル（Liquid Glassデザイン）
     window.renderMessages = function() {
       const el = document.getElementById("room-messages"); if (!currentUser) return;
       if (roomMessages.length === 0) { el.innerHTML = '<p class="text-xs text-gray-600 text-center py-6 font-bold bg-white/30 rounded-xl p-4 shadow-inner">メッセージを送信してみましょう 👋</p>'; return; }
