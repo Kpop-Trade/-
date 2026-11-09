@@ -154,8 +154,9 @@
         <p class="text-xs text-white/90 mt-0.5 drop-shadow-sm">手数料完全無料！ファン同士でスムーズに取引</p>
       </div>
       <div class="flex space-x-2">
-        <button onclick="openPostModal('exchange')" class="flex-1 bg-white/90 text-illit-darkPurple font-bold text-xs md:text-sm px-3 py-3 rounded-2xl shadow hover:bg-white hover:scale-105 active:scale-95 transition-all border border-white">🃏 トレカ交換</button>
-        <button onclick="openPostModal('buy')" class="flex-1 bg-pink-100/90 text-pink-700 font-bold text-xs md:text-sm px-3 py-3 rounded-2xl shadow hover:bg-pink-50 hover:scale-105 active:scale-95 transition-all border border-white">💳 トレカ買取</button>
+        <button onclick="openPostModal('exchange')" class="flex-1 bg-white/90 text-illit-darkPurple font-bold text-xs md:text-sm px-2 py-3 rounded-2xl shadow hover:bg-white hover:scale-105 active:scale-95 transition-all border border-white">🃏 トレカ交換</button>
+        <button onclick="openPostModal('buy')" class="flex-1 bg-pink-100/90 text-pink-700 font-bold text-xs md:text-sm px-2 py-3 rounded-2xl shadow hover:bg-pink-50 hover:scale-105 active:scale-95 transition-all border border-white">💳 トレカ買取</button>
+        <button onclick="openPostModal('card_sell')" class="flex-1 bg-purple-100/90 text-purple-800 font-bold text-xs md:text-sm px-2 py-3 rounded-2xl shadow hover:bg-purple-50 hover:scale-105 active:scale-95 transition-all border border-white">💰 トレカ売却</button>
       </div>
       <div class="flex space-x-2">
         <button onclick="openPostModal('album_sell')" class="flex-1 bg-indigo-50/90 text-indigo-900 font-bold text-xs md:text-sm px-3 py-3 rounded-2xl shadow hover:bg-white hover:scale-105 active:scale-95 transition-all border border-white">💿 アルバム売却</button>
@@ -801,6 +802,7 @@
       { key: "all", label: "すべて" },
       { key: "card_exchange", label: "🃏 トレカ交換" },
       { key: "card_buy", label: "💳 トレカ買取" },
+      { key: "card_sell", label: "💰 トレカ売却" },
       { key: "album", label: "💿 アルバム" },
       { key: "dearlit", label: "🎁 DEARLIT" },
       { key: "serial_exchange", label: "🎫 シリアル➡求" },
@@ -1650,6 +1652,7 @@
       const isSell = mode.endsWith("_sell") || mode === "buy";
       let title = "🃏 トレカ交換の出品";
       if (mode === "buy") title = "💳 トレカの買取（購入希望）";
+      else if (mode === "card_sell") title = "💰 トレカ売却";
       else if (mode === "album_sell") title = "💿 アルバム売却";
       else if (mode === "dearlit_sell") title = "🎁 DEARLIT売却";
       document.getElementById("post-modal-title").innerText = title;
@@ -1821,7 +1824,7 @@
       if (p.kind === "group") return "group_buy";
       if (p.kind === "album") return "album";
       if (p.kind === "dearlit") return "dearlit";
-      if (p.isSell) return "serial_sell";
+      if (p.isSell) return p.kind === "serial" ? "serial_sell" : "card_sell";
       if (p.isBuy) return p.kind === "serial" ? "serial_buy" : "card_buy";
       if (p.kind === "serial") return "serial_exchange";
       return "card_exchange";
@@ -1859,7 +1862,8 @@
         if (isGroup) badgeHtml = `<span class="bg-teal-50 border border-teal-200 text-teal-800 font-medium px-2.5 py-0.5 rounded-full text-[11px] shadow-sm">🛍 共同購入（¥${Number(p.price || 0).toLocaleString()}）</span>`;
         else if (p.kind === "album") badgeHtml = `<span class="bg-indigo-50 border border-indigo-200 text-indigo-800 font-medium px-2.5 py-0.5 rounded-full text-[11px] shadow-sm">💿 アルバム${p.isSell || p.isBuy ? "（¥" + Number(p.price||0).toLocaleString() + "）" : ""}</span>`;
         else if (p.kind === "dearlit") badgeHtml = `<span class="bg-rose-50 border border-rose-200 text-rose-800 font-medium px-2.5 py-0.5 rounded-full text-[11px] shadow-sm">🎁 DEARLIT${p.isSell || p.isBuy ? "（¥" + Number(p.price||0).toLocaleString() + "）" : ""}</span>`;
-        else if (p.isSell) badgeHtml = `<span class="bg-yellow-50 border border-yellow-300 text-yellow-900 font-medium px-2.5 py-0.5 rounded-full text-[11px] shadow-sm">💰 シリアル売却（¥${Number(p.price || 0).toLocaleString()}）</span>`;
+        else if (p.isSell && p.kind === "serial") badgeHtml = `<span class="bg-yellow-50 border border-yellow-300 text-yellow-900 font-medium px-2.5 py-0.5 rounded-full text-[11px] shadow-sm">💰 シリアル売却（¥${Number(p.price || 0).toLocaleString()}）</span>`;
+        else if (p.isSell) badgeHtml = `<span class="bg-purple-50 border border-purple-200 text-purple-800 font-medium px-2.5 py-0.5 rounded-full text-[11px] shadow-sm">💰 トレカ売却（¥${Number(p.price || 0).toLocaleString()}）</span>`;
         else if (p.isBuy && p.kind === "serial") badgeHtml = `<span class="bg-yellow-50 border border-yellow-300 text-yellow-900 font-medium px-2.5 py-0.5 rounded-full text-[11px] shadow-sm">💳 シリアル買取（¥${Number(p.price || 0).toLocaleString()}）</span>`;
         else if (p.isBuy) badgeHtml = `<span class="bg-pink-50 border border-pink-200 text-pink-700 font-medium px-2.5 py-0.5 rounded-full text-[11px] shadow-sm">💳 買取希望（¥${Number(p.price || 0).toLocaleString()}）</span>`;
         else if (p.kind === "serial") badgeHtml = `<span class="bg-yellow-50 border border-yellow-300 text-yellow-900 font-medium px-2.5 py-0.5 rounded-full text-[11px] shadow-sm">🎫 シリアルでトレカ求む</span>`;
