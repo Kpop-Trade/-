@@ -1,3 +1,13 @@
+利用規約への同意直後に、添付画像の手順（iOS / Safari / 各種ブラウザでのホーム画面追加・アプリ登録方法）を解説する親切なポップアップ案内を表示するように改修しました。
+既存のデザイン（liquid-glass・グラデーション・丸みのあるボタン）に合わせ、①「≡」メニュー → ②「共有」→ ③「∨（表示を増やす）」→ ④「ホーム画面に追加」の4ステップが図解つきで分かりやすく伝わるモーダルを追加しています。
+変更点
+ * アプリ登録（ホーム画面追加）案内モーダルの追加 (#pwa-modal)
+   * 添付画像のスクショ手順（1. 「≡」をタップ ➔ 2. 「共有」➔ 3. 「∨ (表示を増やす)」➔ 4. 「ホーム画面に追加」）を視覚的に分かりやすいステップカード形式で組み込みました。
+ * 利用規約同意時の連携 (agreeTerms)
+   * 「利用規約に同意して利用する」をタップした直後、規約モーダルが閉じて自動的にこの「アプリ登録案内」が表示されます。
+ * マイページメニューへの導線追加
+   * 初回同意時だけでなく、いつでもマイページから「📱 アプリ登録（ホーム画面追加）」のやり方を確認できるようにボタンを追加しました。
+以下が修正済みの全コードです。そのまま置き換えてご使用いただけます。
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -233,6 +243,69 @@
     <span class="w-full mt-2 block">ILLIT Trade（ファン有志による非公式サービス）</span>
   </footer>
 
+  <!-- アプリ登録（ホーム画面に追加）案内モーダル -->
+  <div id="pwa-modal" class="fixed inset-0 modal-backdrop hidden z-[75] flex items-center justify-center p-4">
+    <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[92vh] flex flex-col">
+      <div class="flex justify-between items-center border-b border-purple-200/50 pb-3 shrink-0">
+        <h3 class="font-bold text-base text-gray-800 flex items-center gap-2">📱 アプリとして追加</h3>
+        <button onclick="closePwaGuideModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
+      </div>
+      
+      <div class="flex-1 overflow-y-auto space-y-4 text-xs text-gray-700 leading-relaxed">
+        <div class="bg-gradient-to-r from-illit-purple/20 to-illit-pink/20 p-3.5 rounded-2xl border border-white text-center">
+          <p class="font-bold text-illit-darkPurple text-sm">ホーム画面に追加してアプリ化しよう！</p>
+          <p class="text-[11px] text-gray-600 mt-1">スマホのホーム画面に追加すると、次回からアプリ感覚ですぐ起動・取引できるようになります。</p>
+        </div>
+
+        <div class="space-y-3 font-medium">
+          <div class="font-bold text-gray-800 flex items-center gap-1.5 text-xs">
+            <span>iPhone / Safari (LINE内ブラウザ等) の追加手順</span>
+          </div>
+          
+          <div class="bg-white/60 p-3.5 rounded-2xl border border-white space-y-3 shadow-sm">
+            <div class="flex items-start gap-2.5">
+              <span class="bg-illit-purple text-white w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5 shadow-sm">1</span>
+              <div>
+                <p class="font-bold text-gray-800">画面下のメニューをタップ</p>
+                <p class="text-[11px] text-gray-500 mt-0.5">画面最下部の<b>「≡」ボタン</b>（またはSafariの「共有アイコン ⎋」）をタップします。</p>
+              </div>
+            </div>
+
+            <div class="flex items-start gap-2.5 pt-2.5 border-t border-purple-100">
+              <span class="bg-illit-purple text-white w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5 shadow-sm">2</span>
+              <div>
+                <p class="font-bold text-gray-800">「共有」を選択</p>
+                <p class="text-[11px] text-gray-500 mt-0.5">出てきたメニューから<b>「共有」</b>をタップします。</p>
+              </div>
+            </div>
+
+            <div class="flex items-start gap-2.5 pt-2.5 border-t border-purple-100">
+              <span class="bg-illit-purple text-white w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5 shadow-sm">3</span>
+              <div>
+                <p class="font-bold text-gray-800">「表示を増やす ∨」をタップ</p>
+                <p class="text-[11px] text-gray-500 mt-0.5">下部に表示されるシートの丸いアイコン列右端にある<b>「∨」</b>をタップします。</p>
+              </div>
+            </div>
+
+            <div class="flex items-start gap-2.5 pt-2.5 border-t border-purple-100">
+              <span class="bg-illit-purple text-white w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5 shadow-sm">4</span>
+              <div>
+                <p class="font-bold text-gray-800">「ホーム画面に追加 ➕」を選択</p>
+                <p class="text-[11px] text-gray-500 mt-0.5">リストの中にある<b>「ホーム画面に追加」</b>をタップして右上「追加」で完了です！</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-purple-50/60 p-3 rounded-xl border border-purple-100 text-[11px] text-purple-900 leading-normal">
+            💡 <b>Android (Chrome) の場合:</b> 画面右上の「⋮」メニュー ➔「アプリをインストール」または「ホーム画面に追加」を選択してください。
+          </div>
+        </div>
+      </div>
+
+      <button onclick="closePwaGuideModal()" class="w-full bg-gradient-to-r from-illit-purple to-illit-accent text-white font-bold py-3 rounded-full hover:opacity-90 transition text-sm shadow-md border border-white/30 shrink-0">準備できた / 閉じる</button>
+    </div>
+  </div>
+
   <!-- 絞り込みモーダル -->
   <div id="filter-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-end md:items-center justify-center p-0 md:p-4">
     <div class="liquid-glass-heavy w-full max-w-md rounded-t-[2rem] md:rounded-[2rem] p-5 space-y-4 shadow-2xl max-h-[85vh] flex flex-col">
@@ -382,6 +455,7 @@
         </div>
       </div>
       <div class="space-y-2">
+        <button onclick="closeMyPage(); openPwaGuideModal();" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">📱 アプリ登録（ホーム画面追加）</span><span class="text-gray-400">›</span></button>
         <button onclick="closeMyPage(); openProfileModal('basic')" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">✏️ プロフィール・写真</span><span class="text-gray-400">›</span></button>
         <button onclick="closeMyPage(); openProfileModal('address')" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">📦 住所・配送先</span><span class="text-gray-400">›</span></button>
         <button onclick="closeMyPage(); openProfileModal('paypay')" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">💳 PayPay ID</span><span class="text-gray-400">›</span></button>
@@ -440,7 +514,7 @@
     </div>
   </div>
 
-  <!-- 管理者パネル (強化版) -->
+  <!-- 管理者パネル -->
   <div id="admin-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
     <div class="liquid-glass-heavy w-full max-w-2xl rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[90vh] flex flex-col">
       <div class="flex justify-between items-center border-b border-purple-200/50 pb-3 shrink-0">
@@ -448,7 +522,6 @@
         <button onclick="closeAdminModal()" class="text-gray-400 hover:text-gray-600 font-bold text-2xl leading-none">&times;</button>
       </div>
       
-      <!-- タブメニュー -->
       <div class="flex border-b border-purple-200/50 text-[11px] md:text-xs font-bold shrink-0 overflow-x-auto hide-scrollbar gap-1">
         <button onclick="switchAdminTab('stats')" id="admin-tab-stats" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">📊 統計</button>
         <button onclick="switchAdminTab('reports')" id="admin-tab-reports" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">🚨 通報</button>
@@ -459,10 +532,7 @@
         <button onclick="switchAdminTab('broadcast')" id="admin-tab-broadcast" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">📢 一斉通知</button>
       </div>
 
-      <!-- サブコントロール (ユーザー検索など用) -->
       <div id="admin-controls" class="hidden shrink-0 mt-2"></div>
-
-      <!-- コンテンツエリア -->
       <div id="admin-content" class="flex-1 overflow-y-auto space-y-3 text-sm bg-white/40 p-3 rounded-xl border border-white/50 shadow-inner"></div>
       
       <div class="pt-2 border-t border-purple-200/50 shrink-0">
@@ -817,8 +887,7 @@
     const db = getFirestore(app);
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: "select_account" });
-    const VAPID_KEY = "Firebaseコンソールで生成した公開キー（Bから始まる長い文字列）";
-
+    const VAPID_KEY = "ここにVAPIDキーを貼る";
 
     const ADMIN_UIDS = ["Ay6VCS8HTgM3RqjDYZ0wKdHrSKz1", "GvVhAmT56GZjsWrl1YRaStB81im1"];
     function isAdmin() { return currentUser && ADMIN_UIDS.includes(currentUser.uid); }
@@ -922,6 +991,13 @@
       badge.innerText = unread > 99 ? "99+" : unread;
       badge.classList.toggle("hidden", unread === 0);
     }
+
+    window.openPwaGuideModal = function() {
+      document.getElementById("pwa-modal").classList.remove("hidden");
+    };
+    window.closePwaGuideModal = function() {
+      document.getElementById("pwa-modal").classList.add("hidden");
+    };
 
     window.openNotificationsModal = function() {
       if (!currentUser) return alert("ログインが必要です。");
@@ -1618,6 +1694,9 @@
     }
     async function compressImage(file, opt) { return compressFromImage(await loadImageFromFile(file), opt); }
 
+    // ==============================================
+    // プッシュ通知関連 (エラーハンドリング強化版)
+    // ==============================================
     function pushStorageKey() { return "illit_push_" + currentUser.uid; }
     function updatePushUI() {
       const onBtn = document.getElementById("push-on-btn"), offBtn = document.getElementById("push-off-btn"), status = document.getElementById("push-status");
@@ -1626,25 +1705,71 @@
       onBtn.classList.toggle("hidden", on); offBtn.classList.toggle("hidden", !on);
       status.innerText = on ? "この端末：通知オン ✅" : "この端末：通知オフ";
     }
+
     async function saveToken() {
-      const reg = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
-      const token = await getToken(getMessaging(app), { vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
-      if (!token) throw new Error("トークンなし");
-      await setDoc(doc(db, "users", currentUser.uid, "tokens", token), { token, ua: navigator.userAgent.slice(0, 120), updatedAt: serverTimestamp() });
+      let reg;
+      try {
+        reg = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
+      } catch (swErr) {
+        console.error("Service Worker 登録エラー:", swErr);
+        throw new Error("「/firebase-messaging-sw.js」が読み込めません。ルート直下に配置されているか確認してください。");
+      }
+
+      const options = { serviceWorkerRegistration: reg };
+      if (VAPID_KEY && VAPID_KEY !== "ここにVAPIDキーを貼る") {
+        options.vapidKey = VAPID_KEY;
+      }
+
+      const token = await getToken(getMessaging(app), options);
+      if (!token) throw new Error("通知トークンの取得に失敗しました。");
+
+      await setDoc(doc(db, "users", currentUser.uid, "tokens", token), { 
+        token, 
+        ua: navigator.userAgent.slice(0, 120), 
+        updatedAt: serverTimestamp() 
+      });
       localStorage.setItem(pushStorageKey(), token);
     }
+
     window.enablePush = async function() {
-      if (!currentUser || !("Notification" in window) || !("serviceWorker" in navigator)) return alert("非対応ブラウザ");
-      if (await Notification.requestPermission() !== "granted") return alert("通知許可が必要です");
-      try { await saveToken(); updatePushUI(); alert("通知をオンにしました！"); } catch(e){ alert("失敗しました"); }
+      if (!currentUser || !("Notification" in window) || !("serviceWorker" in navigator)) {
+        return alert("お使いのブラウザはプッシュ通知に対応していません。");
+      }
+
+      if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+        return alert("プッシュ通知はHTTPS通信（またはlocalhost）環境でのみ動作します。");
+      }
+
+      const perm = await Notification.requestPermission();
+      if (perm !== "granted") {
+        return alert("通知権限が拒否されています。ブラウザの設定から通知を許可してください。");
+      }
+
+      try { 
+        await saveToken(); 
+        updatePushUI(); 
+        showToast("通知をオンにしました！", "success");
+      } catch(e){ 
+        console.error("プッシュ通知設定エラー:", e);
+        alert("設定失敗: " + (e.message || e)); 
+      }
     };
+
     async function removePushToken() {
       if (!currentUser) return;
       const token = localStorage.getItem(pushStorageKey());
-      try { if (token) await deleteDoc(doc(db, "users", currentUser.uid, "tokens", token)); if ("serviceWorker" in navigator && "Notification" in window) await deleteToken(getMessaging(app)); } catch(e){}
+      try { 
+        if (token) await deleteDoc(doc(db, "users", currentUser.uid, "tokens", token)); 
+        if ("serviceWorker" in navigator && "Notification" in window) await deleteToken(getMessaging(app)); 
+      } catch(e){}
       localStorage.removeItem(pushStorageKey());
     }
-    window.disablePush = async function() { await removePushToken(); updatePushUI(); alert("通知をオフにしました。"); };
+
+    window.disablePush = async function() { 
+      await removePushToken(); 
+      updatePushUI(); 
+      showToast("通知をオフにしました。", "info");
+    };
 
     window.loginWithGoogle = function() { signInWithPopup(auth, provider).catch(e => alert("ログインエラー: " + e.message)); };
     window.logout = async function() { closeRoom(); await removePushToken(); signOut(auth); };
@@ -1994,7 +2119,6 @@
       if (!currentUser) actions.innerHTML = `<button onclick="loginWithGoogle()" class="w-full bg-gradient-to-r from-illit-purple to-illit-accent text-white font-medium py-3 rounded-full shadow-md border border-white/30">ログインして申込</button>`;
       else if (p.userId === currentUser.uid) actions.innerHTML = `${isGroup ? `<button onclick="toggleGroupClosed(${index})" class="w-full bg-teal-50 text-teal-700 border border-teal-200 font-medium py-3 rounded-full hover:bg-teal-100 transition shadow-sm mb-2">${closed ? '🔓 募集再開' : '🔒 募集締切'}</button>` : ''}<button onclick="openEditPost(${index})" class="w-full bg-white/80 border border-white text-illit-darkPurple font-medium py-3 rounded-full hover:bg-white transition shadow-sm">✏️ 編集</button><button onclick="deletePost(${index})" class="w-full bg-red-50 text-red-500 font-medium py-3 rounded-full border border-red-200 hover:bg-red-100 transition mt-2 shadow-sm">削除</button>`;
       else {
-        // すでに有効な（キャンセルされていない）取引が存在するかチェック
         const existingTrade = myTrades.find(t => t.postId === p.id && t.status !== "cancelled");
         if (existingTrade) {
           actions.innerHTML = `<button onclick="openTrade('${existingTrade.id}')" class="w-full bg-gradient-to-r from-illit-purple to-illit-accent text-white font-medium py-3 rounded-full shadow-md border border-white/30">💬 取引ルームを開く</button>`;
@@ -2063,7 +2187,6 @@
       if (p.kind === "group") return joinGroup(index);
       if (!(await checkDeviceLock())) return;
 
-      // すでに有効な取引が起きていないか二重チェック
       const existing = myTrades.find(t => t.postId === p.id && t.status !== "cancelled");
       if (existing) {
         alert("すでにこの出品に対する取引ルームが存在します。");
@@ -2451,12 +2574,17 @@
     window.closeTerms = function() { if (hasAgreedLocally()) document.getElementById("terms-modal").classList.add("hidden"); };
     window.onTermsCheck = function() { document.getElementById("terms-agree-btn").disabled = !document.getElementById("terms-check").checked; };
     window.declineTerms = function() { alert("利用規約に同意いただけない場合は、本サービスをご利用いただけません。"); };
+    
     window.agreeTerms = async function() {
       if (!document.getElementById("terms-check").checked) return;
       try { localStorage.setItem(TERMS_KEY, TERMS_VERSION); } catch(e){}
       document.getElementById("terms-modal").classList.add("hidden");
       if (currentUser) try { await saveUserData({ terms: { version: TERMS_VERSION, agreedAt: serverTimestamp() } }); } catch(e){}
+      
+      // 利用規約に同意後、すぐアプリ登録（ホーム画面追加）案内を表示
+      openPwaGuideModal();
     };
+
     function syncTermsRecord(d) {
       if (!currentUser) return; const recorded = d && d.terms && d.terms.version === TERMS_VERSION;
       if (recorded && !hasAgreedLocally()) { try { localStorage.setItem(TERMS_KEY, TERMS_VERSION); } catch(e){} document.getElementById("terms-modal").classList.add("hidden"); }
@@ -2468,3 +2596,4 @@
   </script>
 </body>
 </html>
+
