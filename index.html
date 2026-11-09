@@ -108,7 +108,6 @@
         <div id="user-profile" class="hidden flex items-center space-x-2">
           <button id="admin-panel-btn" onclick="openAdminModal()" class="hidden bg-red-100/80 text-red-700 text-xs font-bold px-2.5 py-1.5 rounded-full hover:bg-red-200 transition" title="管理者パネル">👑</button>
           
-          <!-- 通知一覧ボタン -->
           <button onclick="openNotificationsModal()" class="relative bg-white/70 border border-white text-illit-darkPurple text-xs font-bold w-9 h-9 rounded-full flex items-center justify-center hover:bg-white transition shadow-sm" title="通知">
             🔔
             <span id="notif-badge" class="hidden absolute -top-1 -right-1 bg-pink-500 text-white text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 border border-white">0</span>
@@ -144,7 +143,7 @@
       </div>
     </section>
 
-    <!-- 出品メニュー -->
+    <!-- 出品メニュー（アルバム交換・DEARLIT交換削除済み） -->
     <section id="post-menu-section" class="hidden bg-gradient-to-r from-illit-accent/70 to-illit-pink/70 backdrop-blur-xl border border-white/50 p-4 md:p-6 rounded-3xl text-white shadow-xl space-y-4">
       <div>
         <h3 class="font-bold text-base md:text-lg drop-shadow-md">トレード・買取・共同購入に出す</h3>
@@ -155,12 +154,8 @@
         <button onclick="openPostModal('buy')" class="flex-1 bg-pink-100/90 text-pink-700 font-bold text-xs md:text-sm px-3 py-3 rounded-2xl shadow hover:bg-pink-50 hover:scale-105 active:scale-95 transition-all border border-white">💳 トレカ買取</button>
       </div>
       <div class="flex space-x-2">
-        <button onclick="openPostModal('album_exchange')" class="flex-1 bg-indigo-100/90 text-indigo-800 font-bold text-xs md:text-sm px-3 py-3 rounded-2xl shadow hover:bg-indigo-50 hover:scale-105 active:scale-95 transition-all border border-white">💿 アルバム交換</button>
         <button onclick="openPostModal('album_sell')" class="flex-1 bg-indigo-50/90 text-indigo-900 font-bold text-xs md:text-sm px-3 py-3 rounded-2xl shadow hover:bg-white hover:scale-105 active:scale-95 transition-all border border-white">💿 アルバム売却</button>
-      </div>
-      <div class="flex space-x-2">
-        <button onclick="openPostModal('dearlit_exchange')" class="flex-1 bg-rose-100/90 text-rose-800 font-bold text-xs md:text-sm px-3 py-3 rounded-2xl shadow hover:bg-rose-50 hover:scale-105 active:scale-95 transition-all border border-white">🎁 DEARLIT交換</button>
-        <button onclick="openPostModal('dearlit_sell')" class="flex-1 bg-rose-50/90 text-rose-900 font-bold text-xs md:text-sm px-3 py-3 rounded-2xl shadow hover:bg-white hover:scale-105 active:scale-95 transition-all border border-white">🎁 DEARLIT売却</button>
+        <button onclick="openPostModal('dearlit_sell')" class="flex-1 bg-rose-100/90 text-rose-800 font-bold text-xs md:text-sm px-3 py-3 rounded-2xl shadow hover:bg-rose-50 hover:scale-105 active:scale-95 transition-all border border-white">🎁 DEARLIT売却</button>
       </div>
       <div class="flex space-x-2">
         <button onclick="openSerialPostModal('exchange')" class="flex-1 bg-yellow-300/90 text-yellow-900 font-bold text-xs md:text-sm px-3 py-3 rounded-2xl shadow hover:bg-yellow-200 hover:scale-105 active:scale-95 transition-all border border-white">🎫 シリアル➡トレカ</button>
@@ -231,7 +226,6 @@
         <button onclick="closeMyPage()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
       </div>
 
-      <!-- プロフィール概要 -->
       <div class="flex items-center space-x-4 bg-white/40 rounded-2xl p-4 border border-white/60">
         <img id="mypage-avatar" src="" alt="" class="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md hidden">
         <div id="mypage-avatar-placeholder" class="w-16 h-16 rounded-full bg-white/60 border border-white flex items-center justify-center text-2xl">👤</div>
@@ -351,7 +345,7 @@
     </div>
   </div>
 
-  <!-- プロフィール・設定モーダル（タブ分岐） -->
+  <!-- プロフィール・設定モーダル -->
   <div id="profile-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
     <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b border-purple-200/50 pb-3">
@@ -359,7 +353,6 @@
         <button onclick="closeProfileModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
       </div>
 
-      <!-- 基本情報 -->
       <div id="profile-section-basic" class="space-y-3 text-xs md:text-sm hidden">
         <div>
           <label class="block font-bold text-gray-700 mb-1">サイト内ニックネーム</label>
@@ -378,7 +371,6 @@
         </div>
       </div>
 
-      <!-- 住所 -->
       <div id="profile-section-address" class="space-y-3 text-xs md:text-sm hidden">
         <div><label class="block font-bold text-gray-700 mb-1">お名前（郵送時の宛名）</label><input type="text" id="profile-name" maxlength="50" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
         <div><label class="block font-bold text-gray-700 mb-1">郵便番号</label><input type="text" id="profile-zip" maxlength="10" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
@@ -387,7 +379,6 @@
         <div><label class="block font-bold text-gray-700 mb-1">電話番号（任意・伝票用）</label><input type="text" id="profile-phone" maxlength="20" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
       </div>
 
-      <!-- PayPay -->
       <div id="profile-section-paypay" class="space-y-3 text-xs md:text-sm hidden">
         <div>
           <label class="block font-bold text-gray-700 mb-1">💳 PayPay ID（受取用）</label>
@@ -396,7 +387,6 @@
         </div>
       </div>
 
-      <!-- プッシュ -->
       <div id="profile-section-push" class="space-y-3 text-xs md:text-sm hidden">
         <div>
           <label class="block font-bold text-gray-700 mb-1">🔔 プッシュ通知</label>
@@ -406,7 +396,6 @@
         </div>
       </div>
 
-      <!-- ブロック -->
       <div id="profile-section-block" class="space-y-3 text-xs md:text-sm hidden">
         <div>
           <label class="block font-bold text-gray-700 mb-1">🚫 ブロック管理</label>
@@ -453,7 +442,6 @@
           <label class="block font-bold text-gray-700 mb-1">希望価格（円・PayPay送金）</label>
           <input type="number" id="input-price" min="1" max="100000" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800">
         </div>
-        <!-- 状態（必須） -->
         <div id="condition-container">
           <label class="block font-bold text-gray-700 mb-1">商品の状態 <span class="text-pink-600">必須</span></label>
           <select id="input-condition" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800">
@@ -778,7 +766,6 @@
     function joinsOf(postId) { return groupJoins[postId] || []; }
     function needsCondition(kind) { return kind === "card" || kind === "album" || kind === "dearlit"; }
 
-    // ===== トースト & 通知 =====
     function showToast(message, type = "info") {
       const container = document.getElementById("toast-container");
       if (!container) return;
@@ -853,7 +840,6 @@
       renderNotificationsList();
     };
 
-    // ===== マイページ =====
     window.openMyPage = function() {
       if (!currentUser) return alert("ログインが必要です。");
       const nameEl = document.getElementById("mypage-name");
@@ -1061,7 +1047,6 @@
       btn.querySelector("span").innerText = liked ? "♥" : "♡";
     }
 
-    // プロフィール（セクション分岐）
     window.openProfileModal = function(section = "basic") {
       if (!currentUser) return;
       profileSection = section;
@@ -1228,7 +1213,7 @@
       subscribePosts(); subscribeJoins();
     });
 
-    // ===== 出品モーダル（トレカ / アルバム / DEARLIT） =====
+    // ===== 出品モーダル（トレカ / アルバム売却 / DEARLIT売却） =====
     window.openPostModal = async function(mode) {
       if (!currentUser) return alert("ログインが必要です。");
       if (!(await checkDeviceLock())) return;
@@ -1241,9 +1226,7 @@
 
       let title = "🃏 トレカ交換の出品";
       if (mode === "buy") title = "💳 トレカの買取（購入希望）";
-      else if (mode === "album_exchange") title = "💿 アルバム交換";
       else if (mode === "album_sell") title = "💿 アルバム売却";
-      else if (mode === "dearlit_exchange") title = "🎁 DEARLIT交換";
       else if (mode === "dearlit_sell") title = "🎁 DEARLIT売却";
 
       document.getElementById("post-modal-title").innerText = title;
@@ -1322,7 +1305,6 @@
       } catch(e) { alert("失敗しました"); } finally { submittingPost = false; btn.disabled = false; btn.innerText = "出品する"; }
     };
 
-    // シリアル
     window.openSerialPostModal = async function(mode) {
       if (!currentUser) return alert("ログインが必要です。");
       if (!(await checkDeviceLock())) return;
