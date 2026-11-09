@@ -225,11 +225,12 @@
     </button>
   </nav>
 
-  <footer class="max-w-4xl mx-auto px-4 pb-32 text-center text-[11px] text-gray-500 space-x-3 drop-shadow-sm font-bold">
+  <footer class="max-w-4xl mx-auto px-4 pb-32 text-center text-[11px] text-gray-500 space-x-3 drop-shadow-sm font-bold flex flex-wrap justify-center gap-y-2">
     <a href="#" onclick="openTerms(true); return false;" class="underline hover:text-gray-700">利用規約</a>
+    <a href="#" onclick="openPrivacy(); return false;" class="underline hover:text-gray-700">プライバシーポリシー</a>
     <a href="#" onclick="openFaq(); return false;" class="underline hover:text-gray-700">FAQ</a>
     <a href="#" onclick="openInquiry(); return false;" class="underline hover:text-gray-700">お問い合わせ</a>
-    <span>ILLIT Trade（ファン有志による非公式サービス）</span>
+    <span class="w-full mt-2 block">ILLIT Trade（ファン有志による非公式サービス）</span>
   </footer>
 
   <!-- 絞り込みモーダル -->
@@ -313,6 +314,24 @@
         <button onclick="closeInquiry()" class="flex-1 bg-white/60 text-gray-700 border border-white font-medium py-3 rounded-full hover:bg-white transition shadow-sm">キャンセル</button>
         <button onclick="submitInquiry()" id="inquiry-submit-btn" class="flex-1 bg-gradient-to-r from-illit-purple to-illit-accent text-white font-medium py-3 rounded-full hover:opacity-90 transition shadow-md border border-white/30">送信する</button>
       </div>
+    </div>
+  </div>
+
+  <!-- プライバシーポリシー -->
+  <div id="privacy-modal" class="fixed inset-0 modal-backdrop hidden z-[70] flex items-center justify-center p-4">
+    <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-5 space-y-3 shadow-xl max-h-[92vh] flex flex-col">
+      <div class="flex justify-between items-center border-b border-purple-200/50 pb-2 shrink-0">
+        <h3 class="font-bold text-base text-gray-800">🔒 プライバシーポリシー</h3>
+        <button onclick="closePrivacy()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
+      </div>
+      <div class="flex-1 overflow-y-auto text-[12px] text-gray-700 leading-relaxed space-y-4 bg-white/40 border border-white/60 rounded-xl p-3 shadow-inner">
+        <div><p class="font-bold text-gray-800 mb-1">1. 取得する情報</p><p>当サービスでは、Googleログインによる基本情報（UID、メールアドレス等）、およびユーザーが任意で入力したプロフィール情報（氏名、住所、電話番号、PayPay ID等）を取得・保存します。</p></div>
+        <div><p class="font-bold text-gray-800 mb-1">2. 情報の利用目的</p><p>取得した個人情報は、ユーザー間での取引を成立させるための情報共有（取引相手への開示）、サービスの提供・運営、およびお問い合わせ対応のためにのみ利用します。</p></div>
+        <div><p class="font-bold text-gray-800 mb-1">3. 第三者への開示・提供</p><p>当サービスは、ユーザー間の取引において成立後に取引相手へ情報を開示する場合、または法令に基づく場合を除き、事前の同意なく個人情報を第三者に提供・開示することはありません。</p></div>
+        <div><p class="font-bold text-gray-800 mb-1">4. 情報の保護と管理</p><p>ユーザーの個人情報はFirebaseの強固なセキュリティルールにより保護され、取引の当事者およびシステム管理者以外がアクセスすることはできません。ユーザーがアカウントの削除を希望する場合、またはデータ削除の要請があった場合、速やかにデータを削除します。</p></div>
+        <div><p class="font-bold text-gray-800 mb-1">5. 免責事項</p><p>ユーザー自身の操作により取引ルームなどで過剰に開示された情報に起因するトラブルについて、運営は一切の責任を負いません。外部要因（ハッキング等）による不可抗力な情報漏洩についても同様とします。ご自身の判断において安全に利用してください。</p></div>
+      </div>
+      <button onclick="closePrivacy()" class="w-full bg-white/60 text-gray-700 border border-white font-medium py-2.5 rounded-full hover:bg-white transition text-sm shadow-sm shrink-0">閉じる</button>
     </div>
   </div>
 
@@ -940,6 +959,8 @@
 
     window.openFaq = function() { document.getElementById("faq-modal").classList.remove("hidden"); };
     window.closeFaq = function() { document.getElementById("faq-modal").classList.add("hidden"); };
+    window.openPrivacy = function() { document.getElementById("privacy-modal").classList.remove("hidden"); };
+    window.closePrivacy = function() { document.getElementById("privacy-modal").classList.add("hidden"); };
     window.openInquiry = function() {
       if (!currentUser) return alert("ログインが必要です。");
       document.getElementById("inquiry-body").value = "";
