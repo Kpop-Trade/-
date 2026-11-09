@@ -68,6 +68,17 @@
     }
     .hide-scrollbar::-webkit-scrollbar { display: none; }
     .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateY(-16px) scale(0.96); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @keyframes toastOut {
+      from { opacity: 1; transform: translateY(0) scale(1); }
+      to { opacity: 0; transform: translateY(-12px) scale(0.96); }
+    }
+    .toast-enter { animation: toastIn 0.28s ease forwards; }
+    .toast-leave { animation: toastOut 0.25s ease forwards; }
   </style>
 </head>
 <body class="bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 text-gray-800 min-h-screen font-sans relative overflow-x-hidden">
@@ -78,6 +89,9 @@
     <div class="absolute top-[20%] right-[-10%] w-[60vw] h-[60vw] bg-purple-300/40 rounded-full mix-blend-multiply filter blur-[80px] animate-blob animation-delay-2000"></div>
     <div class="absolute bottom-[-20%] left-[10%] w-[50vw] h-[50vw] bg-blue-300/40 rounded-full mix-blend-multiply filter blur-[100px] animate-blob animation-delay-4000"></div>
   </div>
+
+  <!-- トースト通知コンテナ -->
+  <div id="toast-container" class="fixed top-20 left-1/2 -translate-x-1/2 z-[110] space-y-2 w-[92%] max-w-sm pointer-events-none"></div>
 
   <!-- ヘッダー -->
   <header class="liquid-glass sticky top-0 z-40 border-b-0 rounded-b-2xl mb-4">
@@ -98,6 +112,7 @@
             <span id="trades-badge" class="hidden absolute -top-1.5 -right-1.5 bg-pink-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-sm border border-white">0</span>
           </button>
           <button onclick="openProfileModal()" class="bg-white/60 hover:bg-white/80 border border-white text-gray-700 text-xs font-bold px-2.5 py-1.5 rounded-full transition">⚙️ 設定</button>
+          <img id="user-avatar" src="" alt="" class="w-7 h-7 rounded-full object-cover border-2 border-white shadow-sm hidden">
           <span id="user-name" class="text-xs md:text-sm font-bold text-gray-700 max-w-[70px] truncate"></span>
           <button onclick="logout()" class="text-[10px] text-gray-500 hover:text-gray-700 underline">ログアウト</button>
         </div>
@@ -153,6 +168,7 @@
       <div class="space-y-2">
         <input type="text" id="search-input" oninput="setSearch(this.value)" placeholder="🔍 譲・求・出品者名で検索" class="w-full liquid-glass-input rounded-2xl p-3 text-xs md:text-sm outline-none text-gray-700 placeholder-gray-500 shadow-inner">
         <div id="kind-filters" class="flex gap-2 flex-wrap"></div>
+        <div id="sort-filters" class="flex gap-2 flex-wrap"></div>
         <div id="bundle-filters" class="hidden flex gap-2 flex-wrap"></div>
         <div id="member-filters" class="flex flex-wrap gap-2"></div>
       </div>
@@ -262,6 +278,17 @@
         <div>
           <label class="block font-bold text-gray-700 mb-1">サイト内ニックネーム</label>
           <input type="text" id="profile-nickname" maxlength="30" placeholder="例: 芋けんぴ推し" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800">
+        </div>
+        <div>
+          <label class="block font-bold text-gray-700 mb-1">プロフィール写真</label>
+          <div class="flex items-center space-x-3">
+            <div id="profile-photo-preview" class="w-16 h-16 rounded-full bg-white/50 border border-white overflow-hidden flex items-center justify-center text-2xl text-gray-400 shrink-0">👤</div>
+            <div class="flex-1 space-y-1.5">
+              <input id="profile-photo-input" type="file" accept="image/*" class="hidden" onchange="handleProfilePhoto(this)">
+              <button type="button" onclick="document.getElementById('profile-photo-input').click()" class="w-full bg-white/80 border border-white text-illit-darkPurple text-xs font-bold py-2 rounded-xl hover:bg-white transition">📷 写真を選択</button>
+              <button type="button" id="profile-photo-clear" onclick="clearProfilePhoto()" class="hidden w-full bg-white/60 text-gray-500 text-xs font-bold py-1.5 rounded-xl hover:bg-white transition">写真を削除</button>
+            </div>
+          </div>
         </div>
         <div>
           <label class="block font-bold text-gray-700 mb-1">💳 PayPay ID（受取用）</label>
@@ -434,9 +461,12 @@
           <div id="detail-extra" class="text-xs text-gray-700 space-y-1 font-bold pt-1"></div>
         </div>
         <div class="flex justify-between items-center bg-white/30 p-2 rounded-2xl border border-white/50 shadow-sm">
-          <div class="px-2">
-            <span class="font-bold text-gray-700 text-xs">出品:</span> <span id="detail-user" class="text-gray-900 font-bold text-xs"></span>
-            <span id="detail-rating" class="ml-1 text-yellow-500 font-bold text-[11px] drop-shadow-sm"></span>
+          <div class="px-2 flex items-center gap-2">
+            <img id="detail-user-avatar" src="" alt="" class="w-6 h-6 rounded-full object-cover border border-white hidden">
+            <div>
+              <span class="font-bold text-gray-700 text-xs">出品:</span> <span id="detail-user" class="text-gray-900 font-bold text-xs"></span>
+              <span id="detail-rating" class="ml-1 text-yellow-500 font-bold text-[11px] drop-shadow-sm"></span>
+            </div>
           </div>
           <button id="detail-like-btn" onclick="toggleDetailLike()" class="bg-white/80 text-pink-500 font-bold px-4 py-2 rounded-full text-xs border border-white hover:bg-white transition flex items-center space-x-1 shadow-md">
             <span>♡</span> <span id="detail-like-count">いいね</span>
@@ -550,7 +580,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { getFirestore, collection, collectionGroup, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, where, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, collectionGroup, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, where, orderBy, onSnapshot, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getMessaging, getToken, deleteToken } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js";
 
     const firebaseConfig = {
@@ -589,13 +619,17 @@
     const PHOTO_FULL = { maxSide: 900, quality: 0.72, maxChars: 380000 };
     const PHOTO_THUMB = { maxSide: 260, quality: 0.6, maxChars: 40000 };
     const CHAT_PHOTO = { maxSide: 1000, quality: 0.75, maxChars: 600000 };
+    const PROFILE_PHOTO = { maxSide: 300, quality: 0.72, maxChars: 90000 };
     const MAX_POST_PHOTOS = 3;
 
-    let currentUser = null, allPosts = [], unsubPosts = null, selectedMember = "すべて", kindFilter = "all", bundleFilter = "all", searchText = "", currentDetailIndex = -1;
+    let currentUser = null, allPosts = [], unsubPosts = null, selectedMember = "すべて", kindFilter = "all", sortFilter = "new", bundleFilter = "all", searchText = "", currentDetailIndex = -1;
     let postMode = "exchange", postPhotos = [], processingPhotos = false, submittingPost = false, submittingGroup = false, detailPhotos = [], roomPhotos = [], roomPhotosFor = null;
     let myTrades = [], unsubTrades = null, groupJoins = {}, unsubJoins = null, currentTrade = null, roomMessages = [], unsubRoom = null, unsubMsgs = null;
     let reviewState = { tradeId: null, done: null }, selectedRating = 0, sendingImage = false, roomBoxKey = null, userData = { profile: {}, blocked: [], likes: [], reads: {} };
     let unsubUser = null, editingPostId = null, migratingLocal = false, photoCache = {};
+    let pendingProfilePhoto = null; // null=変更なし / ""=削除 / dataURL=新しい写真
+    let prevUnreadCount = -1;
+    let prevTradeCountAsOwner = -1;
 
     const STATUS_LABEL = { negotiating: "交渉中", shipping: "取引・発送中", completed: "完了", cancelled: "キャンセル" };
     const STATUS_CLASS = { negotiating: "bg-yellow-400 text-yellow-900 border-yellow-200", shipping: "bg-blue-400 text-white border-blue-300", completed: "bg-green-400 text-white border-green-300", cancelled: "bg-gray-300 text-gray-700 border-gray-200" };
@@ -612,6 +646,26 @@
     function isJpegData(s) { return typeof s === "string" && s.startsWith(IMAGE_PREFIX); }
     function isPayTrade(t) { return !!(t && (t.isBuy || t.isSell || t.kind === "group")); }
     function joinsOf(postId) { return groupJoins[postId] || []; }
+
+    // トースト通知
+    function showToast(message, type = "info") {
+      const container = document.getElementById("toast-container");
+      if (!container) return;
+      const toast = document.createElement("div");
+      const colorMap = {
+        success: "bg-gradient-to-r from-green-400 to-green-500 text-white border-green-300",
+        error: "bg-gradient-to-r from-red-400 to-red-500 text-white border-red-300",
+        info: "bg-gradient-to-r from-illit-purple to-illit-accent text-white border-white/40"
+      };
+      toast.className = `pointer-events-auto px-5 py-3 rounded-2xl shadow-xl text-sm font-bold text-center border toast-enter ${colorMap[type] || colorMap.info}`;
+      toast.textContent = message;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.classList.remove("toast-enter");
+        toast.classList.add("toast-leave");
+        setTimeout(() => toast.remove(), 260);
+      }, 3400);
+    }
 
     window.switchTab = function(tab) {
       document.getElementById("post-menu-section").classList.toggle("hidden", tab !== 'post');
@@ -659,6 +713,18 @@
       } catch (e) {} return true;
     }
     function saveUserData(data) { return setDoc(doc(db, "users", currentUser.uid), data, { merge: true }); }
+    function updateUserAvatar() {
+      const avatar = document.getElementById("user-avatar");
+      if (!avatar) return;
+      const photo = getMyProfile()?.photo;
+      if (photo && isJpegData(photo)) {
+        avatar.src = photo;
+        avatar.classList.remove("hidden");
+      } else {
+        avatar.classList.add("hidden");
+        avatar.removeAttribute("src");
+      }
+    }
     function subscribeUserData() {
       if (unsubUser) unsubUser();
       const ref = doc(db, "users", currentUser.uid);
@@ -670,7 +736,10 @@
           setDoc(ref, { migrated: true, profile: read("illit_profile_", {}), blocked: read("illit_blocked_", []), likes: read("illit_likes_", []) }, { merge: true }).finally(() => migratingLocal = false);
         }
         userData = { profile: d.profile || {}, blocked: d.blocked || [], likes: d.likes || [], reads: d.reads || {} };
-        if (currentUser) document.getElementById("user-name").innerText = getMyDisplayName();
+        if (currentUser) {
+          document.getElementById("user-name").innerText = getMyDisplayName();
+          updateUserAvatar();
+        }
         syncTermsRecord(d);
         const adminBtn = document.getElementById("admin-panel-btn"); if (adminBtn) adminBtn.classList.toggle("hidden", !isAdmin());
         renderPosts(); renderBlockedBox(); updateBadge();
@@ -763,13 +832,20 @@
     };
     function renderBlockedBox() { const el = document.getElementById("blocked-users-box"); if (el) el.innerText = getBlockedUsers().length === 0 ? "なし" : `${getBlockedUsers().length}人をブロック中`; }
     function getMyLikes() { return userData.likes || []; }
-    window.toggleDetailLike = function() {
+    window.toggleDetailLike = async function() {
       if (!currentUser) return alert("ログインが必要です。");
       const p = allPosts[currentDetailIndex]; if (!p) return;
       let likes = [...getMyLikes()]; const idx = likes.indexOf(p.id);
-      if (idx >= 0) likes.splice(idx, 1); else likes.push(p.id);
-      userData.likes = likes; saveUserData({ likes }).catch(()=>{});
-      updateDetailLikeUI(p.id); renderPosts();
+      const wasLiked = idx >= 0;
+      if (wasLiked) likes.splice(idx, 1); else likes.push(p.id);
+      userData.likes = likes;
+      saveUserData({ likes }).catch(()=>{});
+      // 投稿側のいいね数を更新
+      try {
+        await updateDoc(doc(db, "posts", p.id), { likesCount: increment(wasLiked ? -1 : 1) });
+      } catch (e) {}
+      updateDetailLikeUI(p.id);
+      renderPosts();
     };
     function updateDetailLikeUI(postId) {
       const liked = getMyLikes().includes(postId); const btn = document.getElementById("detail-like-btn"); if (!btn) return;
@@ -780,20 +856,79 @@
     window.openProfileModal = function() {
       if (!currentUser) return;
       const s = userData.profile || {};
-      document.getElementById("profile-nickname").value = s.nickname || ""; document.getElementById("profile-paypay").value = s.paypay || "";
-      document.getElementById("profile-name").value = s.name || currentUser.displayName || ""; document.getElementById("profile-zip").value = s.zip || "";
-      document.getElementById("profile-address1").value = s.address1 || ""; document.getElementById("profile-address2").value = s.address2 || "";
+      pendingProfilePhoto = null;
+      document.getElementById("profile-nickname").value = s.nickname || "";
+      document.getElementById("profile-paypay").value = s.paypay || "";
+      document.getElementById("profile-name").value = s.name || currentUser.displayName || "";
+      document.getElementById("profile-zip").value = s.zip || "";
+      document.getElementById("profile-address1").value = s.address1 || "";
+      document.getElementById("profile-address2").value = s.address2 || "";
       document.getElementById("profile-phone").value = s.phone || "";
-      renderBlockedBox(); updatePushUI(); document.getElementById("profile-modal").classList.remove("hidden");
+
+      const preview = document.getElementById("profile-photo-preview");
+      const clearBtn = document.getElementById("profile-photo-clear");
+      if (s.photo && isJpegData(s.photo)) {
+        preview.innerHTML = `<img src="${s.photo}" class="w-full h-full object-cover">`;
+        clearBtn.classList.remove("hidden");
+      } else {
+        preview.innerHTML = "👤";
+        clearBtn.classList.add("hidden");
+      }
+
+      renderBlockedBox(); updatePushUI();
+      document.getElementById("profile-modal").classList.remove("hidden");
     };
-    window.closeProfileModal = function() { document.getElementById("profile-modal").classList.add("hidden"); };
+    window.closeProfileModal = function() { document.getElementById("profile-modal").classList.add("hidden"); pendingProfilePhoto = null; };
+
+    window.handleProfilePhoto = async function(inputEl) {
+      const file = inputEl.files && inputEl.files[0];
+      inputEl.value = "";
+      if (!file || !file.type.startsWith("image/")) return;
+      try {
+        const img = await loadImageFromFile(file);
+        const data = compressFromImage(img, PROFILE_PHOTO);
+        pendingProfilePhoto = data;
+        const preview = document.getElementById("profile-photo-preview");
+        preview.innerHTML = `<img src="${data}" class="w-full h-full object-cover">`;
+        document.getElementById("profile-photo-clear").classList.remove("hidden");
+      } catch (e) {
+        alert("画像の処理に失敗しました。");
+      }
+    };
+    window.clearProfilePhoto = function() {
+      pendingProfilePhoto = "";
+      document.getElementById("profile-photo-preview").innerHTML = "👤";
+      document.getElementById("profile-photo-clear").classList.add("hidden");
+    };
+
     window.saveProfile = async function() {
       if (!currentUser) return;
-      const p = { nickname: document.getElementById("profile-nickname").value.trim(), paypay: document.getElementById("profile-paypay").value.trim(), name: document.getElementById("profile-name").value.trim(), zip: document.getElementById("profile-zip").value.trim(), address1: document.getElementById("profile-address1").value.trim(), address2: document.getElementById("profile-address2").value.trim(), phone: document.getElementById("profile-phone").value.trim() };
+      const p = {
+        nickname: document.getElementById("profile-nickname").value.trim(),
+        paypay: document.getElementById("profile-paypay").value.trim(),
+        name: document.getElementById("profile-name").value.trim(),
+        zip: document.getElementById("profile-zip").value.trim(),
+        address1: document.getElementById("profile-address1").value.trim(),
+        address2: document.getElementById("profile-address2").value.trim(),
+        phone: document.getElementById("profile-phone").value.trim()
+      };
+      if (pendingProfilePhoto !== null) {
+        p.photo = pendingProfilePhoto; // "" で削除、dataURL で更新
+      } else {
+        p.photo = userData.profile?.photo || "";
+      }
       userData.profile = p;
-      try { await saveUserData({ profile: p }); } catch(e){ return alert("失敗しました。"); }
-      alert("設定を保存しました！"); closeProfileModal();
-      if (currentUser) document.getElementById("user-name").innerText = p.nickname || currentUser.displayName || "匿名";
+      try {
+        await saveUserData({ profile: p });
+      } catch (e) {
+        return alert("失敗しました。");
+      }
+      showToast("設定を保存しました！", "success");
+      closeProfileModal();
+      if (currentUser) {
+        document.getElementById("user-name").innerText = p.nickname || currentUser.displayName || "匿名";
+        updateUserAvatar();
+      }
       if (currentTrade) { renderRoomAddressBox(); renderRoomPayPayBox(); }
     };
     function getMyProfile() { return currentUser && userData.profile && Object.keys(userData.profile).length ? userData.profile : null; }
@@ -862,12 +997,15 @@
       if (user) {
         loginBtn.classList.add("hidden"); userProfile.classList.remove("hidden");
         document.getElementById("user-name").innerText = getMyDisplayName();
+        updateUserAvatar();
         subscribeUserData(); subscribeTrades();
         if ("Notification" in window && Notification.permission === "granted" && localStorage.getItem(pushStorageKey())) saveToken().catch(()=>{});
       } else {
         loginBtn.classList.remove("hidden"); userProfile.classList.add("hidden");
         if (unsubTrades) unsubTrades(); if (unsubUser) unsubUser(); unsubTrades=null; unsubUser=null;
         userData = { profile: {}, blocked: [], likes: [], reads: {} }; myTrades = []; updateBadge();
+        prevUnreadCount = -1; prevTradeCountAsOwner = -1;
+        updateUserAvatar();
       }
       subscribePosts(); subscribeJoins();
     });
@@ -914,9 +1052,15 @@
       if (!give || (!isBuy && !want) || (isBuy && (!price || price <= 0)) || (!isBuy && postPhotos.length < 1)) return alert("正しく入力してください。");
       submittingPost = true; const btn = document.getElementById("post-submit-btn"); btn.disabled = true; btn.innerText = "投稿中…";
       try {
-        const ref = await addDoc(collection(db, "posts"), { kind: "card", isBuy, member, give, want: isBuy ? "" : want, price: isBuy ? price : 0, description: desc, status: "active", photoCount: postPhotos.length, thumb: postPhotos.length > 0 ? postPhotos[0].thumb : "", userId: currentUser.uid, userName: getMyDisplayName(), createdAt: serverTimestamp() });
+        const ref = await addDoc(collection(db, "posts"), {
+          kind: "card", isBuy, member, give, want: isBuy ? "" : want, price: isBuy ? price : 0, description: desc, status: "active",
+          photoCount: postPhotos.length, thumb: postPhotos.length > 0 ? postPhotos[0].thumb : "",
+          userId: currentUser.uid, userName: getMyDisplayName(), userPhoto: getMyProfile()?.photo || "",
+          likesCount: 0, createdAt: serverTimestamp()
+        });
         for (let i = 0; i < postPhotos.length; i++) await addDoc(collection(db, "posts", ref.id, "photos"), { data: postPhotos[i].full, order: i, createdAt: serverTimestamp() });
-        alert("出品完了！"); closePostModal(); switchTab('home');
+        showToast("出品が完了しました！", "success");
+        closePostModal(); switchTab('home');
       } catch(e) { alert("失敗しました"); } finally { submittingPost = false; btn.disabled = false; btn.innerText = "出品する"; }
     };
 
@@ -938,8 +1082,14 @@
       const member = document.getElementById("serial-member").value, give = document.getElementById("serial-give").value.trim(), want = document.getElementById("serial-want").value.trim(), price = Number(document.getElementById("serial-price").value), dl = document.getElementById("serial-deadline").value, note = document.getElementById("serial-note").value.trim().slice(0, 200);
       if (!give || (!isBuy && !isSell && !want) || ((isBuy || isSell) && (!price || price <= 0)) || (dl && dl < todayStr())) return alert("正しく入力してください。");
       try {
-        await addDoc(collection(db, "posts"), { kind: "serial", isBuy, isSell, member, give, want: (isBuy || isSell) ? "" : want, price: (isBuy || isSell) ? price : 0, deadline: dl, description: note, status: "active", userId: currentUser.uid, userName: getMyDisplayName(), createdAt: serverTimestamp() });
-        alert("出品完了！"); closeSerialPostModal(); switchTab('home');
+        await addDoc(collection(db, "posts"), {
+          kind: "serial", isBuy, isSell, member, give, want: (isBuy || isSell) ? "" : want, price: (isBuy || isSell) ? price : 0,
+          deadline: dl, description: note, status: "active",
+          userId: currentUser.uid, userName: getMyDisplayName(), userPhoto: getMyProfile()?.photo || "",
+          likesCount: 0, createdAt: serverTimestamp()
+        });
+        showToast("出品が完了しました！", "success");
+        closeSerialPostModal(); switchTab('home');
       } catch(e) { alert("失敗しました"); }
     };
 
@@ -958,27 +1108,41 @@
       if (!give || !price || price <= 0 || !Number.isInteger(target) || target < 1 || target > 100) return alert("正しく入力してください。");
       submittingGroup = true; const btn = document.getElementById("group-submit-btn"); btn.disabled = true; btn.innerText = "投稿中…";
       try {
-        const ref = await addDoc(collection(db, "posts"), { kind: "group", photoCount: postPhotos.length, thumb: postPhotos.length > 0 ? postPhotos[0].thumb : "", isBuy: false, member, give, want: "", price, target, bundle, bundleNote: bundle === "ng" ? "" : bundleNote, shipping: ship, deadline: dl || "", description: desc, status: "active", userId: currentUser.uid, userName: getMyDisplayName(), createdAt: serverTimestamp() });
+        const ref = await addDoc(collection(db, "posts"), {
+          kind: "group", photoCount: postPhotos.length, thumb: postPhotos.length > 0 ? postPhotos[0].thumb : "",
+          isBuy: false, member, give, want: "", price, target, bundle, bundleNote: bundle === "ng" ? "" : bundleNote,
+          shipping: ship, deadline: dl || "", description: desc, status: "active",
+          userId: currentUser.uid, userName: getMyDisplayName(), userPhoto: getMyProfile()?.photo || "",
+          likesCount: 0, createdAt: serverTimestamp()
+        });
         for (let i = 0; i < postPhotos.length; i++) await addDoc(collection(db, "posts", ref.id, "photos"), { data: postPhotos[i].full, order: i, createdAt: serverTimestamp() });
-        alert("募集開始！"); closeGroupPostModal(); switchTab('home');
+        showToast("共同購入の募集を開始しました！", "success");
+        closeGroupPostModal(); switchTab('home');
       } catch(e) { alert("失敗しました"); } finally { submittingGroup = false; btn.disabled = false; btn.innerText = "主催する"; }
     };
 
     function renderFilters() {
       document.getElementById("member-filters").innerHTML = MEMBERS.map((m, i) => `<button onclick="setMember(${i})" class="${m === selectedMember ? 'bg-gradient-to-r from-illit-purple to-illit-accent text-white border-white/50 shadow-md' : 'bg-white/60 text-gray-700 border border-white hover:bg-white shadow-sm'} text-xs font-bold px-3 py-1.5 rounded-full transition">${m.split(" ")[0]}</button>`).join("");
       document.getElementById("kind-filters").innerHTML = KINDS.map(k => `<button onclick="setKind('${k.key}')" class="${k.key === kindFilter ? 'bg-gray-800 text-white shadow-md' : 'bg-white/60 text-gray-700 border border-white hover:bg-white shadow-sm'} text-xs font-bold px-3 py-1.5 rounded-full transition">${k.label}</button>`).join("");
+      document.getElementById("sort-filters").innerHTML = [
+        { key: "new", label: "🕒 新着" },
+        { key: "popular", label: "🔥 人気" }
+      ].map(s => `<button onclick="setSort('${s.key}')" class="${s.key === sortFilter ? 'bg-gradient-to-r from-pink-400 to-pink-500 text-white shadow-md border border-white/40' : 'bg-white/60 text-gray-700 border border-white hover:bg-white shadow-sm'} text-xs font-bold px-3 py-1.5 rounded-full transition">${s.label}</button>`).join("");
       const bf = document.getElementById("bundle-filters"); bf.classList.toggle("hidden", kindFilter !== "group_buy");
       bf.innerHTML = BUNDLE_FILTERS.map(b => `<button onclick="setBundle('${b.key}')" class="${b.key === bundleFilter ? 'bg-teal-500 text-white shadow-md' : 'bg-white/60 text-teal-800 border border-white hover:bg-white shadow-sm'} text-xs font-bold px-3 py-1.5 rounded-full transition">${b.label}</button>`).join("");
     }
     window.setMember = function(i) { selectedMember = MEMBERS[i]; renderFilters(); renderPosts(); };
     window.setKind = function(k) { kindFilter = k; renderFilters(); renderPosts(); };
+    window.setSort = function(k) { sortFilter = k; renderFilters(); renderPosts(); };
     window.setBundle = function(k) { bundleFilter = k; renderFilters(); renderPosts(); };
     window.setSearch = function(v) { searchText = v.trim().toLowerCase(); renderPosts(); };
 
     // 🔴 Glass風 募集一覧（Liquid Glassデザイン）
     function renderPosts() {
       const container = document.getElementById("posts-container");
-      const blocked = userData.blocked || []; const likes = userData.likes || []; const cards = [];
+      const blocked = userData.blocked || []; const likes = userData.likes || [];
+      const filtered = [];
+
       allPosts.forEach((p, index) => {
         if (blocked.includes(p.userId) || p.status === "traded") return;
         if (p.kind === "group" && Number(p.target || 0) > 0 && joinsOf(p.id).length >= Number(p.target) && !(currentUser && (p.userId === currentUser.uid || isAdmin()))) return;
@@ -988,7 +1152,20 @@
         const okBundle = kindFilter !== "group_buy" || bundleFilter === "all" || p.bundle === bundleFilter;
         const okText = !searchText || (p.give + " " + p.want + " " + p.userName + " " + (p.price || "")).toLowerCase().includes(searchText);
         if (!okKind || !okMember || !okText || !okBundle) return;
+        filtered.push({ p, index });
+      });
 
+      // ソート
+      if (sortFilter === "popular") {
+        filtered.sort((a, b) => {
+          const likeDiff = (Number(b.p.likesCount) || 0) - (Number(a.p.likesCount) || 0);
+          if (likeDiff !== 0) return likeDiff;
+          return tsMillis(b.p.createdAt) - tsMillis(a.p.createdAt);
+        });
+      }
+      // 新着は allPosts が既に createdAt desc なのでそのまま
+
+      const cards = filtered.map(({ p, index }) => {
         const isLiked = likes.includes(p.id); const isGroup = p.kind === "group"; const joins = isGroup ? joinsOf(p.id) : []; const target = Number(p.target || 0); const full = isGroup && target > 0 && joins.length >= target; const closed = isGroup && p.status === "closed"; const dim = isExpired(p) || closed;
         let badgeHtml = "";
         if (isGroup) badgeHtml = `<span class="bg-teal-50 border border-teal-200 text-teal-800 font-bold px-2.5 py-0.5 rounded-full text-[11px] shadow-sm">🛍 共同購入（¥${Number(p.price || 0).toLocaleString()}）</span>`;
@@ -1007,22 +1184,27 @@
           groupHtml = `<div class="space-y-1.5 relative z-10 bg-white/40 p-2 rounded-2xl border border-white/50 shadow-inner"><div class="flex justify-between text-[11px] text-gray-700 font-bold"><span>👥 参加 ${joins.length} / ${target}人</span><span class="${closed ? 'text-gray-600' : (full ? 'text-green-700' : 'text-teal-700')}">${closed ? "🔒 終了" : (full ? "🎉 満員" : "募集中")}</span></div><div class="w-full h-2 bg-white rounded-full overflow-hidden border border-white/50"><div class="h-2 bg-gradient-to-r from-teal-400 to-teal-500" style="width:${pct}%"></div></div><div class="flex flex-wrap gap-1"><span class="${BUNDLE_CLASS[p.bundle]||BUNDLE_CLASS.ng} text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">${BUNDLE_LABEL[p.bundle]||BUNDLE_LABEL.ng}</span></div></div>`;
         }
 
-        cards.push(`
+        const avatarHtml = (p.userPhoto && isJpegData(p.userPhoto))
+          ? `<img src="${p.userPhoto}" class="w-5 h-5 rounded-full object-cover border border-white shadow-sm shrink-0" alt="">`
+          : "";
+
+        return `
           <div class="liquid-glass p-4 rounded-3xl flex flex-col justify-between space-y-3 ${dim ? 'opacity-60' : ''} transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_40px_rgba(192,132,252,0.3)] group relative overflow-hidden">
             <div class="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent opacity-0 group-hover:opacity-100 transition duration-300 pointer-events-none"></div>
-            <div class="flex items-center justify-between relative z-10">${badgeHtml}<div class="flex items-center space-x-2">${p.deadline ? `<span class="text-[11px] font-bold ${isExpired(p) ? 'text-red-500' : 'text-gray-600'}">期限: ${escapeHtml(p.deadline)}</span>` : ''}<span class="text-pink-500 font-bold text-sm bg-white/70 px-2 py-0.5 rounded-full shadow-sm">${isLiked ? '♥' : '♡'}</span></div></div>
+            <div class="flex items-center justify-between relative z-10">${badgeHtml}<div class="flex items-center space-x-2">${p.deadline ? `<span class="text-[11px] font-bold ${isExpired(p) ? 'text-red-500' : 'text-gray-600'}">期限: ${escapeHtml(p.deadline)}</span>` : ''}<span class="text-pink-500 font-bold text-sm bg-white/70 px-2 py-0.5 rounded-full shadow-sm">${isLiked ? '♥' : '♡'}${p.likesCount ? ` ${p.likesCount}` : ''}</span></div></div>
             ${photoHtml}
             <div class="flex items-center space-x-2 relative z-10"><span class="${isGroup ? 'bg-teal-100 text-teal-800' : 'bg-yellow-100 text-yellow-800'} border border-white text-xs font-bold px-2 py-0.5 rounded-full shadow-sm">${isGroup ? '商品' : '譲'}</span> <span class="font-bold text-sm text-gray-900 drop-shadow-sm">${escapeHtml(p.give)}${memberLabel}</span></div>
             ${(!p.isBuy && !isGroup && !p.isSell) ? `<div class="flex items-center space-x-2 relative z-10"><span class="bg-purple-100 border border-white text-illit-darkPurple text-xs font-bold px-2 py-0.5 rounded-full shadow-sm">求</span> <span class="font-bold text-sm text-gray-900 drop-shadow-sm">${escapeHtml(p.want)}</span></div>` : ''}
             ${groupHtml}
             ${p.description ? `<p class="text-xs text-gray-600 font-bold line-clamp-1 relative z-10">💬 ${escapeHtml(p.description)}</p>` : ""}
             <div class="pt-3 mt-1 border-t border-white/50 flex justify-between items-center text-xs text-gray-700 font-bold relative z-10">
-              <span class="truncate max-w-[120px] drop-shadow-sm">${escapeHtml(p.userName)}</span>
+              <span class="flex items-center gap-1.5 truncate max-w-[140px] drop-shadow-sm">${avatarHtml}<span class="truncate">${escapeHtml(p.userName)}</span></span>
               <button onclick="openDetailModal(${index})" class="bg-white/80 border border-white text-illit-darkPurple hover:bg-white font-bold px-4 py-2 rounded-xl transition shadow-md">${isGroup ? '詳細・参加' : '詳細'}</button>
             </div>
           </div>
-        `);
+        `;
       });
+
       container.innerHTML = cards.length === 0 ? '<p class="text-xs text-gray-500 col-span-2 text-center py-4 font-bold bg-white/30 rounded-xl p-4 shadow-inner">条件に合う募集はありません。</p>' : cards.join("");
     }
 
@@ -1051,6 +1233,16 @@
       document.getElementById("detail-title").innerText = isGroup ? "🛍 共同購入の詳細" : (isBuy ? "💳 買取（購入希望）の詳細" : (p.isSell ? "💰 シリアル売却の詳細" : "募集の詳細"));
       document.getElementById("detail-give").innerText = p.give; document.getElementById("detail-want").innerText = p.want || "（なし）"; document.getElementById("detail-member").innerText = p.member || "指定なし"; document.getElementById("detail-user").innerText = p.userName;
       updateDetailLikeUI(p.id);
+
+      const avatarEl = document.getElementById("detail-user-avatar");
+      if (p.userPhoto && isJpegData(p.userPhoto)) {
+        avatarEl.src = p.userPhoto;
+        avatarEl.classList.remove("hidden");
+      } else {
+        avatarEl.classList.add("hidden");
+        avatarEl.removeAttribute("src");
+      }
+
       document.getElementById("detail-give-box").querySelector("span").innerText = isGroup ? "商品" : (isBuy ? "求" : "譲");
       document.getElementById("detail-want-box").classList.toggle("hidden", isBuy || isGroup || p.isSell); document.getElementById("detail-price-box").classList.toggle("hidden", !(isBuy || isGroup || p.isSell));
       if (isGroup || isBuy || p.isSell) document.getElementById("detail-price").innerText = "￥" + Number(p.price || 0).toLocaleString() + "（PayPay）";
@@ -1171,7 +1363,23 @@
         myTrades = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         const lastAct = t => Math.max(tsValue(t.updatedAt), tsMillis(t.lastMessageAt));
         myTrades.sort((a, b) => lastAct(b) - lastAct(a));
-        updateBadge(); if (!document.getElementById("trades-modal").classList.contains("hidden")) renderTradesList(); if (!document.getElementById("wallet-modal").classList.contains("hidden")) renderWallet();
+
+        // トースト通知
+        const unread = myTrades.filter(t => isUnread(t)).length;
+        const ownerNegotiating = myTrades.filter(t => t.ownerId === currentUser.uid && t.status === "negotiating").length;
+
+        if (prevUnreadCount >= 0 && unread > prevUnreadCount) {
+          showToast("💬 新しいメッセージがあります！", "info");
+        }
+        if (prevTradeCountAsOwner >= 0 && ownerNegotiating > prevTradeCountAsOwner) {
+          showToast("📥 新しい申し込みがありました！", "success");
+        }
+        prevUnreadCount = unread;
+        prevTradeCountAsOwner = ownerNegotiating;
+
+        updateBadge();
+        if (!document.getElementById("trades-modal").classList.contains("hidden")) renderTradesList();
+        if (!document.getElementById("wallet-modal").classList.contains("hidden")) renderWallet();
       });
     }
     function updateBadge() {
