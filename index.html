@@ -1095,7 +1095,6 @@
     let adminTab = "stats";
     let adminSearchQuery = "";
 
-    // 管理画面のボタンは data属性 + イベント委譲で処理（文字列をJSに埋め込まない）
     const ADMIN_ALLOWED_ACTIONS = ["adminSendWarning", "adminSuspendUser", "adminUnsuspendUser", "adminDeletePost", "adminForceCancelTrade", "deleteReportedPost", "markInquiryDone", "copyText"];
     window.copyText = function(t) { navigator.clipboard.writeText(String(t || "")).catch(() => {}); };
     document.getElementById("admin-content").addEventListener("click", (e) => {
@@ -1107,7 +1106,7 @@
     window.openAdminModal = function() { 
       if (!isAdmin()) return; 
       document.getElementById("admin-modal").classList.remove("hidden"); 
-      switchAdminTab('stats'); // デフォルトを統計に
+      switchAdminTab('stats');
     };
     
     window.closeAdminModal = function() { 
@@ -1116,7 +1115,7 @@
 
     window.switchAdminTab = function(tab) {
       adminTab = tab;
-      adminSearchQuery = ""; // タブ切り替えで検索リセット
+      adminSearchQuery = "";
       const tabs = ["reports", "inquiries", "users", "posts", "trades", "stats", "broadcast"];
       tabs.forEach((k) => {
         const el = document.getElementById("admin-tab-" + k);
@@ -1131,7 +1130,6 @@
         }
       });
 
-      // 検索バーの表示制御
       const controls = document.getElementById("admin-controls");
       if (tab === "users" || tab === "posts" || tab === "trades") {
         controls.innerHTML = `<input type="text" placeholder="名前, UID, またはキーワードで検索..." oninput="adminSearchQuery = this.value.trim().toLowerCase(); loadAdminData();" class="liquid-glass-input w-full rounded-xl p-2.5 text-xs text-gray-800">`;
@@ -1149,7 +1147,6 @@
       el.innerHTML = '<div class="flex justify-center items-center h-full"><p class="text-gray-500 font-medium">⏳ データ読み込み中...</p></div>';
       
       try {
-        // --- 📊 統計タブ ---
         if (adminTab === "stats") {
           const d = new Date(); d.setDate(1); d.setHours(0,0,0,0);
           const [tradesSnap, usersSnap, postsSnap] = await Promise.all([
@@ -1192,7 +1189,6 @@
           return;
         }
 
-        // --- 👥 ユーザー管理タブ ---
         if (adminTab === "users") {
           const snap = await getDocs(collection(db, "users")); 
           const suspSnap = await getDocs(collection(db, "suspensions"));
@@ -1234,7 +1230,6 @@
           return;
         }
 
-        // --- 📦 投稿管理タブ ---
         if (adminTab === "posts") {
           const snap = await getDocs(query(collection(db, "posts"), orderBy("createdAt", "desc")));
           let posts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -1266,7 +1261,6 @@
           return;
         }
 
-        // --- 💬 取引監視タブ ---
         if (adminTab === "trades") {
           const snap = await getDocs(query(collection(db, "trades"), orderBy("createdAt", "desc")));
           let trades = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -1304,7 +1298,6 @@
           return;
         }
 
-        // --- 既存のタブ ---
         if (adminTab === "reports") {
           const snap = await getDocs(query(collection(db, "reports"), orderBy("createdAt", "desc")));
           if (snap.empty) { el.innerHTML = '<p class="text-gray-500 text-center py-6 font-medium">通報はありません。</p>'; return; }
@@ -1343,7 +1336,6 @@
       }
     }
 
-    // 特定のユーザーへ警告通知を送信
     window.adminSendWarning = async function(uid, name) {
       const msg = prompt(`【${name}】への警告メッセージを入力してください:\n(相手の通知一覧に運営からのメッセージとして届きます)`);
       if (!msg) return;
@@ -1365,7 +1357,6 @@
       } catch (e) { alert("送信に失敗しました。"); }
     };
 
-    // ユーザーのアカウント手動停止
     window.adminSuspendUser = async function(uid, name) {
       const reason = prompt(`【${name}】のアカウントを停止する理由を入力してください:`);
       if (!reason) return;
@@ -1376,7 +1367,6 @@
       } catch(e) { alert("失敗しました。"); }
     };
 
-    // ユーザーのアカウント停止解除
     window.adminUnsuspendUser = async function(uid) {
       if (!confirm("アカウント停止を解除しますか？")) return;
       try {
@@ -1386,7 +1376,6 @@
       } catch(e) { alert("失敗しました。"); }
     };
 
-    // 投稿の強制削除
     window.adminDeletePost = async function(postId) {
       if(!confirm("この投稿を強制的に削除しますか？\n(画像や共同購入の参加データも削除されます)")) return;
       try {
@@ -1402,7 +1391,6 @@
       } catch(e){ alert("削除に失敗しました。"); }
     };
 
-    // 取引の強制キャンセル
     window.adminForceCancelTrade = async function(tradeId) {
       if(!confirm("運営権限でこの取引を強制的にキャンセルしますか？\n（トラブル対応用です）")) return;
       try {
@@ -2005,10 +1993,19 @@
       if (!currentUser) actions.innerHTML = `<button onclick="loginWithGoogle()" class="w-full bg-gradient-to-r from-illit-purple to-illit-accent text-white font-medium py-3 rounded-full shadow-md border border-white/30">ログインして申込</button>`;
       else if (p.userId === currentUser.uid) actions.innerHTML = `${isGroup ? `<button onclick="toggleGroupClosed(${index})" class="w-full bg-teal-50 text-teal-700 border border-teal-200 font-medium py-3 rounded-full hover:bg-teal-100 transition shadow-sm mb-2">${closed ? '🔓 募集再開' : '🔒 募集締切'}</button>` : ''}<button onclick="openEditPost(${index})" class="w-full bg-white/80 border border-white text-illit-darkPurple font-medium py-3 rounded-full hover:bg-white transition shadow-sm">✏️ 編集</button><button onclick="deletePost(${index})" class="w-full bg-red-50 text-red-500 font-medium py-3 rounded-full border border-red-200 hover:bg-red-100 transition mt-2 shadow-sm">削除</button>`;
       else {
-        if (isGroup && joined) actions.innerHTML = `<button onclick="openMyGroupTrade(${index})" class="w-full bg-gradient-to-r from-teal-400 to-teal-500 text-white font-medium py-3 rounded-full shadow-md border border-white/30">💬 取引ルーム</button>`;
-        else if (isGroup && (closed || full)) actions.innerHTML = `<p class="text-xs text-gray-500 font-medium text-center bg-white/50 p-2 rounded-xl border border-white">終了または満員です</p>`;
-        else if (isExpired(p)) actions.innerHTML = `<p class="text-xs text-red-400 font-medium text-center bg-white/50 p-2 rounded-xl border border-white">期限切れです</p>`;
-        else actions.innerHTML = `<button onclick="${isGroup ? `joinGroup(${index})` : `applyToPost(${index})`}" class="w-full bg-gradient-to-r ${isGroup ? 'from-teal-400 to-teal-500' : 'from-illit-purple to-illit-accent'} text-white font-medium py-3 rounded-full shadow-md border border-white/30">${isGroup ? '🛍 参加する' : '申し込む'}</button>`;
+        // すでに有効な（キャンセルされていない）取引が存在するかチェック
+        const existingTrade = myTrades.find(t => t.postId === p.id && t.status !== "cancelled");
+        if (existingTrade) {
+          actions.innerHTML = `<button onclick="openTrade('${existingTrade.id}')" class="w-full bg-gradient-to-r from-illit-purple to-illit-accent text-white font-medium py-3 rounded-full shadow-md border border-white/30">💬 取引ルームを開く</button>`;
+        } else if (isGroup && joined) {
+          actions.innerHTML = `<button onclick="openMyGroupTrade(${index})" class="w-full bg-gradient-to-r from-teal-400 to-teal-500 text-white font-medium py-3 rounded-full shadow-md border border-white/30">💬 取引ルーム</button>`;
+        } else if (isGroup && (closed || full)) {
+          actions.innerHTML = `<p class="text-xs text-gray-500 font-medium text-center bg-white/50 p-2 rounded-xl border border-white">終了または満員です</p>`;
+        } else if (isExpired(p)) {
+          actions.innerHTML = `<p class="text-xs text-red-400 font-medium text-center bg-white/50 p-2 rounded-xl border border-white">期限切れです</p>`;
+        } else {
+          actions.innerHTML = `<button onclick="${isGroup ? `joinGroup(${index})` : `applyToPost(${index})`}" class="w-full bg-gradient-to-r ${isGroup ? 'from-teal-400 to-teal-500' : 'from-illit-purple to-illit-accent'} text-white font-medium py-3 rounded-full shadow-md border border-white/30">${isGroup ? '🛍 参加する' : '申し込む'}</button>`;
+        }
       }
       document.getElementById("detail-modal").classList.remove("hidden"); loadDetailPhotos(p, index); if (p.userId) loadRating(p.userId, index);
     };
@@ -2064,6 +2061,16 @@
       const p = allPosts[index]; if (!currentUser || !p || !p.userId) return;
       if (p.kind === "group") return joinGroup(index);
       if (!(await checkDeviceLock())) return;
+
+      // すでに有効な取引が起きていないか二重チェック
+      const existing = myTrades.find(t => t.postId === p.id && t.status !== "cancelled");
+      if (existing) {
+        alert("すでにこの出品に対する取引ルームが存在します。");
+        closeDetailModal();
+        openTrade(existing.id);
+        return;
+      }
+
       try {
         const ref = await addDoc(collection(db, "trades"), { kind: p.kind, isBuy: !!p.isBuy, isSell: !!p.isSell, postId: p.id, postGive: p.give, postWant: p.want || "", postPrice: p.price || 0, postMember: p.member || "指定なし", postDeadline: p.deadline || "", postPhotoCount: p.photoCount || 0, postCondition: p.condition || "", ownerId: p.userId, ownerName: p.userName, applicantId: currentUser.uid, applicantName: getMyDisplayName(), participants: [p.userId, currentUser.uid], status: "negotiating", agreed: {}, shipped: {}, received: {}, disputed: {}, lastMessageAt: serverTimestamp(), lastSenderId: currentUser.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
         closeDetailModal(); openTrade(ref.id);
@@ -2072,6 +2079,15 @@
     window.joinGroup = async function(index) {
       const p = allPosts[index]; if (!currentUser || !p || !p.userId || p.kind !== "group" || !(await checkDeviceLock())) return;
       if (p.status === "closed" || isExpired(p)) return alert("募集終了。");
+      
+      const existing = myTrades.find(t => t.postId === p.id && t.status !== "cancelled");
+      if (existing) {
+        alert("すでにこの共同購入に参加しています。");
+        closeDetailModal();
+        openTrade(existing.id);
+        return;
+      }
+
       const joins = joinsOf(p.id); if (joins.some(j => j.id === currentUser.uid)) return alert("参加済みです。");
       const localCount = Math.max(0, typeof p.joinsCount === "number" ? p.joinsCount : joins.length);
       if (localCount >= Number(p.target || 0)) return alert("満員です。");
