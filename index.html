@@ -943,6 +943,23 @@
     function joinsOf(postId) { return groupJoins[postId] || []; }
     function needsCondition(kind) { return kind === "card" || kind === "album" || kind === "dearlit"; }
 
+    // 投稿をactive（出品中）に戻す共通ヘルパー
+    async function restorePostToActive(postId, kind, applicantId) {
+      if (!postId) return;
+      try {
+        if (kind === "group" && applicantId) {
+          try {
+            await deleteDoc(doc(db, "posts", postId, "joins", applicantId));
+            await updateDoc(doc(db, "posts", postId), { joinsCount: increment(-1), status: "active" });
+          } catch(err){}
+        } else {
+          await updateDoc(doc(db, "posts", postId), { status: "active" });
+        }
+      } catch(e) {
+        console.warn("restorePostToActive error:", e);
+      }
+    }
+
     const SHARE_TYPE_LABEL = {
       card_exchange: "🃏 トレカ交換募集", card_buy: "💳 トレカ買取募集", card_sell: "💰 トレカ売却",
       album: "💿 アルバム", dearlit: "🎁 DEARLIT",
@@ -1500,14 +1517,7 @@
         const tradeSnap = await getDoc(doc(db, "trades", tradeId));
         if(tradeSnap.exists()) {
           const tData = tradeSnap.data();
-          if (tData.kind === "group" && tData.postId && tData.applicantId) {
-            try {
-              await deleteDoc(doc(db, "posts", tData.postId, "joins", tData.applicantId));
-              await updateDoc(doc(db, "posts", tData.postId), { joinsCount: increment(-1) });
-            } catch(err){}
-          } else if (tData.postId && tData.kind !== "group") {
-            try { await updateDoc(doc(db, "posts", tData.postId), { status: "active" }); } catch(err){}
-          }
+          await restorePostToActive(tData.postId, tData.kind, tData.applicantId);
         }
         alert("取引を強制キャンセルしました。");
         loadAdminData();
@@ -2545,15 +2555,8 @@
       if (!confirm("キャンセル申請に同意しますか？\n取引がキャンセルされます。")) return;
       const initiatorId = currentTrade.cancelRequest.by;
       try {
-        if (currentTrade.kind === "group" && currentTrade.postId && currentTrade.applicantId) {
-          try {
-            await deleteDoc(doc(db, "posts", currentTrade.postId, "joins", currentTrade.applicantId));
-            await updateDoc(doc(db, "posts", currentTrade.postId), { joinsCount: increment(-1) });
-          } catch(err){}
-        } else if (currentTrade.postId) {
-          try { await updateDoc(doc(db, "posts", currentTrade.postId), { status: "active" }); } catch(err){}
-        }
         await updateDoc(doc(db, "trades", currentTrade.id), { status: "cancelled", cancelAgreed: true, updatedAt: serverTimestamp() });
+        await restorePostToActive(currentTrade.postId, currentTrade.kind, currentTrade.applicantId);
         await applyCancelPenalty(initiatorId, currentTrade.id);
         showToast("取引がキャンセルされました。", "info");
       } catch (e) { alert("処理に失敗しました。"); }
@@ -2672,18 +2675,8 @@
     window.cancelTrade = async function() {
       if (!currentTrade || !confirm("キャンセルしますか？")) return;
       try {
-        if (currentTrade.kind === "group" && currentTrade.postId && currentTrade.applicantId) {
-          try {
-            await deleteDoc(doc(db, "posts", currentTrade.postId, "joins", currentTrade.applicantId));
-            await updateDoc(doc(db, "posts", currentTrade.postId), { joinsCount: increment(-1) });
-          } catch(err){}
-        }
-        else if (currentTrade.postId) {
-          try {
-            await updateDoc(doc(db, "posts", currentTrade.postId), { status: "active" });
-          } catch(err){ console.warn("post status restore error:", err); }
-        }
         await updateDoc(doc(db, "trades", currentTrade.id), { status: "cancelled", updatedAt: serverTimestamp() });
+        await restorePostToActive(currentTrade.postId, currentTrade.kind, currentTrade.applicantId);
         showToast("取引をキャンセルしました。", "info");
       } catch(e) { console.error("cancelTrade error:", e); alert("キャンセル処理に失敗しました。"); }
     };
