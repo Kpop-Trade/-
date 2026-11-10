@@ -257,7 +257,7 @@
               <span class="bg-illit-purple text-white w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5 shadow-sm">1</span>
               <div>
                 <p class="font-bold text-gray-800">画面下のメニューをタップ</p>
-                <p class="text-[11px] text-gray-500 mt-0.5">画面最下部の<b>「≡」ボタン</b>（またはSafariの「共有アイコン ⎋」）をタップします。</p>
+                <p class="text-[11px] text-gray-500 mt-0.5">画面最下部の<b>「≡」ボタン</b>（またはSafariのシェアアイコン）をタップします。</p>
               </div>
             </div>
 
@@ -340,7 +340,6 @@
         <div class="liquid-glass-input rounded-xl p-3"><p class="font-bold text-gray-800 mb-1">Q. 支払い方法は？</p><p class="text-gray-600">A. 原則PayPayです。合意後の取引ルーム内で共有してください。</p></div>
         <div class="liquid-glass-input rounded-xl p-3"><p class="font-bold text-gray-800 mb-1">Q. キャンセルについて</p><p class="text-gray-600">A. 合意後のキャンセルは申請→相手の同意が必要です。申請した側にペナルティが付きます（月3回で警告、8回超で一時停止）。</p></div>
         <div class="liquid-glass-input rounded-xl p-3"><p class="font-bold text-gray-800 mb-1">Q. 商品が届かない場合は？</p><p class="text-gray-600">A. まずは取引ルームで催促してください。運営は仲介・補償を行いません。</p></div>
-        <div class="liquid-glass-input rounded-xl p-3"><p class="font-bold text-gray-800 mb-1">Q. 新規アカウントで出品できない？</p><p class="text-gray-600">A. 評価が0件の新規アカウントは同時に複数出品できません。</p></div>
         <div class="liquid-glass-input rounded-xl p-3"><p class="font-bold text-gray-800 mb-1">Q. 運営に問い合わせしたい</p><p class="text-gray-600">A. フッターまたはマイページから利用してください。返信には数日かかる場合があります。</p></div>
       </div>
       <button onclick="closeFaq()" class="w-full bg-white/60 text-gray-700 border border-white font-medium py-2.5 rounded-full hover:bg-white transition text-sm shadow-sm shrink-0">閉じる</button>
@@ -829,7 +828,7 @@
           </ul>
         </div>
         <div><p class="font-bold text-gray-800 mb-1">3. 禁止事項</p><ul class="list-disc pl-4 space-y-1"><li>詐欺、虚偽の出品、連絡放棄、未発送</li><li>偽造品・不正シリアルの出品</li><li>誹謗中傷、嫌がらせ</li><li>複数アカウントの作成、なりすまし</li><li>商業目的の大量出品・転売</li></ul></div>
-        <div><p class="font-bold text-gray-800 mb-1">4. アカウントについて</p><p>Googleアカウントでのログインが必要です。評価が0件の新規アカウントは同時に複数出品できません。</p></div>
+        <div><p class="font-bold text-gray-800 mb-1">4. アカウントについて</p><p>Googleアカウントでのログインが必要です。</p></div>
         <div><p class="font-bold text-gray-800 mb-1">5. 取引について</p><p>代金のやり取りは原則PayPayとします。合意前であれば双方合意でキャンセル可能です。</p></div>
         <div>
           <p class="font-bold text-gray-800 mb-1">6. 合意後のキャンセルとペナルティ</p>
@@ -1136,16 +1135,6 @@
         if (snap.data().uid === currentUser.uid) return true;
         alert("⚠️ セキュリティ制限\nこの端末からはすでに別のアカウントで登録が行われています。"); return false;
       } catch (e) { return true; }
-    }
-    async function checkPostLimit() {
-      if (isAdmin()) return true;
-      try {
-        const rSnap = await getDocs(query(collection(db, "reviews"), where("toId", "==", currentUser.uid)));
-        if (rSnap.size === 0) {
-          const pSnap = await getDocs(query(collection(db, "posts"), where("userId", "==", currentUser.uid), where("status", "==", "active")));
-          if (pSnap.size >= 1) { alert("⚠️ 評価が0件の新規アカウントは、同時に複数の出品を行えません。"); return false; }
-        }
-      } catch (e) {} return true;
     }
     function saveUserData(data) { return setDoc(doc(db, "users", currentUser.uid), data, { merge: true }); }
     function updateUserAvatar() {
@@ -1725,7 +1714,7 @@
     async function compressImage(file, opt) { return compressFromImage(await loadImageFromFile(file), opt); }
 
     // ==============================================
-    // プッシュ通知関連 (パスを /firebase-messaging-sw.js に戻しました)
+    // プッシュ通知関連
     // ==============================================
     function pushStorageKey() { return "illit_push_" + currentUser.uid; }
     function updatePushUI() {
@@ -1739,7 +1728,6 @@
     async function saveToken() {
       let reg;
       try {
-        // パスを /firebase-messaging-sw.js に戻しました
         reg = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
       } catch (swErr) {
         console.error("Service Worker 登録エラー:", swErr);
@@ -1873,7 +1861,7 @@
     window.removePostPhoto = function(i) { postPhotos.splice(i, 1); renderPostPhotoPreview(); };
 
     window.submitPost = async function() {
-      if (submittingPost || processingPhotos || !(await checkDeviceLock()) || !(await checkPostLimit())) return;
+      if (submittingPost || processingPhotos || !(await checkDeviceLock())) return;
       const isBuy = postMode === "buy";
       const isAlbum = postMode.startsWith("album");
       const isDearlit = postMode.startsWith("dearlit");
@@ -1923,7 +1911,7 @@
     };
     window.closeSerialPostModal = function() { document.getElementById("serial-post-modal").classList.add("hidden"); };
     window.submitSerialPost = async function() {
-      if (!(await checkDeviceLock()) || !(await checkPostLimit())) return;
+      if (!(await checkDeviceLock())) return;
       const isSell = postMode === "sell", isBuy = postMode === "buy";
       const member = document.getElementById("serial-member").value, give = document.getElementById("serial-give").value.trim(), want = document.getElementById("serial-want").value.trim(), price = Number(document.getElementById("serial-price").value), dl = document.getElementById("serial-deadline").value, note = document.getElementById("serial-note").value.trim().slice(0, 200);
       if (!give || (!isBuy && !isSell && !want) || ((isBuy || isSell) && (!price || price <= 0)) || (dl && dl < todayStr())) return alert("正しく入力してください。");
@@ -1952,7 +1940,7 @@
     };
     window.closeGroupPostModal = function() { document.getElementById("group-post-modal").classList.add("hidden"); };
     window.submitGroupPost = async function() {
-      if (submittingGroup || processingPhotos || !(await checkDeviceLock()) || !(await checkPostLimit())) return;
+      if (submittingGroup || processingPhotos || !(await checkDeviceLock())) return;
       const member = document.getElementById("group-member").value, give = document.getElementById("group-give").value.trim(), price = Number(document.getElementById("group-price").value), target = Number(document.getElementById("group-target").value), bundle = document.getElementById("group-bundle").value, bundleNote = document.getElementById("group-bundle-note").value.trim().slice(0, 100), ship = document.getElementById("group-shipping").value, dl = document.getElementById("group-deadline").value, desc = document.getElementById("group-desc").value.trim().slice(0, 200);
       if (!give || !price || price <= 0 || !Number.isInteger(target) || target < 1 || target > 100) return alert("正しく入力してください。");
       if (!dl) return alert("募集締切を設定してください。");
@@ -2026,7 +2014,7 @@
       const blocked = userData.blocked || []; const likes = userData.likes || [];
       const filtered = [];
       allPosts.forEach((p, index) => {
-        if (blocked.includes(p.userId) || p.status === "traded") return;
+        if (blocked.includes(p.userId)) return;
         if (activeOnly && p.status !== "active") return;
         if (p.kind === "group" && Number(p.target || 0) > 0) {
           const jcnt = Math.max(0, typeof p.joinsCount === "number" ? p.joinsCount : joinsOf(p.id).length);
@@ -2048,7 +2036,7 @@
         });
       }
       const cards = filtered.map(({ p, index }) => {
-        const isLiked = likes.includes(p.id); const isGroup = p.kind === "group"; const joins = isGroup ? joinsOf(p.id) : []; const target = Number(p.target || 0); const joinCount = isGroup ? Math.max(0, typeof p.joinsCount === "number" ? p.joinsCount : joins.length) : 0; const full = isGroup && target > 0 && joinCount >= target; const closed = isGroup && p.status === "closed"; const dim = isExpired(p) || closed;
+        const isLiked = likes.includes(p.id); const isGroup = p.kind === "group"; const joins = isGroup ? joinsOf(p.id) : []; const target = Number(p.target || 0); const joinCount = isGroup ? Math.max(0, typeof p.joinsCount === "number" ? p.joinsCount : joins.length) : 0; const full = isGroup && target > 0 && joinCount >= target; const closed = isGroup && p.status === "closed"; const isSold = p.status === "traded"; const dim = isExpired(p) || closed || isSold;
         let badgeHtml = "";
         if (isGroup) badgeHtml = `<span class="bg-teal-50 border border-teal-200 text-teal-800 font-medium px-2.5 py-0.5 rounded-full text-[11px] shadow-sm">🛍 共同購入（¥${Number(p.price || 0).toLocaleString()}）</span>`;
         else if (p.kind === "album") badgeHtml = `<span class="bg-indigo-50 border border-indigo-200 text-indigo-800 font-medium px-2.5 py-0.5 rounded-full text-[11px] shadow-sm">💿 アルバム${p.isSell || p.isBuy ? "（¥" + Number(p.price||0).toLocaleString() + "）" : ""}</span>`;
@@ -2059,7 +2047,14 @@
         else if (p.isBuy) badgeHtml = `<span class="bg-pink-50 border border-pink-200 text-pink-700 font-medium px-2.5 py-0.5 rounded-full text-[11px] shadow-sm">💳 買取希望（¥${Number(p.price || 0).toLocaleString()}）</span>`;
         else if (p.kind === "serial") badgeHtml = `<span class="bg-yellow-50 border border-yellow-300 text-yellow-900 font-medium px-2.5 py-0.5 rounded-full text-[11px] shadow-sm">🎫 シリアルでトレカ求む</span>`;
         else badgeHtml = `<span class="bg-purple-50 border border-purple-200 text-purple-700 font-medium px-2.5 py-0.5 rounded-full text-[11px] shadow-sm">🃏 トレカ交換</span>`;
-        let photoHtml = (!isGroup && p.kind === "serial") ? "" : ((p.photoCount && isJpegData(p.thumb)) ? `<div class="relative"><img src="${p.thumb}" alt="" onclick="openDetailModal(${index})" class="w-full h-40 object-cover rounded-2xl cursor-pointer shadow-sm border border-white/50 hover:opacity-90 transition">${p.photoCount > 1 ? `<span class="absolute bottom-1.5 right-1.5 bg-black/50 text-white text-[10px] font-medium px-2 py-0.5 rounded-full backdrop-blur-md">📷 ${p.photoCount}</span>` : ''}</div>` : "");
+        
+        let photoHtml = (!isGroup && p.kind === "serial") ? "" : ((p.photoCount && isJpegData(p.thumb)) ? `
+          <div class="relative">
+            <img src="${p.thumb}" alt="" onclick="openDetailModal(${index})" class="w-full h-40 object-cover rounded-2xl cursor-pointer shadow-sm border border-white/50 hover:opacity-90 transition ${isSold ? 'opacity-40 grayscale' : ''}">
+            ${isSold ? '<span class="absolute inset-0 flex items-center justify-center text-red-600 font-extrabold text-2xl tracking-wider drop-shadow-md bg-black/20 rounded-2xl">SOLD OUT</span>' : ''}
+            ${!isSold && p.photoCount > 1 ? `<span class="absolute bottom-1.5 right-1.5 bg-black/50 text-white text-[10px] font-medium px-2 py-0.5 rounded-full backdrop-blur-md">📷 ${p.photoCount}</span>` : ''}
+          </div>` : (isSold ? '<div class="bg-gray-200/80 rounded-2xl p-4 text-center text-red-600 font-extrabold text-xl tracking-wider border border-white">SOLD OUT</div>' : ''));
+        
         const memberLabel = p.member && p.member !== "指定なし" ? ` <span class="text-xs text-gray-500 font-normal">(${escapeHtml(p.member)})</span>` : "";
         let groupHtml = "";
         if (isGroup) {
@@ -2151,7 +2146,7 @@
       const descBox = document.getElementById("detail-desc-box");
       if (p.description) { descBox.classList.remove("hidden"); descBox.innerHTML = `💬 ${escapeHtml(p.description)}`; }
       else { descBox.classList.add("hidden"); }
-      const joins = isGroup ? joinsOf(p.id) : []; const target = Number(p.target || 0); const joinCount = isGroup ? Math.max(0, typeof p.joinsCount === "number" ? p.joinsCount : joins.length) : 0; const full = isGroup && target > 0 && joinCount >= target; const closed = isGroup && p.status === "closed"; const joined = !!(isGroup && currentUser && joins.some(j => j.id === currentUser.uid));
+      const joins = isGroup ? joinsOf(p.id) : []; const target = Number(p.target || 0); const joinCount = isGroup ? Math.max(0, typeof p.joinsCount === "number" ? p.joinsCount : joins.length) : 0; const full = isGroup && target > 0 && joinCount >= target; const closed = isGroup && p.status === "closed"; const isSold = p.status === "traded"; const joined = !!(isGroup && currentUser && joins.some(j => j.id === currentUser.uid));
       let extra = "";
       if (p.kind === "serial" && p.deadline) extra += `<div>有効期限: <b>${escapeHtml(p.deadline)}</b></div>`;
       if (isGroup) {
@@ -2171,6 +2166,8 @@
           actions.innerHTML = `<button onclick="openTrade('${existingTrade.id}')" class="w-full bg-gradient-to-r from-illit-purple to-illit-accent text-white font-medium py-3 rounded-full shadow-md border border-white/30">💬 取引ルームを開く</button>`;
         } else if (isGroup && joined) {
           actions.innerHTML = `<button onclick="openMyGroupTrade(${index})" class="w-full bg-gradient-to-r from-teal-400 to-teal-500 text-white font-medium py-3 rounded-full shadow-md border border-white/30">💬 取引ルーム</button>`;
+        } else if (isSold) {
+          actions.innerHTML = `<p class="text-xs text-red-500 font-bold text-center bg-white/50 p-3 rounded-xl border border-white">SOLD OUT（取引進行中・終了）</p>`;
         } else if (isGroup && (closed || full)) {
           actions.innerHTML = `<p class="text-xs text-gray-500 font-medium text-center bg-white/50 p-2 rounded-xl border border-white">終了または満員です</p>`;
         } else if (isExpired(p)) {
@@ -2245,6 +2242,10 @@
 
       try {
         const ref = await addDoc(collection(db, "trades"), { kind: p.kind, isBuy: !!p.isBuy, isSell: !!p.isSell, postId: p.id, postGive: p.give, postWant: p.want || "", postPrice: p.price || 0, postMember: p.member || "指定なし", postDeadline: p.deadline || "", postPhotoCount: p.photoCount || 0, postCondition: p.condition || "", ownerId: p.userId, ownerName: p.userName, applicantId: currentUser.uid, applicantName: getMyDisplayName(), participants: [p.userId, currentUser.uid], status: "negotiating", agreed: {}, shipped: {}, received: {}, disputed: {}, lastMessageAt: serverTimestamp(), lastSenderId: currentUser.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), deviceId: getOrCreateDeviceId() });
+        
+        // 申し込みがあったため出品のステータスをSOLD(traded)に更新
+        await updateDoc(doc(db, "posts", p.id), { status: "traded" });
+
         closeDetailModal(); openTrade(ref.id);
       } catch(e) { alert("失敗しました。"); }
     };
