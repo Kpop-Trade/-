@@ -943,7 +943,7 @@
     function joinsOf(postId) { return groupJoins[postId] || []; }
     function needsCondition(kind) { return kind === "card" || kind === "album" || kind === "dearlit"; }
 
-    // 投稿をactive（出品中）に戻す共通ヘルパー
+    // 投稿をactive（出品中）に戻す共通処理（権限・タイプ判定を強化）
     async function restorePostToActive(postId, kind, applicantId) {
       if (!postId) return;
       try {
@@ -951,7 +951,10 @@
           try {
             await deleteDoc(doc(db, "posts", postId, "joins", applicantId));
             await updateDoc(doc(db, "posts", postId), { joinsCount: increment(-1), status: "active" });
-          } catch(err){}
+          } catch(err){
+            console.warn("group joins clear warning:", err);
+            await updateDoc(doc(db, "posts", postId), { status: "active" });
+          }
         } else {
           await updateDoc(doc(db, "posts", postId), { status: "active" });
         }
@@ -2554,9 +2557,16 @@
       if (!currentTrade || !currentTrade.cancelRequest) return;
       if (!confirm("キャンセル申請に同意しますか？\n取引がキャンセルされます。")) return;
       const initiatorId = currentTrade.cancelRequest.by;
+      const postId = currentTrade.postId;
+      const kind = currentTrade.kind;
+      const applicantId = currentTrade.applicantId;
+
       try {
         await updateDoc(doc(db, "trades", currentTrade.id), { status: "cancelled", cancelAgreed: true, updatedAt: serverTimestamp() });
-        await restorePostToActive(currentTrade.postId, currentTrade.kind, currentTrade.applicantId);
+        
+        // 投稿を active（出品中）に戻す
+        await restorePostToActive(postId, kind, applicantId);
+
         await applyCancelPenalty(initiatorId, currentTrade.id);
         showToast("取引がキャンセルされました。", "info");
       } catch (e) { alert("処理に失敗しました。"); }
@@ -2675,10 +2685,21 @@
     window.cancelTrade = async function() {
       if (!currentTrade || !confirm("キャンセルしますか？")) return;
       try {
+        const postId = currentTrade.postId;
+        const kind = currentTrade.kind;
+        const applicantId = currentTrade.applicantId;
+
         await updateDoc(doc(db, "trades", currentTrade.id), { status: "cancelled", updatedAt: serverTimestamp() });
-        await restorePostToActive(currentTrade.postId, currentTrade.kind, currentTrade.applicantId);
+        
+        // 投稿を active（出品中）に戻す
+        await restorePostToActive(postId, kind, applicantId);
+
         showToast("取引をキャンセルしました。", "info");
-      } catch(e) { console.error("cancelTrade error:", e); alert("キャンセル処理に失敗しました。"); }
+        closeRoom();
+      } catch(e) {
+        console.error("cancelTrade error:", e);
+        alert("キャンセル処理に失敗しました。");
+      }
     };
 
     window.setRating = function(n) { selectedRating = n; document.querySelectorAll("[data-star]").forEach(b => b.className = "text-3xl transition drop-shadow-sm hover:scale-110 " + (Number(b.dataset.star) <= n ? "text-yellow-400" : "text-gray-300")); };
