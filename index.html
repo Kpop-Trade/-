@@ -1192,7 +1192,6 @@
           return true;
         }
         if (snap.data().uid === currentUser.uid) {
-          // 念のため更新時刻を更新して存在を確認
           try { await updateDoc(ref, { updatedAt: serverTimestamp() }); } catch (_) {}
           return true;
         }
@@ -1288,7 +1287,7 @@
             el.classList.add("border-illit-darkPurple", "text-illit-darkPurple");
           } else {
             el.classList.add("border-transparent", "text-gray-500");
-            el.classList.remove("border-illit-darkPurple", "text-illit-darkPurple");
+            el.classList.remove("border-illit-darkPurple", "text-gray-500");
           }
         }
       });
@@ -2385,11 +2384,11 @@
           deviceId: deviceId
         });
 
-        // 出品を SOLD にする（失敗しても取引は成立済みなので続行）
+        // 出品を SOLD にする
         try {
           await updateDoc(doc(db, "posts", p.id), { status: "traded" });
         } catch (statusErr) {
-          console.warn("post status → traded の更新に失敗（取引は作成済み）:", statusErr?.code || statusErr);
+          console.warn("post status → traded の更新に失敗:", statusErr?.code || statusErr);
         }
 
         closeDetailModal();
@@ -2398,7 +2397,6 @@
       } catch (e) {
         console.error("applyToPost error:", e);
         const msg = e?.code || e?.message || String(e);
-        // よくある原因を日本語で表示
         if (msg.includes("permission-denied") || msg.includes("PERMISSION_DENIED")) {
           alert("申し込みに失敗しました。\n（権限エラー）\nページを再読み込みしてからもう一度お試しください。");
         } else if (msg.includes("device") || msg.includes("Device")) {
@@ -2760,9 +2758,14 @@
             await updateDoc(doc(db, "posts", currentTrade.postId), { joinsCount: increment(-1) });
           } catch(err){}
         }
-        else if (currentTrade.postId) { try { await updateDoc(doc(db, "posts", currentTrade.postId), { status: "active" }); } catch(err){} }
+        else if (currentTrade.postId) {
+          try {
+            await updateDoc(doc(db, "posts", currentTrade.postId), { status: "active" });
+          } catch(err){ console.warn("post status restore error:", err); }
+        }
         await updateDoc(doc(db, "trades", currentTrade.id), { status: "cancelled", updatedAt: serverTimestamp() });
-      } catch(e) {}
+        showToast("取引をキャンセルしました。", "info");
+      } catch(e) { console.error("cancelTrade error:", e); alert("キャンセル処理に失敗しました。"); }
     };
 
     window.setRating = function(n) { selectedRating = n; document.querySelectorAll("[data-star]").forEach(b => b.className = "text-3xl transition drop-shadow-sm hover:scale-110 " + (Number(b.dataset.star) <= n ? "text-yellow-400" : "text-gray-300")); };
