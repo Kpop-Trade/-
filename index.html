@@ -95,18 +95,6 @@
     .filter-chip:active {
       transform: scale(0.96);
     }
-
-    /* モバイルキーボード表示時の取引ルーム高さ崩れ防止 */
-    #room-modal .liquid-glass-heavy {
-      height: 100dvh;
-      max-height: 100dvh;
-    }
-    @media (min-width: 768px) {
-      #room-modal .liquid-glass-heavy {
-        height: 90vh;
-        max-height: 90vh;
-      }
-    }
   </style>
 </head>
 <body class="bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 text-gray-800 min-h-screen font-sans relative overflow-x-hidden">
@@ -777,34 +765,28 @@
 
   <!-- 取引ルーム -->
   <div id="room-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center md:p-4">
-    <div class="liquid-glass-heavy w-full max-w-md md:rounded-[2rem] shadow-2xl flex flex-col overflow-hidden relative">
-      <div class="flex justify-between items-center px-5 py-3 border-b border-white/50 shrink-0 bg-white/40 backdrop-blur">
+    <div class="liquid-glass-heavy w-full max-w-md h-full md:h-[90vh] md:rounded-[2rem] shadow-2xl flex flex-col overflow-hidden">
+      <div class="flex justify-between items-center px-5 py-4 border-b border-white/50 shrink-0 bg-white/40 backdrop-blur">
         <h3 id="room-title" class="font-bold text-sm text-gray-900 truncate drop-shadow-sm"></h3>
         <button onclick="closeRoom()" class="text-gray-500 hover:text-gray-700 font-bold text-xl leading-none bg-white/50 w-8 h-8 rounded-full border border-white shadow-sm">&times;</button>
       </div>
-      
-      <div class="flex-1 overflow-y-auto flex flex-col min-h-0 bg-white/30">
-        <div class="p-4 space-y-3 border-b border-white/50 bg-white/20 shrink-0" id="room-top-box">
-          <div id="room-info"></div>
-          <div id="room-paypay-box"></div>
-          <div id="room-photos"></div>
-          <div id="room-address-box"></div>
-          <div id="room-steps"></div>
-          <div id="room-actions" class="space-y-2"></div>
-        </div>
-        
-        <div id="room-messages" class="flex-1 p-4 space-y-3 min-h-[150px]"></div>
+      <div class="p-4 space-y-3 border-b border-white/50 bg-white/20 overflow-y-auto shrink-0 max-h-[52%]" id="room-top-box">
+        <div id="room-info"></div>
+        <div id="room-paypay-box"></div>
+        <div id="room-photos"></div>
+        <div id="room-address-box"></div>
+        <div id="room-steps"></div>
+        <div id="room-actions" class="space-y-2"></div>
       </div>
-
-      <div class="px-3 py-1.5 bg-white/30 border-t border-b border-white/50 flex gap-2 overflow-x-auto shrink-0 text-[11px] hide-scrollbar">
+      <div class="px-3 py-2 bg-white/30 border-b border-white/50 flex gap-2 overflow-x-auto shrink-0 text-[11px] hide-scrollbar">
         <button onclick="sendQuickMsg('よろしくおねがいします！')" class="bg-white/80 border border-white px-3 py-1.5 rounded-full text-purple-700 font-medium shrink-0 hover:bg-white shadow-sm transition">👋 よろしくお願いします</button>
         <button onclick="sendQuickMsg('PayPayで送金しますので、リンクまたはPayPay IDを教えてください！')" class="bg-pink-50 border border-white px-3 py-1.5 rounded-full text-pink-700 font-medium shrink-0 hover:bg-pink-100 shadow-sm transition">💳 PayPay案内</button>
         <button onclick="sendQuickMsg('水濡れ・折れ防止をして発送いたします！')" class="bg-white/80 border border-white px-3 py-1.5 rounded-full text-purple-700 font-medium shrink-0 hover:bg-white shadow-sm transition">📦 梱包します</button>
         <button onclick="sendQuickMsg('本日発送いたしました！到着までお待ちください。')" class="bg-white/80 border border-white px-3 py-1.5 rounded-full text-purple-700 font-medium shrink-0 hover:bg-white shadow-sm transition">📮 発送完了</button>
         <button onclick="sendQuickMsg('無事に受け取りました！丁寧な取引ありがとうございました✨')" class="bg-white/80 border border-white px-3 py-1.5 rounded-full text-purple-700 font-medium shrink-0 hover:bg-white shadow-sm transition">✨ 受取完了</button>
       </div>
-
-      <div class="p-3 border-t border-white/50 flex items-center space-x-2 shrink-0 bg-white/80 backdrop-blur-md">
+      <div id="room-messages" class="flex-1 overflow-y-auto p-4 space-y-3 bg-white/40"></div>
+      <div class="p-3 border-t border-white/50 flex items-center space-x-2 shrink-0 bg-white/60 backdrop-blur-md">
         <input id="image-input" type="file" accept="image/*" class="hidden" onchange="sendImage(this)">
         <button id="room-photo" onclick="document.getElementById('image-input').click()" class="text-xl px-2.5 py-2 rounded-2xl bg-white/80 border border-white hover:bg-white text-purple-600 transition shadow-sm" title="写真を送る">📷</button>
         <input id="room-input" type="text" maxlength="1000" placeholder="メッセージを入力" onkeydown="if(event.key==='Enter'&&!event.isComposing){sendMessage();}" class="flex-1 min-w-0 border border-white/70 rounded-2xl p-3 bg-white/70 focus:bg-white focus:ring-2 focus:ring-illit-purple focus:outline-none text-sm shadow-inner transition">
@@ -961,23 +943,43 @@
     function joinsOf(postId) { return groupJoins[postId] || []; }
     function needsCondition(kind) { return kind === "card" || kind === "album" || kind === "dearlit"; }
 
-    // 投稿をactive（出品中）に戻す共通処理（権限・タイプ判定を強化）
+    // 投稿をactive（出品中）に戻す共通処理
     async function restorePostToActive(postId, kind, applicantId) {
       if (!postId) return;
+      if (kind === "group") {
+        // 共同購入は参加枠を戻すだけ（statusは触らない）
+        if (!applicantId) return;
+        try {
+          await deleteDoc(doc(db, "posts", postId, "joins", applicantId));
+          await updateDoc(doc(db, "posts", postId), { joinsCount: increment(-1) });
+        } catch (e) { console.warn("group joins clear warning:", e?.code || e); }
+        return;
+      }
       try {
-        if (kind === "group" && applicantId) {
-          try {
-            await deleteDoc(doc(db, "posts", postId, "joins", applicantId));
-            await updateDoc(doc(db, "posts", postId), { joinsCount: increment(-1), status: "active" });
-          } catch(err){
-            console.warn("group joins clear warning:", err);
-            await updateDoc(doc(db, "posts", postId), { status: "active" });
-          }
-        } else {
-          await updateDoc(doc(db, "posts", postId), { status: "active" });
-        }
-      } catch(e) {
-        console.warn("restorePostToActive error:", e);
+        await updateDoc(doc(db, "posts", postId), { status: "active" });
+      } catch (e) {
+        // 申込者側は権限で失敗することがある → 出品者側の自動復旧で戻る
+        console.warn("restorePostToActive error:", e?.code || e);
+      }
+    }
+
+    // 出品者側：取引が残っていないSOLD投稿を自動でactiveに戻す
+    let tradesLoaded = false, healTimer = null;
+    function scheduleHealSoldPosts() {
+      if (!currentUser || !tradesLoaded) return;
+      clearTimeout(healTimer);
+      healTimer = setTimeout(healSoldPosts, 3000); // 申込直後の同期ズレ対策で3秒待つ
+    }
+    async function healSoldPosts() {
+      if (!currentUser || !tradesLoaded) return;
+      const busy = new Set(myTrades.filter(t => t.status !== "cancelled").map(t => t.postId));
+      const targets = allPosts.filter(p =>
+        p.userId === currentUser.uid && p.kind !== "group" &&
+        p.status === "traded" && !busy.has(p.id)
+      );
+      for (const p of targets) {
+        try { await updateDoc(doc(db, "posts", p.id), { status: "active" }); }
+        catch (e) { console.warn("healSoldPosts error:", e?.code || e); }
       }
     }
 
@@ -1529,19 +1531,15 @@
     window.adminForceCancelTrade = async function(tradeId) {
       if(!confirm("運営権限でこの取引を強制的にキャンセルしますか？\n（トラブル対応用です）")) return;
       try {
-        const tradeSnap = await getDoc(doc(db, "trades", tradeId));
-        let tData = null;
-        if(tradeSnap.exists()) {
-          tData = tradeSnap.data();
-        }
-
         await updateDoc(doc(db, "trades", tradeId), { 
           status: "cancelled", 
           adminCancelled: true,
           updatedAt: serverTimestamp() 
         });
         
-        if(tData) {
+        const tradeSnap = await getDoc(doc(db, "trades", tradeId));
+        if(tradeSnap.exists()) {
+          const tData = tradeSnap.data();
           await restorePostToActive(tData.postId, tData.kind, tData.applicantId);
         }
         alert("取引を強制キャンセルしました。");
@@ -1842,6 +1840,7 @@
       } else {
         loginBtn.classList.remove("hidden"); userProfile.classList.add("hidden");
         if (unsubTrades) unsubTrades(); if (unsubUser) unsubUser(); unsubTrades=null; unsubUser=null;
+        tradesLoaded = false;
         userData = { profile: {}, blocked: [], likes: [], reads: {}, notifications: [], cancelHistory: [] }; myTrades = []; updateBadge(); updateNotifBadge();
         prevUnreadCount = -1; prevTradeCountAsOwner = -1;
         updateUserAvatar();
@@ -2160,6 +2159,7 @@
       unsubPosts = onSnapshot(query(collection(db, "posts"), orderBy("createdAt", "desc")), (snap) => {
         allPosts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         renderPosts();
+        scheduleHealSoldPosts();
         if (pendingPostId) {
           const i = allPosts.findIndex(x => x.id === pendingPostId);
           if (i >= 0) { pendingPostId = null; openDetailModal(i); }
@@ -2430,8 +2430,10 @@
 
     function subscribeTrades() {
       if (unsubTrades) unsubTrades();
+      tradesLoaded = false;
       unsubTrades = onSnapshot(query(collection(db, "trades"), where("participants", "array-contains", currentUser.uid)), (snap) => {
         myTrades = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        tradesLoaded = true;
         const lastAct = t => Math.max(tsValue(t.updatedAt), tsMillis(t.lastMessageAt));
         myTrades.sort((a, b) => lastAct(b) - lastAct(a));
         const unread = myTrades.filter(t => isUnread(t)).length;
@@ -2447,6 +2449,7 @@
         prevUnreadCount = unread;
         prevTradeCountAsOwner = ownerNegotiating;
         updateBadge();
+        scheduleHealSoldPosts();
         if (!document.getElementById("trades-modal").classList.contains("hidden")) renderTradesList();
         if (!document.getElementById("wallet-modal").classList.contains("hidden")) renderWallet();
       });
@@ -2578,28 +2581,20 @@
     window.agreeCancel = async function() {
       if (!currentTrade || !currentTrade.cancelRequest) return;
       if (!confirm("キャンセル申請に同意しますか？\n取引がキャンセルされます。")) return;
-      
       const initiatorId = currentTrade.cancelRequest.by;
       const postId = currentTrade.postId;
       const kind = currentTrade.kind;
       const applicantId = currentTrade.applicantId;
 
       try {
-        await updateDoc(doc(db, "trades", currentTrade.id), { 
-          status: "cancelled", 
-          cancelAgreed: true, 
-          updatedAt: serverTimestamp() 
-        });
+        await updateDoc(doc(db, "trades", currentTrade.id), { status: "cancelled", cancelAgreed: true, updatedAt: serverTimestamp() });
         
+        // 投稿を active（出品中）に戻す
         await restorePostToActive(postId, kind, applicantId);
 
         await applyCancelPenalty(initiatorId, currentTrade.id);
         showToast("取引がキャンセルされました。", "info");
-        closeRoom();
-      } catch (e) { 
-        console.error("agreeCancel error:", e);
-        alert("処理に失敗しました。もう一度お試しください。"); 
-      }
+      } catch (e) { alert("処理に失敗しました。"); }
     };
 
     async function applyCancelPenalty(uid, tradeId) {
@@ -2721,6 +2716,7 @@
 
         await updateDoc(doc(db, "trades", currentTrade.id), { status: "cancelled", updatedAt: serverTimestamp() });
         
+        // 投稿を active（出品中）に戻す
         await restorePostToActive(postId, kind, applicantId);
 
         showToast("取引をキャンセルしました。", "info");
