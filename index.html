@@ -1184,11 +1184,24 @@
     async function checkDeviceLock() {
       if (!currentUser || isAdmin()) return true;
       try {
-        const ref = doc(db, "devices", getOrCreateDeviceId()); const snap = await getDoc(ref);
-        if (!snap.exists()) { await setDoc(ref, { uid: currentUser.uid, updatedAt: serverTimestamp() }); return true; }
-        if (snap.data().uid === currentUser.uid) return true;
-        alert("⚠️ セキュリティ制限\nこの端末からはすでに別のアカウントで登録が行われています。"); return false;
-      } catch (e) { return true; }
+        const deviceId = getOrCreateDeviceId();
+        const ref = doc(db, "devices", deviceId);
+        const snap = await getDoc(ref);
+        if (!snap.exists()) {
+          await setDoc(ref, { uid: currentUser.uid, updatedAt: serverTimestamp() });
+          return true;
+        }
+        if (snap.data().uid === currentUser.uid) {
+          // 念のため更新時刻を更新して存在を確認
+          try { await updateDoc(ref, { updatedAt: serverTimestamp() }); } catch (_) {}
+          return true;
+        }
+        alert("⚠️ セキュリティ制限\nこの端末からはすでに別のアカウントで登録が行われています。");
+        return false;
+      } catch (e) {
+        console.warn("checkDeviceLock error:", e);
+        return true;
+      }
     }
     function saveUserData(data) { return setDoc(doc(db, "users", currentUser.uid), data, { merge: true }); }
     function updateUserAvatar() {
@@ -2151,7 +2164,7 @@
           <div onclick="openDetailModal(${index})" class="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${dim ? 'opacity-60' : ''} group relative">
             <div class="relative aspect-square bg-gray-50 overflow-hidden">
               ${ribbon}
-              <button onclick="event.stopPropagation(); toggleDetailLikeFromCard('${p.id}')" class="absolute top-1.5 right-1.5 z-10 w-7 h-7 flex items-center justify-center rounded-full bg-white/80 backdrop-blur shadow-sm text-sm ${isLiked ? 'text-pink-500' : 'text-gray-300'} hover:scale-110 transition">
+              <button onclick="event.stopPropagation(); toggleDetailLikeFromCard('${p.id}')" class="absolute top-1.5 right-1.5 z-10 w-7 h-7 flex items-center justify-center rounded-full bg-white border border-gray-200 shadow-sm text-[13px] ${isLiked ? 'text-pink-500 border-pink-200' : 'text-gray-400'} hover:scale-110 hover:border-pink-300 transition">
                 ${isLiked ? "♥" : "♡"}
               </button>
               ${photoBlock}
@@ -2341,26 +2354,42 @@
         return;
       }
 
+      const deviceId = getOrCreateDeviceId();
       try {
         const ref = await addDoc(collection(db, "trades"), {
-          kind: p.kind, isBuy: !!p.isBuy, isSell: !!p.isSell, postId: p.id,
-          postGive: p.give, postWant: p.want || "", postPrice: p.price || 0,
-          postMember: p.member || "指定なし", postDeadline: p.deadline || "",
-          postPhotoCount: p.photoCount || 0, postCondition: p.condition || "",
-          ownerId: p.userId, ownerName: p.userName,
-          applicantId: currentUser.uid, applicantName: getMyDisplayName(),
+          kind: p.kind,
+          isBuy: !!p.isBuy,
+          isSell: !!p.isSell,
+          postId: p.id,
+          postGive: p.give,
+          postWant: p.want || "",
+          postPrice: p.price || 0,
+          postMember: p.member || "指定なし",
+          postDeadline: p.deadline || "",
+          postPhotoCount: p.photoCount || 0,
+          postCondition: p.condition || "",
+          ownerId: p.userId,
+          ownerName: p.userName,
+          applicantId: currentUser.uid,
+          applicantName: getMyDisplayName(),
           participants: [p.userId, currentUser.uid],
-          status: "negotiating", agreed: {}, shipped: {}, received: {}, disputed: {},
-          lastMessageAt: serverTimestamp(), lastSenderId: currentUser.uid,
-          createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
-          deviceId: getOrCreateDeviceId()
+          status: "negotiating",
+          agreed: {},
+          shipped: {},
+          received: {},
+          disputed: {},
+          lastMessageAt: serverTimestamp(),
+          lastSenderId: currentUser.uid,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          deviceId: deviceId
         });
 
-        // 出品ステータスを traded に更新（失敗しても取引自体は成功扱い）
+        // 出品を SOLD にする（失敗しても取引は成立済みなので続行）
         try {
           await updateDoc(doc(db, "posts", p.id), { status: "traded" });
         } catch (statusErr) {
-          console.warn("post status update failed (trade already created):", statusErr);
+          console.warn("post status → traded の更新に失敗（取引は作成済み）:", statusErr?.code || statusErr);
         }
 
         closeDetailModal();
@@ -2368,7 +2397,15 @@
         showToast("申し込みが完了しました！", "success");
       } catch (e) {
         console.error("applyToPost error:", e);
-        alert("申し込みに失敗しました。もう一度お試しください。");
+        const msg = e?.code || e?.message || String(e);
+        // よくある原因を日本語で表示
+        if (msg.includes("permission-denied") || msg.includes("PERMISSION_DENIED")) {
+          alert("申し込みに失敗しました。\n（権限エラー）\nページを再読み込みしてからもう一度お試しください。");
+        } else if (msg.includes("device") || msg.includes("Device")) {
+          alert("申し込みに失敗しました。\n（デバイス認証エラー）\n一度ログアウト→ログインしてから再度お試しください。");
+        } else {
+          alert("申し込みに失敗しました。\n" + msg);
+        }
       }
     };
     window.joinGroup = async function(index) {
