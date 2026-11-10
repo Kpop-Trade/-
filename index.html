@@ -10,6 +10,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <link rel="apple-touch-icon" href="/icon-192.png">
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://www.google.com/recaptcha/api.js" async defer></script>
   <script>
     tailwind.config = {
       theme: {
@@ -108,7 +109,7 @@
   <div id="toast-container" class="fixed top-20 left-1/2 -translate-x-1/2 z-[110] space-y-2 w-[92%] max-w-sm pointer-events-none"></div>
 
   <header class="liquid-glass sticky top-0 z-40 border-b-0 rounded-b-2xl mb-4">
-    <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+    <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
       <div class="flex items-center space-x-2">
         <span class="bg-gradient-to-r from-illit-purple to-illit-accent text-white font-bold text-xs px-2.5 py-1 rounded-full shadow-sm">ILLIT</span>
         <h1 class="text-xl font-bold bg-gradient-to-r from-illit-darkPurple to-illit-accent bg-clip-text text-transparent drop-shadow-sm">ILLIT Trade</h1>
@@ -133,7 +134,7 @@
     </div>
   </header>
 
-  <main class="max-w-4xl mx-auto px-4 pb-6 space-y-6">
+  <main class="max-w-5xl mx-auto px-4 pb-6 space-y-6">
     <section class="liquid-glass p-4 md:p-6 rounded-3xl space-y-3 transition duration-300 hover:shadow-[0_12px_40px_rgba(192,132,252,0.25)]">
       <div class="flex items-start space-x-3">
         <div class="text-2xl drop-shadow-md">🤝</div>
@@ -195,8 +196,8 @@
         </div>
       </div>
 
-      <div id="posts-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <p class="text-xs text-gray-500 col-span-2 text-center py-4 font-bold">読み込み中...</p>
+      <div id="posts-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <p class="text-xs text-gray-500 col-span-full text-center py-4 font-bold">読み込み中...</p>
       </div>
     </section>
   </main>
@@ -225,7 +226,7 @@
     </button>
   </nav>
 
-  <footer class="max-w-4xl mx-auto px-4 pb-32 text-center text-[11px] text-gray-500 space-x-3 drop-shadow-sm font-bold flex flex-wrap justify-center gap-y-2">
+  <footer class="max-w-5xl mx-auto px-4 pb-32 text-center text-[11px] text-gray-500 space-x-3 drop-shadow-sm font-bold flex flex-wrap justify-center gap-y-2">
     <a href="#" onclick="openTerms(true); return false;" class="underline hover:text-gray-700">利用規約</a>
     <a href="#" onclick="openPrivacy(); return false;" class="underline hover:text-gray-700">プライバシーポリシー</a>
     <a href="#" onclick="openFaq(); return false;" class="underline hover:text-gray-700">FAQ</a>
@@ -370,6 +371,10 @@
         <div>
           <label class="block font-medium text-gray-700 mb-1">内容 <span class="text-pink-600">必須</span></label>
           <textarea id="inquiry-body" rows="5" maxlength="800" placeholder="できるだけ詳しくご記入ください" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></textarea>
+        </div>
+        <div class="pt-1">
+          <div id="inquiry-recaptcha" class="g-recaptcha flex justify-center"></div>
+          <p class="text-[10px] text-gray-500 text-center mt-1">スパム防止のため認証してください</p>
         </div>
       </div>
       <div class="flex space-x-2 pt-2">
@@ -621,6 +626,10 @@
           <input id="post-photo-input" type="file" accept="image/*" multiple class="hidden" onchange="addPostPhotos(this)">
           <div id="post-photo-preview" class="flex flex-wrap gap-2 mt-2"></div>
         </div>
+        <div class="pt-1">
+          <div id="post-recaptcha" class="g-recaptcha flex justify-center"></div>
+          <p class="text-[10px] text-gray-500 text-center mt-1">スパム防止のため認証してください</p>
+        </div>
       </div>
       <div class="flex space-x-2 pt-2">
         <button onclick="closePostModal()" class="flex-1 bg-white/60 text-gray-700 border border-white font-medium py-3 rounded-full hover:bg-white transition shadow-sm">キャンセル</button>
@@ -643,6 +652,10 @@
         <div id="serial-price-container" class="hidden"><label class="block font-medium text-gray-700 mb-1">希望価格</label><input type="number" id="serial-price" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
         <div><label class="block font-medium text-gray-700 mb-1">有効期限（任意）</label><input type="date" id="serial-deadline" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
         <div><label class="block font-medium text-gray-700 mb-1">説明文</label><textarea id="serial-note" rows="2" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></textarea></div>
+        <div class="pt-1">
+          <div id="serial-recaptcha" class="g-recaptcha flex justify-center"></div>
+          <p class="text-[10px] text-gray-500 text-center mt-1">スパム防止のため認証してください</p>
+        </div>
       </div>
       <div class="flex space-x-2 pt-2">
         <button onclick="closeSerialPostModal()" class="flex-1 bg-white/60 text-gray-700 border border-white font-medium py-3 rounded-full hover:bg-white transition shadow-sm">キャンセル</button>
@@ -669,6 +682,10 @@
         <div><label class="block font-medium text-gray-700 mb-1">📦 送料</label><select id="group-shipping" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"><option value="organizer">主催者負担</option><option value="split">参加者で割り勘</option><option value="self">各自負担</option></select></div>
         <div><label class="block font-medium text-gray-700 mb-1">説明文</label><textarea id="group-desc" rows="3" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></textarea></div>
         <div><label class="block font-medium text-gray-700 mb-1">📷 写真（任意・最大3枚）</label><div id="group-photo-preview" class="flex flex-wrap gap-2"></div></div>
+        <div class="pt-1">
+          <div id="group-recaptcha" class="g-recaptcha flex justify-center"></div>
+          <p class="text-[10px] text-gray-500 text-center mt-1">スパム防止のため認証してください</p>
+        </div>
       </div>
       <div class="flex space-x-2 pt-2">
         <button onclick="closeGroupPostModal()" class="flex-1 bg-white/60 text-gray-700 border border-white font-medium py-3 rounded-full hover:bg-white transition shadow-sm">キャンセル</button>
@@ -876,10 +893,41 @@
     const db = getFirestore(app);
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: "select_account" });
-    const VAPID_KEY = "ここにVAPIDキーを貼る";
+    const VAPID_KEY = "BDDp7KKSAF7CUspZG5J6wnkIqJlwgPaabfUnjuAQd8EcIgeiVj8zzazsy_O4Ick_t8w__7NasrngncK102c7wWg";
+    const RECAPTCHA_SITE_KEY = "6LdbSBkuAAAAAIyEoIo6lMvCme8RMEQVT6779jec";
 
     const ADMIN_UIDS = ["Ay6VCS8HTgM3RqjDYZ0wKdHrSKz1", "GvVhAmT56GZjsWrl1YRaStB81im1"];
     function isAdmin() { return currentUser && ADMIN_UIDS.includes(currentUser.uid); }
+
+    // reCAPTCHA ヘルパー
+    function resetRecaptcha(widgetId) {
+      try {
+        if (typeof grecaptcha !== "undefined" && widgetId != null) grecaptcha.reset(widgetId);
+      } catch (e) {}
+    }
+    function getRecaptchaResponse(widgetId) {
+      try {
+        if (typeof grecaptcha === "undefined") return "";
+        return widgetId != null ? grecaptcha.getResponse(widgetId) : grecaptcha.getResponse();
+      } catch (e) { return ""; }
+    }
+    let postRecaptchaWidget = null, serialRecaptchaWidget = null, groupRecaptchaWidget = null, inquiryRecaptchaWidget = null;
+    function renderRecaptcha(containerId, callback) {
+      const el = document.getElementById(containerId);
+      if (!el || typeof grecaptcha === "undefined") return null;
+      el.innerHTML = "";
+      try {
+        return grecaptcha.render(el, {
+          sitekey: RECAPTCHA_SITE_KEY,
+          theme: "light",
+          size: "normal",
+          callback: callback || (() => {})
+        });
+      } catch (e) {
+        console.warn("reCAPTCHA render error", e);
+        return null;
+      }
+    }
 
     const MEMBERS = ["すべて", "ウォニ (Wonhee)", "ミンジュ (Minju)", "イロハ (Iroha)", "モカ (Moka)", "ユナ (Yuna)"];
     const KINDS = [
@@ -1068,6 +1116,10 @@
       document.getElementById("inquiry-body").value = "";
       document.getElementById("inquiry-subject").value = "other";
       document.getElementById("inquiry-modal").classList.remove("hidden");
+      setTimeout(() => {
+        if (inquiryRecaptchaWidget == null) inquiryRecaptchaWidget = renderRecaptcha("inquiry-recaptcha");
+        else resetRecaptcha(inquiryRecaptchaWidget);
+      }, 100);
     };
     window.closeInquiry = function() { document.getElementById("inquiry-modal").classList.add("hidden"); };
     window.submitInquiry = async function() {
@@ -1076,17 +1128,19 @@
       const body = document.getElementById("inquiry-body").value.trim();
       if (!body) return alert("内容を入力してください。");
       if (body.length < 10) return alert("もう少し詳しくご記入ください。");
+      const captcha = getRecaptchaResponse(inquiryRecaptchaWidget);
+      if (!captcha) return alert("「私はロボットではありません」にチェックを入れてください。");
       const btn = document.getElementById("inquiry-submit-btn");
       btn.disabled = true; btn.innerText = "送信中…";
       try {
         await addDoc(collection(db, "inquiries"), {
           userId: currentUser.uid, userName: getMyDisplayName(), subject, body, status: "open", createdAt: serverTimestamp(),
-          deviceId: getOrCreateDeviceId()
+          deviceId: getOrCreateDeviceId(), recaptchaToken: captcha
         });
         showToast("お問い合わせを送信しました。返信をお待ちください。", "success");
         closeInquiry();
       } catch (e) { alert("送信に失敗しました。"); }
-      finally { btn.disabled = false; btn.innerText = "送信する"; }
+      finally { btn.disabled = false; btn.innerText = "送信する"; resetRecaptcha(inquiryRecaptchaWidget); }
     };
 
     window.openMyPage = function() {
@@ -1734,10 +1788,7 @@
         throw new Error("「/firebase-messaging-sw.js」が読み込めません。ルート直下に配置されているか確認してください。");
       }
 
-      const options = { serviceWorkerRegistration: reg };
-      if (VAPID_KEY && VAPID_KEY !== "ここにVAPIDキーを貼る") {
-        options.vapidKey = VAPID_KEY;
-      }
+      const options = { serviceWorkerRegistration: reg, vapidKey: VAPID_KEY };
 
       const token = await getToken(getMessaging(app), options);
       if (!token) throw new Error("通知トークンの取得に失敗しました。");
@@ -1838,6 +1889,10 @@
       document.getElementById("input-condition").value = "";
       postPhotos = []; renderPostPhotoPreview();
       document.getElementById("post-modal").classList.remove("hidden");
+      setTimeout(() => {
+        if (postRecaptchaWidget == null) postRecaptchaWidget = renderRecaptcha("post-recaptcha");
+        else resetRecaptcha(postRecaptchaWidget);
+      }, 100);
     };
     window.closePostModal = function() { document.getElementById("post-modal").classList.add("hidden"); };
 
@@ -1880,6 +1935,8 @@
       if ((isBuy || isSell) && (!price || price <= 0)) return alert("価格を正しく入力してください。");
       if (!condition) return alert("商品の状態を選択してください。");
       if (!isBuy && postPhotos.length < 1) return alert("写真を1枚以上追加してください。");
+      const captcha = getRecaptchaResponse(postRecaptchaWidget);
+      if (!captcha) return alert("「私はロボットではありません」にチェックを入れてください。");
       submittingPost = true; const btn = document.getElementById("post-submit-btn"); btn.disabled = true; btn.innerText = "投稿中…";
       try {
         const ref = await addDoc(collection(db, "posts"), {
@@ -1888,14 +1945,14 @@
           status: "active", photoCount: postPhotos.length, thumb: postPhotos.length > 0 ? postPhotos[0].thumb : "",
           userId: currentUser.uid, userName: getMyDisplayName(), userPhoto: getMyProfile()?.photo || "",
           likesCount: 0, createdAt: serverTimestamp(),
-          deviceId: getOrCreateDeviceId()
+          deviceId: getOrCreateDeviceId(), recaptchaToken: captcha
         });
         for (let i = 0; i < postPhotos.length; i++) await addDoc(collection(db, "posts", ref.id, "photos"), { data: postPhotos[i].full, order: i, createdAt: serverTimestamp() });
         
         showToast("出品が完了しました！詳細画面からXでシェアできます", "success");
         
         closePostModal(); switchTab('home');
-      } catch(e) { alert("失敗しました"); } finally { submittingPost = false; btn.disabled = false; btn.innerText = "出品する"; }
+      } catch(e) { alert("失敗しました"); } finally { submittingPost = false; btn.disabled = false; btn.innerText = "出品する"; resetRecaptcha(postRecaptchaWidget); }
     };
 
     window.openSerialPostModal = async function(mode) {
@@ -1908,6 +1965,10 @@
       document.getElementById("serial-price-container").classList.toggle("hidden", mode !== "buy" && mode !== "sell");
       document.getElementById("serial-give").value = ""; document.getElementById("serial-want").value = ""; document.getElementById("serial-price").value = ""; document.getElementById("serial-deadline").value = ""; document.getElementById("serial-note").value = "";
       document.getElementById("serial-post-modal").classList.remove("hidden");
+      setTimeout(() => {
+        if (serialRecaptchaWidget == null) serialRecaptchaWidget = renderRecaptcha("serial-recaptcha");
+        else resetRecaptcha(serialRecaptchaWidget);
+      }, 100);
     };
     window.closeSerialPostModal = function() { document.getElementById("serial-post-modal").classList.add("hidden"); };
     window.submitSerialPost = async function() {
@@ -1915,19 +1976,21 @@
       const isSell = postMode === "sell", isBuy = postMode === "buy";
       const member = document.getElementById("serial-member").value, give = document.getElementById("serial-give").value.trim(), want = document.getElementById("serial-want").value.trim(), price = Number(document.getElementById("serial-price").value), dl = document.getElementById("serial-deadline").value, note = document.getElementById("serial-note").value.trim().slice(0, 200);
       if (!give || (!isBuy && !isSell && !want) || ((isBuy || isSell) && (!price || price <= 0)) || (dl && dl < todayStr())) return alert("正しく入力してください。");
+      const captcha = getRecaptchaResponse(serialRecaptchaWidget);
+      if (!captcha) return alert("「私はロボットではありません」にチェックを入れてください。");
       try {
         await addDoc(collection(db, "posts"), {
           kind: "serial", isBuy, isSell, member, give, want: (isBuy || isSell) ? "" : want, price: (isBuy || isSell) ? price : 0,
           deadline: dl, description: note, status: "active",
           userId: currentUser.uid, userName: getMyDisplayName(), userPhoto: getMyProfile()?.photo || "",
           likesCount: 0, createdAt: serverTimestamp(),
-          deviceId: getOrCreateDeviceId()
+          deviceId: getOrCreateDeviceId(), recaptchaToken: captcha
         });
         
         showToast("出品が完了しました！詳細画面からXでシェアできます", "success");
         
         closeSerialPostModal(); switchTab('home');
-      } catch(e) { alert("失敗しました"); }
+      } catch(e) { alert("失敗しました"); } finally { resetRecaptcha(serialRecaptchaWidget); }
     };
 
     window.onGroupBundleChange = function() { document.getElementById("group-bundle-note-box").classList.toggle("hidden", document.getElementById("group-bundle").value === "ng"); };
@@ -1937,6 +2000,10 @@
       document.getElementById("group-give").value = ""; document.getElementById("group-price").value = ""; document.getElementById("group-target").value = ""; document.getElementById("group-deadline").value = ""; document.getElementById("group-bundle").value = "ok"; document.getElementById("group-bundle-note").value = ""; document.getElementById("group-desc").value = "";
       postPhotos = []; renderPostPhotoPreview(); onGroupBundleChange();
       document.getElementById("group-post-modal").classList.remove("hidden");
+      setTimeout(() => {
+        if (groupRecaptchaWidget == null) groupRecaptchaWidget = renderRecaptcha("group-recaptcha");
+        else resetRecaptcha(groupRecaptchaWidget);
+      }, 100);
     };
     window.closeGroupPostModal = function() { document.getElementById("group-post-modal").classList.add("hidden"); };
     window.submitGroupPost = async function() {
@@ -1945,6 +2012,8 @@
       if (!give || !price || price <= 0 || !Number.isInteger(target) || target < 1 || target > 100) return alert("正しく入力してください。");
       if (!dl) return alert("募集締切を設定してください。");
       if (dl < todayStr()) return alert("締切は今日以降の日付を指定してください。");
+      const captcha = getRecaptchaResponse(groupRecaptchaWidget);
+      if (!captcha) return alert("「私はロボットではありません」にチェックを入れてください。");
       submittingGroup = true; const btn = document.getElementById("group-submit-btn"); btn.disabled = true; btn.innerText = "投稿中…";
       try {
         const ref = await addDoc(collection(db, "posts"), {
@@ -1953,14 +2022,14 @@
           shipping: ship, deadline: dl, description: desc, status: "active", joinsCount: 0,
           userId: currentUser.uid, userName: getMyDisplayName(), userPhoto: getMyProfile()?.photo || "",
           likesCount: 0, createdAt: serverTimestamp(),
-          deviceId: getOrCreateDeviceId()
+          deviceId: getOrCreateDeviceId(), recaptchaToken: captcha
         });
         for (let i = 0; i < postPhotos.length; i++) await addDoc(collection(db, "posts", ref.id, "photos"), { data: postPhotos[i].full, order: i, createdAt: serverTimestamp() });
         
         showToast("共同購入の募集を開始しました！詳細画面からXでシェアできます", "success");
         
         closeGroupPostModal(); switchTab('home');
-      } catch(e) { alert("失敗しました"); } finally { submittingGroup = false; btn.disabled = false; btn.innerText = "主催する"; }
+      } catch(e) { alert("失敗しました"); } finally { submittingGroup = false; btn.disabled = false; btn.innerText = "主催する"; resetRecaptcha(groupRecaptchaWidget); }
     };
 
     function renderFilters() {
@@ -2038,28 +2107,28 @@
       const cards = filtered.map(({ p, index }) => {
         const isLiked = likes.includes(p.id); const isGroup = p.kind === "group"; const joins = isGroup ? joinsOf(p.id) : []; const target = Number(p.target || 0); const joinCount = isGroup ? Math.max(0, typeof p.joinsCount === "number" ? p.joinsCount : joins.length) : 0; const full = isGroup && target > 0 && joinCount >= target; const closed = isGroup && p.status === "closed"; const isSold = p.status === "traded"; const dim = isExpired(p) || closed || isSold;
         let badgeHtml = "";
-        if (isGroup) badgeHtml = `<span class="bg-teal-50 border border-teal-200 text-teal-800 font-medium px-2.5 py-0.5 rounded-full text-[11px] shadow-sm">🛍 共同購入（¥${Number(p.price || 0).toLocaleString()}）</span>`;
-        else if (p.kind === "album") badgeHtml = `<span class="bg-indigo-50 border border-indigo-200 text-indigo-800 font-medium px-2.5 py-0.5 rounded-full text-[11px] shadow-sm">💿 アルバム${p.isSell || p.isBuy ? "（¥" + Number(p.price||0).toLocaleString() + "）" : ""}</span>`;
-        else if (p.kind === "dearlit") badgeHtml = `<span class="bg-rose-50 border border-rose-200 text-rose-800 font-medium px-2.5 py-0.5 rounded-full text-[11px] shadow-sm">🎁 DEARLIT${p.isSell || p.isBuy ? "（¥" + Number(p.price||0).toLocaleString() + "）" : ""}</span>`;
-        else if (p.isSell && p.kind === "serial") badgeHtml = `<span class="bg-yellow-50 border border-yellow-300 text-yellow-900 font-medium px-2.5 py-0.5 rounded-full text-[11px] shadow-sm">💰 シリアル売却（¥${Number(p.price || 0).toLocaleString()}）</span>`;
-        else if (p.isSell) badgeHtml = `<span class="bg-purple-50 border border-purple-200 text-purple-800 font-medium px-2.5 py-0.5 rounded-full text-[11px] shadow-sm">💰 トレカ売却（¥${Number(p.price || 0).toLocaleString()}）</span>`;
-        else if (p.isBuy && p.kind === "serial") badgeHtml = `<span class="bg-yellow-50 border border-yellow-300 text-yellow-900 font-medium px-2.5 py-0.5 rounded-full text-[11px] shadow-sm">💳 シリアル買取（¥${Number(p.price || 0).toLocaleString()}）</span>`;
-        else if (p.isBuy) badgeHtml = `<span class="bg-pink-50 border border-pink-200 text-pink-700 font-medium px-2.5 py-0.5 rounded-full text-[11px] shadow-sm">💳 買取希望（¥${Number(p.price || 0).toLocaleString()}）</span>`;
-        else if (p.kind === "serial") badgeHtml = `<span class="bg-yellow-50 border border-yellow-300 text-yellow-900 font-medium px-2.5 py-0.5 rounded-full text-[11px] shadow-sm">🎫 シリアルでトレカ求む</span>`;
-        else badgeHtml = `<span class="bg-purple-50 border border-purple-200 text-purple-700 font-medium px-2.5 py-0.5 rounded-full text-[11px] shadow-sm">🃏 トレカ交換</span>`;
+        if (isGroup) badgeHtml = `<span class="bg-teal-50 border border-teal-200 text-teal-800 font-medium px-2 py-0.5 rounded-full text-[10px] shadow-sm">🛍 共同購入（¥${Number(p.price || 0).toLocaleString()}）</span>`;
+        else if (p.kind === "album") badgeHtml = `<span class="bg-indigo-50 border border-indigo-200 text-indigo-800 font-medium px-2 py-0.5 rounded-full text-[10px] shadow-sm">💿 アルバム${p.isSell || p.isBuy ? "（¥" + Number(p.price||0).toLocaleString() + "）" : ""}</span>`;
+        else if (p.kind === "dearlit") badgeHtml = `<span class="bg-rose-50 border border-rose-200 text-rose-800 font-medium px-2 py-0.5 rounded-full text-[10px] shadow-sm">🎁 DEARLIT${p.isSell || p.isBuy ? "（¥" + Number(p.price||0).toLocaleString() + "）" : ""}</span>`;
+        else if (p.isSell && p.kind === "serial") badgeHtml = `<span class="bg-yellow-50 border border-yellow-300 text-yellow-900 font-medium px-2 py-0.5 rounded-full text-[10px] shadow-sm">💰 シリアル売却（¥${Number(p.price || 0).toLocaleString()}）</span>`;
+        else if (p.isSell) badgeHtml = `<span class="bg-purple-50 border border-purple-200 text-purple-800 font-medium px-2 py-0.5 rounded-full text-[10px] shadow-sm">💰 トレカ売却（¥${Number(p.price || 0).toLocaleString()}）</span>`;
+        else if (p.isBuy && p.kind === "serial") badgeHtml = `<span class="bg-yellow-50 border border-yellow-300 text-yellow-900 font-medium px-2 py-0.5 rounded-full text-[10px] shadow-sm">💳 シリアル買取（¥${Number(p.price || 0).toLocaleString()}）</span>`;
+        else if (p.isBuy) badgeHtml = `<span class="bg-pink-50 border border-pink-200 text-pink-700 font-medium px-2 py-0.5 rounded-full text-[10px] shadow-sm">💳 買取希望（¥${Number(p.price || 0).toLocaleString()}）</span>`;
+        else if (p.kind === "serial") badgeHtml = `<span class="bg-yellow-50 border border-yellow-300 text-yellow-900 font-medium px-2 py-0.5 rounded-full text-[10px] shadow-sm">🎫 シリアルでトレカ求む</span>`;
+        else badgeHtml = `<span class="bg-purple-50 border border-purple-200 text-purple-700 font-medium px-2 py-0.5 rounded-full text-[10px] shadow-sm">🃏 トレカ交換</span>`;
         
         let photoHtml = (!isGroup && p.kind === "serial") ? "" : ((p.photoCount && isJpegData(p.thumb)) ? `
           <div class="relative">
-            <img src="${p.thumb}" alt="" onclick="openDetailModal(${index})" class="w-full h-40 object-cover rounded-2xl cursor-pointer shadow-sm border border-white/50 hover:opacity-90 transition ${isSold ? 'opacity-40 grayscale' : ''}">
-            ${isSold ? '<span class="absolute inset-0 flex items-center justify-center text-red-600 font-extrabold text-2xl tracking-wider drop-shadow-md bg-black/20 rounded-2xl">SOLD OUT</span>' : ''}
-            ${!isSold && p.photoCount > 1 ? `<span class="absolute bottom-1.5 right-1.5 bg-black/50 text-white text-[10px] font-medium px-2 py-0.5 rounded-full backdrop-blur-md">📷 ${p.photoCount}</span>` : ''}
-          </div>` : (isSold ? '<div class="bg-gray-200/80 rounded-2xl p-4 text-center text-red-600 font-extrabold text-xl tracking-wider border border-white">SOLD OUT</div>' : ''));
+            <img src="${p.thumb}" alt="" onclick="openDetailModal(${index})" class="w-full h-28 object-cover rounded-xl cursor-pointer shadow-sm border border-white/50 hover:opacity-90 transition ${isSold ? 'opacity-40 grayscale' : ''}">
+            ${isSold ? '<span class="absolute inset-0 flex items-center justify-center text-red-600 font-extrabold text-lg tracking-wider drop-shadow-md bg-black/20 rounded-xl">SOLD OUT</span>' : ''}
+            ${!isSold && p.photoCount > 1 ? `<span class="absolute bottom-1 right-1 bg-black/50 text-white text-[9px] font-medium px-1.5 py-0.5 rounded-full backdrop-blur-md">📷 ${p.photoCount}</span>` : ''}
+          </div>` : (isSold ? '<div class="bg-gray-200/80 rounded-xl p-3 text-center text-red-600 font-extrabold text-base tracking-wider border border-white">SOLD OUT</div>' : ''));
         
-        const memberLabel = p.member && p.member !== "指定なし" ? ` <span class="text-xs text-gray-500 font-normal">(${escapeHtml(p.member)})</span>` : "";
+        const memberLabel = p.member && p.member !== "指定なし" ? ` <span class="text-[10px] text-gray-500 font-normal">(${escapeHtml(p.member)})</span>` : "";
         let groupHtml = "";
         if (isGroup) {
           const pct = target > 0 ? Math.min(100, Math.round(joinCount / target * 100)) : 0;
-          groupHtml = `<div class="space-y-1.5 relative z-10 bg-white/40 p-2 rounded-2xl border border-white/50 shadow-inner"><div class="flex justify-between text-[11px] text-gray-700 font-medium"><span>👥 参加 ${joinCount} / ${target}人</span><span class="${closed ? 'text-gray-600' : (full ? 'text-green-700' : 'text-teal-700')}">${closed ? "🔒 終了" : (full ? "🎉 満員" : "募集中")}</span></div><div class="w-full h-2 bg-white rounded-full overflow-hidden border border-white/50"><div class="h-2 bg-gradient-to-r from-teal-400 to-teal-500" style="width:${pct}%"></div></div><div class="flex flex-wrap gap-1"><span class="${BUNDLE_CLASS[p.bundle]||BUNDLE_CLASS.ng} text-[10px] font-medium px-2 py-0.5 rounded-full shadow-sm">${BUNDLE_LABEL[p.bundle]||BUNDLE_LABEL.ng}</span></div></div>`;
+          groupHtml = `<div class="space-y-1 relative z-10 bg-white/40 p-1.5 rounded-xl border border-white/50 shadow-inner"><div class="flex justify-between text-[10px] text-gray-700 font-medium"><span>👥 ${joinCount}/${target}人</span><span class="${closed ? 'text-gray-600' : (full ? 'text-green-700' : 'text-teal-700')}">${closed ? "🔒 終了" : (full ? "🎉 満員" : "募集中")}</span></div><div class="w-full h-1.5 bg-white rounded-full overflow-hidden border border-white/50"><div class="h-1.5 bg-gradient-to-r from-teal-400 to-teal-500" style="width:${pct}%"></div></div><div class="flex flex-wrap gap-1"><span class="${BUNDLE_CLASS[p.bundle]||BUNDLE_CLASS.ng} text-[9px] font-medium px-1.5 py-0.5 rounded-full shadow-sm">${BUNDLE_LABEL[p.bundle]||BUNDLE_LABEL.ng}</span></div></div>`;
         }
         const conditionHtml = p.condition && CONDITION_LABEL[p.condition]
           ? `<span class="${CONDITION_CLASS[p.condition] || ''} text-[10px] font-medium px-2 py-0.5 rounded-full border shadow-sm">${CONDITION_LABEL[p.condition]}</span>`
@@ -2068,22 +2137,22 @@
           ? `<img src="${p.userPhoto}" class="w-6 h-6 rounded-full object-cover border-2 border-white shadow-sm shrink-0" alt="">`
           : `<div class="w-6 h-6 rounded-full bg-white/70 border border-white flex items-center justify-center text-[10px] text-gray-400 shrink-0">👤</div>`;
         return `
-          <div class="liquid-glass p-4 rounded-3xl flex flex-col justify-between space-y-3 ${dim ? 'opacity-60' : ''} transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_40px_rgba(192,132,252,0.3)] group relative overflow-hidden">
+          <div class="liquid-glass p-3 rounded-2xl flex flex-col justify-between space-y-2 ${dim ? 'opacity-60' : ''} transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_40px_rgba(192,132,252,0.3)] group relative overflow-hidden">
             <div class="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent opacity-0 group-hover:opacity-100 transition duration-300 pointer-events-none"></div>
-            <div class="flex items-center justify-between relative z-10 flex-wrap gap-1">${badgeHtml}<div class="flex items-center space-x-2">${conditionHtml}${p.deadline ? `<span class="text-[11px] font-medium ${isExpired(p) ? 'text-red-500' : 'text-gray-600'}">期限: ${escapeHtml(p.deadline)}</span>` : ''}<span class="text-pink-500 font-medium text-sm bg-white/70 px-2 py-0.5 rounded-full shadow-sm">${isLiked ? '♥' : '♡'}${p.likesCount ? ` ${p.likesCount}` : ''}</span></div></div>
+            <div class="flex items-center justify-between relative z-10 flex-wrap gap-1">${badgeHtml}<div class="flex items-center space-x-1.5">${conditionHtml}${p.deadline ? `<span class="text-[10px] font-medium ${isExpired(p) ? 'text-red-500' : 'text-gray-600'}">期限: ${escapeHtml(p.deadline)}</span>` : ''}<span class="text-pink-500 font-medium text-xs bg-white/70 px-1.5 py-0.5 rounded-full shadow-sm">${isLiked ? '♥' : '♡'}${p.likesCount ? ` ${p.likesCount}` : ''}</span></div></div>
             ${photoHtml}
-            <div class="flex items-center space-x-2 relative z-10"><span class="${isGroup ? 'bg-teal-100 text-teal-800' : 'bg-yellow-100 text-yellow-800'} border border-white text-xs font-medium px-2 py-0.5 rounded-full shadow-sm">${isGroup ? '商品' : '譲'}</span> <span class="font-medium text-sm text-gray-900">${escapeHtml(p.give)}${memberLabel}</span></div>
-            ${(!p.isBuy && !isGroup && !p.isSell) ? `<div class="flex items-center space-x-2 relative z-10"><span class="bg-purple-100 border border-white text-illit-darkPurple text-xs font-medium px-2 py-0.5 rounded-full shadow-sm">求</span> <span class="font-medium text-sm text-gray-900">${escapeHtml(p.want)}</span></div>` : ''}
+            <div class="flex items-center space-x-1.5 relative z-10"><span class="${isGroup ? 'bg-teal-100 text-teal-800' : 'bg-yellow-100 text-yellow-800'} border border-white text-[10px] font-medium px-1.5 py-0.5 rounded-full shadow-sm">${isGroup ? '商品' : '譲'}</span> <span class="font-medium text-xs text-gray-900 line-clamp-2">${escapeHtml(p.give)}${memberLabel}</span></div>
+            ${(!p.isBuy && !isGroup && !p.isSell) ? `<div class="flex items-center space-x-1.5 relative z-10"><span class="bg-purple-100 border border-white text-illit-darkPurple text-[10px] font-medium px-1.5 py-0.5 rounded-full shadow-sm">求</span> <span class="font-medium text-xs text-gray-900 line-clamp-2">${escapeHtml(p.want)}</span></div>` : ''}
             ${groupHtml}
-            ${p.description ? `<p class="text-xs text-gray-600 font-medium line-clamp-1 relative z-10">💬 ${escapeHtml(p.description)}</p>` : ""}
-            <div class="pt-3 mt-1 border-t border-white/50 flex justify-between items-center text-xs text-gray-700 font-medium relative z-10">
-              <span class="flex items-center gap-2 truncate max-w-[150px]">${avatarHtml}<span class="truncate">${escapeHtml(p.userName)}</span></span>
-              <button onclick="openDetailModal(${index})" class="bg-white/80 border border-white text-illit-darkPurple hover:bg-white font-medium px-4 py-2 rounded-full transition shadow-md">${isGroup ? '詳細・参加' : '詳細'}</button>
+            ${p.description ? `<p class="text-[11px] text-gray-600 font-medium line-clamp-1 relative z-10">💬 ${escapeHtml(p.description)}</p>` : ""}
+            <div class="pt-2 mt-0.5 border-t border-white/50 flex justify-between items-center text-[11px] text-gray-700 font-medium relative z-10">
+              <span class="flex items-center gap-1.5 truncate max-w-[120px]">${avatarHtml}<span class="truncate">${escapeHtml(p.userName)}</span></span>
+              <button onclick="openDetailModal(${index})" class="bg-white/80 border border-white text-illit-darkPurple hover:bg-white font-medium px-3 py-1.5 rounded-full transition shadow-md text-[11px]">${isGroup ? '詳細・参加' : '詳細'}</button>
             </div>
           </div>
         `;
       });
-      container.innerHTML = cards.length === 0 ? '<p class="text-xs text-gray-500 col-span-2 text-center py-4 font-medium bg-white/30 rounded-xl p-4 shadow-inner">条件に合う募集はありません。</p>' : cards.join("");
+      container.innerHTML = cards.length === 0 ? '<p class="text-xs text-gray-500 col-span-full text-center py-4 font-medium bg-white/30 rounded-xl p-4 shadow-inner">条件に合う募集はありません。</p>' : cards.join("");
     }
 
     function subscribePosts() {
