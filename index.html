@@ -1725,7 +1725,7 @@
     async function compressImage(file, opt) { return compressFromImage(await loadImageFromFile(file), opt); }
 
     // ==============================================
-    // プッシュ通知関連 (GitHub Pages用パス修正済み)
+    // プッシュ通知関連 (パスを /firebase-messaging-sw.js に戻しました)
     // ==============================================
     function pushStorageKey() { return "illit_push_" + currentUser.uid; }
     function updatePushUI() {
@@ -1739,11 +1739,11 @@
     async function saveToken() {
       let reg;
       try {
-        // GitHub Pagesのリポジトリ名 /Kpop-Trade/ を含めるように修正
-        reg = await navigator.serviceWorker.register("/Kpop-Trade/firebase-messaging-sw.js");
+        // パスを /firebase-messaging-sw.js に戻しました
+        reg = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
       } catch (swErr) {
         console.error("Service Worker 登録エラー:", swErr);
-        throw new Error("「/Kpop-Trade/firebase-messaging-sw.js」が読み込めません。ルート直下に配置されているか確認してください。");
+        throw new Error("「/firebase-messaging-sw.js」が読み込めません。ルート直下に配置されているか確認してください。");
       }
 
       const options = { serviceWorkerRegistration: reg };
