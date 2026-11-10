@@ -1081,7 +1081,8 @@
       btn.disabled = true; btn.innerText = "送信中…";
       try {
         await addDoc(collection(db, "inquiries"), {
-          userId: currentUser.uid, userName: getMyDisplayName(), subject, body, status: "open", createdAt: serverTimestamp()
+          userId: currentUser.uid, userName: getMyDisplayName(), subject, body, status: "open", createdAt: serverTimestamp(),
+          deviceId: getOrCreateDeviceId() // 🔥 追加
         });
         showToast("お問い合わせを送信しました。返信をお待ちください。", "success");
         closeInquiry();
@@ -1587,7 +1588,7 @@
     }
     async function postMessage(data) {
       const t = currentTrade; if (!t || !currentUser) return;
-      await addDoc(collection(db, "trades", t.id, "messages"), { ...data, senderId: currentUser.uid, senderName: getMyDisplayName(), createdAt: serverTimestamp() });
+      await addDoc(collection(db, "trades", t.id, "messages"), { ...data, senderId: currentUser.uid, senderName: getMyDisplayName(), createdAt: serverTimestamp(), deviceId: getOrCreateDeviceId() /* 🔥 追加 */ });
       try { await updateDoc(doc(db, "trades", t.id), { lastMessageAt: serverTimestamp(), lastSenderId: currentUser.uid }); } catch (e) {}
     }
 
@@ -1897,7 +1898,8 @@
           price: (isBuy || isSell) ? price : 0, description: desc, condition,
           status: "active", photoCount: postPhotos.length, thumb: postPhotos.length > 0 ? postPhotos[0].thumb : "",
           userId: currentUser.uid, userName: getMyDisplayName(), userPhoto: getMyProfile()?.photo || "",
-          likesCount: 0, createdAt: serverTimestamp()
+          likesCount: 0, createdAt: serverTimestamp(),
+          deviceId: getOrCreateDeviceId() // 🔥 追加
         });
         for (let i = 0; i < postPhotos.length; i++) await addDoc(collection(db, "posts", ref.id, "photos"), { data: postPhotos[i].full, order: i, createdAt: serverTimestamp() });
         
@@ -1929,7 +1931,8 @@
           kind: "serial", isBuy, isSell, member, give, want: (isBuy || isSell) ? "" : want, price: (isBuy || isSell) ? price : 0,
           deadline: dl, description: note, status: "active",
           userId: currentUser.uid, userName: getMyDisplayName(), userPhoto: getMyProfile()?.photo || "",
-          likesCount: 0, createdAt: serverTimestamp()
+          likesCount: 0, createdAt: serverTimestamp(),
+          deviceId: getOrCreateDeviceId() // 🔥 追加
         });
         
         showToast("出品が完了しました！詳細画面からXでシェアできます", "success");
@@ -1960,7 +1963,8 @@
           isBuy: false, member, give, want: "", price, target, bundle, bundleNote: bundle === "ng" ? "" : bundleNote,
           shipping: ship, deadline: dl, description: desc, status: "active", joinsCount: 0,
           userId: currentUser.uid, userName: getMyDisplayName(), userPhoto: getMyProfile()?.photo || "",
-          likesCount: 0, createdAt: serverTimestamp()
+          likesCount: 0, createdAt: serverTimestamp(),
+          deviceId: getOrCreateDeviceId() // 🔥 追加
         });
         for (let i = 0; i < postPhotos.length; i++) await addDoc(collection(db, "posts", ref.id, "photos"), { data: postPhotos[i].full, order: i, createdAt: serverTimestamp() });
         
@@ -2239,7 +2243,7 @@
       }
 
       try {
-        const ref = await addDoc(collection(db, "trades"), { kind: p.kind, isBuy: !!p.isBuy, isSell: !!p.isSell, postId: p.id, postGive: p.give, postWant: p.want || "", postPrice: p.price || 0, postMember: p.member || "指定なし", postDeadline: p.deadline || "", postPhotoCount: p.photoCount || 0, postCondition: p.condition || "", ownerId: p.userId, ownerName: p.userName, applicantId: currentUser.uid, applicantName: getMyDisplayName(), participants: [p.userId, currentUser.uid], status: "negotiating", agreed: {}, shipped: {}, received: {}, disputed: {}, lastMessageAt: serverTimestamp(), lastSenderId: currentUser.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+        const ref = await addDoc(collection(db, "trades"), { kind: p.kind, isBuy: !!p.isBuy, isSell: !!p.isSell, postId: p.id, postGive: p.give, postWant: p.want || "", postPrice: p.price || 0, postMember: p.member || "指定なし", postDeadline: p.deadline || "", postPhotoCount: p.photoCount || 0, postCondition: p.condition || "", ownerId: p.userId, ownerName: p.userName, applicantId: currentUser.uid, applicantName: getMyDisplayName(), participants: [p.userId, currentUser.uid], status: "negotiating", agreed: {}, shipped: {}, received: {}, disputed: {}, lastMessageAt: serverTimestamp(), lastSenderId: currentUser.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), deviceId: getOrCreateDeviceId() /* 🔥 追加 */ });
         closeDetailModal(); openTrade(ref.id);
       } catch(e) { alert("失敗しました。"); }
     };
@@ -2274,9 +2278,9 @@
           const currentCount = typeof data.joinsCount === "number" ? data.joinsCount : 0;
           if (currentCount >= target) throw new Error("full");
           transaction.update(postRef, { joinsCount: increment(1) });
-          transaction.set(joinRef, { uid: currentUser.uid, userName: getMyDisplayName(), bundleChoice: bc, createdAt: serverTimestamp() });
+          transaction.set(joinRef, { uid: currentUser.uid, userName: getMyDisplayName(), bundleChoice: bc, createdAt: serverTimestamp(), deviceId: getOrCreateDeviceId() /* 🔥 追加 */ });
         });
-        const ref = await addDoc(collection(db, "trades"), { kind: "group", isBuy: false, postId: p.id, postGive: p.give, postWant: "", postPrice: p.price || 0, postMember: p.member || "指定なし", postDeadline: p.deadline || "", postPhotoCount: p.photoCount || 0, postTarget: p.target || 0, postBundle: p.bundle || "ng", postBundleNote: p.bundleNote || "", bundleChoice: bc, ownerId: p.userId, ownerName: p.userName, applicantId: currentUser.uid, applicantName: getMyDisplayName(), participants: [p.userId, currentUser.uid], status: "negotiating", agreed: {}, shipped: {}, received: {}, disputed: {}, lastMessageAt: serverTimestamp(), lastSenderId: currentUser.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+        const ref = await addDoc(collection(db, "trades"), { kind: "group", isBuy: false, postId: p.id, postGive: p.give, postWant: "", postPrice: p.price || 0, postMember: p.member || "指定なし", postDeadline: p.deadline || "", postPhotoCount: p.photoCount || 0, postTarget: p.target || 0, postBundle: p.bundle || "ng", postBundleNote: p.bundleNote || "", bundleChoice: bc, ownerId: p.userId, ownerName: p.userName, applicantId: currentUser.uid, applicantName: getMyDisplayName(), participants: [p.userId, currentUser.uid], status: "negotiating", agreed: {}, shipped: {}, received: {}, disputed: {}, lastMessageAt: serverTimestamp(), lastSenderId: currentUser.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), deviceId: getOrCreateDeviceId() /* 🔥 追加 */ });
         closeDetailModal(); openTrade(ref.id);
       } catch(e) {
         const msg = e && e.message;
@@ -2573,12 +2577,12 @@
 
     window.sendMessage = async function() {
       const input = document.getElementById("room-input"), text = input.value.trim(); if (!text || !currentTrade || currentTrade.status === "cancelled") return;
-      input.value = ""; try { await postMessage({ senderId: currentUser.uid, senderName: getMyDisplayName(), text: text.slice(0, 1000), createdAt: serverTimestamp() }); } catch(e) { input.value = text; }
+      input.value = ""; try { await postMessage({ senderId: currentUser.uid, senderName: getMyDisplayName(), text: text.slice(0, 1000), createdAt: serverTimestamp(), deviceId: getOrCreateDeviceId() /* 🔥 追加 */ }); } catch(e) { input.value = text; }
     };
-    window.sendQuickMsg = async function(text) { if (!currentTrade || currentTrade.status === "cancelled") return; try { await postMessage({ senderId: currentUser.uid, senderName: getMyDisplayName(), text: text, createdAt: serverTimestamp() }); } catch(e){} };
+    window.sendQuickMsg = async function(text) { if (!currentTrade || currentTrade.status === "cancelled") return; try { await postMessage({ senderId: currentUser.uid, senderName: getMyDisplayName(), text: text, createdAt: serverTimestamp(), deviceId: getOrCreateDeviceId() /* 🔥 追加 */ }); } catch(e){} };
     window.sendImage = async function(inputEl) {
       const file = inputEl.files && inputEl.files[0]; inputEl.value = ""; if (!file || !currentTrade || currentTrade.status === "cancelled" || sendingImage) return;
-      sendingImage = true; try { const dataUrl = await compressImage(file, CHAT_PHOTO); await postMessage({ senderId: currentUser.uid, senderName: getMyDisplayName(), text: "", image: dataUrl, createdAt: serverTimestamp() }); } catch(e) { alert("送信失敗"); } finally { sendingImage = false; }
+      sendingImage = true; try { const dataUrl = await compressImage(file, CHAT_PHOTO); await postMessage({ senderId: currentUser.uid, senderName: getMyDisplayName(), text: "", image: dataUrl, createdAt: serverTimestamp(), deviceId: getOrCreateDeviceId() /* 🔥 追加 */ }); } catch(e) { alert("送信失敗"); } finally { sendingImage = false; }
     };
     window.viewImage = function(i) { const m = roomMessages[i]; if (!m || !isJpegData(m.image)) return; document.getElementById("image-viewer-img").src = m.image; document.getElementById("image-viewer").classList.remove("hidden"); };
     window.closeImageViewer = function() { document.getElementById("image-viewer").classList.add("hidden"); };
@@ -2604,7 +2608,7 @@
     window.submitReview = async function() {
       const t = currentTrade; if (!t) return; if (selectedRating < 1) return alert("星を選んでください。");
       const toId = currentUser.uid === t.ownerId ? t.applicantId : t.ownerId;
-      try { await setDoc(doc(db, "reviews", t.id + "_" + currentUser.uid), { tradeId: t.id, fromId: currentUser.uid, toId: toId, rating: selectedRating, createdAt: serverTimestamp() }); reviewState.done = true; renderRoom(); } catch(e) { alert("失敗しました。"); }
+      try { await setDoc(doc(db, "reviews", t.id + "_" + currentUser.uid), { tradeId: t.id, fromId: currentUser.uid, toId: toId, rating: selectedRating, createdAt: serverTimestamp(), deviceId: getOrCreateDeviceId() /* 🔥 追加 */ }); reviewState.done = true; renderRoom(); } catch(e) { alert("失敗しました。"); }
     };
 
     const TERMS_VERSION = "2026-11-09", TERMS_KEY = "illit_terms_version"; let termsSaving = false;
