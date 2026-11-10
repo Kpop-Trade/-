@@ -196,7 +196,7 @@
         </div>
       </div>
 
-      <div id="posts-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      <div id="posts-container" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
         <p class="text-xs text-gray-500 col-span-full text-center py-4 font-bold">読み込み中...</p>
       </div>
     </section>
@@ -2105,55 +2105,87 @@
         });
       }
       const cards = filtered.map(({ p, index }) => {
-        const isLiked = likes.includes(p.id); const isGroup = p.kind === "group"; const joins = isGroup ? joinsOf(p.id) : []; const target = Number(p.target || 0); const joinCount = isGroup ? Math.max(0, typeof p.joinsCount === "number" ? p.joinsCount : joins.length) : 0; const full = isGroup && target > 0 && joinCount >= target; const closed = isGroup && p.status === "closed"; const isSold = p.status === "traded"; const dim = isExpired(p) || closed || isSold;
-        let badgeHtml = "";
-        if (isGroup) badgeHtml = `<span class="bg-teal-50 border border-teal-200 text-teal-800 font-medium px-2 py-0.5 rounded-full text-[10px] shadow-sm">🛍 共同購入（¥${Number(p.price || 0).toLocaleString()}）</span>`;
-        else if (p.kind === "album") badgeHtml = `<span class="bg-indigo-50 border border-indigo-200 text-indigo-800 font-medium px-2 py-0.5 rounded-full text-[10px] shadow-sm">💿 アルバム${p.isSell || p.isBuy ? "（¥" + Number(p.price||0).toLocaleString() + "）" : ""}</span>`;
-        else if (p.kind === "dearlit") badgeHtml = `<span class="bg-rose-50 border border-rose-200 text-rose-800 font-medium px-2 py-0.5 rounded-full text-[10px] shadow-sm">🎁 DEARLIT${p.isSell || p.isBuy ? "（¥" + Number(p.price||0).toLocaleString() + "）" : ""}</span>`;
-        else if (p.isSell && p.kind === "serial") badgeHtml = `<span class="bg-yellow-50 border border-yellow-300 text-yellow-900 font-medium px-2 py-0.5 rounded-full text-[10px] shadow-sm">💰 シリアル売却（¥${Number(p.price || 0).toLocaleString()}）</span>`;
-        else if (p.isSell) badgeHtml = `<span class="bg-purple-50 border border-purple-200 text-purple-800 font-medium px-2 py-0.5 rounded-full text-[10px] shadow-sm">💰 トレカ売却（¥${Number(p.price || 0).toLocaleString()}）</span>`;
-        else if (p.isBuy && p.kind === "serial") badgeHtml = `<span class="bg-yellow-50 border border-yellow-300 text-yellow-900 font-medium px-2 py-0.5 rounded-full text-[10px] shadow-sm">💳 シリアル買取（¥${Number(p.price || 0).toLocaleString()}）</span>`;
-        else if (p.isBuy) badgeHtml = `<span class="bg-pink-50 border border-pink-200 text-pink-700 font-medium px-2 py-0.5 rounded-full text-[10px] shadow-sm">💳 買取希望（¥${Number(p.price || 0).toLocaleString()}）</span>`;
-        else if (p.kind === "serial") badgeHtml = `<span class="bg-yellow-50 border border-yellow-300 text-yellow-900 font-medium px-2 py-0.5 rounded-full text-[10px] shadow-sm">🎫 シリアルでトレカ求む</span>`;
-        else badgeHtml = `<span class="bg-purple-50 border border-purple-200 text-purple-700 font-medium px-2 py-0.5 rounded-full text-[10px] shadow-sm">🃏 トレカ交換</span>`;
-        
-        let photoHtml = (!isGroup && p.kind === "serial") ? "" : ((p.photoCount && isJpegData(p.thumb)) ? `
-          <div class="relative">
-            <img src="${p.thumb}" alt="" onclick="openDetailModal(${index})" class="w-full h-28 object-cover rounded-xl cursor-pointer shadow-sm border border-white/50 hover:opacity-90 transition ${isSold ? 'opacity-40 grayscale' : ''}">
-            ${isSold ? '<span class="absolute inset-0 flex items-center justify-center text-red-600 font-extrabold text-lg tracking-wider drop-shadow-md bg-black/20 rounded-xl">SOLD OUT</span>' : ''}
-            ${!isSold && p.photoCount > 1 ? `<span class="absolute bottom-1 right-1 bg-black/50 text-white text-[9px] font-medium px-1.5 py-0.5 rounded-full backdrop-blur-md">📷 ${p.photoCount}</span>` : ''}
-          </div>` : (isSold ? '<div class="bg-gray-200/80 rounded-xl p-3 text-center text-red-600 font-extrabold text-base tracking-wider border border-white">SOLD OUT</div>' : ''));
-        
-        const memberLabel = p.member && p.member !== "指定なし" ? ` <span class="text-[10px] text-gray-500 font-normal">(${escapeHtml(p.member)})</span>` : "";
-        let groupHtml = "";
-        if (isGroup) {
-          const pct = target > 0 ? Math.min(100, Math.round(joinCount / target * 100)) : 0;
-          groupHtml = `<div class="space-y-1 relative z-10 bg-white/40 p-1.5 rounded-xl border border-white/50 shadow-inner"><div class="flex justify-between text-[10px] text-gray-700 font-medium"><span>👥 ${joinCount}/${target}人</span><span class="${closed ? 'text-gray-600' : (full ? 'text-green-700' : 'text-teal-700')}">${closed ? "🔒 終了" : (full ? "🎉 満員" : "募集中")}</span></div><div class="w-full h-1.5 bg-white rounded-full overflow-hidden border border-white/50"><div class="h-1.5 bg-gradient-to-r from-teal-400 to-teal-500" style="width:${pct}%"></div></div><div class="flex flex-wrap gap-1"><span class="${BUNDLE_CLASS[p.bundle]||BUNDLE_CLASS.ng} text-[9px] font-medium px-1.5 py-0.5 rounded-full shadow-sm">${BUNDLE_LABEL[p.bundle]||BUNDLE_LABEL.ng}</span></div></div>`;
-        }
-        const conditionHtml = p.condition && CONDITION_LABEL[p.condition]
-          ? `<span class="${CONDITION_CLASS[p.condition] || ''} text-[10px] font-medium px-2 py-0.5 rounded-full border shadow-sm">${CONDITION_LABEL[p.condition]}</span>`
-          : "";
-        const avatarHtml = (p.userPhoto && isJpegData(p.userPhoto))
-          ? `<img src="${p.userPhoto}" class="w-6 h-6 rounded-full object-cover border-2 border-white shadow-sm shrink-0" alt="">`
-          : `<div class="w-6 h-6 rounded-full bg-white/70 border border-white flex items-center justify-center text-[10px] text-gray-400 shrink-0">👤</div>`;
+        const isLiked = likes.includes(p.id);
+        const isGroup = p.kind === "group";
+        const joins = isGroup ? joinsOf(p.id) : [];
+        const target = Number(p.target || 0);
+        const joinCount = isGroup ? Math.max(0, typeof p.joinsCount === "number" ? p.joinsCount : joins.length) : 0;
+        const full = isGroup && target > 0 && joinCount >= target;
+        const closed = isGroup && p.status === "closed";
+        const isSold = p.status === "traded";
+        const dim = isExpired(p) || closed || isSold;
+        const hasPrice = !!(p.isBuy || p.isSell || isGroup) && Number(p.price || 0) > 0;
+        const priceText = hasPrice ? "¥" + Number(p.price || 0).toLocaleString() : "";
+
+        // 左上リボン
+        let ribbon = "";
+        if (isSold) ribbon = `<span class="absolute top-0 left-0 z-10 bg-gray-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-br-lg shadow">SOLD</span>`;
+        else if (isGroup && full) ribbon = `<span class="absolute top-0 left-0 z-10 bg-teal-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-br-lg shadow">満員</span>`;
+        else if (isGroup && closed) ribbon = `<span class="absolute top-0 left-0 z-10 bg-gray-400 text-white text-[9px] font-bold px-2 py-0.5 rounded-br-lg shadow">終了</span>`;
+        else if (p.kind === "dearlit") ribbon = `<span class="absolute top-0 left-0 z-10 bg-rose-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-br-lg shadow">DEARLIT</span>`;
+        else if (p.kind === "album") ribbon = `<span class="absolute top-0 left-0 z-10 bg-indigo-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-br-lg shadow">アルバム</span>`;
+        else if (p.isSell) ribbon = `<span class="absolute top-0 left-0 z-10 bg-purple-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-br-lg shadow">売却</span>`;
+        else if (p.isBuy) ribbon = `<span class="absolute top-0 left-0 z-10 bg-pink-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-br-lg shadow">買取</span>`;
+        else if (p.kind === "serial") ribbon = `<span class="absolute top-0 left-0 z-10 bg-yellow-500 text-yellow-900 text-[9px] font-bold px-2 py-0.5 rounded-br-lg shadow">シリアル</span>`;
+        else if (isGroup) ribbon = `<span class="absolute top-0 left-0 z-10 bg-teal-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-br-lg shadow">共同購入</span>`;
+        else ribbon = `<span class="absolute top-0 left-0 z-10 bg-illit-purple text-white text-[9px] font-bold px-2 py-0.5 rounded-br-lg shadow">交換</span>`;
+
+        // 画像部分
+        const hasPhoto = p.photoCount && isJpegData(p.thumb);
+        const photoBlock = hasPhoto
+          ? `<img src="${p.thumb}" alt="" class="w-full h-full object-cover ${isSold ? 'opacity-50 grayscale' : ''}">`
+          : `<div class="w-full h-full bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center text-2xl text-purple-200">${isGroup ? "🛍" : (p.kind === "serial" ? "🎫" : "🃏")}</div>`;
+
+        // タイトル
+        let title = escapeHtml(p.give || "");
+        if (p.member && p.member !== "指定なし") title += ` (${escapeHtml(p.member.split(" ")[0])})`;
+        if (!p.isBuy && !isGroup && !p.isSell && p.want) title += ` ⇄ ${escapeHtml(p.want)}`;
+
+        // サブ情報
+        let subInfo = "";
+        if (isGroup) subInfo = `${joinCount}/${target}人`;
+        else if (p.condition && CONDITION_LABEL[p.condition]) subInfo = CONDITION_LABEL[p.condition].split("：")[0];
+        else if (p.deadline) subInfo = "期限 " + escapeHtml(p.deadline);
+
         return `
-          <div class="liquid-glass p-3 rounded-2xl flex flex-col justify-between space-y-2 ${dim ? 'opacity-60' : ''} transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_40px_rgba(192,132,252,0.3)] group relative overflow-hidden">
-            <div class="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent opacity-0 group-hover:opacity-100 transition duration-300 pointer-events-none"></div>
-            <div class="flex items-center justify-between relative z-10 flex-wrap gap-1">${badgeHtml}<div class="flex items-center space-x-1.5">${conditionHtml}${p.deadline ? `<span class="text-[10px] font-medium ${isExpired(p) ? 'text-red-500' : 'text-gray-600'}">期限: ${escapeHtml(p.deadline)}</span>` : ''}<span class="text-pink-500 font-medium text-xs bg-white/70 px-1.5 py-0.5 rounded-full shadow-sm">${isLiked ? '♥' : '♡'}${p.likesCount ? ` ${p.likesCount}` : ''}</span></div></div>
-            ${photoHtml}
-            <div class="flex items-center space-x-1.5 relative z-10"><span class="${isGroup ? 'bg-teal-100 text-teal-800' : 'bg-yellow-100 text-yellow-800'} border border-white text-[10px] font-medium px-1.5 py-0.5 rounded-full shadow-sm">${isGroup ? '商品' : '譲'}</span> <span class="font-medium text-xs text-gray-900 line-clamp-2">${escapeHtml(p.give)}${memberLabel}</span></div>
-            ${(!p.isBuy && !isGroup && !p.isSell) ? `<div class="flex items-center space-x-1.5 relative z-10"><span class="bg-purple-100 border border-white text-illit-darkPurple text-[10px] font-medium px-1.5 py-0.5 rounded-full shadow-sm">求</span> <span class="font-medium text-xs text-gray-900 line-clamp-2">${escapeHtml(p.want)}</span></div>` : ''}
-            ${groupHtml}
-            ${p.description ? `<p class="text-[11px] text-gray-600 font-medium line-clamp-1 relative z-10">💬 ${escapeHtml(p.description)}</p>` : ""}
-            <div class="pt-2 mt-0.5 border-t border-white/50 flex justify-between items-center text-[11px] text-gray-700 font-medium relative z-10">
-              <span class="flex items-center gap-1.5 truncate max-w-[120px]">${avatarHtml}<span class="truncate">${escapeHtml(p.userName)}</span></span>
-              <button onclick="openDetailModal(${index})" class="bg-white/80 border border-white text-illit-darkPurple hover:bg-white font-medium px-3 py-1.5 rounded-full transition shadow-md text-[11px]">${isGroup ? '詳細・参加' : '詳細'}</button>
+          <div onclick="openDetailModal(${index})" class="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${dim ? 'opacity-60' : ''} group relative">
+            <div class="relative aspect-square bg-gray-50 overflow-hidden">
+              ${ribbon}
+              <button onclick="event.stopPropagation(); toggleDetailLikeFromCard('${p.id}')" class="absolute top-1.5 right-1.5 z-10 w-7 h-7 flex items-center justify-center rounded-full bg-white/80 backdrop-blur shadow-sm text-sm ${isLiked ? 'text-pink-500' : 'text-gray-300'} hover:scale-110 transition">
+                ${isLiked ? "♥" : "♡"}
+              </button>
+              ${photoBlock}
+              ${isSold ? '<div class="absolute inset-0 bg-black/30 flex items-center justify-center"><span class="text-white font-bold text-sm tracking-widest">SOLD OUT</span></div>' : ''}
+              ${priceText ? `<span class="absolute bottom-1.5 left-1.5 bg-black/70 text-white text-[11px] font-bold px-2 py-0.5 rounded-full">${priceText}</span>` : ''}
+              ${!isSold && p.photoCount > 1 ? `<span class="absolute bottom-1.5 right-1.5 bg-black/50 text-white text-[9px] font-medium px-1.5 py-0.5 rounded-full">📷${p.photoCount}</span>` : ''}
+            </div>
+            <div class="p-2 space-y-0.5">
+              <p class="text-[11px] font-medium text-gray-900 line-clamp-2 leading-snug">${title}</p>
+              ${subInfo ? `<p class="text-[10px] text-gray-500">${subInfo}</p>` : ''}
+              <p class="text-[10px] text-gray-400 truncate">${escapeHtml(p.userName || "")}</p>
             </div>
           </div>
         `;
       });
-      container.innerHTML = cards.length === 0 ? '<p class="text-xs text-gray-500 col-span-full text-center py-4 font-medium bg-white/30 rounded-xl p-4 shadow-inner">条件に合う募集はありません。</p>' : cards.join("");
+      container.innerHTML = cards.length === 0
+        ? '<p class="text-xs text-gray-500 col-span-full text-center py-8 font-medium bg-white/50 rounded-xl">条件に合う募集はありません。</p>'
+        : cards.join("");
     }
+
+    // カード上のいいねを直接トグル
+    window.toggleDetailLikeFromCard = async function(postId) {
+      if (!currentUser) return alert("ログインが必要です。");
+      const p = allPosts.find(x => x.id === postId);
+      if (!p) return;
+      let likes = [...getMyLikes()];
+      const idx = likes.indexOf(postId);
+      const wasLiked = idx >= 0;
+      if (wasLiked) likes.splice(idx, 1); else likes.push(postId);
+      userData.likes = likes;
+      saveUserData({ likes }).catch(() => {});
+      try { await updateDoc(doc(db, "posts", postId), { likesCount: increment(wasLiked ? -1 : 1) }); } catch (e) {}
+      renderPosts();
+    };
 
     function subscribePosts() {
       if (unsubPosts) unsubPosts();
@@ -2310,13 +2342,34 @@
       }
 
       try {
-        const ref = await addDoc(collection(db, "trades"), { kind: p.kind, isBuy: !!p.isBuy, isSell: !!p.isSell, postId: p.id, postGive: p.give, postWant: p.want || "", postPrice: p.price || 0, postMember: p.member || "指定なし", postDeadline: p.deadline || "", postPhotoCount: p.photoCount || 0, postCondition: p.condition || "", ownerId: p.userId, ownerName: p.userName, applicantId: currentUser.uid, applicantName: getMyDisplayName(), participants: [p.userId, currentUser.uid], status: "negotiating", agreed: {}, shipped: {}, received: {}, disputed: {}, lastMessageAt: serverTimestamp(), lastSenderId: currentUser.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), deviceId: getOrCreateDeviceId() });
-        
-        // 申し込みがあったため出品のステータスをSOLD(traded)に更新
-        await updateDoc(doc(db, "posts", p.id), { status: "traded" });
+        const ref = await addDoc(collection(db, "trades"), {
+          kind: p.kind, isBuy: !!p.isBuy, isSell: !!p.isSell, postId: p.id,
+          postGive: p.give, postWant: p.want || "", postPrice: p.price || 0,
+          postMember: p.member || "指定なし", postDeadline: p.deadline || "",
+          postPhotoCount: p.photoCount || 0, postCondition: p.condition || "",
+          ownerId: p.userId, ownerName: p.userName,
+          applicantId: currentUser.uid, applicantName: getMyDisplayName(),
+          participants: [p.userId, currentUser.uid],
+          status: "negotiating", agreed: {}, shipped: {}, received: {}, disputed: {},
+          lastMessageAt: serverTimestamp(), lastSenderId: currentUser.uid,
+          createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+          deviceId: getOrCreateDeviceId()
+        });
 
-        closeDetailModal(); openTrade(ref.id);
-      } catch(e) { alert("失敗しました。"); }
+        // 出品ステータスを traded に更新（失敗しても取引自体は成功扱い）
+        try {
+          await updateDoc(doc(db, "posts", p.id), { status: "traded" });
+        } catch (statusErr) {
+          console.warn("post status update failed (trade already created):", statusErr);
+        }
+
+        closeDetailModal();
+        openTrade(ref.id);
+        showToast("申し込みが完了しました！", "success");
+      } catch (e) {
+        console.error("applyToPost error:", e);
+        alert("申し込みに失敗しました。もう一度お試しください。");
+      }
     };
     window.joinGroup = async function(index) {
       const p = allPosts[index]; if (!currentUser || !p || !p.userId || p.kind !== "group" || !(await checkDeviceLock())) return;
