@@ -192,11 +192,15 @@
             <span>🎛</span>
             <span>絞り込み</span>
           </button>
+          <button onclick="refreshPosts()" class="flex items-center text-xs font-medium text-gray-600 hover:text-illit-darkPurple transition rounded-full px-2.5 py-1.5 hover:bg-white/50" title="最新の情報に更新">🔄</button>
         </div>
       </div>
 
       <div id="posts-container" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
         <p class="text-xs text-gray-500 col-span-full text-center py-4 font-bold">読み込み中...</p>
+      </div>
+      <div id="load-more-wrap" class="hidden text-center pt-2">
+        <button onclick="loadMorePosts()" class="liquid-glass-input text-xs font-medium text-illit-darkPurple px-6 py-2.5 rounded-full hover:bg-white/70 transition shadow-sm">もっと見る</button>
       </div>
     </section>
   </main>
@@ -646,7 +650,7 @@
       </div>
       <div class="flex space-x-2 pt-2">
         <button onclick="closeSerialPostModal()" class="flex-1 bg-white/60 text-gray-700 border border-white font-medium py-3 rounded-full hover:bg-white transition shadow-sm">キャンセル</button>
-        <button onclick="submitSerialPost()" class="flex-1 bg-gradient-to-r from-yellow-400 to-yellow-500 text-yellow-900 font-medium py-3 rounded-full hover:opacity-90 transition shadow-md border border-white/30">出品する</button>
+        <button id="serial-submit-btn" onclick="submitSerialPost()" class="flex-1 bg-gradient-to-r from-yellow-400 to-yellow-500 text-yellow-900 font-medium py-3 rounded-full hover:opacity-90 transition shadow-md border border-white/30">出品する</button>
       </div>
     </div>
   </div>
@@ -859,8 +863,8 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { getFirestore, collection, collectionGroup, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, where, orderBy, onSnapshot, serverTimestamp, increment, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-    import { getMessaging, getToken, deleteToken } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js";
+    import { getFirestore, collection, collectionGroup, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, where, orderBy, limit, startAfter, onSnapshot, serverTimestamp, increment, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getMessaging, getToken, deleteToken, onMessage } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBB1_QTcXpF0Ap72tDaf5_CCUtNBwSlXCs",
@@ -924,6 +928,7 @@
     let prevUnreadCount = -1;
     let prevTradeCountAsOwner = -1;
     let profileSection = "basic";
+    let currentDetailId = null, submittingSerial = false;
 
     const STATUS_LABEL = { negotiating: "交渉中", shipping: "取引・発送中", completed: "完了", cancelled: "キャンセル" };
     const STATUS_CLASS = { negotiating: "bg-yellow-400 text-yellow-900 border-yellow-200", shipping: "bg-blue-400 text-white border-blue-300", completed: "bg-green-400 text-white border-green-300", cancelled: "bg-gray-300 text-gray-700 border-gray-200" };
@@ -951,12 +956,17 @@
         if (!applicantId) return;
         try {
           await deleteDoc(doc(db, "posts", postId, "joins", applicantId));
+          groupJoins[postId] = (groupJoins[postId] || []).filter(j => j.id !== applicantId);
           await updateDoc(doc(db, "posts", postId), { joinsCount: increment(-1) });
+          const lg = allPosts.find(x => x.id === postId);
+          if (lg && typeof lg.joinsCount === "number") { lg.joinsCount = Math.max(0, lg.joinsCount - 1); renderPosts(); }
         } catch (e) { console.warn("group joins clear warning:", e?.code || e); }
         return;
       }
       try {
         await updateDoc(doc(db, "posts", postId), { status: "active" });
+        const lp = allPosts.find(x => x.id === postId);
+        if (lp) { lp.status = "active"; renderPosts(); }
       } catch (e) {
         // 申込者側は権限で失敗することがある → 出品者側の自動復旧で戻る
         console.warn("restorePostToActive error:", e?.code || e);
@@ -970,17 +980,36 @@
       clearTimeout(healTimer);
       healTimer = setTimeout(healSoldPosts, 3000); // 申込直後の同期ズレ対策で3秒待つ
     }
+    let healing = false;
     async function healSoldPosts() {
-      if (!currentUser || !tradesLoaded) return;
-      const busy = new Set(myTrades.filter(t => t.status !== "cancelled").map(t => t.postId));
-      const targets = allPosts.filter(p =>
-        p.userId === currentUser.uid && p.kind !== "group" &&
-        p.status === "traded" && !busy.has(p.id)
-      );
-      for (const p of targets) {
-        try { await updateDoc(doc(db, "posts", p.id), { status: "active" }); }
-        catch (e) { console.warn("healSoldPosts error:", e?.code || e); }
-      }
+      if (!currentUser || !tradesLoaded || healing) return;
+      const uid = currentUser.uid;
+      const findTargets = (busy) => allPosts.filter(p => p.userId === uid && p.kind !== "group" && p.status === "traded" && !busy.has(p.id));
+      const localBusy = new Set(myTrades.filter(t => t.status !== "cancelled").map(t => t.postId));
+      if (findTargets(localBusy).length === 0) return;
+      healing = true;
+      try {
+        // 同期ズレ対策：復旧の直前にサーバーから最新の取引一覧を取り直して再判定する
+        const fresh = await getDocs(query(collection(db, "trades"), where("participants", "array-contains", uid)));
+        const busy = new Set(fresh.docs.map(d => d.data()).filter(t => t.status !== "cancelled").map(t => t.postId));
+        for (const p of findTargets(busy)) {
+          try { await updateDoc(doc(db, "posts", p.id), { status: "active" }); p.status = "active"; renderPosts(); }
+          catch (e) { console.warn("healSoldPosts error:", e?.code || e); }
+        }
+      } catch (e) { console.warn("healSoldPosts fetch error:", e?.code || e); }
+      finally { healing = false; }
+    }
+
+    // 停止中アカウントの表示
+    let unsubSusp = null;
+    function subscribeSuspension() {
+      if (unsubSusp) { unsubSusp(); unsubSusp = null; }
+      if (!currentUser || isAdmin()) return;
+      unsubSusp = onSnapshot(doc(db, "suspensions", currentUser.uid), (snap) => {
+        const modal = document.getElementById("suspended-modal");
+        if (snap.exists()) { document.getElementById("suspended-reason").innerText = snap.data().reason || "（理由の記載なし）"; modal.classList.remove("hidden"); }
+        else modal.classList.add("hidden");
+      }, (err) => console.warn("suspension snapshot error:", err?.code || err));
     }
 
     const SHARE_TYPE_LABEL = {
@@ -1215,18 +1244,15 @@
         if (!document.getElementById("trades-modal").classList.contains("hidden")) renderTradesList();
         if (!document.getElementById("wallet-modal").classList.contains("hidden")) renderWallet();
         if (!document.getElementById("notifications-modal").classList.contains("hidden")) renderNotificationsList();
-      });
+      }, (err) => console.warn("user snapshot error:", err?.code || err));
     }
-    function subscribeJoins() {
-      if (unsubJoins) { unsubJoins(); unsubJoins = null; }
-      unsubJoins = onSnapshot(collectionGroup(db, "joins"), (snap) => {
-        const m = {};
-        snap.docs.forEach((d) => {
-          const parent = d.ref.parent.parent; if (!parent) return;
-          (m[parent.id] = m[parent.id] || []).push({ id: d.id, ...d.data() });
-        });
-        groupJoins = m; renderPosts();
-      });
+    // 共同購入の参加者は、詳細を開いたときにその投稿の分だけ取得
+    const joinsFresh = {};
+    async function loadJoins(postId) {
+      try {
+        const snap = await getDocs(collection(db, "posts", postId, "joins"));
+        groupJoins[postId] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      } catch (e) { console.warn("joins load error:", e?.code || e); }
     }
 
     let adminTab = "stats";
@@ -1269,7 +1295,7 @@
 
       const controls = document.getElementById("admin-controls");
       if (tab === "users" || tab === "posts" || tab === "trades") {
-        controls.innerHTML = `<input type="text" placeholder="名前, UID, またはキーワードで検索..." oninput="adminSearchQuery = this.value.trim().toLowerCase(); loadAdminData();" class="liquid-glass-input w-full rounded-xl p-2.5 text-xs text-gray-800">`;
+        controls.innerHTML = `<input type="text" placeholder="名前, UID, またはキーワードで検索..." oninput="adminSearch(this.value)" class="liquid-glass-input w-full rounded-xl p-2.5 text-xs text-gray-800">`;
         controls.classList.remove("hidden");
       } else {
         controls.classList.add("hidden");
@@ -1278,6 +1304,8 @@
 
       loadAdminData();
     };
+
+    window.adminSearch = function(v) { adminSearchQuery = String(v || "").trim().toLowerCase(); loadAdminData(); };
 
     async function loadAdminData() {
       const el = document.getElementById("admin-content"); 
@@ -1783,6 +1811,20 @@
         updatedAt: serverTimestamp() 
       });
       localStorage.setItem(pushStorageKey(), token);
+      bindForegroundPush();
+    }
+
+    // アプリを開いている間はOSの通知が出ないため、トーストで知らせる
+    let fgPushBound = false;
+    function bindForegroundPush() {
+      if (fgPushBound) return;
+      try {
+        onMessage(getMessaging(app), (payload) => {
+          const n = payload.notification || payload.data || {};
+          showToast("🔔 " + [n.title, n.body].filter(Boolean).join(" "), "info");
+        });
+        fgPushBound = true;
+      } catch (e) { console.warn("onMessage bind error:", e); }
     }
 
     window.enablePush = async function() {
@@ -1835,17 +1877,18 @@
         loginBtn.classList.add("hidden"); userProfile.classList.remove("hidden");
         document.getElementById("user-name").innerText = getMyDisplayName();
         updateUserAvatar();
-        subscribeUserData(); subscribeTrades();
+        subscribeUserData(); subscribeTrades(); subscribeSuspension();
         if ("Notification" in window && Notification.permission === "granted" && localStorage.getItem(pushStorageKey())) saveToken().catch(()=>{});
       } else {
         loginBtn.classList.remove("hidden"); userProfile.classList.add("hidden");
         if (unsubTrades) unsubTrades(); if (unsubUser) unsubUser(); unsubTrades=null; unsubUser=null;
         tradesLoaded = false;
+        if (unsubSusp) { unsubSusp(); unsubSusp = null; }
+        document.getElementById("suspended-modal").classList.add("hidden");
         userData = { profile: {}, blocked: [], likes: [], reads: {}, notifications: [], cancelHistory: [] }; myTrades = []; updateBadge(); updateNotifBadge();
         prevUnreadCount = -1; prevTradeCountAsOwner = -1;
         updateUserAvatar();
       }
-      subscribePosts(); subscribeJoins();
     });
 
     window.openPostModal = async function(mode) {
@@ -1930,7 +1973,7 @@
         
         showToast("出品が完了しました！詳細画面からXでシェアできます", "success");
         
-        closePostModal(); switchTab('home');
+        closePostModal(); loadPosts(true); switchTab('home');
       } catch(e) { alert("失敗しました"); } finally { submittingPost = false; btn.disabled = false; btn.innerText = "出品する"; }
     };
 
@@ -1947,10 +1990,11 @@
     };
     window.closeSerialPostModal = function() { document.getElementById("serial-post-modal").classList.add("hidden"); };
     window.submitSerialPost = async function() {
-      if (!(await checkDeviceLock())) return;
+      if (submittingSerial || !(await checkDeviceLock())) return;
       const isSell = postMode === "sell", isBuy = postMode === "buy";
       const member = document.getElementById("serial-member").value, give = document.getElementById("serial-give").value.trim(), want = document.getElementById("serial-want").value.trim(), price = Number(document.getElementById("serial-price").value), dl = document.getElementById("serial-deadline").value, note = document.getElementById("serial-note").value.trim().slice(0, 200);
       if (!give || (!isBuy && !isSell && !want) || ((isBuy || isSell) && (!price || price <= 0)) || (dl && dl < todayStr())) return alert("正しく入力してください。");
+      submittingSerial = true; const sbtn = document.getElementById("serial-submit-btn"); if (sbtn) sbtn.disabled = true;
       try {
         await addDoc(collection(db, "posts"), {
           kind: "serial", isBuy, isSell, member, give, want: (isBuy || isSell) ? "" : want, price: (isBuy || isSell) ? price : 0,
@@ -1962,8 +2006,8 @@
         
         showToast("出品が完了しました！詳細画面からXでシェアできます", "success");
         
-        closeSerialPostModal(); switchTab('home');
-      } catch(e) { alert("失敗しました"); }
+        closeSerialPostModal(); loadPosts(true); switchTab('home');
+      } catch(e) { alert("失敗しました"); } finally { submittingSerial = false; if (sbtn) sbtn.disabled = false; }
     };
 
     window.onGroupBundleChange = function() { document.getElementById("group-bundle-note-box").classList.toggle("hidden", document.getElementById("group-bundle").value === "ng"); };
@@ -1995,7 +2039,7 @@
         
         showToast("共同購入の募集を開始しました！詳細画面からXでシェアできます", "success");
         
-        closeGroupPostModal(); switchTab('home');
+        closeGroupPostModal(); loadPosts(true); switchTab('home');
       } catch(e) { alert("失敗しました"); } finally { submittingGroup = false; btn.disabled = false; btn.innerText = "主催する"; }
     };
 
@@ -2154,18 +2198,53 @@
       renderPosts();
     };
 
-    function subscribePosts() {
-      if (unsubPosts) unsubPosts();
-      unsubPosts = onSnapshot(query(collection(db, "posts"), orderBy("createdAt", "desc")), (snap) => {
-        allPosts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    // 投稿はリアルタイム監視せず、50件ずつ取得（読み取り回数の節約）
+    const POSTS_PAGE = 50;
+    let postsCursor = null, postsHasMore = false, loadingPosts = false;
+    async function loadPosts(reset = true) {
+      if (loadingPosts) return;
+      loadingPosts = true;
+      try {
+        const base = [collection(db, "posts"), orderBy("createdAt", "desc")];
+        const q = (!reset && postsCursor)
+          ? query(...base, startAfter(postsCursor), limit(POSTS_PAGE))
+          : query(...base, limit(POSTS_PAGE));
+        const snap = await getDocs(q);
+        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        if (reset) {
+          allPosts = list;
+          Object.keys(joinsFresh).forEach(k => delete joinsFresh[k]);
+          postsCursor = snap.docs.length ? snap.docs[snap.docs.length - 1] : null;
+        } else {
+          const seen = new Set(allPosts.map(x => x.id));
+          list.forEach(x => { if (!seen.has(x.id)) allPosts.push(x); });
+          if (snap.docs.length) postsCursor = snap.docs[snap.docs.length - 1];
+        }
+        postsHasMore = snap.docs.length === POSTS_PAGE;
+        const wrap = document.getElementById("load-more-wrap"); if (wrap) wrap.classList.toggle("hidden", !postsHasMore);
         renderPosts();
         scheduleHealSoldPosts();
-        if (pendingPostId) {
-          const i = allPosts.findIndex(x => x.id === pendingPostId);
-          if (i >= 0) { pendingPostId = null; openDetailModal(i); }
+        // 詳細モーダルを開いている間に並びが変わっても、投稿IDで追従して添字を更新する
+        if (reset && currentDetailId && !document.getElementById("detail-modal").classList.contains("hidden")) {
+          const di = allPosts.findIndex(x => x.id === currentDetailId);
+          if (di < 0) closeDetailModal(); else { currentDetailIndex = di; openDetailModal(di); }
         }
-      });
+        if (pendingPostId) {
+          const pid = pendingPostId; pendingPostId = null;
+          let i = allPosts.findIndex(x => x.id === pid);
+          if (i < 0) {
+            try { const ps = await getDoc(doc(db, "posts", pid)); if (ps.exists()) { allPosts.push({ id: ps.id, ...ps.data() }); i = allPosts.length - 1; } } catch (e) {}
+          }
+          if (i >= 0) openDetailModal(i);
+        }
+      } catch (err) {
+        console.error("posts load error:", err);
+        showToast("投稿の読み込みに失敗しました。🔄で再読み込みしてください。", "error");
+      } finally { loadingPosts = false; }
     }
+    function subscribePosts() { loadPosts(true); }
+    window.loadMorePosts = function() { loadPosts(false); };
+    window.refreshPosts = async function() { await loadPosts(true); showToast("最新の情報に更新しました。", "info"); };
 
     async function getPhotos(postId) {
       if (photoCache[postId]) return photoCache[postId];
@@ -2183,7 +2262,7 @@
 
     window.openDetailModal = function(index) {
       const p = allPosts[index]; if (!p) return;
-      currentDetailIndex = index; const isGroup = p.kind === "group", isBuy = !!p.isBuy;
+      currentDetailIndex = index; currentDetailId = p.id; const isGroup = p.kind === "group", isBuy = !!p.isBuy;
       let title = "募集の詳細";
       if (isGroup) title = "🛍 共同購入の詳細";
       else if (p.kind === "album") title = "💿 アルバムの詳細";
@@ -2246,9 +2325,17 @@
         }
       }
       actions.innerHTML += `<button onclick="shareCurrentPost()" class="w-full bg-black text-white font-medium py-3 rounded-full shadow-md border border-white/30 mt-2">𝕏 でシェア</button>`;
+      if (currentUser && p.userId !== currentUser.uid) actions.innerHTML += `<div class="flex gap-2 mt-2"><button onclick="blockPostOwner(${index})" class="flex-1 bg-white/60 text-gray-500 border border-white text-xs font-medium py-2 rounded-full hover:bg-white transition">🚫 ブロック</button><button onclick="reportPost(${index})" class="flex-1 bg-white/60 text-red-400 border border-white text-xs font-medium py-2 rounded-full hover:bg-white transition">🚨 通報</button></div>`;
       document.getElementById("detail-modal").classList.remove("hidden"); loadDetailPhotos(p, index); if (p.userId) loadRating(p.userId, index);
+      if (isGroup && currentUser && !joinsFresh[p.id]) {
+        joinsFresh[p.id] = true;
+        loadJoins(p.id).then(() => {
+          const ni = allPosts.findIndex(x => x.id === p.id);
+          if (ni >= 0 && currentDetailId === p.id && !document.getElementById("detail-modal").classList.contains("hidden")) openDetailModal(ni);
+        });
+      }
     };
-    window.closeDetailModal = function() { document.getElementById("detail-modal").classList.add("hidden"); currentDetailIndex = -1; };
+    window.closeDetailModal = function() { document.getElementById("detail-modal").classList.add("hidden"); currentDetailIndex = -1; currentDetailId = null; };
 
     async function loadRating(userId, index) {
       try {
@@ -2260,12 +2347,34 @@
     }
 
     window.deletePost = async function(index) {
-      const p = allPosts[index]; if (!p || !confirm("削除しますか？")) return;
-      try { await deleteDoc(doc(db, "posts", p.id)); closeDetailModal(); } catch(e) { alert("失敗しました。"); }
+      const p = allPosts[index]; if (!p) return;
+      if (myTrades.some(t => t.postId === p.id && (t.status === "negotiating" || t.status === "shipping"))) {
+        return alert("進行中の取引があるため削除できません。先に取引を完了またはキャンセルしてください。");
+      }
+      if (!confirm("削除しますか？")) return;
+      try {
+        try { const ps = await getDocs(collection(db, "posts", p.id, "photos")); await Promise.all(ps.docs.map(d => deleteDoc(d.ref))); } catch(e) { console.warn("photos delete:", e?.code || e); }
+        if (p.kind === "group") { try { const js = await getDocs(collection(db, "posts", p.id, "joins")); await Promise.all(js.docs.map(d => deleteDoc(d.ref))); } catch(e) { console.warn("joins delete:", e?.code || e); } }
+        await deleteDoc(doc(db, "posts", p.id));
+        delete photoCache[p.id];
+        allPosts = allPosts.filter(x => x.id !== p.id);
+        closeDetailModal(); renderPosts();
+      } catch(e) { alert("失敗しました。"); }
+    };
+    window.blockPostOwner = function(index) { const p = allPosts[index]; if (p) blockUser(p.userId, p.userName); };
+    window.reportPost = async function(index) {
+      const p = allPosts[index]; if (!p || !currentUser) return;
+      const reason = prompt("通報の理由を入力してください:");
+      if (!reason || !reason.trim()) return;
+      try {
+        await addDoc(collection(db, "reports"), { reporterId: currentUser.uid, reporterName: getMyDisplayName(), postId: p.id, postGive: p.give || "", postUserId: p.userId || "", reason: reason.trim().slice(0, 200), createdAt: serverTimestamp(), deviceId: getOrCreateDeviceId() });
+        showToast("通報を送信しました。ご協力ありがとうございます。", "success");
+      } catch(e) { alert("通報の送信に失敗しました。"); }
     };
     window.toggleGroupClosed = async function(index) {
       const p = allPosts[index]; if (!p || !currentUser || p.userId !== currentUser.uid) return;
-      try { await updateDoc(doc(db, "posts", p.id), { status: p.status === "closed" ? "active" : "closed" }); closeDetailModal(); } catch(e) {}
+      const nextStatus = p.status === "closed" ? "active" : "closed";
+      try { await updateDoc(doc(db, "posts", p.id), { status: nextStatus }); p.status = nextStatus; closeDetailModal(); renderPosts(); } catch(e) {}
     };
 
     window.onEditBundleChange = function() { document.getElementById("edit-bundle-note-box").classList.toggle("hidden", document.getElementById("edit-bundle").value === "ng"); };
@@ -2293,7 +2402,7 @@
       }
       if (p.kind === "serial" || p.kind === "group") data.deadline = document.getElementById("edit-deadline").value;
       if (p.kind === "group") { data.target = Number(document.getElementById("edit-target").value); data.bundle = document.getElementById("edit-bundle").value; data.bundleNote = data.bundle === "ng" ? "" : document.getElementById("edit-bundle-note").value.trim().slice(0, 100); }
-      try { await updateDoc(doc(db, "posts", p.id), data); alert("更新しました！"); closeEditModal(); } catch(e) { alert("更新失敗"); }
+      try { await updateDoc(doc(db, "posts", p.id), data); alert("更新しました！"); closeEditModal(); loadPosts(true); } catch(e) { alert("更新失敗"); }
     };
 
     window.applyToPost = async function(index) {
@@ -2310,6 +2419,23 @@
       }
 
       const deviceId = getOrCreateDeviceId();
+      // 先着：出品が active のときだけ traded にして確保（同時申込の二重取引を防ぐ）
+      let claimed = false;
+      try {
+        await runTransaction(db, async (tx) => {
+          const postRef = doc(db, "posts", p.id);
+          const ps = await tx.get(postRef);
+          if (!ps.exists()) throw new Error("notfound");
+          if (ps.data().status !== "active") throw new Error("notactive");
+          tx.update(postRef, { status: "traded" });
+        });
+        claimed = true; p.status = "traded"; renderPosts();
+      } catch (claimErr) {
+        if (claimErr && (claimErr.message === "notactive" || claimErr.message === "notfound")) {
+          return alert("この出品はすでに取引中、または終了しています。");
+        }
+        console.warn("post claim failed:", claimErr?.code || claimErr); // 権限などは従来どおり続行
+      }
       try {
         const ref = await addDoc(collection(db, "trades"), {
           kind: p.kind,
@@ -2340,17 +2466,14 @@
           deviceId: deviceId
         });
 
-        try {
-          await updateDoc(doc(db, "posts", p.id), { status: "traded" });
-        } catch (statusErr) {
-          console.warn("post status → traded の更新に失敗:", statusErr?.code || statusErr);
-        }
+        claimed = false; // 取引作成まで成功
 
         closeDetailModal();
         openTrade(ref.id);
         showToast("申し込みが完了しました！", "success");
       } catch (e) {
         console.error("applyToPost error:", e);
+        if (claimed) restorePostToActive(p.id, p.kind, null); // 取引が作れなかったら確保を戻す
         const msg = e?.code || e?.message || String(e);
         if (msg.includes("permission-denied") || msg.includes("PERMISSION_DENIED")) {
           alert("申し込みに失敗しました。\n（権限エラー）\nページを再読み込みしてからもう一度お試しください。");
@@ -2394,6 +2517,8 @@
           transaction.update(postRef, { joinsCount: increment(1) });
           transaction.set(joinRef, { uid: currentUser.uid, userName: getMyDisplayName(), bundleChoice: bc, createdAt: serverTimestamp(), deviceId: getOrCreateDeviceId() });
         });
+        p.joinsCount = (typeof p.joinsCount === "number" ? p.joinsCount : 0) + 1;
+        (groupJoins[p.id] = groupJoins[p.id] || []).push({ id: currentUser.uid, userName: getMyDisplayName(), bundleChoice: bc });
         const ref = await addDoc(collection(db, "trades"), { kind: "group", isBuy: false, postId: p.id, postGive: p.give, postWant: "", postPrice: p.price || 0, postMember: p.member || "指定なし", postDeadline: p.deadline || "", postPhotoCount: p.photoCount || 0, postTarget: p.target || 0, postBundle: p.bundle || "ng", postBundleNote: p.bundleNote || "", bundleChoice: bc, ownerId: p.userId, ownerName: p.userName, applicantId: currentUser.uid, applicantName: getMyDisplayName(), participants: [p.userId, currentUser.uid], status: "negotiating", agreed: {}, shipped: {}, received: {}, disputed: {}, lastMessageAt: serverTimestamp(), lastSenderId: currentUser.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), deviceId: getOrCreateDeviceId() });
         closeDetailModal(); openTrade(ref.id);
       } catch(e) {
@@ -2415,7 +2540,8 @@
     function renderWallet() {
       const now = new Date(); let totalCompleted = 0, totalPending = 0, completedCount = 0;
       myTrades.forEach(t => {
-        if (t.ownerId !== currentUser.uid || !isPayTrade(t) || t.isBuy) return;
+        const sellerId = t.isBuy ? t.applicantId : t.ownerId;
+        if (sellerId !== currentUser.uid || !isPayTrade(t)) return;
         const d = t.createdAt?.toDate ? t.createdAt.toDate() : new Date();
         if (d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()) {
           const p = Number(t.postPrice || 0);
@@ -2452,7 +2578,7 @@
         scheduleHealSoldPosts();
         if (!document.getElementById("trades-modal").classList.contains("hidden")) renderTradesList();
         if (!document.getElementById("wallet-modal").classList.contains("hidden")) renderWallet();
-      });
+      }, (err) => console.warn("trades snapshot error:", err?.code || err));
     }
     function updateBadge() {
       const unread = myTrades.filter(t => isUnread(t)).length, active = myTrades.filter(t => t.status === "negotiating" || t.status === "shipping").length;
@@ -2497,7 +2623,8 @@
       const el = document.getElementById("room-paypay-box");
       if (!currentTrade || currentTrade.status !== "shipping") { el.innerHTML = ""; return; }
       const myPayPay = getMyProfile()?.paypay || "";
-      const showLink = currentTrade.isBuy || ((currentTrade.kind === "group" || currentTrade.isSell) && currentUser.uid === currentTrade.ownerId);
+      const receiverId = currentTrade.isBuy ? currentTrade.applicantId : currentTrade.ownerId; // 受け取る側だけが請求リンクを出せる
+      const showLink = isPayTrade(currentTrade) && currentUser.uid === receiverId;
       const amtTxt = isPayTrade(currentTrade) ? '￥' + Number(currentTrade.postPrice || 0).toLocaleString() : '';
       el.innerHTML = `<div class="bg-pink-100/70 backdrop-blur rounded-xl p-4 border border-pink-200 space-y-3 shadow-sm"><div class="flex items-center justify-between"><div class="text-xs font-medium text-pink-800">💳 PayPay送金</div><span class="text-[11px] font-medium text-pink-700 bg-white/70 px-2 py-0.5 rounded-full shadow-sm">${amtTxt}</span></div><div class="flex items-center space-x-2"><input type="text" id="chat-paypay-input" value="${escapeHtml(myPayPay)}" placeholder="あなたのPayPay ID" class="liquid-glass-input flex-1 rounded-xl p-2 text-xs focus:ring-pink-400"><button onclick="sendMyPayPayId()" class="bg-pink-500 hover:bg-pink-600 text-white font-medium text-xs px-3 py-2 rounded-full transition shadow-md border border-pink-400">IDを送る</button></div>${showLink ? `<div class="border-t border-pink-300 pt-3 space-y-2"><div class="text-[11px] font-medium text-pink-800">⚡ ワンタップ送金リンク</div><div class="flex items-center space-x-2"><input type="text" id="chat-paypay-link" placeholder="https://pay.paypay.ne.jp/..." class="liquid-glass-input flex-1 rounded-xl p-2 text-xs focus:ring-pink-400"><button onclick="sendPayPayLink()" class="bg-pink-500 hover:bg-pink-600 text-white font-medium text-xs px-3 py-2 rounded-full transition shadow-md border border-pink-400">リンク送信</button></div></div>` : ''}</div>`;
     }
@@ -2535,7 +2662,7 @@
       const both = f => flag(t, f, t.ownerId) && flag(t, f, t.applicantId); let next = null;
       if (t.status === "negotiating" && both("agreed")) {
         next = "shipping";
-        if (t.postId && t.kind !== "group") try { await updateDoc(doc(db, "posts", t.postId), { status: "traded" }); } catch(e){}
+        if (t.postId && t.kind !== "group") try { await updateDoc(doc(db, "posts", t.postId), { status: "traded" }); const lp = allPosts.find(x => x.id === t.postId); if (lp) { lp.status = "traded"; renderPosts(); } } catch(e){}
       } else if (t.status === "shipping" && both("received")) { next = "completed"; }
       if (next) updateDoc(doc(db, "trades", t.id), { status: next, updatedAt: serverTimestamp() }).catch(()=>{});
     }
@@ -2573,6 +2700,7 @@
           cancelRequest: { by: currentUser.uid, byName: getMyDisplayName(), reason: reason, reasonText: reasonText, at: Date.now() },
           updatedAt: serverTimestamp()
         });
+        applyCancelPenalty(currentUser.uid, currentTrade.id).catch(() => {});
         closeCancelModal();
         showToast("キャンセルを申請しました。相手の同意をお待ちください。", "info");
       } catch (e) { alert("申請に失敗しました。"); }
@@ -2581,7 +2709,6 @@
     window.agreeCancel = async function() {
       if (!currentTrade || !currentTrade.cancelRequest) return;
       if (!confirm("キャンセル申請に同意しますか？\n取引がキャンセルされます。")) return;
-      const initiatorId = currentTrade.cancelRequest.by;
       const postId = currentTrade.postId;
       const kind = currentTrade.kind;
       const applicantId = currentTrade.applicantId;
@@ -2592,38 +2719,49 @@
         // 投稿を active（出品中）に戻す
         await restorePostToActive(postId, kind, applicantId);
 
-        await applyCancelPenalty(initiatorId, currentTrade.id);
         showToast("取引がキャンセルされました。", "info");
       } catch (e) { alert("処理に失敗しました。"); }
     };
 
+    // 申請者が申請時に「自分の」記録へ書き込む（他人のドキュメントは書けないため）
     async function applyCancelPenalty(uid, tradeId) {
+      if (!currentUser || uid !== currentUser.uid) return;
       try {
         const userRef = doc(db, "users", uid);
         const snap = await getDoc(userRef);
         const data = snap.exists() ? snap.data() : {};
         const history = Array.isArray(data.cancelHistory) ? [...data.cancelHistory] : [];
+        if (history.some(h => h.tradeId === tradeId)) return; // 二重カウント防止
         const now = Date.now();
         history.push({ tradeId, at: now });
         const monthAgo = now - 30 * 24 * 60 * 60 * 1000;
         const recent = history.filter(h => h.at >= monthAgo);
-        await updateDoc(userRef, { cancelHistory: recent });
         const count = recent.length;
-        if (count >= 8) {
-          await setDoc(doc(db, "suspensions", uid), {
-            reason: `合意後キャンセルが1ヶ月で${count}回を超えたため一時停止`,
-            name: data.profile?.nickname || "",
-            createdAt: serverTimestamp()
-          }, { merge: true });
+        const update = { cancelHistory: recent };
+        let noticeText = "";
+        if (count > 8) noticeText = `合意後キャンセルが1ヶ月で${count}回に達しました。一時停止の対象となり、運営に通知されました。`;
+        else if (count >= 3) noticeText = `合意後キャンセルが${count}回になりました。8回を超えると一時停止されます。`;
+        if (noticeText) {
           const list = Array.isArray(data.notifications) ? [...data.notifications] : [];
-          list.unshift({ id: "p_" + Date.now(), text: `合意後キャンセルが${count}回に達したため、アカウントが一時停止されました。`, type: "admin", read: false, createdAt: Date.now() });
+          list.unshift({ id: "p_" + Date.now(), text: noticeText, type: "admin", read: false, createdAt: Date.now() });
           if (list.length > MAX_NOTIFICATIONS) list.length = MAX_NOTIFICATIONS;
-          await updateDoc(userRef, { notifications: list });
-        } else if (count >= 3) {
-          const list = Array.isArray(data.notifications) ? [...data.notifications] : [];
-          list.unshift({ id: "p_" + Date.now(), text: `合意後キャンセルが${count}回になりました。8回を超えると一時停止されます。`, type: "admin", read: false, createdAt: Date.now() });
-          if (list.length > MAX_NOTIFICATIONS) list.length = MAX_NOTIFICATIONS;
-          await updateDoc(userRef, { notifications: list });
+          update.notifications = list;
+        }
+        await updateDoc(userRef, update);
+        if (count > 8) {
+          // suspensions は管理者のみ書き込み可 → 自動停止を試み、拒否されたら運営へ問い合わせとして通知
+          const reason = `合意後キャンセルが1ヶ月で${count}回を超えたため一時停止`;
+          try {
+            await setDoc(doc(db, "suspensions", uid), { reason, name: data.profile?.nickname || "", createdAt: serverTimestamp() }, { merge: true });
+          } catch (e) {
+            try {
+              await addDoc(collection(db, "inquiries"), {
+                userId: uid, userName: getMyDisplayName(), subject: "report",
+                body: `[自動通知] ${reason}（UID: ${uid}）。停止の判断をお願いします。`,
+                status: "open", createdAt: serverTimestamp(), deviceId: getOrCreateDeviceId()
+              });
+            } catch (e2) { console.warn("penalty notify error:", e2?.code || e2); }
+          }
         }
       } catch (e) { console.error("penalty error", e); }
     }
@@ -2631,6 +2769,7 @@
     function renderRoom() {
       const t = currentTrade; if (!t) return;
       const uid = currentUser.uid, iAmOwner = uid === t.ownerId, otherId = iAmOwner ? t.applicantId : t.ownerId, otherName = iAmOwner ? t.applicantName : t.ownerName, payFlow = isPayTrade(t);
+      const iAmPayer = t.isBuy ? iAmOwner : !iAmOwner; // 買取は出品者が支払う側
       document.getElementById("room-title").innerText = otherName + " さんとの取引";
       const order = ["negotiating", "shipping", "completed"], labels = payFlow ? ["① 条件確認", "② 送金・発送", "③ 完了"] : ["① 交渉・合意", "② 発送・受取", "③ 完了"];
       const idx = order.indexOf(t.status); const on = payFlow ? "bg-gradient-to-r from-pink-400 to-pink-500 text-white shadow-md border border-white/50" : "bg-gradient-to-r from-illit-purple to-illit-accent text-white shadow-md border border-white/50";
@@ -2654,7 +2793,7 @@
       } else if (t.status === "shipping") {
         const myS = flag(t, "shipped", uid), otherS = flag(t, "shipped", otherId);
         const myR = flag(t, "received", uid), otherR = flag(t, "received", otherId);
-        html += `<div class="text-xs text-gray-700 font-medium bg-white/50 p-3 rounded-lg border border-white shadow-inner space-y-1"><div>送金/発送: あなた ${mark(myS)} ／ 相手 ${mark(otherS)}</div><div>受取確認: あなた ${mark(myR)} ／ 相手 ${mark(otherR)}</div></div>${!myS ? `<button onclick="tradeAction('shipped')" class="${payFlow ? pinkBtn : primary} mt-2">${payFlow ? (iAmOwner ? '送った・確認した' : '送金した') : '発送した'}</button>` : ''}${otherS && !myR ? `<button onclick="tradeAction('received')" class="${btn} bg-gradient-to-r from-green-400 to-green-500 text-white hover:opacity-90 mt-2">完了確認</button>` : ''}`;
+        html += `<div class="text-xs text-gray-700 font-medium bg-white/50 p-3 rounded-lg border border-white shadow-inner space-y-1"><div>送金/発送: あなた ${mark(myS)} ／ 相手 ${mark(otherS)}</div><div>受取確認: あなた ${mark(myR)} ／ 相手 ${mark(otherR)}</div></div>${!myS ? `<button onclick="tradeAction('shipped')" class="${payFlow ? pinkBtn : primary} mt-2">${payFlow ? (iAmPayer ? '送金した' : '送った・確認した') : '発送した'}</button>` : ''}${otherS && !myR ? `<button onclick="tradeAction('received')" class="${btn} bg-gradient-to-r from-green-400 to-green-500 text-white hover:opacity-90 mt-2">完了確認</button>` : ''}`;
         if (!t.cancelRequest) {
           html += `<div class="mt-3 pt-3 border-t border-red-200/50">
             <p class="text-[10px] text-red-600 mb-2 font-medium bg-white/50 p-2 rounded-lg border border-red-200 shadow-inner">※合意後のキャンセルは申請した側にペナルティが付きます（月3回で警告・8回超で一時停止）</p>
