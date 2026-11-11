@@ -4,7 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ILLIT Trade (ILLIT交換・買取・共同購入)</title>
-  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2
+family=M+PLUS+Rounded+1c:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#c084fc">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -95,6 +96,34 @@
     .filter-chip:active {
       transform: scale(0.96);
     }
+
+    /* ===== 下部ナビ：長押しで透けるレンズ ===== */
+    #nav-lens {
+      position: fixed; z-index: 45; pointer-events: none;
+      width: 132px; height: 84px; border-radius: 9999px;
+      opacity: 0; transform: scale(.6);
+      transition: opacity .18s ease, transform .3s cubic-bezier(.34,1.56,.64,1), left .22s ease, top .22s ease;
+      background: rgba(255,255,255,.12);
+      backdrop-filter: blur(1px) saturate(1.8) brightness(1.08);
+      -webkit-backdrop-filter: blur(1px) saturate(1.8) brightness(1.08);
+      box-shadow:
+        inset 0 0 0 1.5px rgba(255,255,255,.8),
+        inset 7px 7px 16px rgba(255,120,200,.28),
+        inset -7px -7px 16px rgba(100,200,255,.30),
+        inset 0 0 26px rgba(255,255,255,.55),
+        0 14px 32px rgba(120,80,200,.22);
+    }
+    #nav-lens::before {
+      content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 3px;
+      background: conic-gradient(#ff9ad5, #ffe27a, #8be9ff, #b79bff, #ff9ad5);
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor; mask-composite: exclude;
+      opacity: .65; filter: blur(2px);
+    }
+    #nav-lens.show { opacity: 1; transform: scale(1); }
+    body > nav { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+    body > nav button { transition: transform .25s cubic-bezier(.34,1.56,.64,1); }
+    body > nav button.nav-pressed { transform: scale(1.22); }
   </style>
 </head>
 <body class="bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 text-gray-800 min-h-screen font-sans relative overflow-x-hidden">
@@ -143,7 +172,7 @@
         </div>
       </div>
       <div class="liquid-glass-input rounded-xl p-3 text-[11px] text-gray-600 leading-relaxed border-white/60">
-        <p class="font-bold text-gray-700 mb-0.5">⚠️ 免責事項（ご利用規約）</p>
+        <p class="font-bold text-gray-700 mb-0.5">⚠ 免責事項（ご利用規約）</p>
         <p>本サービスはファン同士の交流および情報交換の場を提供するものです。ユーザー間のトラブルや、ハッキング等の外部要因による損害につきましては、<b>運営は一切の責任を負いません。</b>お互いの評価や商品の状態を十分に確認のうえ、自己責任にてご利用ください。</p>
       </div>
     </section>
@@ -331,7 +360,6 @@
       </div>
     </div>
   </div>
-
   <!-- FAQ -->
   <div id="faq-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
     <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[90vh] flex flex-col">
@@ -358,7 +386,7 @@
         <button onclick="closeInquiry()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
       </div>
       <div class="bg-amber-50/80 border border-amber-200 rounded-xl p-3 text-[11px] text-amber-800 leading-relaxed">
-        <p class="font-bold mb-1">⚠️ ご注意</p>
+        <p class="font-bold mb-1">⚠ ご注意</p>
         <p>運営は有志で活動しており、<b>返信には数日〜1週間程度お時間をいただく場合があります。</b>ユーザー間のトラブルに関する仲裁・補償は一切行っておりません。</p>
       </div>
       <div class="space-y-3 text-xs">
@@ -409,7 +437,7 @@
         <button onclick="closeCancelModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
       </div>
       <div class="bg-red-50/80 border border-red-200 rounded-xl p-3 text-[11px] text-red-700 leading-relaxed">
-        <p class="font-bold mb-1">⚠️ ペナルティについて</p>
+        <p class="font-bold mb-1">⚠ ペナルティについて</p>
         <p>合意後のキャンセル申請は、<b>申請した側にペナルティ</b>が付きます。<br>・1ヶ月に3回以上 → 警告<br>・8回を超える → 一時アカウント停止</p>
       </div>
       <div>
@@ -449,7 +477,7 @@
       </div>
       <div class="space-y-2">
         <button onclick="closeMyPage(); openPwaGuideModal();" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">📱 アプリ登録（ホーム画面追加）</span><span class="text-gray-400">›</span></button>
-        <button onclick="closeMyPage(); openProfileModal('basic')" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">✏️ プロフィール・写真</span><span class="text-gray-400">›</span></button>
+        <button onclick="closeMyPage(); openProfileModal('basic')" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">✏ プロフィール・写真</span><span class="text-gray-400">›</span></button>
         <button onclick="closeMyPage(); openProfileModal('address')" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">📦 住所・配送先</span><span class="text-gray-400">›</span></button>
         <button onclick="closeMyPage(); openProfileModal('paypay')" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">💳 PayPay ID</span><span class="text-gray-400">›</span></button>
         <button onclick="closeMyPage(); openNotificationsModal()" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">🔔 通知一覧</span><span class="text-gray-400">›</span></button>
@@ -538,7 +566,7 @@
   <div id="profile-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
     <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b border-purple-200/50 pb-3">
-        <h3 id="profile-modal-title" class="font-bold text-base text-gray-800">⚙️ プロフィール・設定</h3>
+        <h3 id="profile-modal-title" class="font-bold text-base text-gray-800">⚙ プロフィール・設定</h3>
         <button onclick="closeProfileModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
       </div>
       <div id="profile-section-basic" class="space-y-3 text-xs md:text-sm hidden">
@@ -556,9 +584,10 @@
         </div>
       </div>
       <div id="profile-section-address" class="space-y-3 text-xs md:text-sm hidden">
-        <div><label class="block font-medium text-gray-700 mb-1">お名前（郵送時の宛名）</label><input type="text" id="profile-name" maxlength="50" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
-        <div><label class="block font-medium text-gray-700 mb-1">郵便番号</label><input type="text" id="profile-zip" maxlength="10" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
-        <div><label class="block font-medium text-gray-700 mb-1">都道府県・市区町村・番地</label><input type="text" id="profile-address1" maxlength="100" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
+        <div class="bg-amber-50/80 border border-amber-200 rounded-xl p-2.5 text-[11px] text-amber-800 leading-relaxed">申し込み・参加をするには、お名前・郵便番号・住所の登録が必要です。</div>
+        <div><label class="block font-medium text-gray-700 mb-1">お名前（郵送時の宛名） <span class="text-pink-600">必須</span></label><input type="text" id="profile-name" maxlength="50" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
+        <div><label class="block font-medium text-gray-700 mb-1">郵便番号 <span class="text-pink-600">必須</span></label><input type="text" id="profile-zip" maxlength="10" inputmode="numeric" placeholder="例: 123-4567" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
+        <div><label class="block font-medium text-gray-700 mb-1">都道府県・市区町村・番地 <span class="text-pink-600">必須</span></label><input type="text" id="profile-address1" maxlength="100" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
         <div><label class="block font-medium text-gray-700 mb-1">建物名・部屋番号（任意）</label><input type="text" id="profile-address2" maxlength="100" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
         <div><label class="block font-medium text-gray-700 mb-1">電話番号（任意・伝票用）</label><input type="text" id="profile-phone" maxlength="20" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
       </div>
@@ -685,7 +714,7 @@
   <div id="edit-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
     <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b border-purple-200/50 pb-3">
-        <h3 class="font-bold text-base text-gray-800">✏️ 募集の編集</h3>
+        <h3 class="font-bold text-base text-gray-800">✏ 募集の編集</h3>
         <button onclick="closeEditModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
       </div>
       <div class="space-y-3 text-xs md:text-sm">
@@ -859,7 +888,6 @@
       </div>
     </div>
   </div>
-
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -947,6 +975,19 @@
     function isPayTrade(t) { return !!(t && (t.isBuy || t.isSell || t.kind === "group")); }
     function joinsOf(postId) { return groupJoins[postId] || []; }
     function needsCondition(kind) { return kind === "card" || kind === "album" || kind === "dearlit"; }
+
+    // 申込者の配送先情報（お名前・郵便番号・住所）が登録済みか
+    function hasShippingInfo() {
+      const p = getMyProfile();
+      return !!(p && p.name && p.zip && p.address1);
+    }
+    function requireShippingInfo() {
+      if (hasShippingInfo()) return true;
+      alert("申し込み・参加には、お名前・郵便番号・住所の登録が必要です。\n先に「住所・配送先」を登録してください。");
+      closeDetailModal();
+      openProfileModal("address");
+      return false;
+    }
 
     // 投稿をactive（出品中）に戻す共通処理
     async function restorePostToActive(postId, kind, applicantId) {
@@ -1202,7 +1243,7 @@
           try { await updateDoc(ref, { updatedAt: serverTimestamp() }); } catch (_) {}
           return true;
         }
-        alert("⚠️ セキュリティ制限\nこの端末からはすでに別のアカウントで登録が行われています。");
+        alert("⚠ セキュリティ制限\nこの端末からはすでに別のアカウントで登録が行われています。");
         return false;
       } catch (e) {
         console.warn("checkDeviceLock error:", e);
@@ -1384,7 +1425,7 @@
               </div>
               ${!isAdminUser ? `
               <div class="flex justify-end gap-1.5 pt-2 border-t border-gray-100">
-                <button data-act="adminSendWarning" data-a1="${escapeHtml(u.id)}" data-a2="${escapeHtml(u.profile?.nickname || '')}" class="bg-yellow-100 text-yellow-700 hover:bg-yellow-200 font-medium px-3 py-1.5 rounded-lg text-[10px] transition">⚠️ 警告通知</button>
+                <button data-act="adminSendWarning" data-a1="${escapeHtml(u.id)}" data-a2="${escapeHtml(u.profile?.nickname || '')}" class="bg-yellow-100 text-yellow-700 hover:bg-yellow-200 font-medium px-3 py-1.5 rounded-lg text-[10px] transition">⚠ 警告通知</button>
                 ${isSuspended 
                   ? `<button data-act="adminUnsuspendUser" data-a1="${escapeHtml(u.id)}" class="bg-green-100 text-green-700 hover:bg-green-200 font-medium px-3 py-1.5 rounded-lg text-[10px] transition">🔓 停止解除</button>` 
                   : `<button data-act="adminSuspendUser" data-a1="${escapeHtml(u.id)}" data-a2="${escapeHtml(u.profile?.nickname || '')}" class="bg-red-100 text-red-700 hover:bg-red-200 font-medium px-3 py-1.5 rounded-lg text-[10px] transition">🚫 アカウント停止</button>`
@@ -1485,7 +1526,7 @@
         else if (adminTab === "broadcast") {
           el.innerHTML = `
             <div class="space-y-4">
-              <div class="bg-red-50/80 border border-red-200 rounded-xl p-3 text-xs text-red-700 font-medium">⚠️ 送信した内容は全ユーザーの「通知一覧」に追加されます。</div>
+              <div class="bg-red-50/80 border border-red-200 rounded-xl p-3 text-xs text-red-700 font-medium">⚠ 送信した内容は全ユーザーの「通知一覧」に追加されます。</div>
               <div>
                 <label class="block font-medium text-gray-700 mb-1 text-xs">通知メッセージ内容</label>
                 <textarea id="admin-broadcast-msg" rows="5" maxlength="300" placeholder="例: メンテナンスのお知らせ" class="liquid-glass-input w-full rounded-xl p-3 text-sm text-gray-800 focus:ring-2 focus:ring-purple-400"></textarea>
@@ -1630,7 +1671,6 @@
         await deleteDoc(doc(db, "reports", reportId)); alert("削除しました。"); loadAdminData();
       } catch(e){}
     };
-    
     function isUnread(t) { return currentUser && t && t.lastMessageAt && t.lastSenderId !== currentUser.uid && tsMillis(t.lastMessageAt) > ((userData.reads || {})[t.id] || 0); }
     function markTradeRead(t) {
       if (!currentUser || !t || !isUnread(t)) return;
@@ -1684,7 +1724,7 @@
     window.openProfileModal = function(section = "basic") {
       if (!currentUser) return;
       profileSection = section;
-      const titles = { basic: "✏️ プロフィール・写真", address: "📦 住所・配送先", paypay: "💳 PayPay ID", push: "📢 プッシュ通知", block: "🚫 ブロック管理" };
+      const titles = { basic: "✏ プロフィール・写真", address: "📦 住所・配送先", paypay: "💳 PayPay ID", push: "📢 プッシュ通知", block: "🚫 ブロック管理" };
       document.getElementById("profile-modal-title").innerText = titles[section] || "設定";
       ["basic","address","paypay","push","block"].forEach(s => {
         const el = document.getElementById("profile-section-" + s);
@@ -1741,6 +1781,11 @@
         address2: document.getElementById("profile-address2").value.trim(),
         phone: document.getElementById("profile-phone").value.trim()
       };
+      // 住所・配送先の保存時は、お名前・郵便番号・住所を必須にする
+      if (profileSection === "address") {
+        if (!p.name || !p.zip || !p.address1) return alert("お名前・郵便番号・住所は必須です。");
+        if (!/^\d{3}-?\d{4}$/.test(p.zip)) return alert("郵便番号は7桁の数字で入力してください。（例: 123-4567）");
+      }
       if (pendingProfilePhoto !== null) p.photo = pendingProfilePhoto;
       else p.photo = userData.profile?.photo || "";
       userData.profile = { ...(userData.profile || {}), ...p };
@@ -2307,7 +2352,7 @@
       document.getElementById("detail-extra").innerHTML = extra;
       const actions = document.getElementById("detail-actions");
       if (!currentUser) actions.innerHTML = `<button onclick="loginWithGoogle()" class="w-full bg-gradient-to-r from-illit-purple to-illit-accent text-white font-medium py-3 rounded-full shadow-md border border-white/30">ログインして申込</button>`;
-      else if (p.userId === currentUser.uid) actions.innerHTML = `${isGroup ? `<button onclick="toggleGroupClosed(${index})" class="w-full bg-teal-50 text-teal-700 border border-teal-200 font-medium py-3 rounded-full hover:bg-teal-100 transition shadow-sm mb-2">${closed ? '🔓 募集再開' : '🔒 募集締切'}</button>` : ''}<button onclick="openEditPost(${index})" class="w-full bg-white/80 border border-white text-illit-darkPurple font-medium py-3 rounded-full hover:bg-white transition shadow-sm">✏️ 編集</button><button onclick="deletePost(${index})" class="w-full bg-red-50 text-red-500 font-medium py-3 rounded-full border border-red-200 hover:bg-red-100 transition mt-2 shadow-sm">削除</button>`;
+      else if (p.userId === currentUser.uid) actions.innerHTML = `${isGroup ? `<button onclick="toggleGroupClosed(${index})" class="w-full bg-teal-50 text-teal-700 border border-teal-200 font-medium py-3 rounded-full hover:bg-teal-100 transition shadow-sm mb-2">${closed ? '🔓 募集再開' : '🔒 募集締切'}</button>` : ''}<button onclick="openEditPost(${index})" class="w-full bg-white/80 border border-white text-illit-darkPurple font-medium py-3 rounded-full hover:bg-white transition shadow-sm">✏ 編集</button><button onclick="deletePost(${index})" class="w-full bg-red-50 text-red-500 font-medium py-3 rounded-full border border-red-200 hover:bg-red-100 transition mt-2 shadow-sm">削除</button>`;
       else {
         const existingTrade = myTrades.find(t => t.postId === p.id && t.status !== "cancelled");
         if (existingTrade) {
@@ -2404,9 +2449,9 @@
       if (p.kind === "group") { data.target = Number(document.getElementById("edit-target").value); data.bundle = document.getElementById("edit-bundle").value; data.bundleNote = data.bundle === "ng" ? "" : document.getElementById("edit-bundle-note").value.trim().slice(0, 100); }
       try { await updateDoc(doc(db, "posts", p.id), data); alert("更新しました！"); closeEditModal(); loadPosts(true); } catch(e) { alert("更新失敗"); }
     };
-
     window.applyToPost = async function(index) {
       const p = allPosts[index]; if (!currentUser || !p || !p.userId) return;
+      if (!requireShippingInfo()) return;
       if (p.kind === "group") return joinGroup(index);
       if (!(await checkDeviceLock())) return;
 
@@ -2486,6 +2531,7 @@
     };
     window.joinGroup = async function(index) {
       const p = allPosts[index]; if (!currentUser || !p || !p.userId || p.kind !== "group" || !(await checkDeviceLock())) return;
+      if (!requireShippingInfo()) return;
       if (p.status === "closed" || isExpired(p)) return alert("募集終了。");
       
       const existing = myTrades.find(t => t.postId === p.id && t.status !== "cancelled");
@@ -2781,7 +2827,7 @@
       if (t.cancelRequest && t.status === "shipping") {
         const isInitiator = t.cancelRequest.by === uid;
         html += `<div class="bg-red-50/80 border border-red-200 rounded-xl p-3 text-xs text-red-700 space-y-2">
-          <p class="font-medium">⚠️ キャンセル申請中</p>
+          <p class="font-medium">⚠ キャンセル申請中</p>
           <p>申請者: ${escapeHtml(t.cancelRequest.byName || "")}</p>
           <p>理由: ${escapeHtml(t.cancelRequest.reasonText || CANCEL_REASON_LABEL[t.cancelRequest.reason] || "")}</p>
           ${isInitiator ? '<p class="text-[11px]">相手の同意をお待ちください。</p>' : `<button onclick="agreeCancel()" class="${btn} bg-red-500 text-white hover:bg-red-600">キャンセルに同意する</button>`}
@@ -2899,8 +2945,61 @@
       else if (!recorded && hasAgreedLocally() && !termsSaving) { termsSaving = true; saveUserData({ terms: { version: TERMS_VERSION, agreedAt: serverTimestamp() } }).finally(() => { termsSaving = false; }); }
     }
 
+    // ===== 下部ナビ：長押しで透けるレンズ =====
+    (function initNavLens() {
+      const nav = document.querySelector("body > nav"); if (!nav) return;
+      const lens = document.createElement("div"); lens.id = "nav-lens"; document.body.appendChild(lens);
+      let timer = null, active = null, pressed = null;
+
+      function place(btn) {
+        const r = btn.getBoundingClientRect(), w = lens.offsetWidth, h = lens.offsetHeight;
+        const left = Math.min(window.innerWidth - w - 4, Math.max(4, r.left + r.width / 2 - w / 2));
+        lens.style.left = left + "px";
+        lens.style.top = (r.top + r.height / 2 - h / 2) + "px";
+      }
+      function setActive(btn) {
+        if (active === btn) return;
+        if (active) active.classList.remove("nav-pressed");
+        active = btn; if (!btn) return;
+        btn.classList.add("nav-pressed");
+        if (!lens.classList.contains("show")) {
+          lens.style.transition = "none"; place(btn); void lens.offsetWidth; lens.style.transition = "";
+          lens.classList.add("show");
+        } else place(btn);
+      }
+      function hide() {
+        clearTimeout(timer); timer = null;
+        if (active) active.classList.remove("nav-pressed");
+        active = null; pressed = null; lens.classList.remove("show");
+      }
+
+      nav.addEventListener("pointerdown", (e) => {
+        const b = e.target.closest("button"); if (!b) return;
+        pressed = b; clearTimeout(timer);
+        timer = setTimeout(() => setActive(b), 150); // 軽いタップでは出さない
+      });
+      nav.addEventListener("pointermove", (e) => {
+        if (!lens.classList.contains("show")) return;
+        const el = document.elementFromPoint(e.clientX, e.clientY);
+        const b = el && el.closest("button");
+        if (b && nav.contains(b)) setActive(b); // 指を滑らせるとレンズも追従
+      });
+      const release = () => {
+        // 別のボタンへ滑らせて離した場合は、そのボタンを実行
+        if (lens.classList.contains("show") && active && pressed && active !== pressed) {
+          const target = active; hide(); target.click(); return;
+        }
+        hide();
+      };
+      window.addEventListener("pointerup", release);
+      window.addEventListener("pointercancel", hide);
+      nav.addEventListener("contextmenu", (e) => e.preventDefault());
+    })();
+
     if (!hasAgreedLocally()) openTerms(false);
     renderFilters(); subscribePosts(); switchTab('home');
   </script>
 </body>
 </html>
+
+
