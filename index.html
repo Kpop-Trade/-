@@ -905,6 +905,16 @@ family=M+PLUS+Rounded+1c:wght@400;500;600;700&display=swap" rel="stylesheet">
     };
 
     const app = initializeApp(firebaseConfig);
+// Service Workerの登録処理
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./firebase-messaging-sw.js')
+    .then((registration) => {
+      console.log('Service Worker 登録成功:', registration.scope);
+    })
+    .catch((error) => {
+      console.error('Service Worker 登録失敗:', error);
+    });
+}
 
     // App Check（登録済み前提）
     // reCAPTCHA v3 サイトキーを Firebase Console > App Check > Web アプリ から取得して入れてください
