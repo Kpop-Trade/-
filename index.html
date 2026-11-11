@@ -4,8 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ILLIT Trade (ILLIT交換・買取・共同購入)</title>
-  <link href="https://fonts.googleapis.com/css2
-family=M+PLUS+Rounded+1c:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#c084fc">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -102,7 +101,7 @@ family=M+PLUS+Rounded+1c:wght@400;500;600;700&display=swap" rel="stylesheet">
       position: fixed; z-index: 45; pointer-events: none;
       width: 132px; height: 84px; border-radius: 9999px;
       opacity: 0; transform: scale(.6);
-      transition: opacity .18s ease, transform .3s cubic-bezier(.34,1.56,.64,1);
+      transition: opacity .18s ease, transform .3s cubic-bezier(.34,1.56,.64,1), left .22s ease, top .22s ease;
       background: rgba(255,255,255,.12);
       backdrop-filter: blur(1px) saturate(1.8) brightness(1.08);
       -webkit-backdrop-filter: blur(1px) saturate(1.8) brightness(1.08);
@@ -172,7 +171,7 @@ family=M+PLUS+Rounded+1c:wght@400;500;600;700&display=swap" rel="stylesheet">
         </div>
       </div>
       <div class="liquid-glass-input rounded-xl p-3 text-[11px] text-gray-600 leading-relaxed border-white/60">
-        <p class="font-bold text-gray-700 mb-0.5">⚠ 免責事項（ご利用規約）</p>
+        <p class="font-bold text-gray-700 mb-0.5">⚠️ 免責事項（ご利用規約）</p>
         <p>本サービスはファン同士の交流および情報交換の場を提供するものです。ユーザー間のトラブルや、ハッキング等の外部要因による損害につきましては、<b>運営は一切の責任を負いません。</b>お互いの評価や商品の状態を十分に確認のうえ、自己責任にてご利用ください。</p>
       </div>
     </section>
@@ -360,6 +359,7 @@ family=M+PLUS+Rounded+1c:wght@400;500;600;700&display=swap" rel="stylesheet">
       </div>
     </div>
   </div>
+
   <!-- FAQ -->
   <div id="faq-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
     <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[90vh] flex flex-col">
@@ -386,7 +386,7 @@ family=M+PLUS+Rounded+1c:wght@400;500;600;700&display=swap" rel="stylesheet">
         <button onclick="closeInquiry()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
       </div>
       <div class="bg-amber-50/80 border border-amber-200 rounded-xl p-3 text-[11px] text-amber-800 leading-relaxed">
-        <p class="font-bold mb-1">⚠ ご注意</p>
+        <p class="font-bold mb-1">⚠️ ご注意</p>
         <p>運営は有志で活動しており、<b>返信には数日〜1週間程度お時間をいただく場合があります。</b>ユーザー間のトラブルに関する仲裁・補償は一切行っておりません。</p>
       </div>
       <div class="space-y-3 text-xs">
@@ -437,7 +437,7 @@ family=M+PLUS+Rounded+1c:wght@400;500;600;700&display=swap" rel="stylesheet">
         <button onclick="closeCancelModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
       </div>
       <div class="bg-red-50/80 border border-red-200 rounded-xl p-3 text-[11px] text-red-700 leading-relaxed">
-        <p class="font-bold mb-1">⚠ ペナルティについて</p>
+        <p class="font-bold mb-1">⚠️ ペナルティについて</p>
         <p>合意後のキャンセル申請は、<b>申請した側にペナルティ</b>が付きます。<br>・1ヶ月に3回以上 → 警告<br>・8回を超える → 一時アカウント停止</p>
       </div>
       <div>
@@ -477,7 +477,7 @@ family=M+PLUS+Rounded+1c:wght@400;500;600;700&display=swap" rel="stylesheet">
       </div>
       <div class="space-y-2">
         <button onclick="closeMyPage(); openPwaGuideModal();" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">📱 アプリ登録（ホーム画面追加）</span><span class="text-gray-400">›</span></button>
-        <button onclick="closeMyPage(); openProfileModal('basic')" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">✏ プロフィール・写真</span><span class="text-gray-400">›</span></button>
+        <button onclick="closeMyPage(); openProfileModal('basic')" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">✏️ プロフィール・写真</span><span class="text-gray-400">›</span></button>
         <button onclick="closeMyPage(); openProfileModal('address')" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">📦 住所・配送先</span><span class="text-gray-400">›</span></button>
         <button onclick="closeMyPage(); openProfileModal('paypay')" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">💳 PayPay ID</span><span class="text-gray-400">›</span></button>
         <button onclick="closeMyPage(); openNotificationsModal()" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">🔔 通知一覧</span><span class="text-gray-400">›</span></button>
@@ -550,6 +550,7 @@ family=M+PLUS+Rounded+1c:wght@400;500;600;700&display=swap" rel="stylesheet">
         <button onclick="switchAdminTab('users')" id="admin-tab-users" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">👥 ユーザー</button>
         <button onclick="switchAdminTab('posts')" id="admin-tab-posts" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">📦 投稿管理</button>
         <button onclick="switchAdminTab('trades')" id="admin-tab-trades" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">💬 取引監視</button>
+        <button onclick="switchAdminTab('likes')" id="admin-tab-likes" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">❤️ いいね検証</button>
         <button onclick="switchAdminTab('broadcast')" id="admin-tab-broadcast" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">📢 一斉通知</button>
       </div>
 
@@ -566,7 +567,7 @@ family=M+PLUS+Rounded+1c:wght@400;500;600;700&display=swap" rel="stylesheet">
   <div id="profile-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
     <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b border-purple-200/50 pb-3">
-        <h3 id="profile-modal-title" class="font-bold text-base text-gray-800">⚙ プロフィール・設定</h3>
+        <h3 id="profile-modal-title" class="font-bold text-base text-gray-800">⚙️ プロフィール・設定</h3>
         <button onclick="closeProfileModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
       </div>
       <div id="profile-section-basic" class="space-y-3 text-xs md:text-sm hidden">
@@ -714,7 +715,7 @@ family=M+PLUS+Rounded+1c:wght@400;500;600;700&display=swap" rel="stylesheet">
   <div id="edit-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
     <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b border-purple-200/50 pb-3">
-        <h3 class="font-bold text-base text-gray-800">✏ 募集の編集</h3>
+        <h3 class="font-bold text-base text-gray-800">✏️ 募集の編集</h3>
         <button onclick="closeEditModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
       </div>
       <div class="space-y-3 text-xs md:text-sm">
@@ -888,12 +889,12 @@ family=M+PLUS+Rounded+1c:wght@400;500;600;700&display=swap" rel="stylesheet">
       </div>
     </div>
   </div>
+
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { getFirestore, collection, collectionGroup, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, where, orderBy, limit, startAfter, onSnapshot, serverTimestamp, increment, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getMessaging, getToken, deleteToken, onMessage } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js";
-    import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app-check.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBB1_QTcXpF0Ap72tDaf5_CCUtNBwSlXCs",
@@ -905,26 +906,6 @@ family=M+PLUS+Rounded+1c:wght@400;500;600;700&display=swap" rel="stylesheet">
     };
 
     const app = initializeApp(firebaseConfig);
-// Service Workerの登録処理
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./firebase-messaging-sw.js')
-    .then((registration) => {
-      console.log('Service Worker 登録成功:', registration.scope);
-    })
-    .catch((error) => {
-      console.error('Service Worker 登録失敗:', error);
-    });
-}
-
-    // App Check（登録済み前提）
-    // reCAPTCHA v3 サイトキーを Firebase Console > App Check > Web アプリ から取得して入れてください
-    const appCheck = initializeAppCheck(app, {
-      provider: new ReCaptchaV3Provider("6LdbSBkuAAAAAIyEoIo6lMvCme8RMEQVT6779jec"),
-      isTokenAutoRefreshEnabled: true
-    });
-    // デバッグ時のみ有効化（本番前に必ずコメントアウト）
-    // self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
-
     const auth = getAuth(app);
     const db = getFirestore(app);
     const provider = new GoogleAuthProvider();
@@ -1081,29 +1062,68 @@ if ('serviceWorker' in navigator) {
       group_buy: "🛍 共同購入募集"
     };
 
-    window.shareToX = function(text, postId) {
-      const url = location.origin + location.pathname + (postId ? "?post=" + postId : "");
-      window.open("https://x.com/intent/tweet?text=" + encodeURIComponent(text) + "&url=" + encodeURIComponent(url), "_blank");
+    window.shareToX = function(text) {
+      window.open("https://x.com/intent/tweet?text=" + encodeURIComponent(text), "_blank");
     };
 
-    window.shareCurrentPost = function() {
-      const p = allPosts[currentDetailIndex]; if (!p) return;
+    // ===== Xシェア：実際の投稿のような自然な文面 + 写真付き =====
+    const SHARE_HEAD = { card_exchange: "交換", card_buy: "トレカ買取", card_sell: "トレカ売却", album: "アルバム売却", dearlit: "DEARLIT売却", serial_exchange: "シリアル交換", serial_buy: "シリアル買取", serial_sell: "シリアル売却", group_buy: "共同購入" };
+    const SHARE_TAG = { card_exchange: "#交換", card_buy: "#買取", card_sell: "#譲渡", album: "#譲渡", dearlit: "#譲渡", serial_exchange: "#交換", serial_buy: "#買取", serial_sell: "#譲渡", group_buy: "#共同購入" };
+    const SHARE_SHIPPING = { organizer: "送料は主催者負担", split: "送料は参加者で割り勘", self: "送料は各自負担" };
+    function buildShareText(p, link) {
       const type = getPostTypeKey(p);
       const yen = "¥" + Number(p.price || 0).toLocaleString();
-      const lines = [SHARE_TYPE_LABEL[type] || "募集"];
-      if (p.member && p.member !== "指定なし") lines.push("【メンバー】" + p.member.split(" ")[0]);
+      const mem = (p.member && p.member !== "指定なし") ? p.member.split(" ")[0] : "";
+      const memTag = mem ? "（" + mem + "）" : "";
+      const L = ["ILLIT アイリット " + (SHARE_HEAD[type] || "交換")];
       if (type === "group_buy") {
-        lines.push("【商品】" + p.give, `【金額】${yen} / ${p.target}人募集`);
+        L.push(p.give + memTag, "", "🌟募集は" + p.target + "人のみ🌟", "");
+        L.push("求 " + yen + (SHARE_SHIPPING[p.shipping] ? " ＋" + SHARE_SHIPPING[p.shipping] : ""));
+        if (p.bundle && p.bundle !== "ng") L.push("※" + (BUNDLE_LABEL[p.bundle] || "").replace(/^\S+\s/, "") + (p.bundleNote ? "（" + p.bundleNote + "）" : ""));
+        if (p.deadline) L.push("募集締切 " + p.deadline.slice(5).replace("-", "/"));
       } else if (p.isBuy) {
-        lines.push("【求】" + p.give, "【希望価格】" + yen);
+        L.push("", "求 " + p.give + memTag, "希望価格 " + yen);
       } else if (p.isSell) {
-        lines.push("【譲】" + p.give, "【価格】" + yen);
+        L.push("", "譲 " + p.give + memTag, "価格 " + yen);
       } else {
-        lines.push("【譲】" + p.give, "【求】" + p.want);
+        L.push("", "譲 " + p.give, "求 " + p.want);
+        if (mem && !(p.give + p.want).includes(mem)) L.push("メンバー " + mem);
       }
-      lines.push("", "手数料無料のILLIT Tradeで取引できます👇");
-      const text = lines.join("\n") + "\n#ILLIT #ILLIT交換 #ILLIT買取 #ILLIT共同購入";
-      shareToX(text, p.id);
+      if (p.condition && CONDITION_LABEL[p.condition] && type !== "group_buy") {
+        const c = CONDITION_LABEL[p.condition].split("：");
+        L.push("状態 " + c[0] + "（" + (c[1] || "") + "）");
+      }
+      if (p.kind === "serial" && p.deadline) L.push("有効期限 " + p.deadline.slice(5).replace("-", "/"));
+      if (p.description) L.push("", p.description);
+      if (p.isBuy || p.isSell || p.kind === "group") L.push("", "・PayPay");
+      if (link) L.push("", "詳細・申込はこちら", link);
+      L.push("", "#ILLIT #アイリット " + (SHARE_TAG[type] || "#交換"));
+      return L.join("\n");
+    }
+    function dataUrlToFile(dataUrl, name) {
+      const bin = atob(dataUrl.split(",")[1]);
+      const u8 = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+      return new File([u8], name, { type: "image/jpeg" });
+    }
+    window.shareCurrentPost = async function() {
+      const p = allPosts[currentDetailIndex]; if (!p) return;
+      const link = location.origin + location.pathname + "?post=" + p.id;
+      const text = buildShareText(p, link);
+      // Xアプリが文面の一部を落としても貼り付けられるよう、全文をコピーしておく
+      try { navigator.clipboard && navigator.clipboard.writeText(text).catch(() => {}); } catch (e) {}
+      const hasPhotos = p.kind !== "serial" && p.photoCount > 0;
+      let photos = (currentDetailId === p.id && detailPhotos.length) ? detailPhotos : [];
+      if (hasPhotos && photos.length === 0) { try { photos = await getPhotos(p.id); } catch (e) {} }
+      // 写真つき：端末の共有シート経由で X アプリに文章と写真を渡す
+      if (photos.length && navigator.share && navigator.canShare) {
+        try {
+          const files = photos.slice(0, 4).map((d, i) => dataUrlToFile(d, "illit_" + (i + 1) + ".jpg"));
+          if (navigator.canShare({ files })) { await navigator.share({ text, files }); return; }
+        } catch (e) { if (e && e.name === "AbortError") return; console.warn("share error:", e); }
+      }
+      if (hasPhotos) showToast("この端末では写真を自動添付できません。Xの投稿画面で写真を追加してください", "info");
+      shareToX(text);
     };
 
     function showToast(message, type = "info") {
@@ -1264,7 +1284,7 @@ if ('serviceWorker' in navigator) {
           try { await updateDoc(ref, { updatedAt: serverTimestamp() }); } catch (_) {}
           return true;
         }
-        alert("⚠ セキュリティ制限\nこの端末からはすでに別のアカウントで登録が行われています。");
+        alert("⚠️ セキュリティ制限\nこの端末からはすでに別のアカウントで登録が行われています。");
         return false;
       } catch (e) {
         console.warn("checkDeviceLock error:", e);
@@ -1320,7 +1340,7 @@ if ('serviceWorker' in navigator) {
     let adminTab = "stats";
     let adminSearchQuery = "";
 
-    const ADMIN_ALLOWED_ACTIONS = ["adminSendWarning", "adminSuspendUser", "adminUnsuspendUser", "adminDeletePost", "adminForceCancelTrade", "deleteReportedPost", "markInquiryDone", "copyText"];
+    const ADMIN_ALLOWED_ACTIONS = ["adminSendWarning", "adminSuspendUser", "adminUnsuspendUser", "adminDeletePost", "adminForceCancelTrade", "deleteReportedPost", "markInquiryDone", "copyText", "adminFixLikes", "adminFixAllLikes"];
     window.copyText = function(t) { navigator.clipboard.writeText(String(t || "")).catch(() => {}); };
     document.getElementById("admin-content").addEventListener("click", (e) => {
       const b = e.target.closest("[data-act]"); if (!b || !isAdmin()) return;
@@ -1341,7 +1361,7 @@ if ('serviceWorker' in navigator) {
     window.switchAdminTab = function(tab) {
       adminTab = tab;
       adminSearchQuery = "";
-      const tabs = ["reports", "inquiries", "users", "posts", "trades", "stats", "broadcast"];
+      const tabs = ["reports", "inquiries", "users", "posts", "trades", "stats", "likes", "broadcast"];
       tabs.forEach((k) => {
         const el = document.getElementById("admin-tab-" + k);
         if (el) {
@@ -1416,6 +1436,28 @@ if ('serviceWorker' in navigator) {
           return;
         }
 
+        if (adminTab === "likes") {
+          const rows = await fetchLikeAudit();
+          lastLikeAudit = rows;
+          const bad = rows.filter(r => r.diff !== 0 || r.missing.length > 0);
+          const susp = bad.filter(r => r.diff > 0);
+          el.innerHTML = `
+            <div class="bg-white/80 border border-purple-200 rounded-xl p-3 text-xs space-y-1.5">
+              <div class="font-bold text-gray-800">いいねの実数チェック</div>
+              <div class="text-gray-600">表示されている数と、新方式で記録されたいいねのアカウント数を比べます。旧方式のいいねは記録が残っていないため、「実際」は0になります（検証できない分）。</div>
+              <div>対象投稿: <b>${rows.length}</b> 件 ／ ズレあり: <b class="text-red-600">${bad.length}</b> 件 ／ 記録のない分あり: <b class="text-red-600">${susp.length}</b> 件</div>
+              ${bad.length ? `<button data-act="adminFixAllLikes" class="w-full bg-gradient-to-r from-red-500 to-pink-500 text-white font-bold py-2.5 rounded-lg text-xs mt-1">記録のある実数にすべて補正（旧方式のカウントは初期化）</button>` : '<div class="text-green-600 font-bold">すべて一致しています。</div>'}
+            </div>
+            ${bad.map(r => `
+            <div class="bg-white/80 border ${r.diff > 0 ? 'border-red-300' : 'border-purple-200'} rounded-xl p-3 text-xs space-y-1 shadow-sm">
+              <div class="flex justify-between gap-2"><span class="font-bold text-gray-800 truncate">${escapeHtml(r.give)}</span><span class="text-gray-400 shrink-0">${escapeHtml(r.userName)}</span></div>
+              <div>表示: <b>${r.shown}</b> ／ 実際: <b>${r.real}</b> ${r.diff > 0 ? `<span class="text-red-600 font-bold">（+${r.diff} 記録のない分）</span>` : (r.diff < 0 ? `<span class="text-amber-600 font-bold">（${r.diff} 不足）</span>` : '')}${r.missing.length ? ` <span class="text-gray-500">／ 旧方式のみ ${r.missing.length} 人</span>` : ''}</div>
+              <div class="text-[10px] text-gray-500 break-words">いいねした人: ${r.names.length ? r.names.map(escapeHtml).join("、") : "なし"}${r.real > r.names.length ? ` ほか${r.real - r.names.length}人` : ''}</div>
+              <div class="flex justify-end"><button data-act="adminFixLikes" data-a1="${escapeHtml(r.id)}" class="bg-red-500 text-white font-medium px-3 py-1 rounded-md text-[10px] hover:bg-red-600">この投稿を補正</button></div>
+            </div>`).join("")}`;
+          return;
+        }
+
         if (adminTab === "users") {
           const snap = await getDocs(collection(db, "users")); 
           const suspSnap = await getDocs(collection(db, "suspensions"));
@@ -1446,7 +1488,7 @@ if ('serviceWorker' in navigator) {
               </div>
               ${!isAdminUser ? `
               <div class="flex justify-end gap-1.5 pt-2 border-t border-gray-100">
-                <button data-act="adminSendWarning" data-a1="${escapeHtml(u.id)}" data-a2="${escapeHtml(u.profile?.nickname || '')}" class="bg-yellow-100 text-yellow-700 hover:bg-yellow-200 font-medium px-3 py-1.5 rounded-lg text-[10px] transition">⚠ 警告通知</button>
+                <button data-act="adminSendWarning" data-a1="${escapeHtml(u.id)}" data-a2="${escapeHtml(u.profile?.nickname || '')}" class="bg-yellow-100 text-yellow-700 hover:bg-yellow-200 font-medium px-3 py-1.5 rounded-lg text-[10px] transition">⚠️ 警告通知</button>
                 ${isSuspended 
                   ? `<button data-act="adminUnsuspendUser" data-a1="${escapeHtml(u.id)}" class="bg-green-100 text-green-700 hover:bg-green-200 font-medium px-3 py-1.5 rounded-lg text-[10px] transition">🔓 停止解除</button>` 
                   : `<button data-act="adminSuspendUser" data-a1="${escapeHtml(u.id)}" data-a2="${escapeHtml(u.profile?.nickname || '')}" class="bg-red-100 text-red-700 hover:bg-red-200 font-medium px-3 py-1.5 rounded-lg text-[10px] transition">🚫 アカウント停止</button>`
@@ -1547,7 +1589,7 @@ if ('serviceWorker' in navigator) {
         else if (adminTab === "broadcast") {
           el.innerHTML = `
             <div class="space-y-4">
-              <div class="bg-red-50/80 border border-red-200 rounded-xl p-3 text-xs text-red-700 font-medium">⚠ 送信した内容は全ユーザーの「通知一覧」に追加されます。</div>
+              <div class="bg-red-50/80 border border-red-200 rounded-xl p-3 text-xs text-red-700 font-medium">⚠️ 送信した内容は全ユーザーの「通知一覧」に追加されます。</div>
               <div>
                 <label class="block font-medium text-gray-700 mb-1 text-xs">通知メッセージ内容</label>
                 <textarea id="admin-broadcast-msg" rows="5" maxlength="300" placeholder="例: メンテナンスのお知らせ" class="liquid-glass-input w-full rounded-xl p-3 text-sm text-gray-800 focus:ring-2 focus:ring-purple-400"></textarea>
@@ -1683,6 +1725,55 @@ if ('serviceWorker' in navigator) {
       }
     };
 
+    // ===== いいね検証・補正（運営用） =====
+    let lastLikeAudit = [];
+    async function fetchLikeAudit() {
+      const [postsSnap, usersSnap, likesSnap] = await Promise.all([
+        getDocs(collection(db, "posts")),
+        getDocs(collection(db, "users")),
+        getDocs(collectionGroup(db, "likes"))
+      ]);
+      const nick = {}, legacy = {}, docsMap = {};
+      usersSnap.docs.forEach(u => {
+        const d = u.data();
+        nick[u.id] = d.profile?.nickname || "名無し";
+        (Array.isArray(d.likes) ? d.likes : []).forEach(pid => { (legacy[pid] = legacy[pid] || new Set()).add(u.id); });
+      });
+      likesSnap.docs.forEach(l => {
+        const pid = l.ref.parent.parent && l.ref.parent.parent.id; if (!pid) return;
+        (docsMap[pid] = docsMap[pid] || new Set()).add(l.id);
+      });
+      return postsSnap.docs.map(d => {
+        const data = d.data();
+        const uids = new Set([...(legacy[d.id] || []), ...(docsMap[d.id] || [])]);
+        const shown = Math.max(0, Number(data.likesCount) || 0);
+        const missing = [...uids].filter(u => !(docsMap[d.id] && docsMap[d.id].has(u)));
+        return { id: d.id, give: data.give || "", userName: data.userName || "", shown, real: uids.size, diff: shown - uids.size, uids: [...uids], missing, names: [...uids].slice(0, 8).map(u => nick[u] || "不明") };
+      }).sort((a, b) => b.diff - a.diff);
+    }
+    async function fixLikesRow(r) {
+      for (let i = 0; i < r.missing.length; i += 20) {
+        await Promise.all(r.missing.slice(i, i + 20).map(uid => setDoc(doc(db, "posts", r.id, "likes", uid), { uid, createdAt: serverTimestamp(), migrated: true })));
+      }
+      await updateDoc(doc(db, "posts", r.id), { likesCount: r.real });
+    }
+    window.adminFixLikes = async function(postId) {
+      if (!isAdmin()) return;
+      const r = lastLikeAudit.find(x => x.id === postId); if (!r) return;
+      if (!confirm(`「${r.give}」のいいねを ${r.shown} → ${r.real} に補正します。よろしいですか？`)) return;
+      try { await fixLikesRow(r); alert("補正しました。"); loadAdminData(); } catch (e) { console.error(e); alert("補正に失敗しました。"); }
+    };
+    window.adminFixAllLikes = async function() {
+      if (!isAdmin()) return;
+      const targets = lastLikeAudit.filter(r => r.diff !== 0 || r.missing.length > 0);
+      if (!targets.length) return;
+      if (!confirm(`${targets.length} 件の投稿を、記録のある実数に補正します。\n旧方式で付いたいいね数は0に戻ります。よろしいですか？`)) return;
+      let ok = 0, ng = 0;
+      for (const r of targets) { try { await fixLikesRow(r); ok++; } catch (e) { ng++; console.error(e); } }
+      alert(`補正完了: 成功 ${ok} 件 / 失敗 ${ng} 件`);
+      loadAdminData();
+    };
+
     window.deleteReportedPost = async function(postId, reportId) {
       if(!confirm("強制削除しますか？")) return;
       try {
@@ -1692,6 +1783,7 @@ if ('serviceWorker' in navigator) {
         await deleteDoc(doc(db, "reports", reportId)); alert("削除しました。"); loadAdminData();
       } catch(e){}
     };
+    
     function isUnread(t) { return currentUser && t && t.lastMessageAt && t.lastSenderId !== currentUser.uid && tsMillis(t.lastMessageAt) > ((userData.reads || {})[t.id] || 0); }
     function markTradeRead(t) {
       if (!currentUser || !t || !isUnread(t)) return;
@@ -1718,20 +1810,53 @@ if ('serviceWorker' in navigator) {
     };
     function renderBlockedBox() { const el = document.getElementById("blocked-users-box"); if (el) el.innerText = getBlockedUsers().length === 0 ? "なし" : `${getBlockedUsers().length}人をブロック中`; }
     function getMyLikes() { return userData.likes || []; }
-    window.toggleDetailLike = async function() {
+    // ===== いいね：posts/{postId}/likes/{uid} を正とし、カウントと同じトランザクションで更新 =====
+    const likeBusy = new Set();
+    let deviceOkFor = null;
+    async function checkDeviceLockCached() {
+      if (!currentUser) return false;
+      if (deviceOkFor === currentUser.uid) return true;
+      const ok = await checkDeviceLock();
+      if (ok) deviceOkFor = currentUser.uid;
+      return ok;
+    }
+    async function toggleLikeServer(postId) {
+      const postRef = doc(db, "posts", postId);
+      const likeRef = doc(db, "posts", postId, "likes", currentUser.uid);
+      return runTransaction(db, async (tx) => {
+        const ps = await tx.get(postRef);
+        const ls = await tx.get(likeRef);
+        if (!ps.exists()) throw new Error("notfound");
+        const cnt = Math.max(0, Number(ps.data().likesCount) || 0);
+        if (ls.exists()) {
+          tx.delete(likeRef);
+          if (cnt > 0) tx.update(postRef, { likesCount: cnt - 1 });
+          return { liked: false, count: Math.max(0, cnt - 1) };
+        }
+        tx.set(likeRef, { uid: currentUser.uid, deviceId: getOrCreateDeviceId(), createdAt: serverTimestamp() });
+        tx.update(postRef, { likesCount: cnt + 1 });
+        return { liked: true, count: cnt + 1 };
+      });
+    }
+    async function doToggleLike(p) {
       if (!currentUser) return alert("ログインが必要です。");
-      const p = allPosts[currentDetailIndex]; if (!p) return;
-      let likes = [...getMyLikes()]; const idx = likes.indexOf(p.id);
-      const wasLiked = idx >= 0;
-      if (wasLiked) likes.splice(idx, 1); else likes.push(p.id);
-      userData.likes = likes;
-      saveUserData({ likes }).catch(()=>{});
-      
-      p.likesCount = Math.max(0, (Number(p.likesCount) || 0) + (wasLiked ? -1 : 1));
-      
-      try { await updateDoc(doc(db, "posts", p.id), { likesCount: increment(wasLiked ? -1 : 1) }); } catch (e) {}
+      if (!p || likeBusy.has(p.id)) return;
+      if (!(await checkDeviceLockCached())) return;
+      likeBusy.add(p.id);
+      try {
+        const r = await toggleLikeServer(p.id);
+        p.likesCount = r.count;
+        const likes = getMyLikes().filter(x => x !== p.id);
+        if (r.liked) likes.push(p.id);
+        userData.likes = likes;
+        saveUserData({ likes }).catch(() => {});
+      } catch (e) {
+        console.warn("like error:", e?.code || e);
+        showToast("いいねに失敗しました。時間をおいてもう一度お試しください。", "error");
+      } finally { likeBusy.delete(p.id); }
       updateDetailLikeUI(p.id); renderPosts();
-    };
+    }
+    window.toggleDetailLike = function() { doToggleLike(allPosts[currentDetailIndex]); };
     function updateDetailLikeUI(postId) {
       const p = allPosts.find(x => x.id === postId);
       const likesCount = p ? (Number(p.likesCount) || 0) : 0;
@@ -1745,7 +1870,7 @@ if ('serviceWorker' in navigator) {
     window.openProfileModal = function(section = "basic") {
       if (!currentUser) return;
       profileSection = section;
-      const titles = { basic: "✏ プロフィール・写真", address: "📦 住所・配送先", paypay: "💳 PayPay ID", push: "📢 プッシュ通知", block: "🚫 ブロック管理" };
+      const titles = { basic: "✏️ プロフィール・写真", address: "📦 住所・配送先", paypay: "💳 PayPay ID", push: "📢 プッシュ通知", block: "🚫 ブロック管理" };
       document.getElementById("profile-modal-title").innerText = titles[section] || "設定";
       ["basic","address","paypay","push","block"].forEach(s => {
         const el = document.getElementById("profile-section-" + s);
@@ -2247,22 +2372,7 @@ if ('serviceWorker' in navigator) {
         : cards.join("");
     }
 
-    window.toggleDetailLikeFromCard = async function(postId) {
-      if (!currentUser) return alert("ログインが必要です。");
-      const p = allPosts.find(x => x.id === postId);
-      if (!p) return;
-      let likes = [...getMyLikes()];
-      const idx = likes.indexOf(postId);
-      const wasLiked = idx >= 0;
-      if (wasLiked) likes.splice(idx, 1); else likes.push(postId);
-      userData.likes = likes;
-      saveUserData({ likes }).catch(() => {});
-
-      p.likesCount = Math.max(0, (Number(p.likesCount) || 0) + (wasLiked ? -1 : 1));
-
-      try { await updateDoc(doc(db, "posts", postId), { likesCount: increment(wasLiked ? -1 : 1) }); } catch (e) {}
-      renderPosts();
-    };
+    window.toggleDetailLikeFromCard = function(postId) { doToggleLike(allPosts.find(x => x.id === postId)); };
 
     // 投稿はリアルタイム監視せず、50件ずつ取得（読み取り回数の節約）
     const POSTS_PAGE = 50;
@@ -2373,7 +2483,7 @@ if ('serviceWorker' in navigator) {
       document.getElementById("detail-extra").innerHTML = extra;
       const actions = document.getElementById("detail-actions");
       if (!currentUser) actions.innerHTML = `<button onclick="loginWithGoogle()" class="w-full bg-gradient-to-r from-illit-purple to-illit-accent text-white font-medium py-3 rounded-full shadow-md border border-white/30">ログインして申込</button>`;
-      else if (p.userId === currentUser.uid) actions.innerHTML = `${isGroup ? `<button onclick="toggleGroupClosed(${index})" class="w-full bg-teal-50 text-teal-700 border border-teal-200 font-medium py-3 rounded-full hover:bg-teal-100 transition shadow-sm mb-2">${closed ? '🔓 募集再開' : '🔒 募集締切'}</button>` : ''}<button onclick="openEditPost(${index})" class="w-full bg-white/80 border border-white text-illit-darkPurple font-medium py-3 rounded-full hover:bg-white transition shadow-sm">✏ 編集</button><button onclick="deletePost(${index})" class="w-full bg-red-50 text-red-500 font-medium py-3 rounded-full border border-red-200 hover:bg-red-100 transition mt-2 shadow-sm">削除</button>`;
+      else if (p.userId === currentUser.uid) actions.innerHTML = `${isGroup ? `<button onclick="toggleGroupClosed(${index})" class="w-full bg-teal-50 text-teal-700 border border-teal-200 font-medium py-3 rounded-full hover:bg-teal-100 transition shadow-sm mb-2">${closed ? '🔓 募集再開' : '🔒 募集締切'}</button>` : ''}<button onclick="openEditPost(${index})" class="w-full bg-white/80 border border-white text-illit-darkPurple font-medium py-3 rounded-full hover:bg-white transition shadow-sm">✏️ 編集</button><button onclick="deletePost(${index})" class="w-full bg-red-50 text-red-500 font-medium py-3 rounded-full border border-red-200 hover:bg-red-100 transition mt-2 shadow-sm">削除</button>`;
       else {
         const existingTrade = myTrades.find(t => t.postId === p.id && t.status !== "cancelled");
         if (existingTrade) {
@@ -2390,7 +2500,7 @@ if ('serviceWorker' in navigator) {
           actions.innerHTML = `<button onclick="${isGroup ? `joinGroup(${index})` : `applyToPost(${index})`}" class="w-full bg-gradient-to-r ${isGroup ? 'from-teal-400 to-teal-500' : 'from-illit-purple to-illit-accent'} text-white font-medium py-3 rounded-full shadow-md border border-white/30">${isGroup ? '🛍 参加する' : '申し込む'}</button>`;
         }
       }
-      actions.innerHTML += `<button onclick="shareCurrentPost()" class="w-full bg-black text-white font-medium py-3 rounded-full shadow-md border border-white/30 mt-2">𝕏 でシェア</button>`;
+      actions.innerHTML += `<button onclick="shareCurrentPost()" class="w-full bg-black text-white font-medium py-3 rounded-full shadow-md border border-white/30 mt-2">𝕏 で写真付きシェア</button>`;
       if (currentUser && p.userId !== currentUser.uid) actions.innerHTML += `<div class="flex gap-2 mt-2"><button onclick="blockPostOwner(${index})" class="flex-1 bg-white/60 text-gray-500 border border-white text-xs font-medium py-2 rounded-full hover:bg-white transition">🚫 ブロック</button><button onclick="reportPost(${index})" class="flex-1 bg-white/60 text-red-400 border border-white text-xs font-medium py-2 rounded-full hover:bg-white transition">🚨 通報</button></div>`;
       document.getElementById("detail-modal").classList.remove("hidden"); loadDetailPhotos(p, index); if (p.userId) loadRating(p.userId, index);
       if (isGroup && currentUser && !joinsFresh[p.id]) {
@@ -2470,6 +2580,7 @@ if ('serviceWorker' in navigator) {
       if (p.kind === "group") { data.target = Number(document.getElementById("edit-target").value); data.bundle = document.getElementById("edit-bundle").value; data.bundleNote = data.bundle === "ng" ? "" : document.getElementById("edit-bundle-note").value.trim().slice(0, 100); }
       try { await updateDoc(doc(db, "posts", p.id), data); alert("更新しました！"); closeEditModal(); loadPosts(true); } catch(e) { alert("更新失敗"); }
     };
+
     window.applyToPost = async function(index) {
       const p = allPosts[index]; if (!currentUser || !p || !p.userId) return;
       if (!requireShippingInfo()) return;
@@ -2848,7 +2959,7 @@ if ('serviceWorker' in navigator) {
       if (t.cancelRequest && t.status === "shipping") {
         const isInitiator = t.cancelRequest.by === uid;
         html += `<div class="bg-red-50/80 border border-red-200 rounded-xl p-3 text-xs text-red-700 space-y-2">
-          <p class="font-medium">⚠ キャンセル申請中</p>
+          <p class="font-medium">⚠️ キャンセル申請中</p>
           <p>申請者: ${escapeHtml(t.cancelRequest.byName || "")}</p>
           <p>理由: ${escapeHtml(t.cancelRequest.reasonText || CANCEL_REASON_LABEL[t.cancelRequest.reason] || "")}</p>
           ${isInitiator ? '<p class="text-[11px]">相手の同意をお待ちください。</p>' : `<button onclick="agreeCancel()" class="${btn} bg-red-500 text-white hover:bg-red-600">キャンセルに同意する</button>`}
@@ -2966,120 +3077,54 @@ if ('serviceWorker' in navigator) {
       else if (!recorded && hasAgreedLocally() && !termsSaving) { termsSaving = true; saveUserData({ terms: { version: TERMS_VERSION, agreedAt: serverTimestamp() } }).finally(() => { termsSaving = false; }); }
     }
 
-    // ===== 下部ナビ：指に完全追従するガラスレンズ（バー内限定） =====
+    // ===== 下部ナビ：長押しで透けるレンズ =====
     (function initNavLens() {
-      const nav = document.querySelector("body > nav");
-      if (!nav) return;
+      const nav = document.querySelector("body > nav"); if (!nav) return;
+      const lens = document.createElement("div"); lens.id = "nav-lens"; document.body.appendChild(lens);
+      let timer = null, active = null, pressed = null;
 
-      const lens = document.createElement("div");
-      lens.id = "nav-lens";
-      document.body.appendChild(lens);
-
-      let tracking = false;
-      let activeBtn = null;
-      let startBtn = null;
-
-      function getNearestButton(clientX, clientY) {
-        const buttons = [...nav.querySelectorAll("button")];
-        let nearest = null;
-        let minDist = Infinity;
-        buttons.forEach(btn => {
-          const r = btn.getBoundingClientRect();
-          const cx = r.left + r.width / 2;
-          const cy = r.top + r.height / 2;
-          const dist = Math.hypot(clientX - cx, clientY - cy);
-          if (dist < minDist) {
-            minDist = dist;
-            nearest = btn;
-          }
-        });
-        return nearest;
-      }
-
-      function placeAtFinger(clientX, clientY) {
-        const navRect = nav.getBoundingClientRect();
-        const w = lens.offsetWidth || 132;
-        const h = lens.offsetHeight || 84;
-
-        // 指の位置を中心にしつつ、ナビバーの範囲内にクランプ
-        let left = clientX - w / 2;
-        let top  = clientY - h / 2;
-
-        // 横方向：ナビの左右に収める
-        left = Math.max(navRect.left - 10, Math.min(navRect.right - w + 10, left));
-        // 縦方向：ナビの上下に収める
-        top  = Math.max(navRect.top - 8, Math.min(navRect.bottom - h + 8, top));
-
+      function place(btn) {
+        const r = btn.getBoundingClientRect(), w = lens.offsetWidth, h = lens.offsetHeight;
+        const left = Math.min(window.innerWidth - w - 4, Math.max(4, r.left + r.width / 2 - w / 2));
         lens.style.left = left + "px";
-        lens.style.top  = top + "px";
+        lens.style.top = (r.top + r.height / 2 - h / 2) + "px";
       }
-
-      function isInsideNav(clientX, clientY) {
-        const r = nav.getBoundingClientRect();
-        // 少し余裕を持たせる
-        return clientX >= r.left - 20 &&
-               clientX <= r.right + 20 &&
-               clientY >= r.top - 30 &&
-               clientY <= r.bottom + 30;
-      }
-
       function setActive(btn) {
-        if (activeBtn === btn) return;
-        if (activeBtn) activeBtn.classList.remove("nav-pressed");
-        activeBtn = btn;
-        if (btn) btn.classList.add("nav-pressed");
+        if (active === btn) return;
+        if (active) active.classList.remove("nav-pressed");
+        active = btn; if (!btn) return;
+        btn.classList.add("nav-pressed");
+        if (!lens.classList.contains("show")) {
+          lens.style.transition = "none"; place(btn); void lens.offsetWidth; lens.style.transition = "";
+          lens.classList.add("show");
+        } else place(btn);
       }
-
-      function showLens(clientX, clientY) {
-        placeAtFinger(clientX, clientY);
-        lens.classList.add("show");
-      }
-
-      function hideLens() {
-        lens.classList.remove("show");
-        if (activeBtn) activeBtn.classList.remove("nav-pressed");
-        activeBtn = null;
-        startBtn = null;
-        tracking = false;
+      function hide() {
+        clearTimeout(timer); timer = null;
+        if (active) active.classList.remove("nav-pressed");
+        active = null; pressed = null; lens.classList.remove("show");
       }
 
       nav.addEventListener("pointerdown", (e) => {
-        const btn = e.target.closest("button");
-        if (!btn) return;
-        tracking = true;
-        startBtn = btn;
-        setActive(btn);
-        showLens(e.clientX, e.clientY);
+        const b = e.target.closest("button"); if (!b) return;
+        pressed = b; clearTimeout(timer);
+        timer = setTimeout(() => setActive(b), 150); // 軽いタップでは出さない
       });
-
-      window.addEventListener("pointermove", (e) => {
-        if (!tracking) return;
-
-        // ナビバーから大きく外れたら追従をやめる
-        if (!isInsideNav(e.clientX, e.clientY)) {
-          hideLens();
-          return;
-        }
-
-        placeAtFinger(e.clientX, e.clientY);
-        const nearest = getNearestButton(e.clientX, e.clientY);
-        if (nearest) setActive(nearest);
+      nav.addEventListener("pointermove", (e) => {
+        if (!lens.classList.contains("show")) return;
+        const el = document.elementFromPoint(e.clientX, e.clientY);
+        const b = el && el.closest("button");
+        if (b && nav.contains(b)) setActive(b); // 指を滑らせるとレンズも追従
       });
-
-      const onRelease = (e) => {
-        if (!tracking) return;
-
-        const nearest = getNearestButton(e.clientX, e.clientY) || activeBtn;
-        hideLens();
-
-        // 別のボタンに寄っていた場合のみクリック
-        if (nearest && nearest !== startBtn) {
-          nearest.click();
+      const release = () => {
+        // 別のボタンへ滑らせて離した場合は、そのボタンを実行
+        if (lens.classList.contains("show") && active && pressed && active !== pressed) {
+          const target = active; hide(); target.click(); return;
         }
+        hide();
       };
-
-      window.addEventListener("pointerup", onRelease);
-      window.addEventListener("pointercancel", hideLens);
+      window.addEventListener("pointerup", release);
+      window.addEventListener("pointercancel", hide);
       nav.addEventListener("contextmenu", (e) => e.preventDefault());
     })();
 
