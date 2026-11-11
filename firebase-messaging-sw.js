@@ -12,19 +12,22 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// notification 付きのメッセージは FCM が自動で表示するので、ここでは表示しない（二重表示防止）。
-// data のみのメッセージのときだけ自前で表示する。
 messaging.onBackgroundMessage((payload) => {
-  if (payload.notification) return;
-  const d = payload.data || {};
-  self.registration.showNotification(d.title || 'ILLIT Trade', {
-    body: d.body || '',
+  // notification または data のどちらからでもタイトルと本文を確実に取得して表示する
+  const notification = payload.notification || {};
+  const data = payload.data || {};
+  
+  const title = notification.title || data.title || 'ILLIT Trade';
+  const options = {
+    body: notification.body || data.body || '',
     icon: '/icon-192.png',
-    data: { url: d.url || '/' }
-  });
+    data: { url: data.url || '/' }
+  };
+
+  self.registration.showNotification(title, options);
 });
 
-// 通知タップでアプリを開く（開いていればそのタブを前面に）
+// 通知をタップしたときの挙動
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const url = (event.notification.data && event.notification.data.url) || '/';
