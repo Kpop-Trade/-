@@ -102,7 +102,7 @@ family=M+PLUS+Rounded+1c:wght@400;500;600;700&display=swap" rel="stylesheet">
       position: fixed; z-index: 45; pointer-events: none;
       width: 132px; height: 84px; border-radius: 9999px;
       opacity: 0; transform: scale(.6);
-      transition: opacity .18s ease, transform .3s cubic-bezier(.34,1.56,.64,1), left .22s ease, top .22s ease;
+      transition: opacity .18s ease, transform .3s cubic-bezier(.34,1.56,.64,1);
       background: rgba(255,255,255,.12);
       backdrop-filter: blur(1px) saturate(1.8) brightness(1.08);
       -webkit-backdrop-filter: blur(1px) saturate(1.8) brightness(1.08);
@@ -893,6 +893,7 @@ family=M+PLUS+Rounded+1c:wght@400;500;600;700&display=swap" rel="stylesheet">
     import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { getFirestore, collection, collectionGroup, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, where, orderBy, limit, startAfter, onSnapshot, serverTimestamp, increment, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getMessaging, getToken, deleteToken, onMessage } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js";
+    import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app-check.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBB1_QTcXpF0Ap72tDaf5_CCUtNBwSlXCs",
@@ -904,6 +905,16 @@ family=M+PLUS+Rounded+1c:wght@400;500;600;700&display=swap" rel="stylesheet">
     };
 
     const app = initializeApp(firebaseConfig);
+
+    // App Check（登録済み前提）
+    // reCAPTCHA v3 サイトキーを Firebase Console > App Check > Web アプリ から取得して入れてください
+    const appCheck = initializeAppCheck(app, {
+      provider: new ReCaptchaV3Provider("6LdbSBkuAAAAAIyEoIo6lMvCme8RMEQVT6779jec"),
+      isTokenAutoRefreshEnabled: true
+    });
+    // デバッグ時のみ有効化（本番前に必ずコメントアウト）
+    // self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+
     const auth = getAuth(app);
     const db = getFirestore(app);
     const provider = new GoogleAuthProvider();
@@ -2945,54 +2956,120 @@ family=M+PLUS+Rounded+1c:wght@400;500;600;700&display=swap" rel="stylesheet">
       else if (!recorded && hasAgreedLocally() && !termsSaving) { termsSaving = true; saveUserData({ terms: { version: TERMS_VERSION, agreedAt: serverTimestamp() } }).finally(() => { termsSaving = false; }); }
     }
 
-    // ===== 下部ナビ：長押しで透けるレンズ =====
+    // ===== 下部ナビ：指に完全追従するガラスレンズ（バー内限定） =====
     (function initNavLens() {
-      const nav = document.querySelector("body > nav"); if (!nav) return;
-      const lens = document.createElement("div"); lens.id = "nav-lens"; document.body.appendChild(lens);
-      let timer = null, active = null, pressed = null;
+      const nav = document.querySelector("body > nav");
+      if (!nav) return;
 
-      function place(btn) {
-        const r = btn.getBoundingClientRect(), w = lens.offsetWidth, h = lens.offsetHeight;
-        const left = Math.min(window.innerWidth - w - 4, Math.max(4, r.left + r.width / 2 - w / 2));
+      const lens = document.createElement("div");
+      lens.id = "nav-lens";
+      document.body.appendChild(lens);
+
+      let tracking = false;
+      let activeBtn = null;
+      let startBtn = null;
+
+      function getNearestButton(clientX, clientY) {
+        const buttons = [...nav.querySelectorAll("button")];
+        let nearest = null;
+        let minDist = Infinity;
+        buttons.forEach(btn => {
+          const r = btn.getBoundingClientRect();
+          const cx = r.left + r.width / 2;
+          const cy = r.top + r.height / 2;
+          const dist = Math.hypot(clientX - cx, clientY - cy);
+          if (dist < minDist) {
+            minDist = dist;
+            nearest = btn;
+          }
+        });
+        return nearest;
+      }
+
+      function placeAtFinger(clientX, clientY) {
+        const navRect = nav.getBoundingClientRect();
+        const w = lens.offsetWidth || 132;
+        const h = lens.offsetHeight || 84;
+
+        // 指の位置を中心にしつつ、ナビバーの範囲内にクランプ
+        let left = clientX - w / 2;
+        let top  = clientY - h / 2;
+
+        // 横方向：ナビの左右に収める
+        left = Math.max(navRect.left - 10, Math.min(navRect.right - w + 10, left));
+        // 縦方向：ナビの上下に収める
+        top  = Math.max(navRect.top - 8, Math.min(navRect.bottom - h + 8, top));
+
         lens.style.left = left + "px";
-        lens.style.top = (r.top + r.height / 2 - h / 2) + "px";
+        lens.style.top  = top + "px";
       }
+
+      function isInsideNav(clientX, clientY) {
+        const r = nav.getBoundingClientRect();
+        // 少し余裕を持たせる
+        return clientX >= r.left - 20 &&
+               clientX <= r.right + 20 &&
+               clientY >= r.top - 30 &&
+               clientY <= r.bottom + 30;
+      }
+
       function setActive(btn) {
-        if (active === btn) return;
-        if (active) active.classList.remove("nav-pressed");
-        active = btn; if (!btn) return;
-        btn.classList.add("nav-pressed");
-        if (!lens.classList.contains("show")) {
-          lens.style.transition = "none"; place(btn); void lens.offsetWidth; lens.style.transition = "";
-          lens.classList.add("show");
-        } else place(btn);
+        if (activeBtn === btn) return;
+        if (activeBtn) activeBtn.classList.remove("nav-pressed");
+        activeBtn = btn;
+        if (btn) btn.classList.add("nav-pressed");
       }
-      function hide() {
-        clearTimeout(timer); timer = null;
-        if (active) active.classList.remove("nav-pressed");
-        active = null; pressed = null; lens.classList.remove("show");
+
+      function showLens(clientX, clientY) {
+        placeAtFinger(clientX, clientY);
+        lens.classList.add("show");
+      }
+
+      function hideLens() {
+        lens.classList.remove("show");
+        if (activeBtn) activeBtn.classList.remove("nav-pressed");
+        activeBtn = null;
+        startBtn = null;
+        tracking = false;
       }
 
       nav.addEventListener("pointerdown", (e) => {
-        const b = e.target.closest("button"); if (!b) return;
-        pressed = b; clearTimeout(timer);
-        timer = setTimeout(() => setActive(b), 150); // 軽いタップでは出さない
+        const btn = e.target.closest("button");
+        if (!btn) return;
+        tracking = true;
+        startBtn = btn;
+        setActive(btn);
+        showLens(e.clientX, e.clientY);
       });
-      nav.addEventListener("pointermove", (e) => {
-        if (!lens.classList.contains("show")) return;
-        const el = document.elementFromPoint(e.clientX, e.clientY);
-        const b = el && el.closest("button");
-        if (b && nav.contains(b)) setActive(b); // 指を滑らせるとレンズも追従
-      });
-      const release = () => {
-        // 別のボタンへ滑らせて離した場合は、そのボタンを実行
-        if (lens.classList.contains("show") && active && pressed && active !== pressed) {
-          const target = active; hide(); target.click(); return;
+
+      window.addEventListener("pointermove", (e) => {
+        if (!tracking) return;
+
+        // ナビバーから大きく外れたら追従をやめる
+        if (!isInsideNav(e.clientX, e.clientY)) {
+          hideLens();
+          return;
         }
-        hide();
+
+        placeAtFinger(e.clientX, e.clientY);
+        const nearest = getNearestButton(e.clientX, e.clientY);
+        if (nearest) setActive(nearest);
+      });
+
+      const onRelease = (e) => {
+        if (!tracking) return;
+
+        const nearest = getNearestButton(e.clientX, e.clientY) || activeBtn;
+        hideLens();
+
+        // 別のボタンに寄っていた場合のみクリック
+        if (nearest && nearest !== startBtn) {
+          nearest.click();
+        }
       };
-      window.addEventListener("pointerup", release);
-      window.addEventListener("pointercancel", hide);
+
+      window.addEventListener("pointerup", onRelease);
+      window.addEventListener("pointercancel", hideLens);
       nav.addEventListener("contextmenu", (e) => e.preventDefault());
     })();
 
@@ -3001,5 +3078,3 @@ family=M+PLUS+Rounded+1c:wght@400;500;600;700&display=swap" rel="stylesheet">
   </script>
 </body>
 </html>
-
-
