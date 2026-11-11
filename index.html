@@ -162,7 +162,7 @@
   </header>
 
   <main class="max-w-5xl mx-auto px-4 pb-6 space-y-6">
-    <section class="liquid-glass p-4 md:p-6 rounded-3xl space-y-3 transition duration-300 hover:shadow-[0_12px_40px_rgba(192,132,252,0.25)]">
+    <section id="intro-section" class="liquid-glass p-4 md:p-6 rounded-3xl space-y-3 transition duration-300 hover:shadow-[0_12px_40px_rgba(192,132,252,0.25)]">
       <div class="flex items-start space-x-3">
         <div class="text-2xl drop-shadow-md">🤝</div>
         <div>
@@ -176,27 +176,62 @@
       </div>
     </section>
 
-    <section id="post-menu-section" class="hidden bg-gradient-to-r from-illit-accent/70 to-illit-pink/70 backdrop-blur-xl border border-white/50 p-4 md:p-6 rounded-3xl text-white shadow-xl space-y-4">
-      <div>
-        <h3 class="font-bold text-base md:text-lg drop-shadow-md">トレード・買取・共同購入に出す</h3>
-        <p class="text-xs text-white/90 mt-0.5 drop-shadow-sm">手数料完全無料！ファン同士でスムーズに取引</p>
+    <section id="post-menu-section" class="hidden space-y-5 pb-28">
+      <!-- 件数カード -->
+      <div class="grid grid-cols-3 gap-2.5">
+        <button onclick="document.getElementById('my-listing-anchor').scrollIntoView({behavior:'smooth'})" class="liquid-glass rounded-2xl py-4 flex flex-col items-center gap-1 active:scale-95 transition">
+          <svg class="w-7 h-7 text-gray-700" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="4" y="4" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1"/></svg>
+          <span class="text-xs text-gray-600 mt-1">出品中</span>
+          <span class="text-base font-bold text-gray-900"><span id="sell-count-active">0</span> 件</span>
+        </button>
+        <button onclick="openTradesModal()" class="liquid-glass rounded-2xl py-4 flex flex-col items-center gap-1 active:scale-95 transition">
+          <svg class="w-7 h-7 text-gray-700" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linejoin="round" d="M4 9l2.5-4.5h11L20 9v10a1 1 0 01-1 1H5a1 1 0 01-1-1V9zM4 9h16"/></svg>
+          <span class="text-xs text-gray-600 mt-1">取引中</span>
+          <span class="text-base font-bold text-gray-900"><span id="sell-count-trading">0</span> 件</span>
+        </button>
+        <button onclick="openTradesModal()" class="liquid-glass rounded-2xl py-4 flex flex-col items-center gap-1 active:scale-95 transition">
+          <svg class="w-7 h-7 text-gray-700" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+          <span class="text-xs text-gray-600 mt-1">完了</span>
+          <span class="text-base font-bold text-gray-900"><span id="sell-count-done">0</span> 件</span>
+        </button>
       </div>
-      <div class="flex space-x-2">
-        <button onclick="openPostModal('exchange')" class="flex-1 bg-white/90 text-illit-darkPurple font-bold text-xs md:text-sm px-2 py-3 rounded-2xl shadow hover:bg-white hover:scale-105 active:scale-95 transition-all border border-white">🃏 トレカ交換</button>
-        <button onclick="openPostModal('buy')" class="flex-1 bg-pink-100/90 text-pink-700 font-bold text-xs md:text-sm px-2 py-3 rounded-2xl shadow hover:bg-pink-50 hover:scale-105 active:scale-95 transition-all border border-white">💳 トレカ買取</button>
-        <button onclick="openPostModal('card_sell')" class="flex-1 bg-purple-100/90 text-purple-800 font-bold text-xs md:text-sm px-2 py-3 rounded-2xl shadow hover:bg-purple-50 hover:scale-105 active:scale-95 transition-all border border-white">💰 トレカ売却</button>
+
+      <!-- 出品中リスト -->
+      <div id="my-listing-anchor" class="border-t border-purple-200/50 pt-4 space-y-3">
+        <h3 class="font-bold text-base text-gray-900 px-1">出品中 (<span id="sell-list-count">0</span>)</h3>
+        <div id="sell-my-list" class="grid grid-cols-3 gap-2.5"></div>
       </div>
-      <div class="flex space-x-2">
-        <button onclick="openPostModal('album_sell')" class="flex-1 bg-indigo-50/90 text-indigo-900 font-bold text-xs md:text-sm px-3 py-3 rounded-2xl shadow hover:bg-white hover:scale-105 active:scale-95 transition-all border border-white">💿 アルバム売却</button>
-        <button onclick="openPostModal('dearlit_sell')" class="flex-1 bg-rose-100/90 text-rose-800 font-bold text-xs md:text-sm px-3 py-3 rounded-2xl shadow hover:bg-rose-50 hover:scale-105 active:scale-95 transition-all border border-white">🎁 DEARLIT売却</button>
-      </div>
-      <div class="flex space-x-2">
-        <button onclick="openSerialPostModal('exchange')" class="flex-1 bg-yellow-300/90 text-yellow-900 font-bold text-xs md:text-sm px-3 py-3 rounded-2xl shadow hover:bg-yellow-200 hover:scale-105 active:scale-95 transition-all border border-white">🎫 シリアル➡トレカ</button>
-        <button onclick="openSerialPostModal('buy')" class="flex-1 bg-yellow-100/90 text-yellow-900 font-bold text-xs md:text-sm px-3 py-3 rounded-2xl shadow hover:bg-white hover:scale-105 active:scale-95 transition-all border border-white">💳 シリアル買取</button>
-      </div>
-      <div class="flex space-x-2">
-        <button onclick="openSerialPostModal('sell')" class="flex-1 bg-yellow-200/90 text-yellow-900 font-bold text-xs md:text-sm px-3 py-3 rounded-2xl shadow hover:bg-yellow-100 hover:scale-105 active:scale-95 transition-all border border-white">💰 シリアル売却</button>
-        <button onclick="openGroupPostModal()" class="flex-1 bg-teal-100/90 text-teal-800 font-bold text-xs md:text-sm px-3 py-3 rounded-2xl shadow hover:bg-teal-50 hover:scale-105 active:scale-95 transition-all border border-white">🛍 共同購入を主催</button>
+
+      <!-- 出品に関わる設定 -->
+      <div class="space-y-3 pt-2">
+        <h3 class="font-bold text-lg text-gray-900 px-1">出品に関わる設定</h3>
+        <button onclick="openProfileModal('address')" class="w-full text-left liquid-glass rounded-2xl p-4 flex items-center gap-3 active:scale-[.99] transition">
+          <div class="text-3xl shrink-0">📦</div>
+          <div class="flex-1 min-w-0">
+            <div class="font-bold text-sm text-gray-900">住所・配送先</div>
+            <div class="text-xs text-gray-600 mt-0.5">申し込み・参加には、お名前・郵便番号・住所の登録が必要です</div>
+            <div id="sell-status-address" class="text-[11px] font-bold mt-1"></div>
+          </div>
+          <span class="text-gray-400 text-xl">›</span>
+        </button>
+        <button onclick="openProfileModal('paypay')" class="w-full text-left liquid-glass rounded-2xl p-4 flex items-center gap-3 active:scale-[.99] transition">
+          <div class="text-3xl shrink-0">💳</div>
+          <div class="flex-1 min-w-0">
+            <div class="font-bold text-sm text-gray-900">PayPay ID</div>
+            <div class="text-xs text-gray-600 mt-0.5">代金を受け取るためのIDを登録しておくと、取引がスムーズです</div>
+            <div id="sell-status-paypay" class="text-[11px] font-bold mt-1"></div>
+          </div>
+          <span class="text-gray-400 text-xl">›</span>
+        </button>
+        <button onclick="openProfileModal('push')" class="w-full text-left liquid-glass rounded-2xl p-4 flex items-center gap-3 active:scale-[.99] transition">
+          <div class="text-3xl shrink-0">📢</div>
+          <div class="flex-1 min-w-0">
+            <div class="font-bold text-sm text-gray-900">プッシュ通知設定</div>
+            <div class="text-xs text-gray-600 mt-0.5">申し込みやメッセージをすぐ受け取れます</div>
+            <div id="sell-status-push" class="text-[11px] font-bold mt-1"></div>
+          </div>
+          <span class="text-gray-400 text-xl">›</span>
+        </button>
       </div>
     </section>
 
@@ -232,6 +267,49 @@
       </div>
     </section>
   </main>
+
+  <button id="sell-fab" onclick="openPostTypeSheet()" class="hidden fixed left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-[480px] bottom-[104px] md:bottom-6 z-30 bg-gradient-to-r from-rose-500 to-pink-500 text-white font-bold text-base py-4 rounded-xl shadow-xl items-center justify-center gap-2 active:scale-[.98] transition">
+    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M9 3L7.2 5H4a2 2 0 00-2 2v11a2 2 0 002 2h16a2 2 0 002-2V7a2 2 0 00-2-2h-3.2L15 3H9zm3 15a5 5 0 110-10 5 5 0 010 10zm0-2a3 3 0 100-6 3 3 0 000 6z"/></svg>
+    出品する
+  </button>
+
+  <!-- 出品の種類を選ぶシート -->
+  <div id="post-type-sheet" class="fixed inset-0 modal-backdrop hidden z-50 flex items-end md:items-center justify-center" onclick="if(event.target===this)closePostTypeSheet()">
+    <div class="liquid-glass-heavy w-full max-w-md rounded-t-[2rem] md:rounded-[2rem] p-5 space-y-4 shadow-2xl max-h-[88vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-purple-200/50 pb-3">
+        <h3 class="font-bold text-base text-gray-800">何を出品しますか？</h3>
+        <button onclick="closePostTypeSheet()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
+      </div>
+      <div class="space-y-2">
+        <div class="text-xs font-bold text-gray-500">トレカ</div>
+        <div class="grid grid-cols-3 gap-2">
+          <button onclick="closePostTypeSheet(); openPostModal('exchange')" class="bg-white/90 text-illit-darkPurple font-bold text-xs px-2 py-3 rounded-2xl shadow border border-white">🃏 交換</button>
+          <button onclick="closePostTypeSheet(); openPostModal('buy')" class="bg-pink-100/90 text-pink-700 font-bold text-xs px-2 py-3 rounded-2xl shadow border border-white">💳 買取</button>
+          <button onclick="closePostTypeSheet(); openPostModal('card_sell')" class="bg-purple-100/90 text-purple-800 font-bold text-xs px-2 py-3 rounded-2xl shadow border border-white">💰 売却</button>
+        </div>
+      </div>
+      <div class="space-y-2">
+        <div class="text-xs font-bold text-gray-500">アルバム・DEARLIT</div>
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="closePostTypeSheet(); openPostModal('album_sell')" class="bg-indigo-50/90 text-indigo-900 font-bold text-xs px-3 py-3 rounded-2xl shadow border border-white">💿 アルバム売却</button>
+          <button onclick="closePostTypeSheet(); openPostModal('dearlit_sell')" class="bg-rose-100/90 text-rose-800 font-bold text-xs px-3 py-3 rounded-2xl shadow border border-white">🎁 DEARLIT売却</button>
+        </div>
+      </div>
+      <div class="space-y-2">
+        <div class="text-xs font-bold text-gray-500">シリアル</div>
+        <div class="grid grid-cols-3 gap-2">
+          <button onclick="closePostTypeSheet(); openSerialPostModal('exchange')" class="bg-yellow-300/90 text-yellow-900 font-bold text-xs px-2 py-3 rounded-2xl shadow border border-white">🎫 ➡トレカ</button>
+          <button onclick="closePostTypeSheet(); openSerialPostModal('buy')" class="bg-yellow-100/90 text-yellow-900 font-bold text-xs px-2 py-3 rounded-2xl shadow border border-white">💳 買取</button>
+          <button onclick="closePostTypeSheet(); openSerialPostModal('sell')" class="bg-yellow-200/90 text-yellow-900 font-bold text-xs px-2 py-3 rounded-2xl shadow border border-white">💰 売却</button>
+        </div>
+      </div>
+      <div class="space-y-2">
+        <div class="text-xs font-bold text-gray-500">共同購入</div>
+        <button onclick="closePostTypeSheet(); openGroupPostModal()" class="w-full bg-teal-100/90 text-teal-800 font-bold text-xs px-3 py-3 rounded-2xl shadow border border-white">🛍 共同購入を主催する</button>
+      </div>
+      <p class="text-[11px] text-gray-500 text-center">手数料はすべて無料です</p>
+    </div>
+  </div>
 
   <nav class="liquid-glass-heavy fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-[380px] rounded-[2rem] z-40 flex justify-between items-center px-2 py-1.5 md:hidden">
     <button id="nav-home" onclick="switchTab('home')" class="flex flex-col items-center justify-center w-[60px] h-[52px] bg-white/70 shadow-sm text-illit-darkPurple rounded-[1.5rem] transition">
@@ -844,6 +922,17 @@
     </div>
   </div>
 
+  <!-- アプリ内の確認ダイアログ（confirm() が出ない環境用） -->
+  <div id="app-confirm" class="fixed inset-0 modal-backdrop hidden z-[90] flex items-center justify-center p-4">
+    <div class="liquid-glass-heavy w-full max-w-sm rounded-[2rem] p-6 space-y-5 shadow-2xl">
+      <p id="app-confirm-msg" class="text-sm font-medium text-gray-800 whitespace-pre-wrap leading-relaxed"></p>
+      <div class="flex space-x-2">
+        <button id="app-confirm-no" type="button" class="flex-1 bg-white/70 text-gray-700 border border-white font-medium py-3 rounded-full hover:bg-white transition text-sm">戻る</button>
+        <button id="app-confirm-yes" type="button" class="flex-1 bg-gradient-to-r from-illit-purple to-illit-accent text-white font-medium py-3 rounded-full transition text-sm shadow-md">はい</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 利用規約 -->
   <div id="terms-modal" class="fixed inset-0 modal-backdrop hidden z-[70] flex items-center justify-center p-4">
     <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-5 space-y-3 shadow-xl max-h-[92vh] flex flex-col">
@@ -959,6 +1048,7 @@
     let prevTradeCountAsOwner = -1;
     let profileSection = "basic";
     let currentDetailId = null, submittingSerial = false;
+    let roomActionsKey = null, cancellingTrade = false;
 
     const STATUS_LABEL = { negotiating: "交渉中", shipping: "取引・発送中", completed: "完了", cancelled: "キャンセル" };
     const STATUS_CLASS = { negotiating: "bg-yellow-400 text-yellow-900 border-yellow-200", shipping: "bg-blue-400 text-white border-blue-300", completed: "bg-green-400 text-white border-green-300", cancelled: "bg-gray-300 text-gray-700 border-gray-200" };
@@ -1126,6 +1216,18 @@
       shareToX(text);
     };
 
+    function appConfirm(message, yesLabel = "はい", danger = false) {
+      return new Promise((resolve) => {
+        const m = document.getElementById("app-confirm"), yes = document.getElementById("app-confirm-yes"), no = document.getElementById("app-confirm-no");
+        document.getElementById("app-confirm-msg").textContent = message;
+        yes.textContent = yesLabel;
+        yes.className = "flex-1 text-white font-medium py-3 rounded-full transition text-sm shadow-md " + (danger ? "bg-red-500 hover:bg-red-600" : "bg-gradient-to-r from-illit-purple to-illit-accent");
+        const done = (v) => { m.classList.add("hidden"); yes.onclick = null; no.onclick = null; resolve(v); };
+        yes.onclick = () => done(true); no.onclick = () => done(false);
+        m.classList.remove("hidden");
+      });
+    }
+
     function showToast(message, type = "info") {
       const container = document.getElementById("toast-container");
       if (!container) return;
@@ -1251,6 +1353,9 @@
     window.switchTab = function(tab) {
       document.getElementById("post-menu-section").classList.toggle("hidden", tab !== 'post');
       document.getElementById("post-list-section").classList.toggle("hidden", tab === 'post');
+      document.getElementById("intro-section").classList.toggle("hidden", tab === 'post');
+      const fab = document.getElementById("sell-fab"); fab.classList.toggle("hidden", tab !== 'post'); fab.classList.toggle("flex", tab === 'post');
+      if (tab === 'post') renderSellTab();
       document.getElementById("nav-home").classList.toggle("bg-white/70", tab === 'home');
       document.getElementById("nav-home").classList.toggle("text-illit-darkPurple", tab === 'home');
       document.getElementById("nav-home").classList.toggle("text-gray-500", tab !== 'home');
@@ -1637,7 +1742,7 @@
     };
 
     window.adminUnsuspendUser = async function(uid) {
-      if (!confirm("アカウント停止を解除しますか？")) return;
+      if (!(await appConfirm("アカウント停止を解除しますか？"))) return;
       try {
         await deleteDoc(doc(db, "suspensions", uid));
         alert("停止を解除しました。");
@@ -1646,7 +1751,7 @@
     };
 
     window.adminDeletePost = async function(postId) {
-      if(!confirm("この投稿を強制的に削除しますか？\n(画像や共同購入の参加データも削除されます)")) return;
+      if(!(await appConfirm("この投稿を強制的に削除しますか？\n(画像や共同購入の参加データも削除されます)"))) return;
       try {
         const snap = await getDocs(collection(db, "posts", postId, "photos")); 
         await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
@@ -1661,7 +1766,7 @@
     };
 
     window.adminForceCancelTrade = async function(tradeId) {
-      if(!confirm("運営権限でこの取引を強制的にキャンセルしますか？\n（トラブル対応用です）")) return;
+      if(!(await appConfirm("運営権限でこの取引を強制的にキャンセルしますか？\n（トラブル対応用です）"))) return;
       try {
         await updateDoc(doc(db, "trades", tradeId), { 
           status: "cancelled", 
@@ -1680,7 +1785,7 @@
     };
 
     window.markInquiryDone = async function(id) {
-      if (!confirm("対応済みにしますか？（削除されます）")) return;
+      if (!(await appConfirm("対応済みにしますか？（削除されます）"))) return;
       try { await deleteDoc(doc(db, "inquiries", id)); loadAdminData(); } catch(e) {}
     };
 
@@ -1693,7 +1798,7 @@
       const message = msgEl.value.trim();
       if (!message) return alert("メッセージを入力してください。");
       if (message.length > 300) return alert("300文字以内で入力してください。");
-      if (!confirm(`以下の内容を全ユーザーに通知します。よろしいですか？\n\n「${message}」`)) return;
+      if (!(await appConfirm(`以下の内容を全ユーザーに通知します。よろしいですか？\n\n「${message}」`))) return;
       btn.disabled = true; btn.innerText = "送信中…"; statusEl.innerText = "ユーザーを取得しています…";
       try {
         const usersSnap = await getDocs(collection(db, "users"));
@@ -1760,14 +1865,14 @@
     window.adminFixLikes = async function(postId) {
       if (!isAdmin()) return;
       const r = lastLikeAudit.find(x => x.id === postId); if (!r) return;
-      if (!confirm(`「${r.give}」のいいねを ${r.shown} → ${r.real} に補正します。よろしいですか？`)) return;
+      if (!(await appConfirm(`「${r.give}」のいいねを ${r.shown} → ${r.real} に補正します。よろしいですか？`))) return;
       try { await fixLikesRow(r); alert("補正しました。"); loadAdminData(); } catch (e) { console.error(e); alert("補正に失敗しました。"); }
     };
     window.adminFixAllLikes = async function() {
       if (!isAdmin()) return;
       const targets = lastLikeAudit.filter(r => r.diff !== 0 || r.missing.length > 0);
       if (!targets.length) return;
-      if (!confirm(`${targets.length} 件の投稿を、記録のある実数に補正します。\n旧方式で付いたいいね数は0に戻ります。よろしいですか？`)) return;
+      if (!(await appConfirm(`${targets.length} 件の投稿を、記録のある実数に補正します。\n旧方式で付いたいいね数は0に戻ります。よろしいですか？`))) return;
       let ok = 0, ng = 0;
       for (const r of targets) { try { await fixLikesRow(r); ok++; } catch (e) { ng++; console.error(e); } }
       alert(`補正完了: 成功 ${ok} 件 / 失敗 ${ng} 件`);
@@ -1775,7 +1880,7 @@
     };
 
     window.deleteReportedPost = async function(postId, reportId) {
-      if(!confirm("強制削除しますか？")) return;
+      if(!(await appConfirm("強制削除しますか？"))) return;
       try {
         const snap = await getDocs(collection(db, "posts", postId, "photos")); await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
         const js = await getDocs(collection(db, "posts", postId, "joins")); await Promise.all(js.docs.map(d => deleteDoc(d.ref)));
@@ -1798,13 +1903,13 @@
 
     function getBlockedUsers() { return userData.blocked || []; }
     window.blockUser = async function(userId, userName) {
-      if (!currentUser || !userId || !confirm(`「${userName}」さんをブロックしますか？`)) return;
+      if (!currentUser || !userId || !(await appConfirm(`「${userName}」さんをブロックしますか？`, "ブロックする", true))) return;
       const list = [...getBlockedUsers()];
       if (!list.includes(userId)) { list.push(userId); userData.blocked = list; try { await saveUserData({ blocked: list }); } catch(e){return;} }
       alert("ブロックしました。"); closeDetailModal(); renderPosts();
     };
     window.clearBlockedUsers = async function() {
-      if (!currentUser || !confirm("すべてクリアしますか？")) return;
+      if (!currentUser || !(await appConfirm("ブロックをすべて解除しますか？", "解除する"))) return;
       userData.blocked = []; try { await saveUserData({ blocked: [] }); } catch(e){}
       alert("解除しました。"); renderBlockedBox(); renderPosts();
     };
@@ -1938,6 +2043,7 @@
       try { await saveUserData({ profile: userData.profile }); } catch (e) { return alert("失敗しました。"); }
       showToast("設定を保存しました！", "success");
       closeProfileModal();
+      renderSellTab();
       if (currentUser) {
         document.getElementById("user-name").innerText = p.nickname || currentUser.displayName || "匿名";
         updateUserAvatar();
@@ -2035,7 +2141,7 @@
       try { 
         await saveToken(); 
         updatePushUI(); 
-        showToast("通知をオンにしました！", "success");
+        renderSellTab(); showToast("通知をオンにしました！", "success");
       } catch(e){ 
         console.error("プッシュ通知設定エラー:", e);
         alert("設定失敗: " + (e.message || e)); 
@@ -2055,7 +2161,7 @@
     window.disablePush = async function() { 
       await removePushToken(); 
       updatePushUI(); 
-      showToast("通知をオフにしました。", "info");
+      renderSellTab(); showToast("通知をオフにしました。", "info");
     };
 
     window.loginWithGoogle = function() { signInWithPopup(auth, provider).catch(e => alert("ログインエラー: " + e.message)); };
@@ -2280,6 +2386,38 @@
       return "card_exchange";
     }
 
+    window.openPostTypeSheet = function() {
+      if (!currentUser) return alert("ログインが必要です。");
+      document.getElementById("post-type-sheet").classList.remove("hidden");
+    };
+    window.closePostTypeSheet = function() { document.getElementById("post-type-sheet").classList.add("hidden"); };
+
+    function renderSellTab() {
+      const sec = document.getElementById("post-menu-section");
+      if (!sec || sec.classList.contains("hidden")) return;
+      const uid = currentUser ? currentUser.uid : null;
+      const mine = uid ? allPosts.map((p, i) => ({ p, i })).filter(x => x.p.userId === uid && x.p.status === "active") : [];
+      const trading = myTrades.filter(t => t.status === "negotiating" || t.status === "shipping").length;
+      const done = myTrades.filter(t => t.status === "completed").length;
+      document.getElementById("sell-count-active").innerText = mine.length;
+      document.getElementById("sell-list-count").innerText = mine.length;
+      document.getElementById("sell-count-trading").innerText = trading;
+      document.getElementById("sell-count-done").innerText = done;
+      document.getElementById("sell-my-list").innerHTML = mine.length === 0
+        ? '<p class="col-span-3 text-xs text-gray-500 text-center py-6">出品中の商品はありません</p>'
+        : mine.map(({ p, i }) => {
+            const isGroup = p.kind === "group";
+            const photo = (p.photoCount && isJpegData(p.thumb)) ? `<img src="${p.thumb}" alt="" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center text-2xl text-purple-200 bg-gradient-to-br from-purple-50 to-pink-50">${isGroup ? "🛍" : (p.kind === "serial" ? "🎫" : "🃏")}</div>`;
+            const price = (p.isBuy || p.isSell || isGroup) && Number(p.price || 0) > 0 ? `<span class="absolute bottom-1 left-1 bg-black/70 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">¥${Number(p.price).toLocaleString()}</span>` : "";
+            return `<div onclick="openDetailModal(${i})" class="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 cursor-pointer active:scale-95 transition"><div class="relative aspect-square bg-gray-50 overflow-hidden">${photo}${price}</div><p class="text-[10px] font-medium text-gray-900 line-clamp-2 leading-snug p-1.5">${escapeHtml(p.give || "")}</p></div>`;
+          }).join("");
+      const setStatus = (id, ok, okText, ngText) => { const el = document.getElementById(id); if (!el) return; el.innerText = ok ? okText : ngText; el.className = "text-[11px] font-bold mt-1 " + (ok ? "text-green-600" : "text-pink-600"); };
+      const prof = getMyProfile();
+      setStatus("sell-status-address", !!(currentUser && hasShippingInfo()), "✅ 登録済み", currentUser ? "⚠️ 未登録（申し込みに必要です）" : "ログインすると設定できます");
+      setStatus("sell-status-paypay", !!(prof && prof.paypay), "✅ 登録済み", currentUser ? "未登録" : "ログインすると設定できます");
+      setStatus("sell-status-push", !!(currentUser && localStorage.getItem(pushStorageKey())), "✅ オン", currentUser ? "オフ" : "ログインすると設定できます");
+    }
+
     function renderPosts() {
       const container = document.getElementById("posts-container");
       const blocked = userData.blocked || []; const likes = userData.likes || [];
@@ -2370,6 +2508,7 @@
       container.innerHTML = cards.length === 0
         ? '<p class="text-xs text-gray-500 col-span-full text-center py-8 font-medium bg-white/50 rounded-xl">条件に合う募集はありません。</p>'
         : cards.join("");
+      renderSellTab();
     }
 
     window.toggleDetailLikeFromCard = function(postId) { doToggleLike(allPosts.find(x => x.id === postId)); };
@@ -2527,7 +2666,7 @@
       if (myTrades.some(t => t.postId === p.id && (t.status === "negotiating" || t.status === "shipping"))) {
         return alert("進行中の取引があるため削除できません。先に取引を完了またはキャンセルしてください。");
       }
-      if (!confirm("削除しますか？")) return;
+      if (!(await appConfirm("この投稿を削除しますか？", "削除する", true))) return;
       try {
         try { const ps = await getDocs(collection(db, "posts", p.id, "photos")); await Promise.all(ps.docs.map(d => deleteDoc(d.ref))); } catch(e) { console.warn("photos delete:", e?.code || e); }
         if (p.kind === "group") { try { const js = await getDocs(collection(db, "posts", p.id, "joins")); await Promise.all(js.docs.map(d => deleteDoc(d.ref))); } catch(e) { console.warn("joins delete:", e?.code || e); } }
@@ -2753,6 +2892,7 @@
         prevUnreadCount = unread;
         prevTradeCountAsOwner = ownerNegotiating;
         updateBadge();
+        renderSellTab();
         scheduleHealSoldPosts();
         if (!document.getElementById("trades-modal").classList.contains("hidden")) renderTradesList();
         if (!document.getElementById("wallet-modal").classList.contains("hidden")) renderWallet();
@@ -2785,7 +2925,7 @@
     function cleanupRoom() {
       if (unsubRoom) { unsubRoom(); unsubRoom = null; }
       if (unsubMsgs) { unsubMsgs(); unsubMsgs = null; }
-      currentTrade = null; roomMessages = []; roomPhotos = []; roomPhotosFor = null; roomBoxKey = null; reviewState = { tradeId: null, done: null }; selectedRating = 0;
+      currentTrade = null; roomMessages = []; roomPhotos = []; roomPhotosFor = null; roomBoxKey = null; roomActionsKey = null; reviewState = { tradeId: null, done: null }; selectedRating = 0;
     }
     async function loadRoomPhotos(t) {
       const el = document.getElementById("room-photos"); if (t.kind === "serial" || !t.postPhotoCount) { el.innerHTML = ""; return; }
@@ -2872,7 +3012,7 @@
         if (!other) return alert("理由を入力してください。");
         reasonText = other;
       }
-      if (!confirm("キャンセルを申請しますか？\n申請した側にペナルティが付きます。")) return;
+      if (!(await appConfirm("キャンセルを申請しますか？\n申請した側にペナルティが付きます。", "申請する", true))) return;
       try {
         await updateDoc(doc(db, "trades", currentTrade.id), {
           cancelRequest: { by: currentUser.uid, byName: getMyDisplayName(), reason: reason, reasonText: reasonText, at: Date.now() },
@@ -2886,7 +3026,7 @@
 
     window.agreeCancel = async function() {
       if (!currentTrade || !currentTrade.cancelRequest) return;
-      if (!confirm("キャンセル申請に同意しますか？\n取引がキャンセルされます。")) return;
+      if (!(await appConfirm("キャンセル申請に同意しますか？\n取引がキャンセルされます。", "同意する", true))) return;
       const postId = currentTrade.postId;
       const kind = currentTrade.kind;
       const applicantId = currentTrade.applicantId;
@@ -2982,9 +3122,12 @@
         html += `<p class="text-xs text-green-700 font-medium text-center bg-white/60 p-3 rounded-xl border border-white shadow-sm">🎉 取引が完了しました！</p>`;
         if (reviewState.done === false) html += `<div class="bg-white/80 rounded-2xl p-4 border border-white space-y-3 shadow-md mt-4"><div class="text-xs font-medium text-gray-700 text-center">相手を評価してください</div><div class="flex justify-center space-x-2">${[1,2,3,4,5].map(n => `<button data-star="${n}" onclick="setRating(${n})" class="text-3xl text-gray-300 hover:scale-110 transition drop-shadow-sm">★</button>`).join("")}</div><button onclick="submitReview()" class="${primary}">評価を送信</button></div>`;
       }
-      document.getElementById("room-actions").innerHTML = html; if (selectedRating > 0) setRating(selectedRating);
+      const actionsKey = t.id + "|" + html;
+      const actionsChanged = roomActionsKey !== actionsKey;
+      if (actionsChanged) { roomActionsKey = actionsKey; document.getElementById("room-actions").innerHTML = html; }
+      if (selectedRating > 0) setRating(selectedRating);
       const disabled = t.status === "cancelled"; document.getElementById("room-input").disabled = disabled; document.getElementById("room-send").disabled = disabled; document.getElementById("room-photo").disabled = disabled;
-      setTimeout(() => { const topBox = document.getElementById("room-top-box"), actionsBox = document.getElementById("room-actions"); if (topBox && actionsBox && t.status !== "completed" && t.status !== "cancelled") topBox.scrollTo({ top: actionsBox.offsetTop, behavior: "smooth" }); }, 300);
+      if (actionsChanged) setTimeout(() => { const topBox = document.getElementById("room-top-box"), actionsBox = document.getElementById("room-actions"); if (topBox && actionsBox && t.status !== "completed" && t.status !== "cancelled") topBox.scrollTo({ top: actionsBox.offsetTop, behavior: "smooth" }); }, 300);
     }
 
     window.renderMessages = function() {
@@ -3025,23 +3168,19 @@
       if (!currentTrade) return; try { const updateData = {}; updateData[`${field}.${currentUser.uid}`] = true; updateData.updatedAt = serverTimestamp(); await updateDoc(doc(db, "trades", currentTrade.id), updateData); } catch(e) { alert("失敗しました。"); }
     };
     window.cancelTrade = async function() {
-      if (!currentTrade || !confirm("キャンセルしますか？")) return;
+      const t = currentTrade; if (!t || cancellingTrade) return;
+      if (!(await appConfirm("この取引をキャンセルしますか？\n相手にもキャンセルされたと表示されます。", "キャンセルする", true))) return;
+      cancellingTrade = true;
       try {
-        const postId = currentTrade.postId;
-        const kind = currentTrade.kind;
-        const applicantId = currentTrade.applicantId;
-
-        await updateDoc(doc(db, "trades", currentTrade.id), { status: "cancelled", updatedAt: serverTimestamp() });
-        
+        await updateDoc(doc(db, "trades", t.id), { status: "cancelled", updatedAt: serverTimestamp() });
         // 投稿を active（出品中）に戻す
-        await restorePostToActive(postId, kind, applicantId);
-
+        await restorePostToActive(t.postId, t.kind, t.applicantId);
         showToast("取引をキャンセルしました。", "info");
         closeRoom();
       } catch(e) {
         console.error("cancelTrade error:", e);
-        alert("キャンセル処理に失敗しました。");
-      }
+        showToast("キャンセルに失敗しました（" + (e?.code || "error") + "）。もう一度お試しください。", "error");
+      } finally { cancellingTrade = false; }
     };
 
     window.setRating = function(n) { selectedRating = n; document.querySelectorAll("[data-star]").forEach(b => b.className = "text-3xl transition drop-shadow-sm hover:scale-110 " + (Number(b.dataset.star) <= n ? "text-yellow-400" : "text-gray-300")); };
