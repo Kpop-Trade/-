@@ -178,12 +178,7 @@
 
     <section id="post-menu-section" class="hidden space-y-5 pb-28">
       <!-- 件数カード -->
-      <div class="grid grid-cols-3 gap-2.5">
-        <button onclick="document.getElementById('my-listing-anchor').scrollIntoView({behavior:'smooth'})" class="liquid-glass rounded-2xl py-4 flex flex-col items-center gap-1 active:scale-95 transition">
-          <svg class="w-7 h-7 text-gray-700" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="4" y="4" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1"/></svg>
-          <span class="text-xs text-gray-600 mt-1">出品中</span>
-          <span class="text-base font-bold text-gray-900"><span id="sell-count-active">0</span> 件</span>
-        </button>
+      <div class="grid grid-cols-2 gap-2.5">
         <button onclick="openTradesModal()" class="liquid-glass rounded-2xl py-4 flex flex-col items-center gap-1 active:scale-95 transition">
           <svg class="w-7 h-7 text-gray-700" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linejoin="round" d="M4 9l2.5-4.5h11L20 9v10a1 1 0 01-1 1H5a1 1 0 01-1-1V9zM4 9h16"/></svg>
           <span class="text-xs text-gray-600 mt-1">取引中</span>
@@ -2399,7 +2394,6 @@
       const mine = uid ? allPosts.map((p, i) => ({ p, i })).filter(x => x.p.userId === uid && x.p.status === "active") : [];
       const trading = myTrades.filter(t => t.status === "negotiating" || t.status === "shipping").length;
       const done = myTrades.filter(t => t.status === "completed").length;
-      document.getElementById("sell-count-active").innerText = mine.length;
       document.getElementById("sell-list-count").innerText = mine.length;
       document.getElementById("sell-count-trading").innerText = trading;
       document.getElementById("sell-count-done").innerText = done;
