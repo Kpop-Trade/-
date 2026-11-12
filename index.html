@@ -2185,7 +2185,21 @@ getRedirectResult(auth)
       renderSellTab(); showToast("通知をオフにしました。", "info");
     };
 
-    window.loginWithGoogle = function() { signInWithPopup(auth, provider).catch(e => alert("ログインエラー: " + e.message)); };
+    window.loginWithGoogle = function() {
+  if (isPwaOrMobile()) {
+    // PWA・モバイルはリダイレクト方式
+    signInWithRedirect(auth, provider).catch(e => {
+      console.error(e);
+      alert("ログインエラー: " + (e.message || e));
+    });
+  } else {
+    // 通常のブラウザはポップアップ
+    signInWithPopup(auth, provider).catch(e => {
+      console.error(e);
+      alert("ログインエラー: " + (e.message || e));
+    });
+  }
+};
     window.logout = async function() { closeRoom(); await removePushToken(); signOut(auth); };
 
     onAuthStateChanged(auth, (user) => {
