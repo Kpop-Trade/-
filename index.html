@@ -976,7 +976,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { getFirestore, collection, collectionGroup, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, where, orderBy, limit, startAfter, onSnapshot, serverTimestamp, increment, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getMessaging, getToken, deleteToken, onMessage } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js";
 
@@ -995,15 +995,7 @@
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: "select_account" });
     const VAPID_KEY = "BDDp7KKSAF7CUspZG5J6wnkIqJlwgPaabfUnjuAQd8EcIgeiVj8zzazsy_O4Ick_t8w__7NasrngncK102c7wWg";
-getRedirectResult(auth).then((result) => {
-  if (result !== null) {
-    console.log("ログイン完了:", result.user);
-  }
-}).catch((error) => {
-  if (error.code !== 'auth/redirect-cancelled-by-user') {
-    alert("ログイン処理エラー: " + error.message);
-  }
-});
+
     const ADMIN_UIDS = ["Ay6VCS8HTgM3RqjDYZ0wKdHrSKz1", "GvVhAmT56GZjsWrl1YRaStB81im1"];
     function isAdmin() { return currentUser && ADMIN_UIDS.includes(currentUser.uid); }
 
@@ -2167,20 +2159,7 @@ getRedirectResult(auth).then((result) => {
       renderSellTab(); showToast("通知をオフにしました。", "info");
     };
 
-    window.loginWithGoogle = function() { 
-  // iPhoneのホーム画面アプリ（PWA）として起動しているか判定
-  const isIosPwa = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-
-  if (isIosPwa && isIOS) {
-    alert("【iPhoneの制限に関するお知らせ】\nホーム画面のアプリからは直接Googleログインができません。\n\nお手数ですが、一度Safari（ブラウザ）でこのサイトを開いてログインを済ませてから、再度ホーム画面に追加し直してください。");
-    return; // 処理をここで止める
-  }
-
-  // それ以外の通常のブラウザやAndroid等はリダイレクトでログインへ進む
-  signInWithRedirect(auth, provider).catch(e => alert("ログインエラー: " + e.message)); 
-};
-
+    window.loginWithGoogle = function() { signInWithPopup(auth, provider).catch(e => alert("ログインエラー: " + e.message)); };
     window.logout = async function() { closeRoom(); await removePushToken(); signOut(auth); };
 
     onAuthStateChanged(auth, (user) => {
