@@ -167,7 +167,7 @@
         <div class="text-2xl drop-shadow-md">🤝</div>
         <div>
           <h2 class="font-bold text-base md:text-lg text-gray-900">ファン同士で直接トレカ・シリアル・アルバム・DEARLIT交換・買取・共同購入</h2>
-          <p class="text-xs md:text-sm text-gray-600 mt-1">写真付き出品・チャット・評価まで、すべてサイト内で完結。手数料0円のプラットフォームです。</p>
+          <p class="text-xs md:text-sm text-gray-600 mt-1">写真付き出品・チャット・評価まで、すべてサイト内で完結。代金はアズカリ決済対応・手数料0円のプラットフォームです。</p>
         </div>
       </div>
       <div class="liquid-glass-input rounded-xl p-3 text-[11px] text-gray-600 leading-relaxed border-white/60">
@@ -209,12 +209,12 @@
           </div>
           <span class="text-gray-400 text-xl">›</span>
         </button>
-        <button onclick="openProfileModal('paypay')" class="w-full text-left liquid-glass rounded-2xl p-4 flex items-center gap-3 active:scale-[.99] transition">
-          <div class="text-3xl shrink-0">💳</div>
+        <button onclick="openAzukariGuide()" class="w-full text-left liquid-glass rounded-2xl p-4 flex items-center gap-3 active:scale-[.99] transition">
+          <div class="text-3xl shrink-0">🔒</div>
           <div class="flex-1 min-w-0">
-            <div class="font-bold text-sm text-gray-900">PayPay ID</div>
-            <div class="text-xs text-gray-600 mt-0.5">代金を受け取るためのIDを登録しておくと、取引がスムーズです</div>
-            <div id="sell-status-paypay" class="text-[11px] font-bold mt-1"></div>
+            <div class="font-bold text-sm text-gray-900">アズカリ決済</div>
+            <div class="text-xs text-gray-600 mt-0.5">代金はアズカリ経由で安全にやり取り。アプリを用意しておくとスムーズです</div>
+            <div id="sell-status-azukari" class="text-[11px] font-bold mt-1 text-green-600">✅ 推奨決済方法</div>
           </div>
           <span class="text-gray-400 text-xl">›</span>
         </button>
@@ -442,7 +442,7 @@
       </div>
       <div class="flex-1 overflow-y-auto space-y-3 text-xs leading-relaxed">
         <div class="liquid-glass-input rounded-xl p-3"><p class="font-bold text-gray-800 mb-1">Q. 手数料はかかりますか？</p><p class="text-gray-600">A. 一切かかりません。</p></div>
-        <div class="liquid-glass-input rounded-xl p-3"><p class="font-bold text-gray-800 mb-1">Q. 支払い方法は？</p><p class="text-gray-600">A. 原則PayPayです。合意後の取引ルーム内で共有してください。</p></div>
+        <div class="liquid-glass-input rounded-xl p-3"><p class="font-bold text-gray-800 mb-1">Q. 支払い方法は？</p><p class="text-gray-600">A. 原則「アズカリ」決済です。合意後の取引ルームからワンタップでアズカリアプリ／Webに遷移して決済してください。</p></div>
         <div class="liquid-glass-input rounded-xl p-3"><p class="font-bold text-gray-800 mb-1">Q. キャンセルについて</p><p class="text-gray-600">A. 合意後のキャンセルは申請→相手の同意が必要です。申請した側にペナルティが付きます（月3回で警告、8回超で一時停止）。</p></div>
         <div class="liquid-glass-input rounded-xl p-3"><p class="font-bold text-gray-800 mb-1">Q. 商品が届かない場合は？</p><p class="text-gray-600">A. まずは取引ルームで催促してください。運営は仲介・補償を行いません。</p></div>
         <div class="liquid-glass-input rounded-xl p-3"><p class="font-bold text-gray-800 mb-1">Q. 運営に問い合わせしたい</p><p class="text-gray-600">A. フッターまたはマイページから利用してください。返信には数日かかる場合があります。</p></div>
@@ -492,7 +492,7 @@
         <button onclick="closePrivacy()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
       </div>
       <div class="flex-1 overflow-y-auto text-[12px] text-gray-700 leading-relaxed space-y-4 bg-white/40 border border-white/60 rounded-xl p-3 shadow-inner">
-        <div><p class="font-bold text-gray-800 mb-1">1. 取得する情報</p><p>当サービスでは、Googleログインによる基本情報（UID、メールアドレス等）、およびユーザーが任意で入力したプロフィール情報（氏名、住所、電話番号、PayPay ID等）を取得・保存します。</p></div>
+        <div><p class="font-bold text-gray-800 mb-1">1. 取得する情報</p><p>当サービスでは、Googleログインによる基本情報（UID、メールアドレス等）、およびユーザーが任意で入力したプロフィール情報（氏名、住所、電話番号等）を取得・保存します。</p></div>
         <div><p class="font-bold text-gray-800 mb-1">2. 情報の利用目的</p><p>取得した個人情報は、ユーザー間での取引を成立させるための情報共有（取引相手への開示）、サービスの提供・運営、およびお問い合わせ対応のためにのみ利用します。</p></div>
         <div><p class="font-bold text-gray-800 mb-1">3. 第三者への開示・提供</p><p>当サービスは、ユーザー間の取引において成立後に取引相手へ情報を開示する場合、または法令に基づく場合を除き、事前の同意なく個人情報を第三者に提供・開示することはありません。</p></div>
         <div><p class="font-bold text-gray-800 mb-1">4. 情報の保護と管理</p><p>ユーザーの個人情報はFirebaseの強固なセキュリティルールにより保護され、取引の当事者およびシステム管理者以外がアクセスすることはできません。ユーザーがアカウントの削除を希望する場合、またはデータ削除の要請があった場合、速やかにデータを削除します。</p></div>
@@ -552,7 +552,7 @@
         <button onclick="closeMyPage(); openPwaGuideModal();" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">📱 アプリ登録（ホーム画面追加）</span><span class="text-gray-400">›</span></button>
         <button onclick="closeMyPage(); openProfileModal('basic')" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">✏️ プロフィール・写真</span><span class="text-gray-400">›</span></button>
         <button onclick="closeMyPage(); openProfileModal('address')" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">📦 住所・配送先</span><span class="text-gray-400">›</span></button>
-        <button onclick="closeMyPage(); openProfileModal('paypay')" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">💳 PayPay ID</span><span class="text-gray-400">›</span></button>
+        <button onclick="closeMyPage(); openAzukariGuide()" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">🔒 アズカリ決済ガイド</span><span class="text-gray-400">›</span></button>
         <button onclick="closeMyPage(); openNotificationsModal()" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">🔔 通知一覧</span><span class="text-gray-400">›</span></button>
         <button onclick="closeMyPage(); openProfileModal('push')" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">📢 プッシュ通知設定</span><span class="text-gray-400">›</span></button>
         <button onclick="closeMyPage(); openProfileModal('block')" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">🚫 ブロック管理</span><span class="text-gray-400">›</span></button>
@@ -591,7 +591,7 @@
           <h4 id="wallet-month-title" class="text-xs font-medium text-gray-500 mb-2">〇月のアナリティクス</h4>
           <div class="bg-gradient-to-br from-pink-400/90 to-pink-500/90 backdrop-blur border border-white/40 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden">
             <div class="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white opacity-20 rounded-full blur-xl"></div>
-            <p class="text-xs font-medium opacity-90 mb-1 drop-shadow">今月の確定売上（PayPay受取）</p>
+            <p class="text-xs font-medium opacity-90 mb-1 drop-shadow">今月の確定売上（アズカリ受取）</p>
             <div class="flex items-baseline space-x-1"><span id="wallet-total" class="text-3xl font-bold tracking-tight drop-shadow-md">￥0</span></div>
             <div class="mt-3 pt-3 border-t border-white/30 flex justify-between items-center text-xs font-medium"><span>成立した取引数</span><span id="wallet-count">0 件</span></div>
           </div>
@@ -600,7 +600,7 @@
           <div><p class="text-[11px] font-medium text-gray-600">進行中の売上見込み</p><p class="text-[9px] text-gray-500">（まだ受取完了していない取引）</p></div>
           <span id="wallet-pending" class="text-lg font-bold text-gray-800">￥0</span>
         </div>
-        <p class="text-[10px] text-gray-500 leading-relaxed text-center font-medium">※代金はすべてPayPayで直接やり取りされます。</p>
+        <p class="text-[10px] text-gray-500 leading-relaxed text-center font-medium">※代金はアズカリ（エスクロー）を通して安全にやり取りされます。</p>
       </div>
       <div class="pt-2 border-t border-purple-200/50 shrink-0">
         <button onclick="closeWalletModal()" class="w-full bg-white/60 text-gray-700 border border-white font-medium py-2.5 rounded-full hover:bg-white transition text-sm shadow-sm">閉じる</button>
@@ -666,7 +666,16 @@
         <div><label class="block font-medium text-gray-700 mb-1">電話番号（任意・伝票用）</label><input type="text" id="profile-phone" maxlength="20" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
       </div>
       <div id="profile-section-paypay" class="space-y-3 text-xs md:text-sm hidden">
-        <div><label class="block font-medium text-gray-700 mb-1">💳 PayPay ID（受取用）</label><input type="text" id="profile-paypay" maxlength="50" placeholder="例: paypay_id_123" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"><p class="text-[10px] text-gray-500 mt-1">取引時に相手に共有されます。</p></div>
+        <div class="bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-xl p-3.5 space-y-2">
+          <p class="font-bold text-sm text-blue-900">🔒 新規取引はアズカリ</p>
+          <p class="text-[11px] text-gray-700 leading-relaxed">新しく始まる有料取引は<strong>アズカリ</strong>（エスクロー）が原則です。切り替え前から続いている取引は、従来どおりPayPayでも完了できます。</p>
+          <button type="button" onclick="openAzukariApp()" class="w-full bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-bold py-2.5 rounded-full shadow-md border border-white/30 mt-1">アズカリアプリを開く</button>
+        </div>
+        <div>
+          <label class="block font-medium text-gray-700 mb-1">💳 PayPay ID（既存取引用・任意）</label>
+          <input type="text" id="profile-paypay" maxlength="50" placeholder="例: paypay_id_123" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800">
+          <p class="text-[10px] text-gray-500 mt-1">切り替え前の取引で使う場合のみ。新規はアズカリを利用してください。</p>
+        </div>
       </div>
       <div id="profile-section-push" class="space-y-3 text-xs md:text-sm hidden">
         <div>
@@ -711,7 +720,7 @@
         </div>
         <div><label id="label-give" class="block font-medium text-gray-700 mb-1">【譲】（出すもの）</label><input type="text" id="input-give" maxlength="100" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
         <div id="want-container"><label id="label-want" class="block font-medium text-gray-700 mb-1">【求】（希望するもの）</label><input type="text" id="input-want" maxlength="100" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
-        <div id="price-container" class="hidden"><label class="block font-medium text-gray-700 mb-1">希望価格（円・PayPay送金）</label><input type="number" id="input-price" min="1" max="100000" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
+        <div id="price-container" class="hidden"><label class="block font-medium text-gray-700 mb-1">希望価格（円・アズカリ決済）</label><input type="number" id="input-price" min="1" max="100000" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
         <div id="condition-container">
           <label class="block font-medium text-gray-700 mb-1">商品の状態 <span class="text-pink-600">必須</span></label>
           <select id="input-condition" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800">
@@ -887,7 +896,7 @@
       </div>
       <div class="px-3 py-2 bg-white/30 border-b border-white/50 flex gap-2 overflow-x-auto shrink-0 text-[11px] hide-scrollbar">
         <button onclick="sendQuickMsg('よろしくおねがいします！')" class="bg-white/80 border border-white px-3 py-1.5 rounded-full text-purple-700 font-medium shrink-0 hover:bg-white shadow-sm transition">👋 よろしくお願いします</button>
-        <button onclick="sendQuickMsg('PayPayで送金しますので、リンクまたはPayPay IDを教えてください！')" class="bg-pink-50 border border-white px-3 py-1.5 rounded-full text-pink-700 font-medium shrink-0 hover:bg-pink-100 shadow-sm transition">💳 PayPay案内</button>
+        <button onclick="sendQuickMsg('アズカリで決済しましょう！取引ルームの「アズカリで決済」ボタンからアプリを開けます。')" class="bg-pink-50 border border-white px-3 py-1.5 rounded-full text-pink-700 font-medium shrink-0 hover:bg-pink-100 shadow-sm transition">💳 アズカリ案内</button>
         <button onclick="sendQuickMsg('水濡れ・折れ防止をして発送いたします！')" class="bg-white/80 border border-white px-3 py-1.5 rounded-full text-purple-700 font-medium shrink-0 hover:bg-white shadow-sm transition">📦 梱包します</button>
         <button onclick="sendQuickMsg('本日発送いたしました！到着までお待ちください。')" class="bg-white/80 border border-white px-3 py-1.5 rounded-full text-purple-700 font-medium shrink-0 hover:bg-white shadow-sm transition">📮 発送完了</button>
         <button onclick="sendQuickMsg('無事に受け取りました！丁寧な取引ありがとうございました✨')" class="bg-white/80 border border-white px-3 py-1.5 rounded-full text-purple-700 font-medium shrink-0 hover:bg-white shadow-sm transition">✨ 受取完了</button>
@@ -947,7 +956,7 @@
         </div>
         <div><p class="font-bold text-gray-800 mb-1">3. 禁止事項</p><ul class="list-disc pl-4 space-y-1"><li>詐欺、虚偽の出品、連絡放棄、未発送</li><li>偽造品・不正シリアルの出品</li><li>誹謗中傷、嫌がらせ</li><li>複数アカウントの作成、なりすまし</li><li>商業目的の大量出品・転売</li></ul></div>
         <div><p class="font-bold text-gray-800 mb-1">4. アカウントについて</p><p>Googleアカウントでのログインが必要です。</p></div>
-        <div><p class="font-bold text-gray-800 mb-1">5. 取引について</p><p>代金のやり取りは原則PayPayとします。合意前であれば双方合意でキャンセル可能です。</p></div>
+        <div><p class="font-bold text-gray-800 mb-1">5. 取引について</p><p>代金のやり取りは原則アズカリ（エスクロー決済）とします。合意前であれば双方合意でキャンセル可能です。</p></div>
         <div>
           <p class="font-bold text-gray-800 mb-1">6. 合意後のキャンセルとペナルティ</p>
           <p>合意後（発送段階）にキャンセルを申請する場合は、相手の同意が必要です。<b>申請した側にペナルティが付きます。</b></p>
@@ -1206,7 +1215,7 @@ getRedirectResult(auth)
       }
       if (p.kind === "serial" && p.deadline) L.push("有効期限 " + p.deadline.slice(5).replace("-", "/"));
       if (p.description) L.push("", p.description);
-      if (p.isBuy || p.isSell || p.kind === "group") L.push("", "・PayPay");
+      if (p.isBuy || p.isSell || p.kind === "group") L.push("", usesAzukariPayment(p) ? "・アズカリ決済" : "・PayPay");
       if (link) L.push("", "詳細・申込はこちら", link);
       L.push("", "#ILLIT #アイリット " + (SHARE_TAG[type] || "#交換"));
       return L.join("\n");
@@ -1996,7 +2005,7 @@ getRedirectResult(auth)
     window.openProfileModal = function(section = "basic") {
       if (!currentUser) return;
       profileSection = section;
-      const titles = { basic: "✏️ プロフィール・写真", address: "📦 住所・配送先", paypay: "💳 PayPay ID", push: "📢 プッシュ通知", block: "🚫 ブロック管理" };
+      const titles = { basic: "✏️ プロフィール・写真", address: "📦 住所・配送先", paypay: "🔒 アズカリ決済ガイド", push: "📢 プッシュ通知", block: "🚫 ブロック管理" };
       document.getElementById("profile-modal-title").innerText = titles[section] || "設定";
       ["basic","address","paypay","push","block"].forEach(s => {
         const el = document.getElementById("profile-section-" + s);
@@ -2005,7 +2014,7 @@ getRedirectResult(auth)
       const s = userData.profile || {};
       pendingProfilePhoto = null;
       document.getElementById("profile-nickname").value = s.nickname || "";
-      document.getElementById("profile-paypay").value = s.paypay || "";
+      const pp = document.getElementById("profile-paypay"); if (pp) pp.value = s.paypay || "";
       document.getElementById("profile-name").value = s.name || currentUser.displayName || "";
       document.getElementById("profile-zip").value = s.zip || "";
       document.getElementById("profile-address1").value = s.address1 || "";
@@ -2046,7 +2055,7 @@ getRedirectResult(auth)
       if (!currentUser) return;
       const p = {
         nickname: document.getElementById("profile-nickname").value.trim(),
-        paypay: document.getElementById("profile-paypay").value.trim(),
+        paypay: (document.getElementById("profile-paypay") && document.getElementById("profile-paypay").value || "").trim(),
         name: document.getElementById("profile-name").value.trim(),
         zip: document.getElementById("profile-zip").value.trim(),
         address1: document.getElementById("profile-address1").value.trim(),
@@ -2291,7 +2300,8 @@ getRedirectResult(auth)
           status: "active", photoCount: postPhotos.length, thumb: postPhotos.length > 0 ? postPhotos[0].thumb : "",
           userId: currentUser.uid, userName: getMyDisplayName(), userPhoto: getMyProfile()?.photo || "",
           likesCount: 0, createdAt: serverTimestamp(),
-          deviceId: getOrCreateDeviceId()
+          deviceId: getOrCreateDeviceId(),
+          paymentMethod: "azukari"
         });
         for (let i = 0; i < postPhotos.length; i++) await addDoc(collection(db, "posts", ref.id, "photos"), { data: postPhotos[i].full, order: i, createdAt: serverTimestamp() });
         
@@ -2325,7 +2335,8 @@ getRedirectResult(auth)
           deadline: dl, description: note, status: "active",
           userId: currentUser.uid, userName: getMyDisplayName(), userPhoto: getMyProfile()?.photo || "",
           likesCount: 0, createdAt: serverTimestamp(),
-          deviceId: getOrCreateDeviceId()
+          deviceId: getOrCreateDeviceId(),
+          paymentMethod: "azukari"
         });
         
         showToast("出品が完了しました！詳細画面からXでシェアできます", "success");
@@ -2357,7 +2368,8 @@ getRedirectResult(auth)
           shipping: ship, deadline: dl, description: desc, status: "active", joinsCount: 0,
           userId: currentUser.uid, userName: getMyDisplayName(), userPhoto: getMyProfile()?.photo || "",
           likesCount: 0, createdAt: serverTimestamp(),
-          deviceId: getOrCreateDeviceId()
+          deviceId: getOrCreateDeviceId(),
+          paymentMethod: "azukari"
         });
         for (let i = 0; i < postPhotos.length; i++) await addDoc(collection(db, "posts", ref.id, "photos"), { data: postPhotos[i].full, order: i, createdAt: serverTimestamp() });
         
@@ -2440,7 +2452,7 @@ getRedirectResult(auth)
       const setStatus = (id, ok, okText, ngText) => { const el = document.getElementById(id); if (!el) return; el.innerText = ok ? okText : ngText; el.className = "text-[11px] font-bold mt-1 " + (ok ? "text-green-600" : "text-pink-600"); };
       const prof = getMyProfile();
       setStatus("sell-status-address", !!(currentUser && hasShippingInfo()), "✅ 登録済み", currentUser ? "⚠️ 未登録（申し込みに必要です）" : "ログインすると設定できます");
-      setStatus("sell-status-paypay", !!(prof && prof.paypay), "✅ 登録済み", currentUser ? "未登録" : "ログインすると設定できます");
+      const azEl = document.getElementById("sell-status-azukari"); if (azEl) { azEl.innerText = "✅ 推奨決済方法"; azEl.className = "text-[11px] font-bold mt-1 text-green-600"; }
       setStatus("sell-status-push", !!(currentUser && localStorage.getItem(pushStorageKey())), "✅ オン", currentUser ? "オフ" : "ログインすると設定できます");
     }
 
@@ -2626,7 +2638,7 @@ getRedirectResult(auth)
       document.getElementById("detail-give-box").querySelector("span").innerText = isGroup ? "商品" : (isBuy ? "求" : "譲");
       document.getElementById("detail-want-box").classList.toggle("hidden", isBuy || isGroup || p.isSell);
       document.getElementById("detail-price-box").classList.toggle("hidden", !(isBuy || isGroup || p.isSell));
-      if (isGroup || isBuy || p.isSell) document.getElementById("detail-price").innerText = "￥" + Number(p.price || 0).toLocaleString() + "（PayPay）";
+      if (isGroup || isBuy || p.isSell) document.getElementById("detail-price").innerText = "￥" + Number(p.price || 0).toLocaleString() + "（" + paymentLabel(p) + "）";
       const condBox = document.getElementById("detail-condition-box");
       if (p.condition && CONDITION_LABEL[p.condition]) {
         condBox.classList.remove("hidden");
@@ -2791,6 +2803,7 @@ getRedirectResult(auth)
           postDeadline: p.deadline || "",
           postPhotoCount: p.photoCount || 0,
           postCondition: p.condition || "",
+          paymentMethod: p.paymentMethod || (usesAzukariPayment(p) ? "azukari" : "paypay"),
           ownerId: p.userId,
           ownerName: p.userName,
           applicantId: currentUser.uid,
@@ -2862,7 +2875,9 @@ getRedirectResult(auth)
         });
         p.joinsCount = (typeof p.joinsCount === "number" ? p.joinsCount : 0) + 1;
         (groupJoins[p.id] = groupJoins[p.id] || []).push({ id: currentUser.uid, userName: getMyDisplayName(), bundleChoice: bc });
-        const ref = await addDoc(collection(db, "trades"), { kind: "group", isBuy: false, postId: p.id, postGive: p.give, postWant: "", postPrice: p.price || 0, postMember: p.member || "指定なし", postDeadline: p.deadline || "", postPhotoCount: p.photoCount || 0, postTarget: p.target || 0, postBundle: p.bundle || "ng", postBundleNote: p.bundleNote || "", bundleChoice: bc, ownerId: p.userId, ownerName: p.userName, applicantId: currentUser.uid, applicantName: getMyDisplayName(), participants: [p.userId, currentUser.uid], status: "negotiating", agreed: {}, shipped: {}, received: {}, disputed: {}, lastMessageAt: serverTimestamp(), lastSenderId: currentUser.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), deviceId: getOrCreateDeviceId() });
+        const ref = await addDoc(collection(db, "trades"), { kind: "group", isBuy: false, postId: p.id, postGive: p.give, postWant: "", postPrice: p.price || 0, postMember: p.member || "指定なし", postDeadline: p.deadline || "", postPhotoCount: p.photoCount || 0, postTarget: p.target || 0, postBundle: p.bundle || "ng", postBundleNote: p.bundleNote || "", bundleChoice: bc,
+          paymentMethod: p.paymentMethod || (usesAzukariPayment(p) ? "azukari" : "paypay"),
+          ownerId: p.userId, ownerName: p.userName, applicantId: currentUser.uid, applicantName: getMyDisplayName(), participants: [p.userId, currentUser.uid], status: "negotiating", agreed: {}, shipped: {}, received: {}, disputed: {}, lastMessageAt: serverTimestamp(), lastSenderId: currentUser.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), deviceId: getOrCreateDeviceId() });
         closeDetailModal(); openTrade(ref.id);
       } catch(e) {
         const msg = e && e.message;
@@ -3010,22 +3025,105 @@ getRedirectResult(auth)
     async function renderRoomPayPayBox() {
       const el = document.getElementById("room-paypay-box");
       if (!currentTrade || currentTrade.status !== "shipping") { el.innerHTML = ""; return; }
-      const myPayPay = getMyProfile()?.paypay || "";
-      const receiverId = currentTrade.isBuy ? currentTrade.applicantId : currentTrade.ownerId; // 受け取る側だけが請求リンクを出せる
-      const showLink = isPayTrade(currentTrade) && currentUser.uid === receiverId;
-      const amtTxt = isPayTrade(currentTrade) ? '￥' + Number(currentTrade.postPrice || 0).toLocaleString() : '';
-      el.innerHTML = `<div class="bg-pink-100/70 backdrop-blur rounded-xl p-4 border border-pink-200 space-y-3 shadow-sm"><div class="flex items-center justify-between"><div class="text-xs font-medium text-pink-800">💳 PayPay送金</div><span class="text-[11px] font-medium text-pink-700 bg-white/70 px-2 py-0.5 rounded-full shadow-sm">${amtTxt}</span></div><div class="flex items-center space-x-2"><input type="text" id="chat-paypay-input" value="${escapeHtml(myPayPay)}" placeholder="あなたのPayPay ID" class="liquid-glass-input flex-1 rounded-xl p-2 text-xs focus:ring-pink-400"><button onclick="sendMyPayPayId()" class="bg-pink-500 hover:bg-pink-600 text-white font-medium text-xs px-3 py-2 rounded-full transition shadow-md border border-pink-400">IDを送る</button></div>${showLink ? `<div class="border-t border-pink-300 pt-3 space-y-2"><div class="text-[11px] font-medium text-pink-800">⚡ ワンタップ送金リンク</div><div class="flex items-center space-x-2"><input type="text" id="chat-paypay-link" placeholder="https://pay.paypay.ne.jp/..." class="liquid-glass-input flex-1 rounded-xl p-2 text-xs focus:ring-pink-400"><button onclick="sendPayPayLink()" class="bg-pink-500 hover:bg-pink-600 text-white font-medium text-xs px-3 py-2 rounded-full transition shadow-md border border-pink-400">リンク送信</button></div></div>` : ''}</div>`;
+      if (!isPayTrade(currentTrade)) { el.innerHTML = ""; return; }
+      const amtTxt = "￥" + Number(currentTrade.postPrice || 0).toLocaleString();
+      const az = usesAzukariPayment(currentTrade);
+      const iAmOwner = currentUser.uid === currentTrade.ownerId;
+      const iAmPayer = currentTrade.isBuy ? iAmOwner : !iAmOwner;
+
+      if (!az) {
+        // ===== 既存取引：PayPay =====
+        const myPayPay = getMyProfile()?.paypay || "";
+        const receiverId = currentTrade.isBuy ? currentTrade.applicantId : currentTrade.ownerId;
+        const showLink = currentUser.uid === receiverId;
+        el.innerHTML = `<div class="bg-pink-100/70 backdrop-blur rounded-xl p-4 border border-pink-200 space-y-3 shadow-sm">
+          <div class="flex items-center justify-between">
+            <div class="text-xs font-medium text-pink-800">💳 PayPay送金</div>
+            <span class="text-[11px] font-medium text-pink-700 bg-white/70 px-2 py-0.5 rounded-full shadow-sm">${amtTxt}</span>
+          </div>
+          <p class="text-[10px] text-pink-800/80">※この取引はPayPayでのやり取りです（切り替え前の取引）</p>
+          <div class="flex items-center space-x-2">
+            <input type="text" id="chat-paypay-input" value="${escapeHtml(myPayPay)}" placeholder="あなたのPayPay ID" class="liquid-glass-input flex-1 rounded-xl p-2 text-xs focus:ring-pink-400">
+            <button onclick="sendMyPayPayId()" class="bg-pink-500 hover:bg-pink-600 text-white font-medium text-xs px-3 py-2 rounded-full transition shadow-md border border-pink-400">IDを送る</button>
+          </div>
+          ${showLink ? `<div class="border-t border-pink-300 pt-3 space-y-2"><div class="text-[11px] font-medium text-pink-800">⚡ ワンタップ送金リンク</div><div class="flex items-center space-x-2"><input type="text" id="chat-paypay-link" placeholder="https://pay.paypay.ne.jp/..." class="liquid-glass-input flex-1 rounded-xl p-2 text-xs focus:ring-pink-400"><button onclick="sendPayPayLink()" class="bg-pink-500 hover:bg-pink-600 text-white font-medium text-xs px-3 py-2 rounded-full transition shadow-md border border-pink-400">リンク送信</button></div></div>` : ""}
+        </div>`;
+        return;
+      }
+
+      // ===== 新規取引：アズカリ =====
+      const roleHint = iAmPayer
+        ? "あなたが支払い側です。下のボタンからアズカリを開き、約束メモを作成／支払いしてください。"
+        : "相手がアズカリで支払います。約束メモのリンクが届いたら確認し、商品到着後にロック解除してもらってください。";
+      el.innerHTML = `<div class="bg-gradient-to-br from-blue-50/90 to-cyan-50/90 backdrop-blur rounded-xl p-4 border border-blue-200 space-y-3 shadow-sm">
+        <div class="flex items-center justify-between">
+          <div class="text-xs font-bold text-blue-900 flex items-center gap-1.5">🔒 アズカリ決済</div>
+          <span class="text-[11px] font-bold text-blue-800 bg-white/80 px-2.5 py-0.5 rounded-full shadow-sm">${amtTxt}</span>
+        </div>
+        <p class="text-[11px] text-gray-700 leading-relaxed">${roleHint}</p>
+        <div class="space-y-2">
+          <button onclick="openAzukariApp()" class="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:opacity-90 text-white font-bold text-sm py-3 rounded-full transition shadow-md border border-white/40">アプリでアズカリを開く</button>
+          <button onclick="window.open('https://azkari.jp/','_blank')" class="w-full bg-white/90 border border-blue-200 text-blue-800 font-medium text-xs py-2.5 rounded-full hover:bg-white transition">公式サイト（Web版）を開く</button>
+        </div>
+        <div class="bg-white/70 rounded-xl p-2.5 text-[10px] text-gray-600 leading-relaxed border border-white">
+          <b>流れ：</b>①売る人が約束メモ作成 → ②買う人がアズカリに支払い（ロック） → ③商品受取後、買う人がロック解除 → ④売る人が受取
+        </div>
+        <button onclick="sendQuickMsg('アズカリの約束メモを作成しました。リンクを送りますので、アプリまたはWebから支払いをお願いします！')" class="w-full bg-white/80 border border-white text-blue-700 font-medium text-[11px] py-2 rounded-full hover:bg-white transition">💬 「約束メモ作成した」を送る</button>
+      </div>`;
     }
+    
+    
     window.sendPayPayLink = async function() {
-      if (!currentTrade || !currentUser) return; const url = document.getElementById("chat-paypay-link")?.value.trim();
+      if (!currentTrade || !currentUser) return;
+      const url = document.getElementById("chat-paypay-link")?.value.trim();
       if (!PAYPAY_LINK_RE.test(url)) return alert("PayPayのリンクを貼り付けてください。");
-      try { await postMessage({ senderId: currentUser.uid, senderName: getMyDisplayName(), text: `【PayPay請求リンク】\n${url}\n金額: ￥${Number(currentTrade.postPrice || 0).toLocaleString()}`, createdAt: serverTimestamp() }); alert("送信しました！"); } catch(e){}
+      try {
+        await postMessage({
+          senderId: currentUser.uid, senderName: getMyDisplayName(),
+          text: `【PayPay請求リンク】\n${url}\n金額: ￥${Number(currentTrade.postPrice || 0).toLocaleString()}`,
+          createdAt: serverTimestamp()
+        });
+        alert("送信しました！");
+      } catch (e) {}
     };
     window.sendMyPayPayId = async function() {
-      if (!currentTrade || !currentUser) return; const idVal = document.getElementById("chat-paypay-input")?.value.trim();
+      if (!currentTrade || !currentUser) return;
+      const idVal = document.getElementById("chat-paypay-input")?.value.trim();
       if (!idVal) return alert("PayPay IDを入力してください。");
-      try { await postMessage({ senderId: currentUser.uid, senderName: getMyDisplayName(), text: `【PayPay受取用 ID】\n${idVal}\n（タップしてコピーしてください）`, createdAt: serverTimestamp() }); alert("送信しました！"); } catch(e){}
+      try {
+        await postMessage({
+          senderId: currentUser.uid, senderName: getMyDisplayName(),
+          text: `【PayPay受取用 ID】\n${idVal}\n（タップしてコピーしてください）`,
+          createdAt: serverTimestamp()
+        });
+        alert("送信しました！");
+      } catch (e) {}
     };
+window.openAzukariApp = function() {
+      const ua = navigator.userAgent || "";
+      const isIOS = /iPhone|iPad|iPod/i.test(ua);
+      const isAndroid = /Android/i.test(ua);
+      // 1) Web（約束メモ共有URLを開ける） 2) ストアへフォールバック
+      // アズカリは https://azkari.jp/ のリンクからアプリ誘導されるため、まず公式を開く
+      const web = "https://azkari.jp/";
+      const iosStore = "https://apps.apple.com/jp/app/id1408478462";
+      const androidStore = "https://play.google.com/store/apps/details?id=jp.azkari";
+      if (isIOS) {
+        // アプリが入っていればサイト経由で起動、なければストア
+        window.open(web, "_blank");
+        setTimeout(() => { try { window.location.href = iosStore; } catch(e){} }, 1500);
+      } else if (isAndroid) {
+        // Android Intent でアプリ優先
+        const intent = "intent://azkari.jp/#Intent;scheme=https;package=jp.azkari;S.browser_fallback_url=" + encodeURIComponent(androidStore) + ";end";
+        try { window.location.href = intent; } catch(e) { window.open(web, "_blank"); }
+      } else {
+        window.open(web, "_blank");
+      }
+    };
+    window.openAzukariGuide = function() {
+      openProfileModal("paypay"); // reuse section id which now shows Azukari guide
+    };
+    window.sendMyPayPayId = async function() { /* deprecated */ };
     window.copyAmount = function(amt) { navigator.clipboard.writeText(String(amt)).then(()=>alert(`コピー完了`)).catch(()=>{}); };
 
     window.openTrade = function(id) {
@@ -3159,7 +3257,7 @@ getRedirectResult(auth)
       const uid = currentUser.uid, iAmOwner = uid === t.ownerId, otherId = iAmOwner ? t.applicantId : t.ownerId, otherName = iAmOwner ? t.applicantName : t.ownerName, payFlow = isPayTrade(t);
       const iAmPayer = t.isBuy ? iAmOwner : !iAmOwner; // 買取は出品者が支払う側
       document.getElementById("room-title").innerText = otherName + " さんとの取引";
-      const order = ["negotiating", "shipping", "completed"], labels = payFlow ? ["① 条件確認", "② 送金・発送", "③ 完了"] : ["① 交渉・合意", "② 発送・受取", "③ 完了"];
+      const order = ["negotiating", "shipping", "completed"], labels = payFlow ? ["① 条件確認", usesAzukariPayment(t) ? "② アズカリ決済・発送" : "② 送金・発送", "③ 完了"] : ["① 交渉・合意", "② 発送・受取", "③ 完了"];
       const idx = order.indexOf(t.status); const on = payFlow ? "bg-gradient-to-r from-pink-400 to-pink-500 text-white shadow-md border border-white/50" : "bg-gradient-to-r from-illit-purple to-illit-accent text-white shadow-md border border-white/50";
       document.getElementById("room-steps").innerHTML = t.status === "cancelled" ? '<div class="text-xs font-medium text-gray-600 bg-white/60 border border-white rounded-xl p-2 text-center shadow-sm">この取引はキャンセルされました</div>' : '<div class="flex space-x-2">' + labels.map((l, i) => `<div class="flex-1 text-center text-[10px] font-medium py-2 rounded-xl border ${i <= idx ? on : "bg-white/40 border-white text-gray-500"}">${l}</div>`).join("") + "</div>";
       document.getElementById("room-info").innerHTML = `<div class="bg-white/60 backdrop-blur rounded-xl p-3 text-xs space-y-1 border shadow-sm border-white"><div class="font-medium text-gray-900">${escapeHtml(t.postGive)}</div></div>`;
@@ -3181,7 +3279,7 @@ getRedirectResult(auth)
       } else if (t.status === "shipping") {
         const myS = flag(t, "shipped", uid), otherS = flag(t, "shipped", otherId);
         const myR = flag(t, "received", uid), otherR = flag(t, "received", otherId);
-        html += `<div class="text-xs text-gray-700 font-medium bg-white/50 p-3 rounded-lg border border-white shadow-inner space-y-1"><div>送金/発送: あなた ${mark(myS)} ／ 相手 ${mark(otherS)}</div><div>受取確認: あなた ${mark(myR)} ／ 相手 ${mark(otherR)}</div></div>${!myS ? `<button onclick="tradeAction('shipped')" class="${payFlow ? pinkBtn : primary} mt-2">${payFlow ? (iAmPayer ? '送金した' : '送った・確認した') : '発送した'}</button>` : ''}${otherS && !myR ? `<button onclick="tradeAction('received')" class="${btn} bg-gradient-to-r from-green-400 to-green-500 text-white hover:opacity-90 mt-2">完了確認</button>` : ''}`;
+        html += `<div class="text-xs text-gray-700 font-medium bg-white/50 p-3 rounded-lg border border-white shadow-inner space-y-1"><div>決済/発送: あなた ${mark(myS)} ／ 相手 ${mark(otherS)}</div><div>受取確認: あなた ${mark(myR)} ／ 相手 ${mark(otherR)}</div></div>${!myS ? `<button onclick="tradeAction('shipped')" class="${payFlow ? pinkBtn : primary} mt-2">${payFlow ? (usesAzukariPayment(t) ? (iAmPayer ? 'アズカリ支払い完了' : '発送した・支払い確認') : (iAmPayer ? '送金した' : '送った・確認した')) : '発送した'}</button>` : ''}${otherS && !myR ? `<button onclick="tradeAction('received')" class="${btn} bg-gradient-to-r from-green-400 to-green-500 text-white hover:opacity-90 mt-2">完了確認</button>` : ''}`;
         if (!t.cancelRequest) {
           html += `<div class="mt-3 pt-3 border-t border-red-200/50">
             <p class="text-[10px] text-red-600 mb-2 font-medium bg-white/50 p-2 rounded-lg border border-red-200 shadow-inner">※合意後のキャンセルは申請した側にペナルティが付きます（月3回で警告・8回超で一時停止）</p>
@@ -3260,6 +3358,21 @@ getRedirectResult(auth)
       try { await setDoc(doc(db, "reviews", t.id + "_" + currentUser.uid), { tradeId: t.id, fromId: currentUser.uid, toId: toId, rating: selectedRating, createdAt: serverTimestamp(), deviceId: getOrCreateDeviceId() }); reviewState.done = true; renderRoom(); } catch(e) { alert("失敗しました。"); }
     };
 
+    // この日時以降に作成された出品・取引はアズカリ表示（既存はPayPay）
+    // 必要なら日付だけ変えてください
+    const PAYMENT_SWITCH_AT = "2026-11-12T00:00:00+09:00";
+    function usesAzukariPayment(entity) {
+      if (!entity) return true;
+      if (entity.paymentMethod === "azukari") return true;
+      if (entity.paymentMethod === "paypay") return false;
+      const ms = (entity.createdAt && entity.createdAt.toMillis) ? entity.createdAt.toMillis()
+        : (typeof entity.createdAt === "number" ? entity.createdAt : 0);
+      if (!ms) return true; // 新規作成直後など
+      return ms >= new Date(PAYMENT_SWITCH_AT).getTime();
+    }
+    function paymentLabel(entity) {
+      return usesAzukariPayment(entity) ? "アズカリ" : "PayPay";
+    }
     const TERMS_VERSION = "2026-11-09", TERMS_KEY = "illit_terms_version"; let termsSaving = false;
     function hasAgreedLocally() { try { return localStorage.getItem(TERMS_KEY) === TERMS_VERSION; } catch(e){ return false; } }
     window.openTerms = function(readOnly) {
