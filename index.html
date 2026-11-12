@@ -321,7 +321,7 @@
     </button>
     <button onclick="openTradesModal()" class="relative flex flex-col items-center justify-center w-[60px] h-[52px] text-gray-500 hover:text-gray-900 hover:bg-white/40 rounded-[1.5rem] transition">
       <svg class="w-6 h-6 mb-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
-      <span class="text-[9px] font-bold">取引</span>
+      <span class="text-[9px] font-bold">My トレカ</span>
       <span id="nav-trades-badge" class="hidden absolute top-1 right-2.5 bg-pink-500 text-white text-[8px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center border border-white"></span>
     </button>
     <button onclick="openMyPage()" class="flex flex-col items-center justify-center w-[60px] h-[52px] text-gray-500 hover:text-gray-900 hover:bg-white/40 rounded-[1.5rem] transition">
@@ -976,7 +976,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { getFirestore, collection, collectionGroup, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, where, orderBy, limit, startAfter, onSnapshot, serverTimestamp, increment, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getMessaging, getToken, deleteToken, onMessage } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js";
 
@@ -2159,7 +2159,79 @@
       renderSellTab(); showToast("通知をオフにしました。", "info");
     };
 
-    window.loginWithGoogle = function() { signInWithPopup(auth, provider).catch(e => alert("ログインエラー: " + e.message)); };
+    // --- Googleログイン改善（PWA / iOS / LINE内ブラウザ対策） ---
+    function isStandalonePwa() {
+      return (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches)
+        || window.navigator.standalone === true
+        || document.referrer.includes("android-app://");
+    }
+    function isIos() {
+      return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    }
+    function isInAppBrowser() {
+      const ua = navigator.userAgent || "";
+      return /Line\//i.test(ua) || /FBAN|FBAV/i.test(ua) || /Instagram/i.test(ua) || /Twitter/i.test(ua) || /MicroMessenger/i.test(ua);
+    }
+    function shouldPreferRedirect() {
+      // popupはiOS・PWA・アプリ内ブラウザで network-request-failed になりやすい
+      return isStandalonePwa() || isIos() || isInAppBrowser();
+    }
+    function friendlyAuthError(e) {
+      const code = (e && e.code) || "";
+      const msg = (e && e.message) || String(e || "");
+      if (code === "auth/network-request-failed" || /network-request-failed/i.test(msg)) {
+        return "通信エラーでログインできませんでした。\n\n・ネット接続を確認\n・Safari / Chrome で開き直す\n・ホーム画面のアプリからではなく、一度ブラウザで試す\n・時間をおいて再度お試しください";
+      }
+      if (code === "auth/popup-blocked" || code === "auth/popup-closed-by-user") {
+        return "ログイン画面がブロックされたか閉じられました。\nもう一度お試しください。";
+      }
+      if (code === "auth/cancelled-popup-request") {
+        return "ログインがキャンセルされました。";
+      }
+      if (code === "auth/unauthorized-domain") {
+        return "このドメインはFirebaseに許可されていません。運営に連絡してください。";
+      }
+      return "ログインエラー: " + (msg || code || "不明なエラー");
+    }
+
+    window.loginWithGoogle = async function() {
+      try {
+        if (shouldPreferRedirect()) {
+          // iOS / PWA / LINE等は redirect の方が安定
+          await signInWithRedirect(auth, provider);
+          return;
+        }
+        await signInWithPopup(auth, provider);
+      } catch (e) {
+        const code = (e && e.code) || "";
+        // popup失敗時は redirect にフォールバック
+        if (code === "auth/network-request-failed" || code === "auth/popup-blocked" || code === "auth/popup-closed-by-user" || code === "auth/operation-not-supported-in-this-environment") {
+          try {
+            await signInWithRedirect(auth, provider);
+            return;
+          } catch (e2) {
+            alert(friendlyAuthError(e2));
+            return;
+          }
+        }
+        alert(friendlyAuthError(e));
+      }
+    };
+
+    // redirect から戻ってきた結果を処理
+    getRedirectResult(auth).then((result) => {
+      if (result && result.user) {
+        // onAuthStateChanged が処理するのでここではトースト程度
+        try { showToast("ログインしました", "success"); } catch (_) {}
+      }
+    }).catch((e) => {
+      // リダイレクト失敗もユーザーに分かるように
+      if (e && e.code && e.code !== "auth/credential-already-in-use") {
+        console.warn("getRedirectResult:", e);
+        // 起動直後の失敗はアラートしすぎない（ページ再読み込み時など）
+      }
+    });
+
     window.logout = async function() { closeRoom(); await removePushToken(); signOut(auth); };
 
     onAuthStateChanged(auth, (user) => {
