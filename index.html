@@ -1215,8 +1215,9 @@ getRedirectResult(auth)
       }
       if (p.kind === "serial" && p.deadline) L.push("有効期限 " + p.deadline.slice(5).replace("-", "/"));
       if (p.description) L.push("", p.description);
-      if (p.isBuy || p.isSell || p.kind === "group") L.push("", usesAzukariPayment(p) ? "・アズカリ決済" : "・PayPay");
+      if (p.isBuy || p.isSell || p.kind === "group") L.push("", usesAzukariPayment(p) ? "・クレカ支払いorコンビニ支払い(アズカリ決済)" : "・PayPay");
       if (link) L.push("", "詳細・申込はこちら", link);
+
       L.push("", "#ILLIT #アイリット " + (SHARE_TAG[type] || "#交換"));
       return L.join("\n");
     }
