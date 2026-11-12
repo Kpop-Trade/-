@@ -3461,11 +3461,10 @@ window.openAzukariApp = function() {
     if (isInApp) {
       const isIOS = /iPhone|iPad|iPod/i.test(ua);
       const promptElement = document.getElementById('inAppBrowserPrompt');
-      const messageElement = document.getElementById('
-              if (isIOS) {
-        messageElement.innerHTML = "アプリ内ブラウザではGoogleログインが制限されます。<br><br>画面下部の<strong class='text-illit-darkPurple font-bold'>「︙」をタップ ➔「🌐 ブラウザで開く」</strong><br><span class='text-[11px] text-gray-500'>（※または右下の🧭・共有アイコン ➔「Safariで開く」）</span><br>を選択してください。";
+      const messageElement = document.getElementById('promptMessage');
+      if (isIOS) {
+        messageElement.innerHTML = "X（Twitter）などのアプリ内ブラウザでは、Googleログインが制限されてしまいます。<br><br>お手数ですが、画面右下の<br><strong class='text-illit-darkPurple font-bold'>🧭コンパスアイコン（または共有アイコン）</strong><br>をタップして、<strong>「Safariで開く」</strong>を選択してください。";
       } else {
-
         messageElement.innerHTML = "アプリ内ブラウザでは、Googleログインが制限されてしまいます。<br><br>お手数ですが、画面右上の<br><strong class='text-illit-darkPurple font-bold'>︙（メニューアイコン）</strong><br>をタップして、<strong>「ブラウザで開く」</strong>を選択してください。";
       }
       promptElement.classList.remove('hidden');
