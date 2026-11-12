@@ -976,7 +976,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { getFirestore, collection, collectionGroup, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, where, orderBy, limit, startAfter, onSnapshot, serverTimestamp, increment, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getMessaging, getToken, deleteToken, onMessage } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js";
 
@@ -995,7 +995,33 @@
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: "select_account" });
     const VAPID_KEY = "BDDp7KKSAF7CUspZG5J6wnkIqJlwgPaabfUnjuAQd8EcIgeiVj8zzazsy_O4Ick_t8w__7NasrngncK102c7wWg";
+// PWA/モバイル判定
+function isPwaOrMobile() {
+  const standalone = window.matchMedia('(display-mode: standalone)').matches 
+                  || window.navigator.standalone === true
+                  || document.referrer.includes('android-app://');
+  const mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  return standalone || mobile;
+}
 
+// リダイレクト結果の処理
+getRedirectResult(auth)
+  .then((result) => {
+    if (result && result.user) {
+      console.log("Redirect login success:", result.user.uid);
+      setTimeout(() => {
+        if (typeof showToast === "function") showToast("ログインしました！", "success");
+      }, 600);
+    }
+  })
+  .catch((error) => {
+    console.error("Redirect result error:", error);
+    if (error.code === 'auth/account-exists-with-different-credential') {
+      alert("このメールアドレスは既に別の方法で登録されています。");
+    } else if (error.code && error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
+      alert("ログイン処理でエラーが発生しました: " + (error.message || error.code));
+    }
+  });
     const ADMIN_UIDS = ["Ay6VCS8HTgM3RqjDYZ0wKdHrSKz1", "GvVhAmT56GZjsWrl1YRaStB81im1"];
     function isAdmin() { return currentUser && ADMIN_UIDS.includes(currentUser.uid); }
 
