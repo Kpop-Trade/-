@@ -179,12 +179,12 @@
     <section id="post-menu-section" class="hidden space-y-5 pb-28">
       <!-- 件数カード -->
       <div class="grid grid-cols-2 gap-2.5">
-        <button onclick="openTradesModal()" class="liquid-glass rounded-2xl py-4 flex flex-col items-center gap-1 active:scale-95 transition">
+        <button onclick="openTradesModal('active')" class="liquid-glass rounded-2xl py-4 flex flex-col items-center gap-1 active:scale-95 transition">
           <svg class="w-7 h-7 text-gray-700" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linejoin="round" d="M4 9l2.5-4.5h11L20 9v10a1 1 0 01-1 1H5a1 1 0 01-1-1V9zM4 9h16"/></svg>
           <span class="text-xs text-gray-600 mt-1">取引中</span>
           <span class="text-base font-bold text-gray-900"><span id="sell-count-trading">0</span> 件</span>
         </button>
-        <button onclick="openTradesModal()" class="liquid-glass rounded-2xl py-4 flex flex-col items-center gap-1 active:scale-95 transition">
+        <button onclick="openTradesModal('done')" class="liquid-glass rounded-2xl py-4 flex flex-col items-center gap-1 active:scale-95 transition">
           <svg class="w-7 h-7 text-gray-700" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7.5"/></svg>
           <span class="text-xs text-gray-600 mt-1">完了</span>
           <span class="text-base font-bold text-gray-900"><span id="sell-count-done">0</span> 件</span>
@@ -2899,21 +2899,65 @@
       if (b2) { b2.innerText = n; b2.className = "absolute top-1 right-2.5 text-white text-[8px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center border border-white " + (unread > 0 ? "bg-pink-500" : "bg-gray-400") + (n === 0 ? " hidden" : ""); }
     }
 
-    window.openTradesModal = function() { renderTradesList(); document.getElementById("trades-modal").classList.remove("hidden"); };
+    const tradeSecOpen = { active: true, done: true, cancel_other: false, cancel_me: false, cancel_unknown: false };
+    window.tradeSecToggle = function(id, open) { tradeSecOpen[id] = !!open; };
+    window.openTradesModal = function(section) {
+      if (section && section in tradeSecOpen) tradeSecOpen[section] = true;
+      renderTradesList(); document.getElementById("trades-modal").classList.remove("hidden");
+      if (section) setTimeout(() => { const el = document.getElementById("trades-sec-" + section); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); }, 50);
+    };
     window.closeTradesModal = function() { document.getElementById("trades-modal").classList.add("hidden"); };
     document.getElementById("trades-list").addEventListener("click", (e) => {
       const b = e.target.closest("[data-trade-id]"); if (b) openTrade(b.dataset.tradeId);
     });
+    // キャンセルの主体： me=自分 / other=相手 / admin=運営 / unknown=記録なし（旧データ）
+    function cancelSide(t) {
+      if (t.adminCancelled) return "admin";
+      const by = t.cancelledBy || (t.cancelRequest && t.cancelRequest.by);
+      if (!by) return "unknown";
+      return by === currentUser.uid ? "me" : "other";
+    }
     window.renderTradesList = function() {
       const el = document.getElementById("trades-list");
       if (myTrades.length === 0) { el.innerHTML = '<p class="text-xs text-gray-500 text-center py-6 font-medium bg-white/30 rounded-xl p-4 shadow-inner">取引はありません。</p>'; return; }
-      el.innerHTML = myTrades.map((t) => {
+      const card = (t) => {
         const otherName = currentUser.uid === t.ownerId ? t.applicantName : t.ownerName;
+        let note = "";
+        if (t.status === "cancelled") {
+          const side = cancelSide(t);
+          const who = side === "admin" ? "運営によりキャンセル" : "";
+          const reason = t.cancelRequest && t.cancelRequest.reasonText ? "理由: " + t.cancelRequest.reasonText : "";
+          const text = [who, reason].filter(Boolean).join(" ／ ");
+          if (text) note = `<div class="text-[11px] text-gray-500 relative z-10">${escapeHtml(text)}</div>`;
+        }
         return `<button data-trade-id="${escapeHtml(t.id)}" class="w-full text-left liquid-glass-input rounded-2xl p-4 hover:bg-white/70 transition space-y-2 shadow-sm relative overflow-hidden group">
             <div class="flex justify-between items-center relative z-10"><span class="text-xs text-gray-700 font-medium">${escapeHtml(otherName)} さん</span><span class="flex items-center gap-1">${t.lastSenderId !== currentUser.uid && isUnread(t) ? '<span class="bg-pink-500 text-white text-[10px] font-medium px-2 py-0.5 rounded-full shadow-sm border border-white/50">新着</span>' : ''}<span class="text-[10px] font-medium px-2.5 py-0.5 rounded-full border shadow-sm ${STATUS_CLASS[t.status] || ''}">${STATUS_LABEL[t.status] || ""}</span></span></div>
-            <div class="text-sm font-medium text-gray-900 relative z-10">${escapeHtml(t.postGive)}</div>
+            <div class="text-sm font-medium text-gray-900 relative z-10">${escapeHtml(t.postGive)}</div>${note}
           </button>`;
-      }).join("");
+      };
+      const active = myTrades.filter(t => t.status === "negotiating" || t.status === "shipping");
+      const done = myTrades.filter(t => t.status === "completed");
+      const cancelled = myTrades.filter(t => t.status === "cancelled");
+      const byOther = cancelled.filter(t => { const x = cancelSide(t); return x === "other" || x === "admin"; });
+      const byMe = cancelled.filter(t => cancelSide(t) === "me");
+      const unknown = cancelled.filter(t => cancelSide(t) === "unknown");
+      const section = (id, title, list, emptyText) => {
+        if (list.length === 0 && !emptyText) return "";
+        return `<details id="trades-sec-${id}" ${tradeSecOpen[id] ? "open" : ""} ontoggle="tradeSecToggle('${id}', this.open)" class="group/sec">
+          <summary class="flex items-center justify-between cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden px-1 py-1.5">
+            <span class="font-bold text-sm text-gray-800">${title} <span class="text-xs font-medium text-gray-500">${list.length}件</span></span>
+            <span class="text-gray-400 text-xs">▾</span>
+          </summary>
+          <div class="space-y-3 mt-2">${list.length ? list.map(card).join("") : `<p class="text-xs text-gray-500 text-center py-3 bg-white/30 rounded-xl">${emptyText}</p>`}</div>
+        </details>`;
+      };
+      el.innerHTML = [
+        section("active", "💬 取引中", active, "取引中のものはありません。"),
+        section("done", "🎉 完了", done, ""),
+        section("cancel_other", "🚫 キャンセルされたもの", byOther, ""),
+        section("cancel_me", "↩️ キャンセルしたもの", byMe, ""),
+        section("cancel_unknown", "キャンセル（どちらか不明）", unknown, "")
+      ].join("");
     };
 
     function cleanupRoom() {
@@ -3166,7 +3210,7 @@
       if (!(await appConfirm("この取引をキャンセルしますか？\n相手にもキャンセルされたと表示されます。", "キャンセルする", true))) return;
       cancellingTrade = true;
       try {
-        await updateDoc(doc(db, "trades", t.id), { status: "cancelled", updatedAt: serverTimestamp() });
+        await updateDoc(doc(db, "trades", t.id), { status: "cancelled", cancelledBy: currentUser.uid, updatedAt: serverTimestamp() });
         // 投稿を active（出品中）に戻す
         await restorePostToActive(t.postId, t.kind, t.applicantId);
         showToast("取引をキャンセルしました。", "info");
