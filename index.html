@@ -3337,8 +3337,35 @@ getRedirectResult(auth)
       nav.addEventListener("contextmenu", (e) => e.preventDefault());
     })();
 
-    if (!hasAgreedLocally()) openTerms(false);
+      if (!hasAgreedLocally()) openTerms(false);
     renderFilters(); subscribePosts(); switchTab('home');
+
+    // 👇 追加：アプリ内ブラウザ（XやLINE）を検知して案内を出す処理 👇
+    const ua = navigator.userAgent;
+    const isInApp = /Twitter|FBAN|FBAV|Instagram|Line/i.test(ua);
+    if (isInApp) {
+      const isIOS = /iPhone|iPad|iPod/i.test(ua);
+      const promptElement = document.getElementById('inAppBrowserPrompt');
+      const messageElement = document.getElementById('promptMessage');
+      if (isIOS) {
+        messageElement.innerHTML = "X（旧Twitter）等のブラウザのままでは<br>Googleログインがブロックされてしまいます。<br><br>画面右下の<br><span class='text-yellow-300 font-bold text-xl'>🧭コンパスアイコン</span> または <span class='text-yellow-300 font-bold text-xl'>共有アイコン</span><br>をタップして<br><strong>Safari</strong> で開き直してください。";
+      } else {
+        messageElement.innerHTML = "X（旧Twitter）等のブラウザのままでは<br>Googleログインがブロックされてしまいます。<br><br>画面右上の<br><span class='text-yellow-300 font-bold text-xl'>︙（メニュー）</span><br>をタップして<br><strong>ブラウザ</strong> で開き直してください。";
+      }
+      promptElement.classList.remove('hidden');
+    }
   </script>
+
+  <!-- 👇 追加：Xから来た人だけに被せる案内画面 👇 -->
+  <div id="inAppBrowserPrompt" class="hidden fixed inset-0 z-[9999] bg-black/95 flex flex-col items-center justify-center p-6 text-white text-center backdrop-blur-md">
+    <div class="mb-6">
+      <svg class="w-16 h-16 mx-auto animate-bounce text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+      </svg>
+    </div>
+    <h2 class="text-xl font-bold mb-4">このままではログインできません😭</h2>
+    <p id="promptMessage" class="text-sm leading-relaxed bg-white/10 p-5 rounded-xl border border-white/20"></p>
+  </div>
 </body>
 </html>
+ 
