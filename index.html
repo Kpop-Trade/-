@@ -3022,7 +3022,7 @@ getRedirectResult(auth)
       el.innerHTML = `<div class="bg-white/60 rounded-xl p-3 border border-white flex items-center justify-between shadow-sm"><div class="text-xs font-medium text-gray-800">📦 配送先の共有</div><button onclick="sendMyAddress()" class="bg-white/80 hover:bg-white text-illit-darkPurple font-medium text-xs px-4 py-2 rounded-full transition shadow-md border border-white">住所を送る</button></div>`;
     }
     const PAYPAY_LINK_RE = /^https:\/\/(pay\.)?paypay\.ne\.jp\/[^\s]+$/;
-    async function renderRoomPayPayBox() {
+        async function renderRoomPayPayBox() {
       const el = document.getElementById("room-paypay-box");
       if (!currentTrade || currentTrade.status !== "shipping") { el.innerHTML = ""; return; }
       if (!isPayTrade(currentTrade)) { el.innerHTML = ""; return; }
@@ -3065,12 +3065,14 @@ getRedirectResult(auth)
           <button onclick="openAzukariApp()" class="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:opacity-90 text-white font-bold text-sm py-3 rounded-full transition shadow-md border border-white/40">アプリでアズカリを開く</button>
           <button onclick="window.open('https://azkari.jp/','_blank')" class="w-full bg-white/90 border border-blue-200 text-blue-800 font-medium text-xs py-2.5 rounded-full hover:bg-white transition">公式サイト（Web版）を開く</button>
         </div>
-        <div class="bg-white/70 rounded-xl p-2.5 text-[10px] text-gray-600 leading-relaxed border border-white">
-          <b>流れ：</b>①売る人が約束メモ作成 → ②買う人がアズカリに支払い（ロック） → ③商品受取後、買う人がロック解除 → ④売る人が受取
+        <div class="bg-white/70 rounded-xl p-2.5 text-[10px] text-gray-600 leading-relaxed border border-white space-y-1">
+          <div><b>流れ：</b>①売る人が約束メモ作成 → ②買う人がアズカリに支払い → ③商品受取後ロック解除 → ④売る人が受取</div>
+          <div class="text-amber-800 font-medium pt-1 border-t border-blue-100">※出品者が未成年の場合は「売るリンク」を作れないため、購入者（大人側など）がアズカリで買うリンクを作成してください。</div>
         </div>
         <button onclick="sendQuickMsg('アズカリの約束メモを作成しました。リンクを送りますので、アプリまたはWebから支払いをお願いします！')" class="w-full bg-white/80 border border-white text-blue-700 font-medium text-[11px] py-2 rounded-full hover:bg-white transition">💬 「約束メモ作成した」を送る</button>
       </div>`;
     }
+
     
     
     window.sendPayPayLink = async function() {
