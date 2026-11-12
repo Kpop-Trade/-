@@ -2159,7 +2159,7 @@
       renderSellTab(); showToast("通知をオフにしました。", "info");
     };
 
-    window.loginWithGoogle = function() { signInWithPopup(auth, provider).catch(e => alert("ログインエラー: " + e.message)); };
+    window.loginWithGoogle = function() { signInWithRedirect(auth, provider).catch(e => alert("ログインエラー: " + e.message)); };
     window.logout = async function() { closeRoom(); await removePushToken(); signOut(auth); };
 
     onAuthStateChanged(auth, (user) => {
