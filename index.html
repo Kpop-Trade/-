@@ -2167,7 +2167,20 @@ getRedirectResult(auth).then((result) => {
       renderSellTab(); showToast("通知をオフにしました。", "info");
     };
 
-    window.loginWithGoogle = function() { signInWithRedirect(auth, provider).catch(e => alert("ログインエラー: " + e.message)); };
+    window.loginWithGoogle = function() { 
+  // iPhoneのホーム画面アプリ（PWA）として起動しているか判定
+  const isIosPwa = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+  if (isIosPwa && isIOS) {
+    alert("【iPhoneの制限に関するお知らせ】\nホーム画面のアプリからは直接Googleログインができません。\n\nお手数ですが、一度Safari（ブラウザ）でこのサイトを開いてログインを済ませてから、再度ホーム画面に追加し直してください。");
+    return; // 処理をここで止める
+  }
+
+  // それ以外の通常のブラウザやAndroid等はリダイレクトでログインへ進む
+  signInWithRedirect(auth, provider).catch(e => alert("ログインエラー: " + e.message)); 
+};
+
     window.logout = async function() { closeRoom(); await removePushToken(); signOut(auth); };
 
     onAuthStateChanged(auth, (user) => {
