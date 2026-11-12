@@ -3336,8 +3336,7 @@ getRedirectResult(auth)
       window.addEventListener("pointercancel", hide);
       nav.addEventListener("contextmenu", (e) => e.preventDefault());
     })();
-
-          if (!hasAgreedLocally()) openTerms(false);
+    if (!hasAgreedLocally()) openTerms(false);
     renderFilters(); subscribePosts(); switchTab('home');
 
     // 👇 ここから追加・修正（Xなどのアプリ内ブラウザを自然に案内） 👇
@@ -3371,3 +3370,5 @@ getRedirectResult(auth)
   </div>
 </body>
 </html>
+
+          
