@@ -286,10 +286,12 @@
         <button id="mycards-tab-own" onclick="setMyCardsTab('own')" class="filter-chip bg-gradient-to-r from-illit-purple to-illit-accent text-white border-white/50 shadow-md">所持リスト</button>
         <button id="mycards-tab-share" onclick="setMyCardsTab('share')" class="filter-chip bg-white/70 text-gray-700 hover:bg-white">共有・公開</button>
       </div>
-      <div id="mycards-own-panel" class="space-y-3">
+            <div id="mycards-own-panel" class="space-y-3">
         <p class="text-[11px] text-gray-600 leading-relaxed bg-white/50 rounded-xl p-2.5 border border-white">アルバムごとに主要トレカを一覧表示します。タップで「所持 / 未所持 / 欲しい」を切り替え。🔔で出品通知も設定できます。</p>
         <div id="mycards-album-tabs" class="flex gap-1.5 overflow-x-auto hide-scrollbar pb-1"></div>
+        <div id="mycards-member-tabs" class="flex gap-1.5 overflow-x-auto hide-scrollbar pb-1"></div>
         <div id="mycards-list" class="space-y-2"></div>
+
         <div class="pt-2 border-t border-purple-100">
           <button onclick="openAddCustomCard()" class="w-full liquid-glass-input rounded-xl py-2.5 text-xs font-medium text-illit-darkPurple">＋ カスタムカードを追加</button>
         </div>
@@ -1271,8 +1273,9 @@ getRedirectResult(auth)
     let profileSection = "basic";
     let currentDetailId = null, submittingSerial = false;
     let roomActionsKey = null, cancellingTrade = false;
-    let myCardsAlbum = "srm", myCardsTab = "own";
+    let myCardsAlbum = "srm", myCardsMember = "ALL", myCardsTab = "own";
     let cardPhotoCache = {}; // cardId -> jpeg dataURL
+
     let adminCardsAlbum = "srm";
     
     let catalogCardsCache = []; // 管理者が登録したカード {id, albumId, name, member}
@@ -5585,12 +5588,13 @@ window.openAzukariApp = function() {
       }
       return null;
     }
-    async function openMyCardsPage() {
+        async function openMyCardsPage() {
       if (!currentUser) return;
       myCardsTab = "own";
       setMyCardsTab("own");
       await Promise.all([ensureCardPhotosLoaded(myCardsAlbum), ensureCatalogCardsLoaded()]);
       renderMyCardsAlbumTabs();
+      renderMyCardsMemberTabs();
       renderMyCardsList();
       const pub = document.getElementById("mycards-public");
       if (pub) pub.checked = !!userData.collectionPublic;
@@ -5620,32 +5624,62 @@ window.openAzukariApp = function() {
         `<button onclick="setMyCardsAlbum('${a.id}')" class="${a.id === myCardsAlbum ? activeChip : normalChip}">${a.name}</button>`
       ).join("");
     }
+    function renderMyCardsMemberTabs() {
+      const el = document.getElementById("mycards-member-tabs");
+      if (!el) return;
+      const cards = getAlbumCards(myCardsAlbum);
+      // そのアルバムに存在するメンバーを抽出（順番を揃える）
+      const order = ["ウォニ", "ミンジュ", "イロハ", "モカ", "ユナ", "OT5"];
+      const existing = new Set(cards.map(c => c.member).filter(Boolean));
+      const sorted = order.filter(m => existing.has(m));
+      existing.forEach(m => { if (!sorted.includes(m)) sorted.push(m); });
+
+      const tabs = [{ key: "ALL", label: "全員" }, ...sorted.map(m => ({ key: m, label: m }))];
+      const activeChip = "filter-chip bg-gradient-to-r from-illit-purple to-illit-accent text-white shadow-md text-[11px]";
+      const normalChip = "filter-chip bg-white/70 text-gray-700 hover:bg-white text-[11px]";
+      el.innerHTML = tabs.map(t =>
+        `<button onclick="setMyCardsMember('${t.key}')" class="${t.key === myCardsMember ? activeChip : normalChip}">${escapeHtml(t.label)}</button>`
+      ).join("");
+    }
     window.setMyCardsAlbum = async function(id) {
       myCardsAlbum = id;
+      myCardsMember = "ALL"; // アルバムを切り替えたらメンバー選択を「全員」にリセット
       renderMyCardsAlbumTabs();
+      renderMyCardsMemberTabs();
       const el = document.getElementById("mycards-list");
       if (el) el.innerHTML = `<p class="text-xs text-gray-500 text-center py-8">読み込み中...</p>`;
       await ensureCardPhotosLoaded(id);
+      renderMyCardsMemberTabs();
+      renderMyCardsList();
+    };
+    window.setMyCardsMember = function(member) {
+      myCardsMember = member;
+      renderMyCardsMemberTabs();
       renderMyCardsList();
     };
 
     function renderMyCardsList() {
       const el = document.getElementById("mycards-list");
-      const cards = getAlbumCards(myCardsAlbum);
+      const allAlbumCards = getAlbumCards(myCardsAlbum);
+      const cards = myCardsMember === "ALL"
+        ? allAlbumCards
+        : allAlbumCards.filter(c => c.member === myCardsMember);
       const album = ILLIT_CARD_ALBUMS.find(a => a.id === myCardsAlbum);
       if (cards.length === 0) {
-        el.innerHTML = `<p class="text-xs text-gray-500 text-center py-6">このカテゴリにカードがありません。<br>下からカスタム追加できます。</p>`;
+        el.innerHTML = `<p class="text-xs text-gray-500 text-center py-6">該当するカードがありません。<br>下からカスタム追加できます。</p>`;
         return;
       }
       const ownedCount = cards.filter(c => getCardStatus(c.id) === "owned").length;
       const wantCount = cards.filter(c => getCardStatus(c.id) === "want").length;
+      const titleLabel = (album ? album.name : "") + (myCardsMember !== "ALL" ? ` / ${myCardsMember}` : "");
 
       el.innerHTML = `
         <div class="flex items-center justify-between text-[11px] font-bold text-gray-600 mb-2 px-0.5">
-          <span>${album ? album.name : ""}（所持 ${ownedCount}/${cards.length}枚${wantCount ? `・欲しい ${wantCount}` : ""}）</span>
+          <span>${escapeHtml(titleLabel)}（所持 ${ownedCount}/${cards.length}枚${wantCount ? `・欲しい ${wantCount}` : ""}）</span>
           <span class="text-[10px] font-normal text-gray-500">タップで拡大・切替</span>
         </div>
         <div class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-1.5">
+
           ${cards.map(c => {
             const st = getCardStatus(c.id);
             const isOwned = st === "owned";
