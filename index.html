@@ -261,6 +261,67 @@
         <button onclick="loadMorePosts()" class="liquid-glass-input text-xs font-medium text-illit-darkPurple px-6 py-2.5 rounded-full hover:bg-white/70 transition shadow-sm">もっと見る</button>
       </div>
     </section>
+
+    <!-- Myトレカ ページ -->
+    <section id="mycards-section" class="hidden space-y-3 pb-8">
+      <div class="flex items-center justify-between px-1">
+        <h2 class="font-bold text-lg text-gray-900">🃏 Myトレカ</h2>
+      </div>
+      <div class="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
+        <button id="mycards-tab-own" onclick="setMyCardsTab('own')" class="filter-chip bg-gradient-to-r from-illit-purple to-illit-accent text-white border-white/50 shadow-md">所持リスト</button>
+        <button id="mycards-tab-share" onclick="setMyCardsTab('share')" class="filter-chip bg-white/70 text-gray-700 hover:bg-white">共有・公開</button>
+      </div>
+      <div id="mycards-own-panel" class="space-y-3">
+        <p class="text-[11px] text-gray-600 leading-relaxed bg-white/50 rounded-xl p-2.5 border border-white">アルバムごとに主要トレカを一覧表示します。タップで「所持 / 未所持 / 欲しい」を切り替え。🔔で出品通知も設定できます。</p>
+        <div id="mycards-album-tabs" class="flex gap-1.5 overflow-x-auto hide-scrollbar pb-1"></div>
+        <div id="mycards-list" class="space-y-2"></div>
+        <div class="pt-2 border-t border-purple-100">
+          <button onclick="openAddCustomCard()" class="w-full liquid-glass-input rounded-xl py-2.5 text-xs font-medium text-illit-darkPurple">＋ カスタムカードを追加</button>
+        </div>
+      </div>
+      <div id="mycards-share-panel" class="space-y-3 hidden">
+        <div class="bg-white/50 rounded-xl p-3 border border-white space-y-2">
+          <label class="flex items-center gap-2 text-sm font-medium text-gray-800">
+            <input type="checkbox" id="mycards-public" onchange="toggleCollectionPublic(this.checked)" class="w-4 h-4 rounded border-gray-300 text-illit-accent">
+            コレクションを他のユーザーに公開する
+          </label>
+          <p class="text-[11px] text-gray-500">公開すると、プロフィールや共有リンクから所持状況を見られるようになります。</p>
+        </div>
+        <div id="mycards-share-stats" class="text-xs text-gray-700 space-y-1"></div>
+        <button onclick="shareMyCollectionText()" class="w-full bg-black text-white font-medium py-3 rounded-full text-sm shadow-md">𝕏 で所持状況をシェア</button>
+        <button onclick="copyMyCollectionLink()" class="w-full bg-white/80 border border-white text-illit-darkPurple font-medium py-2.5 rounded-full text-sm">共有リンクをコピー</button>
+      </div>
+    </section>
+
+    <!-- マイページ -->
+    <section id="mypage-section" class="hidden space-y-4 pb-8">
+      <div class="flex items-center justify-between px-1">
+        <h2 class="font-bold text-lg text-gray-900">👤 マイページ</h2>
+      </div>
+      <div class="flex items-center space-x-4 bg-white/40 rounded-2xl p-4 border border-white/60 liquid-glass">
+        <img id="mypage-avatar" src="" alt="" class="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md hidden">
+        <div id="mypage-avatar-placeholder" class="w-16 h-16 rounded-full bg-white/60 border border-white flex items-center justify-center text-2xl">👤</div>
+        <div class="flex-1 min-w-0">
+          <div id="mypage-name" class="font-bold text-gray-900 truncate">ゲスト</div>
+          <div class="text-[11px] text-gray-500 mt-0.5">各設定へ移動できます</div>
+        </div>
+      </div>
+      <div class="space-y-2">
+        <button onclick="openTradesModal()" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">💬 取引一覧</span><span class="text-gray-400">›</span></button>
+        <button onclick="switchTab('mycards')" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">🃏 Myトレカ（所持管理）</span><span class="text-gray-400">›</span></button>
+        <button onclick="openPwaGuideModal()" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">📱 アプリ登録（ホーム画面追加）</span><span class="text-gray-400">›</span></button>
+        <button onclick="openProfileModal('basic')" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">✏️ プロフィール・写真</span><span class="text-gray-400">›</span></button>
+        <button onclick="openProfileModal('address')" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">📦 住所・配送先</span><span class="text-gray-400">›</span></button>
+        <button onclick="openAzukariGuide()" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">🔒 アズカリ決済ガイド</span><span class="text-gray-400">›</span></button>
+        <button onclick="openNotificationsModal()" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">🔔 通知一覧</span><span class="text-gray-400">›</span></button>
+        <button onclick="openProfileModal('push')" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">📢 プッシュ通知設定</span><span class="text-gray-400">›</span></button>
+        <button onclick="openProfileModal('block')" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">🚫 ブロック管理</span><span class="text-gray-400">›</span></button>
+        <button onclick="openWalletModal()" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">👛 おさいふ・売上管理</span><span class="text-gray-400">›</span></button>
+        <button onclick="openFaq()" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">❓ FAQ</span><span class="text-gray-400">›</span></button>
+        <button onclick="openInquiry()" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">📩 運営に問い合わせ</span><span class="text-gray-400">›</span></button>
+        <button onclick="openTerms(true)" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">📜 利用規約</span><span class="text-gray-400">›</span></button>
+      </div>
+    </section>
   </main>
 
   <button id="sell-fab" onclick="openPostTypeSheet()" class="hidden fixed left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-[480px] bottom-[104px] md:bottom-6 z-30 bg-gradient-to-r from-rose-500 to-pink-500 text-white font-bold text-base py-4 rounded-xl shadow-xl items-center justify-center gap-2 active:scale-[.98] transition">
@@ -319,11 +380,11 @@
       <svg class="w-6 h-6 mb-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="4"/></svg>
       <span class="text-[9px] font-bold">出品</span>
     </button>
-    <button onclick="openMyCardsModal()" class="relative flex flex-col items-center justify-center w-[60px] h-[52px] text-gray-500 hover:text-gray-900 hover:bg-white/40 rounded-[1.5rem] transition">
+    <button id="nav-mycards" onclick="switchTab('mycards')" class="relative flex flex-col items-center justify-center w-[60px] h-[52px] text-gray-500 hover:text-gray-900 hover:bg-white/40 rounded-[1.5rem] transition">
       <svg class="w-6 h-6 mb-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
       <span class="text-[9px] font-bold">Myトレカ</span>
     </button>
-    <button onclick="openMyPage()" class="flex flex-col items-center justify-center w-[60px] h-[52px] text-gray-500 hover:text-gray-900 hover:bg-white/40 rounded-[1.5rem] transition">
+    <button id="nav-mypage" onclick="switchTab('mypage')" class="flex flex-col items-center justify-center w-[60px] h-[52px] text-gray-500 hover:text-gray-900 hover:bg-white/40 rounded-[1.5rem] transition">
       <svg class="w-6 h-6 mb-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
       <span class="text-[9px] font-bold">マイページ</span>
     </button>
@@ -533,40 +594,6 @@
   </div>
 
   <!-- Myトレカ -->
-  <div id="mycards-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
-    <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-5 space-y-3 shadow-2xl max-h-[92vh] flex flex-col">
-      <div class="flex justify-between items-center border-b border-purple-200/50 pb-3 shrink-0">
-        <h3 class="font-bold text-base text-gray-800">🃏 Myトレカ</h3>
-        <button onclick="closeMyCardsModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
-      </div>
-      <div class="flex gap-2 shrink-0 overflow-x-auto hide-scrollbar pb-1">
-        <button id="mycards-tab-own" onclick="setMyCardsTab('own')" class="filter-chip bg-gradient-to-r from-illit-purple to-illit-accent text-white border-white/50 shadow-md">所持リスト</button>
-        <button id="mycards-tab-share" onclick="setMyCardsTab('share')" class="filter-chip bg-white/70 text-gray-700 hover:bg-white">共有・公開</button>
-      </div>
-      <div id="mycards-own-panel" class="flex-1 overflow-y-auto space-y-3 min-h-0">
-        <p class="text-[11px] text-gray-600 leading-relaxed bg-white/50 rounded-xl p-2.5 border border-white">アルバムごとに主要トレカを一覧表示します。タップで「所持 / 未所持 / 欲しい」を切り替え。カスタム追加も可能です。</p>
-        <div id="mycards-album-tabs" class="flex gap-1.5 overflow-x-auto hide-scrollbar pb-1"></div>
-        <div id="mycards-list" class="space-y-2"></div>
-        <div class="pt-2 border-t border-purple-100">
-          <button onclick="openAddCustomCard()" class="w-full liquid-glass-input rounded-xl py-2.5 text-xs font-medium text-illit-darkPurple">＋ カスタムカードを追加</button>
-        </div>
-      </div>
-      <div id="mycards-share-panel" class="flex-1 overflow-y-auto space-y-3 min-h-0 hidden">
-        <div class="bg-white/50 rounded-xl p-3 border border-white space-y-2">
-          <label class="flex items-center gap-2 text-sm font-medium text-gray-800">
-            <input type="checkbox" id="mycards-public" onchange="toggleCollectionPublic(this.checked)" class="w-4 h-4 rounded border-gray-300 text-illit-accent">
-            コレクションを他のユーザーに公開する
-          </label>
-          <p class="text-[11px] text-gray-500">公開すると、プロフィールや共有リンクから所持状況を見られるようになります。</p>
-        </div>
-        <div id="mycards-share-stats" class="text-xs text-gray-700 space-y-1"></div>
-        <button onclick="shareMyCollectionText()" class="w-full bg-black text-white font-medium py-3 rounded-full text-sm shadow-md">𝕏 で所持状況をシェア</button>
-        <button onclick="copyMyCollectionLink()" class="w-full bg-white/80 border border-white text-illit-darkPurple font-medium py-2.5 rounded-full text-sm">共有リンクをコピー</button>
-      </div>
-      <button onclick="closeMyCardsModal()" class="w-full bg-white/60 text-gray-700 border border-white font-medium py-2.5 rounded-full hover:bg-white transition text-sm shadow-sm shrink-0">閉じる</button>
-    </div>
-  </div>
-
   <!-- カスタムカード追加 -->
   <div id="add-card-modal" class="fixed inset-0 modal-backdrop hidden z-[55] flex items-center justify-center p-4">
     <div class="liquid-glass-heavy w-full max-w-sm rounded-[2rem] p-5 space-y-3 shadow-2xl">
@@ -600,40 +627,6 @@
         <button onclick="closeAddCustomCard()" class="flex-1 bg-white/60 text-gray-700 border border-white font-medium py-2.5 rounded-full text-sm">キャンセル</button>
         <button onclick="submitAddCustomCard()" class="flex-1 bg-gradient-to-r from-illit-purple to-illit-accent text-white font-medium py-2.5 rounded-full text-sm">追加</button>
       </div>
-    </div>
-  </div>
-
-  <!-- マイページ -->
-  <div id="mypage-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
-    <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
-      <div class="flex justify-between items-center border-b border-purple-200/50 pb-3">
-        <h3 class="font-bold text-base text-gray-800">👤 マイページ</h3>
-        <button onclick="closeMyPage()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
-      </div>
-      <div class="flex items-center space-x-4 bg-white/40 rounded-2xl p-4 border border-white/60">
-        <img id="mypage-avatar" src="" alt="" class="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md hidden">
-        <div id="mypage-avatar-placeholder" class="w-16 h-16 rounded-full bg-white/60 border border-white flex items-center justify-center text-2xl">👤</div>
-        <div class="flex-1 min-w-0">
-          <div id="mypage-name" class="font-bold text-gray-900 truncate">ゲスト</div>
-          <div class="text-[11px] text-gray-500 mt-0.5">タップして各設定へ</div>
-        </div>
-      </div>
-      <div class="space-y-2">
-        <button onclick="closeMyPage(); openTradesModal();" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">💬 取引一覧</span><span class="text-gray-400">›</span></button>
-        <button onclick="closeMyPage(); openMyCardsModal();" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">🃏 Myトレカ（所持管理）</span><span class="text-gray-400">›</span></button>
-        <button onclick="closeMyPage(); openPwaGuideModal();" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">📱 アプリ登録（ホーム画面追加）</span><span class="text-gray-400">›</span></button>
-        <button onclick="closeMyPage(); openProfileModal('basic')" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">✏️ プロフィール・写真</span><span class="text-gray-400">›</span></button>
-        <button onclick="closeMyPage(); openProfileModal('address')" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">📦 住所・配送先</span><span class="text-gray-400">›</span></button>
-        <button onclick="closeMyPage(); openAzukariGuide()" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">🔒 アズカリ決済ガイド</span><span class="text-gray-400">›</span></button>
-        <button onclick="closeMyPage(); openNotificationsModal()" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">🔔 通知一覧</span><span class="text-gray-400">›</span></button>
-        <button onclick="closeMyPage(); openProfileModal('push')" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">📢 プッシュ通知設定</span><span class="text-gray-400">›</span></button>
-        <button onclick="closeMyPage(); openProfileModal('block')" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">🚫 ブロック管理</span><span class="text-gray-400">›</span></button>
-        <button onclick="closeMyPage(); openWalletModal()" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">👛 おさいふ・売上管理</span><span class="text-gray-400">›</span></button>
-        <button onclick="closeMyPage(); openFaq()" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">❓ FAQ</span><span class="text-gray-400">›</span></button>
-        <button onclick="closeMyPage(); openInquiry()" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">📩 運営に問い合わせ</span><span class="text-gray-400">›</span></button>
-        <button onclick="closeMyPage(); openTerms(true)" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">📜 利用規約</span><span class="text-gray-400">›</span></button>
-      </div>
-      <button onclick="closeMyPage()" class="w-full bg-white/60 text-gray-700 border border-white font-medium py-3 rounded-full hover:bg-white transition text-sm shadow-sm">閉じる</button>
     </div>
   </div>
 
@@ -790,6 +783,12 @@
             <option value="ユナ (Yuna)">ユナ (Yuna)</option>
             <option value="指定なし">指定なし</option>
           </select>
+        </div>
+        <div id="catalog-card-picker" class="space-y-2">
+          <label class="block font-medium text-gray-700 mb-1">カタログからトレカを選ぶ <span class="text-gray-400 font-normal">（任意）</span></label>
+          <div id="post-card-album-tabs" class="flex gap-1.5 overflow-x-auto hide-scrollbar pb-1"></div>
+          <div id="post-card-list" class="max-h-36 overflow-y-auto space-y-1 rounded-xl border border-white/60 bg-white/30 p-1.5"></div>
+          <div id="post-card-selected" class="text-[11px] text-teal-700 font-medium hidden"></div>
         </div>
         <div><label id="label-give" class="block font-medium text-gray-700 mb-1">【譲】（出すもの）</label><input type="text" id="input-give" maxlength="100" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
         <div id="want-container"><label id="label-want" class="block font-medium text-gray-700 mb-1">【求】（希望するもの）</label><input type="text" id="input-want" maxlength="100" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
@@ -1223,7 +1222,7 @@ getRedirectResult(auth)
     let pendingPostId = new URLSearchParams(location.search).get("post");
     let postMode = "exchange", postPhotos = [], processingPhotos = false, submittingPost = false, submittingGroup = false, detailPhotos = [], roomPhotos = [], roomPhotosFor = null;
     let myTrades = [], unsubTrades = null, groupJoins = {}, unsubJoins = null, currentTrade = null, roomMessages = [], unsubRoom = null, unsubMsgs = null;
-    let reviewState = { tradeId: null, done: null }, selectedRating = 0, sendingImage = false, roomBoxKey = null, userData = { profile: {}, blocked: [], likes: [], reads: {}, notifications: [], cancelHistory: [], myCards: {}, collectionPublic: false, customCards: [] };
+    let reviewState = { tradeId: null, done: null }, selectedRating = 0, sendingImage = false, roomBoxKey = null, userData = { profile: {}, blocked: [], likes: [], reads: {}, notifications: [], cancelHistory: [], myCards: {}, collectionPublic: false, customCards: [], cardWatch: {} };
     let unsubUser = null, editingPostId = null, migratingLocal = false, photoCache = {};
     let pendingProfilePhoto = null;
     let prevUnreadCount = -1;
@@ -1235,6 +1234,10 @@ getRedirectResult(auth)
     let cardPhotoCache = {}; // cardId -> jpeg dataURL
     let adminCardsAlbum = "srm";
     let cardPhotosLoaded = false;
+    let catalogCardsCache = []; // 管理者が登録したカード {id, albumId, name, member}
+    let catalogCardsLoaded = false;
+    let selectedPostCard = null; // { id, name, member, albumId } | null
+    let postCardAlbum = "srm";
 
     const STATUS_LABEL = { negotiating: "交渉中", shipping: "取引・発送中", completed: "完了", cancelled: "キャンセル" };
     const STATUS_CLASS = { negotiating: "bg-yellow-400 text-yellow-900 border-yellow-200", shipping: "bg-blue-400 text-white border-blue-300", completed: "bg-green-400 text-white border-green-300", cancelled: "bg-gray-300 text-gray-700 border-gray-200" };
@@ -1553,40 +1556,66 @@ getRedirectResult(auth)
       finally { btn.disabled = false; btn.innerText = "送信する"; }
     };
 
-    window.openMyPage = function() {
-      if (!currentUser) return alert("ログインが必要です。");
+    function fillMyPageHeader() {
       const nameEl = document.getElementById("mypage-name");
       const avatar = document.getElementById("mypage-avatar");
       const placeholder = document.getElementById("mypage-avatar-placeholder");
-      nameEl.innerText = getMyDisplayName();
+      if (!nameEl) return;
+      nameEl.innerText = currentUser ? getMyDisplayName() : "ゲスト";
       const photo = getMyProfile()?.photo;
       if (photo && isJpegData(photo)) {
         avatar.src = photo; avatar.classList.remove("hidden"); placeholder.classList.add("hidden");
       } else {
         avatar.classList.add("hidden"); placeholder.classList.remove("hidden");
       }
-      document.getElementById("mypage-modal").classList.remove("hidden");
-    };
-    window.closeMyPage = function() { document.getElementById("mypage-modal").classList.add("hidden"); };
+    }
+    window.openMyPage = function() { switchTab('mypage'); };
+    window.closeMyPage = function() { switchTab('home'); };
 
     window.switchTab = function(tab) {
+      if ((tab === 'mycards' || tab === 'mypage') && !currentUser) {
+        alert("ログインが必要です。");
+        return;
+      }
+      const showList = tab === 'home' || tab === 'likes';
       document.getElementById("post-menu-section").classList.toggle("hidden", tab !== 'post');
-      document.getElementById("post-list-section").classList.toggle("hidden", tab === 'post');
-      document.getElementById("intro-section").classList.toggle("hidden", tab === 'post');
-      const fab = document.getElementById("sell-fab"); fab.classList.toggle("hidden", tab !== 'post'); fab.classList.toggle("flex", tab === 'post');
+      document.getElementById("post-list-section").classList.toggle("hidden", !showList);
+      document.getElementById("intro-section").classList.toggle("hidden", tab !== 'home' && tab !== 'likes');
+      const mycardsSec = document.getElementById("mycards-section");
+      const mypageSec = document.getElementById("mypage-section");
+      if (mycardsSec) mycardsSec.classList.toggle("hidden", tab !== 'mycards');
+      if (mypageSec) mypageSec.classList.toggle("hidden", tab !== 'mypage');
+      const fab = document.getElementById("sell-fab");
+      fab.classList.toggle("hidden", tab !== 'post');
+      fab.classList.toggle("flex", tab === 'post');
       if (tab === 'post') renderSellTab();
-      document.getElementById("nav-home").classList.toggle("bg-white/70", tab === 'home');
-      document.getElementById("nav-home").classList.toggle("text-illit-darkPurple", tab === 'home');
-      document.getElementById("nav-home").classList.toggle("text-gray-500", tab !== 'home');
-      document.getElementById("nav-likes").classList.toggle("bg-white/70", tab === 'likes');
-      document.getElementById("nav-likes").classList.toggle("text-pink-500", tab === 'likes');
-      document.getElementById("nav-likes").classList.toggle("text-gray-500", tab !== 'likes');
-      document.getElementById("nav-post").classList.toggle("bg-white/70", tab === 'post');
-      document.getElementById("nav-post").classList.toggle("text-illit-darkPurple", tab === 'post');
-      document.getElementById("nav-post").classList.toggle("text-gray-500", tab !== 'post');
-      if(tab === 'likes') { kindFilter = 'likes'; document.getElementById("list-section-title").innerText = "♡ いいねした募集"; }
-      else if (tab === 'home') { kindFilter = 'all'; document.getElementById("list-section-title").innerText = "最新の募集"; }
-      renderFilters(); renderPosts(); window.scrollTo({top: 0, behavior: 'smooth'});
+      if (tab === 'mypage') fillMyPageHeader();
+      if (tab === 'mycards') openMyCardsPage();
+
+      const setNav = (id, on, activeColor) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.classList.toggle("bg-white/70", on);
+        el.classList.toggle("shadow-sm", on);
+        el.classList.toggle(activeColor || "text-illit-darkPurple", on);
+        el.classList.toggle("text-gray-500", !on);
+      };
+      setNav("nav-home", tab === 'home');
+      setNav("nav-likes", tab === 'likes', "text-pink-500");
+      setNav("nav-post", tab === 'post');
+      setNav("nav-mycards", tab === 'mycards');
+      setNav("nav-mypage", tab === 'mypage');
+
+      if (tab === 'likes') {
+        kindFilter = 'likes';
+        document.getElementById("list-section-title").innerText = "♡ いいねした募集";
+        renderFilters(); renderPosts();
+      } else if (tab === 'home') {
+        kindFilter = 'all';
+        document.getElementById("list-section-title").innerText = "最新の募集";
+        renderFilters(); renderPosts();
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     function getOrCreateDeviceId() {
@@ -1639,7 +1668,7 @@ getRedirectResult(auth)
           const l = (d.likes && d.likes.length > 0) ? d.likes : read("illit_likes_", []);
           setDoc(ref, { migrated: true, profile: p, blocked: b, likes: l }, { merge: true }).finally(() => migratingLocal = false);
         }
-        userData = { profile: d.profile || {}, blocked: d.blocked || [], likes: d.likes || [], reads: d.reads || {}, notifications: d.notifications || [], cancelHistory: d.cancelHistory || [], myCards: d.myCards || {}, collectionPublic: !!d.collectionPublic, customCards: Array.isArray(d.customCards) ? d.customCards : [] };
+        userData = { profile: d.profile || {}, blocked: d.blocked || [], likes: d.likes || [], reads: d.reads || {}, notifications: d.notifications || [], cancelHistory: d.cancelHistory || [], myCards: d.myCards || {}, collectionPublic: !!d.collectionPublic, customCards: Array.isArray(d.customCards) ? d.customCards : [], cardWatch: d.cardWatch && typeof d.cardWatch === "object" ? d.cardWatch : {} };
         if (currentUser) {
           document.getElementById("user-name").innerText = getMyDisplayName();
           updateUserAvatar();
@@ -1764,7 +1793,7 @@ getRedirectResult(auth)
         }
 
         if (adminTab === "cards") {
-          await ensureCardPhotosLoaded();
+          await Promise.all([ensureCardPhotosLoaded(), ensureCatalogCardsLoaded()]);
           renderAdminCardsPanel(el);
           return;
         }
@@ -2416,7 +2445,7 @@ getRedirectResult(auth)
         tradesLoaded = false;
         if (unsubSusp) { unsubSusp(); unsubSusp = null; }
         document.getElementById("suspended-modal").classList.add("hidden");
-        userData = { profile: {}, blocked: [], likes: [], reads: {}, notifications: [], cancelHistory: [], myCards: {}, collectionPublic: false, customCards: [] }; myTrades = []; updateBadge(); updateNotifBadge();
+        userData = { profile: {}, blocked: [], likes: [], reads: {}, notifications: [], cancelHistory: [], myCards: {}, collectionPublic: false, customCards: [], cardWatch: {} }; myTrades = []; updateBadge(); updateNotifBadge();
         prevUnreadCount = -1; prevTradeCountAsOwner = -1;
         updateUserAvatar();
       }
@@ -2447,9 +2476,78 @@ getRedirectResult(auth)
       document.getElementById("input-desc").value = "";
       document.getElementById("input-condition").value = "";
       postPhotos = []; renderPostPhotoPreview();
+      selectedPostCard = null;
+      postCardAlbum = "srm";
+      const showPicker = !isAlbum && !isDearlit; // トレカ系のみ
+      const picker = document.getElementById("catalog-card-picker");
+      if (picker) picker.classList.toggle("hidden", !showPicker);
+      if (showPicker) {
+        await Promise.all([ensureCatalogCardsLoaded(), ensureCardPhotosLoaded()]);
+        renderPostCardPicker();
+      }
       document.getElementById("post-modal").classList.remove("hidden");
     };
-    window.closePostModal = function() { document.getElementById("post-modal").classList.add("hidden"); };
+    window.closePostModal = function() {
+      document.getElementById("post-modal").classList.add("hidden");
+      selectedPostCard = null;
+    };
+    function renderPostCardPicker() {
+      const tabsEl = document.getElementById("post-card-album-tabs");
+      const listEl = document.getElementById("post-card-list");
+      const selEl = document.getElementById("post-card-selected");
+      if (!tabsEl || !listEl) return;
+      const activeChip = "filter-chip bg-illit-purple text-white shadow-md text-[11px]";
+      const normalChip = "filter-chip bg-white/70 text-gray-700 hover:bg-white text-[11px]";
+      tabsEl.innerHTML = ILLIT_CARD_ALBUMS.map(a =>
+        `<button type="button" onclick="setPostCardAlbum('${a.id}')" class="${a.id === postCardAlbum ? activeChip : normalChip}">${a.name}</button>`
+      ).join("") + `<button type="button" onclick="clearPostCardSelection()" class="filter-chip bg-white/50 text-gray-500 text-[11px]">選択解除</button>`;
+      const cards = getAlbumCards(postCardAlbum).filter(c => !c.custom);
+      listEl.innerHTML = cards.map(c => {
+        const on = selectedPostCard && selectedPostCard.id === c.id;
+        return `<button type="button" onclick="selectPostCard('${escapeHtml(c.id)}')" class="w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] ${on ? "bg-illit-purple/15 text-illit-darkPurple font-bold border border-illit-purple/30" : "hover:bg-white/70 text-gray-800"}">
+          <span class="font-medium">${escapeHtml(c.name)}</span>
+          <span class="text-gray-500 ml-1">${c.member ? escapeHtml(c.member) : ""}</span>
+        </button>`;
+      }).join("") || '<p class="text-[11px] text-gray-500 text-center py-2">このアルバムにカードがありません</p>';
+      if (selEl) {
+        if (selectedPostCard) {
+          selEl.classList.remove("hidden");
+          selEl.textContent = "選択中: " + selectedPostCard.name + (selectedPostCard.member ? "（" + selectedPostCard.member + "）" : "");
+        } else {
+          selEl.classList.add("hidden");
+          selEl.textContent = "";
+        }
+      }
+    }
+    window.setPostCardAlbum = function(id) {
+      postCardAlbum = id;
+      renderPostCardPicker();
+    };
+    window.selectPostCard = function(cardId) {
+      let found = null;
+      for (const a of ILLIT_CARD_ALBUMS) {
+        const c = getAlbumCards(a.id).find(x => x.id === cardId);
+        if (c) { found = { id: c.id, name: c.name, member: c.member || "", albumId: a.id }; break; }
+      }
+      selectedPostCard = found;
+      if (found) {
+        const giveEl = document.getElementById("input-give");
+        if (giveEl && !giveEl.value.trim()) giveEl.value = found.name + (found.member ? " / " + found.member : "");
+        if (found.member) {
+          const memEl = document.getElementById("input-member");
+          if (memEl) {
+            const opts = Array.from(memEl.options);
+            const hit = opts.find(o => o.value.includes(found.member) || found.member.includes(o.value.split(" ")[0]));
+            if (hit) memEl.value = hit.value;
+          }
+        }
+      }
+      renderPostCardPicker();
+    };
+    window.clearPostCardSelection = function() {
+      selectedPostCard = null;
+      renderPostCardPicker();
+    };
 
     function renderPostPhotoPreview() {
       const el1 = document.getElementById("post-photo-preview"), el2 = document.getElementById("group-photo-preview");
@@ -2492,6 +2590,8 @@ getRedirectResult(auth)
       if (!isBuy && postPhotos.length < 1) return alert("写真を1枚以上追加してください。");
       submittingPost = true; const btn = document.getElementById("post-submit-btn"); btn.disabled = true; btn.innerText = "投稿中…";
       try {
+        const catalogCardId = selectedPostCard ? selectedPostCard.id : "";
+        const catalogCardName = selectedPostCard ? selectedPostCard.name : "";
         const ref = await addDoc(collection(db, "posts"), {
           kind, isBuy, isSell: isSell && !isBuy, member, give, want: (isBuy || isSell) ? "" : want,
           price: (isBuy || isSell) ? price : 0, description: desc, condition,
@@ -2499,15 +2599,49 @@ getRedirectResult(auth)
           userId: currentUser.uid, userName: getMyDisplayName(), userPhoto: getMyProfile()?.photo || "",
           likesCount: 0, createdAt: serverTimestamp(),
           deviceId: getOrCreateDeviceId(),
-          paymentMethod: "azukari"
+          paymentMethod: "azukari",
+          catalogCardId: catalogCardId || null,
+          catalogCardName: catalogCardName || null
         });
         for (let i = 0; i < postPhotos.length; i++) await addDoc(collection(db, "posts", ref.id, "photos"), { data: postPhotos[i].full, order: i, createdAt: serverTimestamp() });
-        
+        if (catalogCardId) {
+          notifyCardWatchers(catalogCardId, catalogCardName || give, ref.id).catch(e => console.warn("watch notify:", e));
+        }
         showToast("出品が完了しました！詳細画面からXでシェアできます", "success");
-        
         closePostModal(); loadPosts(true); switchTab('home');
       } catch(e) { alert("失敗しました"); } finally { submittingPost = false; btn.disabled = false; btn.innerText = "出品する"; }
     };
+
+    async function notifyCardWatchers(cardId, cardName, postId) {
+      if (!cardId || !currentUser) return;
+      try {
+        const snap = await getDocs(collection(db, "cardWatchers", cardId, "users"));
+        const targets = snap.docs.map(d => d.id).filter(uid => uid !== currentUser.uid);
+        if (targets.length === 0) return;
+        const text = `「${cardName || "トレカ"}」が出品されました`;
+        const itemBase = {
+          id: "n_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7),
+          text,
+          type: "card_list",
+          read: false,
+          createdAt: Date.now(),
+          target: { type: "post", id: postId }
+        };
+        // 最大20人まで（負荷抑制）
+        for (const uid of targets.slice(0, 20)) {
+          try {
+            const uref = doc(db, "users", uid);
+            const us = await getDoc(uref);
+            const list = us.exists() ? [...(us.data().notifications || [])] : [];
+            list.unshift({ ...itemBase, id: "n_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7) });
+            if (list.length > MAX_NOTIFICATIONS) list.length = MAX_NOTIFICATIONS;
+            await updateDoc(uref, { notifications: list });
+          } catch (e) { console.warn("notify user failed", uid, e?.code || e); }
+        }
+      } catch (e) {
+        console.warn("notifyCardWatchers:", e?.code || e);
+      }
+    }
 
     window.openSerialPostModal = async function(mode) {
       if (!currentUser) return alert("ログインが必要です。");
@@ -3646,8 +3780,30 @@ window.openAzukariApp = function() {
         console.warn("cardPhotos load:", e?.code || e);
       }
     }
+    async function ensureCatalogCardsLoaded() {
+      if (catalogCardsLoaded) return;
+      try {
+        const snap = await getDocs(collection(db, "cardCatalog"));
+        catalogCardsCache = snap.docs.map(d => {
+          const data = d.data() || {};
+          return {
+            id: d.id,
+            albumId: data.albumId || "other",
+            name: data.name || "",
+            member: data.member || "",
+            admin: true
+          };
+        }).filter(c => c.name);
+        catalogCardsLoaded = true;
+      } catch (e) {
+        console.warn("cardCatalog load:", e?.code || e);
+      }
+    }
     function getCardPhoto(cardId) {
       return cardPhotoCache[cardId] || null;
+    }
+    function isAdminCatalogCard(cardId) {
+      return catalogCardsCache.some(c => c.id === cardId);
     }
     function renderAdminCardsPanel(el) {
       const tabsEl = document.getElementById("admin-card-album-tabs");
@@ -3661,36 +3817,131 @@ window.openAzukariApp = function() {
       const album = ILLIT_CARD_ALBUMS.find(a => a.id === adminCardsAlbum);
       const cards = getAlbumCards(adminCardsAlbum);
       if (!album) { el.innerHTML = "<p class='text-xs text-gray-500'>アルバムがありません</p>"; return; }
+      const memberOpts = ["", "ウォニ", "ミンジュ", "イロハ", "モカ", "ユナ", "OT5"].map(m =>
+        `<option value="${m}">${m || "（指定なし）"}</option>`
+      ).join("");
       el.innerHTML = `
-        <p class="text-[11px] text-gray-600 mb-2">アルバムごとにトレカ写真を登録できます。登録した写真は全ユーザーの Myトレカ 一覧に表示されます。</p>
+        <div class="liquid-glass-input rounded-xl p-3 mb-3 space-y-2 border border-teal-200/60">
+          <div class="text-xs font-bold text-teal-800">＋ 新しいトレカを登録</div>
+          <p class="text-[10px] text-gray-500">全ユーザーの Myトレカ に表示されます。写真は任意です。</p>
+          <input id="admin-new-card-name" type="text" maxlength="80" placeholder="カード名（例: ウォニ Weverse特典）" class="w-full liquid-glass-input rounded-lg px-2.5 py-2 text-xs">
+          <div class="flex gap-2">
+            <select id="admin-new-card-member" class="flex-1 liquid-glass-input rounded-lg px-2 py-2 text-xs">${memberOpts}</select>
+            <select id="admin-new-card-album" class="flex-1 liquid-glass-input rounded-lg px-2 py-2 text-xs">
+              ${ILLIT_CARD_ALBUMS.map(a => `<option value="${a.id}" ${a.id === adminCardsAlbum ? "selected" : ""}>${a.name}</option>`).join("")}
+            </select>
+          </div>
+          <div class="flex items-center gap-2">
+            <label class="flex-1 bg-white/80 border border-white text-[11px] text-gray-700 font-medium px-2.5 py-2 rounded-full cursor-pointer text-center hover:bg-white">
+              写真を選ぶ（任意）
+              <input type="file" id="admin-new-card-photo" accept="image/*" class="hidden">
+            </label>
+            <button onclick="adminRegisterNewCard()" class="shrink-0 bg-gradient-to-r from-teal-400 to-teal-500 text-white text-xs font-bold px-4 py-2 rounded-full shadow">登録</button>
+          </div>
+          <p id="admin-new-card-photo-name" class="text-[10px] text-gray-400 truncate"></p>
+        </div>
+        <p class="text-[11px] text-gray-600 mb-2">既存カードの写真登録・管理。管理者追加カードは削除できます。</p>
         <div class="text-xs font-bold text-gray-700 mb-2">${escapeHtml(album.name)}${album.year ? " · " + album.year : ""} · ${cards.length}種</div>
         <div class="space-y-2">
           ${cards.map(c => {
             const photo = getCardPhoto(c.id);
+            const isAdminCard = !!c.admin || isAdminCatalogCard(c.id);
             const thumb = photo
               ? `<img src="${photo}" class="w-14 h-14 object-cover rounded-lg border border-white shadow-sm">`
               : `<div class="w-14 h-14 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-400 text-lg">🃏</div>`;
             return `<div class="liquid-glass-input rounded-xl p-2.5 flex items-center gap-2.5">
               ${thumb}
               <div class="flex-1 min-w-0">
-                <div class="text-xs font-medium text-gray-900 truncate">${escapeHtml(c.name)}</div>
-                <div class="text-[10px] text-gray-500">${c.member ? escapeHtml(c.member) : "—"} · <span class="${photo ? "text-green-600" : "text-pink-600"}">${photo ? "登録済" : "未登録"}</span></div>
+                <div class="text-xs font-medium text-gray-900 truncate">${escapeHtml(c.name)}${isAdminCard ? ' <span class="text-[9px] text-teal-600">管理者追加</span>' : ""}</div>
+                <div class="text-[10px] text-gray-500">${c.member ? escapeHtml(c.member) : "—"} · <span class="${photo ? "text-green-600" : "text-pink-600"}">${photo ? "写真あり" : "写真なし"}</span></div>
               </div>
               <div class="flex flex-col gap-1 shrink-0">
                 <label class="bg-illit-purple/90 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-full cursor-pointer hover:opacity-90 text-center">
                   ${photo ? "差し替え" : "写真登録"}
                   <input type="file" accept="image/*" class="hidden" onchange="adminUploadCardPhoto('${escapeHtml(c.id)}', this)">
                 </label>
-                ${photo ? `<button onclick="adminDeleteCardPhoto('${escapeHtml(c.id)}')" class="text-[10px] text-red-500 underline">削除</button>` : ""}
+                ${photo ? `<button onclick="adminDeleteCardPhoto('${escapeHtml(c.id)}')" class="text-[10px] text-red-500 underline">写真削除</button>` : ""}
+                ${isAdminCard ? `<button onclick="adminDeleteCatalogCard('${escapeHtml(c.id)}')" class="text-[10px] text-red-600 underline">カード削除</button>` : ""}
               </div>
             </div>`;
           }).join("") || '<p class="text-xs text-gray-500 text-center py-4">カードがありません</p>'}
         </div>`;
+      const photoInput = document.getElementById("admin-new-card-photo");
+      if (photoInput) {
+        photoInput.onchange = () => {
+          const f = photoInput.files && photoInput.files[0];
+          const label = document.getElementById("admin-new-card-photo-name");
+          if (label) label.textContent = f ? f.name : "";
+        };
+      }
     }
     window.setAdminCardsAlbum = function(id) {
       adminCardsAlbum = id;
       const el = document.getElementById("admin-content");
       if (el && adminTab === "cards") renderAdminCardsPanel(el);
+    };
+    window.adminRegisterNewCard = async function() {
+      if (!isAdmin()) return;
+      const nameEl = document.getElementById("admin-new-card-name");
+      const memberEl = document.getElementById("admin-new-card-member");
+      const albumEl = document.getElementById("admin-new-card-album");
+      const photoEl = document.getElementById("admin-new-card-photo");
+      const name = (nameEl?.value || "").trim();
+      const member = (memberEl?.value || "").trim();
+      const albumId = albumEl?.value || adminCardsAlbum;
+      if (!name) return alert("カード名を入力してください。");
+      if (!ILLIT_CARD_ALBUMS.some(a => a.id === albumId)) return alert("アルバムを選んでください。");
+      try {
+        const ref = doc(collection(db, "cardCatalog"));
+        const cardId = ref.id;
+        await setDoc(ref, {
+          albumId,
+          name,
+          member,
+          createdAt: serverTimestamp(),
+          createdBy: currentUser.uid
+        });
+        const file = photoEl?.files && photoEl.files[0];
+        if (file) {
+          const dataUrl = await compressImage(file, PHOTO_THUMB);
+          if (isJpegData(dataUrl)) {
+            await setDoc(doc(db, "cardPhotos", cardId), {
+              data: dataUrl,
+              updatedAt: serverTimestamp(),
+              updatedBy: currentUser.uid
+            }, { merge: true });
+            cardPhotoCache[cardId] = dataUrl;
+          }
+        }
+        catalogCardsCache.push({ id: cardId, albumId, name, member, admin: true });
+        adminCardsAlbum = albumId;
+        showToast("トレカを登録しました", "success");
+        const el = document.getElementById("admin-content");
+        if (el && adminTab === "cards") renderAdminCardsPanel(el);
+        if (isMyCardsPageOpen()) {
+          renderMyCardsAlbumTabs();
+          renderMyCardsList();
+        }
+      } catch (e) {
+        console.error(e);
+        alert("登録に失敗しました。\n" + (e?.code || e?.message || ""));
+      }
+    };
+    window.adminDeleteCatalogCard = async function(cardId) {
+      if (!isAdmin()) return;
+      if (!(await appConfirm("このトレカをカタログから削除しますか？\n（写真も一緒に削除されます）", "削除する", true))) return;
+      try {
+        await deleteDoc(doc(db, "cardCatalog", cardId));
+        try { await deleteDoc(doc(db, "cardPhotos", cardId)); } catch (_) {}
+        catalogCardsCache = catalogCardsCache.filter(c => c.id !== cardId);
+        delete cardPhotoCache[cardId];
+        showToast("トレカを削除しました", "info");
+        const el = document.getElementById("admin-content");
+        if (el && adminTab === "cards") renderAdminCardsPanel(el);
+        if (isMyCardsPageOpen()) renderMyCardsList();
+      } catch (e) {
+        alert("削除に失敗しました。");
+      }
     };
     window.adminUploadCardPhoto = async function(cardId, inputEl) {
       if (!isAdmin()) return;
@@ -3709,7 +3960,7 @@ window.openAzukariApp = function() {
         showToast("写真を登録しました", "success");
         const el = document.getElementById("admin-content");
         if (el && adminTab === "cards") renderAdminCardsPanel(el);
-        if (!document.getElementById("mycards-modal").classList.contains("hidden")) renderMyCardsList();
+        if (isMyCardsPageOpen()) renderMyCardsList();
       } catch (e) {
         console.error(e);
         alert("登録に失敗しました。\n" + (e?.code || e?.message || ""));
@@ -3724,7 +3975,7 @@ window.openAzukariApp = function() {
         showToast("写真を削除しました", "info");
         const el = document.getElementById("admin-content");
         if (el && adminTab === "cards") renderAdminCardsPanel(el);
-        if (!document.getElementById("mycards-modal").classList.contains("hidden")) renderMyCardsList();
+        if (isMyCardsPageOpen()) renderMyCardsList();
       } catch (e) {
         alert("削除に失敗しました。");
       }
@@ -3738,21 +3989,27 @@ window.openAzukariApp = function() {
       const album = ILLIT_CARD_ALBUMS.find(a => a.id === albumId);
       if (!album) return [];
       const base = album.cards.slice();
+      const adminCards = catalogCardsCache.filter(c => c.albumId === albumId);
       const customs = (userData.customCards || []).filter(c => c.albumId === albumId);
-      return base.concat(customs);
+      return base.concat(adminCards).concat(customs);
     }
-    window.openMyCardsModal = async function() {
-      if (!currentUser) return alert("ログインが必要です。");
+    async function openMyCardsPage() {
+      if (!currentUser) return;
       myCardsTab = "own";
       setMyCardsTab("own");
-      document.getElementById("mycards-modal").classList.remove("hidden");
-      await ensureCardPhotosLoaded();
+      await Promise.all([ensureCardPhotosLoaded(), ensureCatalogCardsLoaded()]);
       renderMyCardsAlbumTabs();
       renderMyCardsList();
-      document.getElementById("mycards-public").checked = !!userData.collectionPublic;
+      const pub = document.getElementById("mycards-public");
+      if (pub) pub.checked = !!userData.collectionPublic;
       renderMyCardsShareStats();
-    };
-    window.closeMyCardsModal = function() { document.getElementById("mycards-modal").classList.add("hidden"); };
+    }
+    window.openMyCardsModal = function() { switchTab('mycards'); };
+    window.closeMyCardsModal = function() { switchTab('home'); };
+    function isMyCardsPageOpen() {
+      const sec = document.getElementById("mycards-section");
+      return sec && !sec.classList.contains("hidden");
+    }
     window.setMyCardsTab = function(tab) {
       myCardsTab = tab;
       document.getElementById("mycards-own-panel").classList.toggle("hidden", tab !== "own");
@@ -3789,6 +4046,7 @@ window.openAzukariApp = function() {
           const st = getCardStatus(c.id);
           const isCustom = !!(c.custom);
           const photo = getCardPhoto(c.id);
+          const watching = !!(userData.cardWatch || {})[c.id];
           const thumb = photo
             ? `<img src="${photo}" alt="" class="w-12 h-12 object-cover rounded-lg border border-white shadow-sm shrink-0">`
             : `<div class="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-50 to-pink-50 border border-white flex items-center justify-center text-purple-200 text-lg shrink-0">🃏</div>`;
@@ -3798,11 +4056,36 @@ window.openAzukariApp = function() {
               <div class="text-xs font-medium text-gray-900 truncate">${escapeHtml(c.name)}</div>
               <div class="text-[10px] text-gray-500">${c.member ? escapeHtml(c.member) : "—"}${isCustom ? " · カスタム" : ""}</div>
             </div>
+            <button onclick="toggleCardWatch('${escapeHtml(c.id)}')" title="出品されたら通知" class="shrink-0 text-[10px] font-bold px-2 py-1.5 rounded-full border ${watching ? "bg-amber-100 text-amber-700 border-amber-300" : "bg-white/70 text-gray-500 border-gray-200"}">${watching ? "🔔 ON" : "🔔"}</button>
             <button onclick="cycleCardStatus('${escapeHtml(c.id)}')" class="shrink-0 text-[11px] font-bold px-2.5 py-1.5 rounded-full border ${CARD_STATUS_CLASS[st]}">${CARD_STATUS[st]}</button>
             ${isCustom ? `<button onclick="removeCustomCard('${escapeHtml(c.id)}')" class="text-gray-400 text-xs px-1" title="削除">✕</button>` : ""}
           </div>`;
         }).join("");
     }
+    window.toggleCardWatch = async function(cardId) {
+      if (!currentUser || !cardId) return;
+      const map = { ...(userData.cardWatch || {}) };
+      const on = !!map[cardId];
+      try {
+        if (on) {
+          delete map[cardId];
+          await deleteDoc(doc(db, "cardWatchers", cardId, "users", currentUser.uid));
+        } else {
+          map[cardId] = true;
+          await setDoc(doc(db, "cardWatchers", cardId, "users", currentUser.uid), {
+            uid: currentUser.uid,
+            createdAt: serverTimestamp()
+          });
+        }
+        userData.cardWatch = map;
+        await saveUserData({ cardWatch: map });
+        renderMyCardsList();
+        showToast(on ? "出品通知をオフにしました" : "出品されたら通知します", on ? "info" : "success");
+      } catch (e) {
+        console.error(e);
+        showToast("通知設定に失敗しました", "error");
+      }
+    };
     window.cycleCardStatus = async function(cardId) {
       if (!currentUser) return;
       const order = ["none", "owned", "want"];
@@ -3857,7 +4140,7 @@ window.openAzukariApp = function() {
       const map = userData.myCards || {};
       let owned = 0, want = 0;
       Object.values(map).forEach(v => { if (v === "owned") owned++; else if (v === "want") want++; });
-      const totalDefined = ILLIT_CARD_ALBUMS.reduce((s, a) => s + a.cards.length, 0) + (userData.customCards || []).length;
+      const totalDefined = ILLIT_CARD_ALBUMS.reduce((s, a) => s + a.cards.length, 0) + catalogCardsCache.length + (userData.customCards || []).length;
       el.innerHTML = `<div class="liquid-glass-input rounded-xl p-3 space-y-1">
         <div>所持: <b class="text-emerald-700">${owned}</b> 枚</div>
         <div>欲しい: <b class="text-pink-600">${want}</b> 枚</div>
