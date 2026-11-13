@@ -10,9 +10,6 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <link rel="apple-touch-icon" href="/icon-192.png">
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-
-  
   <script>
     tailwind.config = {
       theme: {
@@ -3816,7 +3813,7 @@ window.openAzukariApp = function() {
       else if (!recorded && hasAgreedLocally() && !termsSaving) { termsSaving = true; saveUserData({ terms: { version: TERMS_VERSION, agreedAt: serverTimestamp() } }).finally(() => { termsSaving = false; }); }
     }
 
-           // ===== IndexedDB キャッシュヘルパー（スマホ・PC本体に永久保存） =====
+          // ===== IndexedDB キャッシュヘルパー（スマホ・PC本体に永久保存） =====
     const IDB_NAME = "illit_trade_cache_v1";
     const IDB_STORE = "kv";
     let idbPromise = null;
@@ -3886,35 +3883,9 @@ window.openAzukariApp = function() {
       });
     }
 
-    // ===== トレカ画像・カタログ読み込み（GitHub静的パック ＋ IndexedDB優先） =====
+    // ===== トレカ画像・カタログ読み込み（IndexedDB優先） =====
     const loadedPhotoAlbums = new Set();
     const CATALOG_CACHE_TTL = 1000 * 60 * 60 * 6; // カタログは6時間キャッシュ
-    let staticPackCards = [];
-    let staticPackLoaded = false;
-
-    async function loadStaticCardPack() {
-      if (staticPackLoaded) return;
-      staticPackLoaded = true;
-      try {
-        const res = await fetch("./catalog.json?v=" + Math.floor(Date.now() / (1000 * 60 * 30)));
-        if (!res.ok) return;
-        const data = await res.json();
-        const items = Array.isArray(data) ? data : (Array.isArray(data.cards) ? data.cards : []);
-        staticPackCards = items.map(c => ({
-          id: String(c.id || ""),
-          albumId: String(c.albumId || "other"),
-          name: String(c.name || ""),
-          member: String(c.member || ""),
-          photoUrl: c.photo ? String(c.photo) : "",
-          staticPack: true
-        })).filter(c => c.id && c.name);
-        staticPackCards.forEach(c => {
-          if (c.photoUrl) cardPhotoCache[c.id] = c.photoUrl;
-        });
-      } catch (_) {
-        // catalog.json がまだ無い場合はスキップ
-      }
-    }
 
     async function ensureCardPhotosLoaded(targetAlbumId) {
       const albumId = targetAlbumId || myCardsAlbum;
@@ -3924,22 +3895,18 @@ window.openAzukariApp = function() {
       const cards = getAlbumCards(albumId);
       const missingIds = [];
 
-      // 1. 静的パックURLまたはIndexedDBから探す（Firestore読み取り 0回）
+      // 1. まずブラウザのIndexedDBから探す（Firestore読み取り 0回）
       await Promise.all(cards.map(async (c) => {
-        if (c.photoUrl) {
-          cardPhotoCache[c.id] = c.photoUrl;
-          return;
-        }
         if (cardPhotoCache[c.id]) return;
         const cached = await idbGet("photo_" + c.id);
         if (cached) {
           cardPhotoCache[c.id] = cached;
-        } else if (!c.staticPack) {
+        } else {
           missingIds.push(c.id);
         }
       }));
 
-      // 2. 静的パックにもIndexedDBにも無かったFirestore画像だけを取得
+      // 2. IndexedDBに無かった画像だけをFirestoreから取得して保存
       if (missingIds.length > 0) {
         try {
           await Promise.all(missingIds.map(async (id) => {
@@ -3961,10 +3928,9 @@ window.openAzukariApp = function() {
     }
 
     async function ensureCatalogCardsLoaded(forceRefresh = false) {
-      await loadStaticCardPack();
       if (catalogCardsLoaded && !forceRefresh) return;
 
-      // 1. 6時間以内に取得した追加カタログがIndexedDBにあればそれを使う（0回）
+      // 1. 6時間以内に取得したカタログがIndexedDBにあればそれを使う（0回）
       if (!forceRefresh) {
         const cached = await idbGet("catalog_cards");
         if (cached && Array.isArray(cached.items) && (Date.now() - cached.savedAt < CATALOG_CACHE_TTL)) {
@@ -3974,7 +3940,7 @@ window.openAzukariApp = function() {
         }
       }
 
-      // 2. Firestoreの追加カタログ（少数の追加分のみ）を取得
+      // 2. キャッシュ期限切れまたは初回のみFirestoreから取得
       try {
         const snap = await getDocs(collection(db, "cardCatalog"));
         catalogCardsCache = snap.docs.map(d => {
@@ -3995,16 +3961,7 @@ window.openAzukariApp = function() {
     }
 
     let adminBulkFiles = [];
-    let adminZipPackFiles = [];
     let detailCardId = null;
-
-    // ===== まとめ画像からのトレカ自動検出＆切り抜き用ステート =====
-    let sheetCropState = {
-      img: null,
-      scale: 1,
-      boxes: [], // { x, y, w, h, active, member }
-      fileName: ""
-    };
 
     function guessMemberFromFileName(filename) {
       const n = String(filename || "").toLowerCase();
@@ -4015,16 +3972,6 @@ window.openAzukariApp = function() {
       if (n.includes("yuna") || n.includes("ユナ")) return "ユナ";
       if (n.includes("ot5") || n.includes("group") || n.includes("全員")) return "OT5";
       return "";
-    }
-
-    function guessAlbumFromPath(pathOrName, fallbackAlbumId) {
-      const n = String(pathOrName || "").toLowerCase();
-      for (const a of ILLIT_CARD_ALBUMS) {
-        if (n.includes(a.id.toLowerCase()) || n.includes(a.name.toLowerCase())) {
-          return a.id;
-        }
-      }
-      return fallbackAlbumId || "other";
     }
 
     function getCardPhoto(cardId) {
@@ -4056,101 +4003,29 @@ window.openAzukariApp = function() {
       ).join("");
 
       el.innerHTML = `
-        <div class="liquid-glass-input rounded-xl p-3 mb-3 space-y-2.5 border border-indigo-300 bg-gradient-to-br from-indigo-50/80 to-purple-50/80">
+        <div class="liquid-glass-input rounded-xl p-3 mb-3 space-y-2.5 border border-purple-200/80 bg-purple-50/40">
           <div class="flex items-center justify-between">
-            <div class="text-xs font-bold text-indigo-900">🚀 2400枚大量パック生成（Firestore消費0回）</div>
-            <span class="text-[10px] font-bold text-indigo-600">ZIP書き出し</span>
+            <div class="text-xs font-bold text-illit-darkPurple">📦 まとめて一括登録（透かし自動付与）</div>
+            <span class="text-[10px] text-gray-500">複数枚OK</span>
           </div>
-          <p class="text-[11px] text-gray-600 leading-relaxed">
-            選んだ画像を自動で<strong>透かし＋軽量JPEG圧縮</strong>し、GitHubに置くだけの <code>catalog.json</code> と <code>cards/</code> フォルダをZIPで出力します。
-          </p>
           <div class="flex gap-2">
-            <select id="admin-zip-album" class="flex-1 liquid-glass-input rounded-lg px-2 py-2 text-xs">
+            <select id="admin-bulk-album" class="flex-1 liquid-glass-input rounded-lg px-2 py-2 text-xs">
               ${ILLIT_CARD_ALBUMS.map(a => `<option value="${a.id}" ${a.id === adminCardsAlbum ? "selected" : ""}>${a.name}</option>`).join("")}
             </select>
-            <input id="admin-zip-prefix" type="text" maxlength="50" placeholder="共通名（空欄ならファイル名を使用）" class="flex-1 liquid-glass-input rounded-lg px-2.5 py-2 text-xs">
+            <input id="admin-bulk-prefix" type="text" maxlength="50" placeholder="共通名（例: Weverse特典 / 封入）" class="flex-1 liquid-glass-input rounded-lg px-2.5 py-2 text-xs">
           </div>
-
-          <div class="grid grid-cols-2 gap-2">
-            <label class="bg-white border border-indigo-200 text-[11px] text-indigo-800 font-bold py-2.5 px-2 rounded-full cursor-pointer text-center hover:bg-indigo-50 shadow-sm flex items-center justify-center gap-1">
-              <span>🖼️ 単体画像を複数追加</span>
-              <input type="file" accept="image/*" multiple class="hidden" onchange="handleAdminZipPackSelect(this)">
-            </label>
-            <label class="bg-gradient-to-r from-pink-500 to-purple-500 text-white text-[11px] font-bold py-2.5 px-2 rounded-full cursor-pointer text-center hover:opacity-95 shadow-sm flex items-center justify-center gap-1">
-              <span>✂️ まとめ画像から自動切り抜き</span>
-              <input type="file" accept="image/*" class="hidden" onchange="handleSheetAutoCropSelect(this)">
-            </label>
-          </div>
-
-          <!-- 自動切り抜きプレビュー＆調整エリア -->
-          <div id="sheet-crop-area" class="hidden bg-white/95 rounded-xl p-3 border border-pink-200 space-y-2.5 shadow-sm">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-bold text-pink-700">✂️ トレカ枠 自動検出プレビュー</span>
-              <button onclick="closeSheetCropArea()" class="text-xs text-gray-400 hover:text-gray-700 font-bold px-1">✕ 閉じる</button>
+          <label class="block w-full bg-white/90 border border-purple-200 text-xs text-illit-darkPurple font-bold py-2.5 rounded-full cursor-pointer text-center hover:bg-white shadow-sm">
+            🖼️ 写真まとめて選択
+            <input type="file" id="admin-bulk-photos" accept="image/*" multiple class="hidden" onchange="handleAdminBulkSelect(this)">
+          </label>
+          <div id="admin-bulk-preview-area" class="space-y-2 hidden">
+            <div id="admin-bulk-list" class="space-y-1.5 max-h-60 overflow-y-auto pr-1"></div>
+            <div class="flex gap-2 pt-1">
+              <button onclick="clearAdminBulk()" class="flex-1 bg-white/80 text-gray-600 text-xs font-medium py-2 rounded-full border border-gray-200">クリア</button>
+              <button id="admin-bulk-submit-btn" onclick="adminSubmitBulkCards()" class="flex-[2] bg-gradient-to-r from-illit-purple to-illit-accent text-white text-xs font-bold py-2 rounded-full shadow">まとめて登録</button>
             </div>
-            <p class="text-[10px] text-gray-600 leading-snug">
-              赤い枠が切り抜かれるトレカです。<strong>誤検出された枠はタップでOFF（グレー）</strong>にできます。
-            </p>
-            <div class="flex items-center gap-2 text-[11px] bg-pink-50/70 px-2.5 py-1.5 rounded-lg">
-              <span class="text-gray-700 shrink-0">検出感度:</span>
-              <input id="sheet-crop-threshold" type="range" min="8" max="60" value="22" class="flex-1 accent-pink-500" onchange="rerunSheetAutoDetect()">
-              <span id="sheet-crop-detected-count" class="font-bold text-pink-700 shrink-0">0枚検出</span>
-            </div>
-            <div class="flex flex-wrap gap-1.5 items-center text-[10px]">
-              <span class="text-gray-500 font-bold">行ごとのメンバー一括設定:</span>
-              <button onclick="assignSheetRowMembers('yunah_order')" class="px-2 py-1 rounded bg-purple-100 text-purple-800 font-bold">上から ユナ→ミンジュ→モカ→ウォニ→イロハ</button>
-              <button onclick="assignSheetRowMembers('wonhee_order')" class="px-2 py-1 rounded bg-teal-100 text-teal-800 font-bold">上から ウォニ→ミンジュ→モカ→ユナ→イロハ</button>
-              <button onclick="assignSheetRowMembers('clear')" class="px-2 py-1 rounded bg-gray-100 text-gray-600">クリア</button>
-            </div>
-            <div class="relative max-h-80 overflow-auto border border-gray-200 rounded-lg bg-gray-900 flex justify-center">
-              <canvas id="sheet-crop-canvas" onclick="handleSheetCanvasClick(event)" class="max-w-full h-auto cursor-pointer"></canvas>
-            </div>
-            <div class="flex gap-2">
-              <button onclick="closeSheetCropArea()" class="flex-1 bg-gray-100 text-gray-600 text-xs font-bold py-2 rounded-full">キャンセル</button>
-              <button id="sheet-crop-confirm-btn" onclick="commitSheetAutoCropsToZip()" class="flex-[2] bg-gradient-to-r from-pink-500 to-purple-600 text-white text-xs font-bold py-2 rounded-full shadow">
-                ✂️ 有効な枠を切り抜いてZIPリストへ追加
-              </button>
-            </div>
-          </div>
-
-          <div id="admin-zip-status-area" class="hidden space-y-2 pt-1">
-            <div class="flex items-center justify-between bg-white/80 rounded-lg px-3 py-2 text-xs">
-              <span>選択済み: <b id="admin-zip-count" class="text-indigo-700">0</b> 枚（既存パック ${staticPackCards.length} 枚と合体可能）</span>
-              <button onclick="clearAdminZipPack()" class="text-[11px] text-red-500 underline">リセット</button>
-            </div>
-            <label class="flex items-center gap-2 text-[11px] text-gray-700 px-1">
-              <input type="checkbox" id="admin-zip-merge-existing" checked class="rounded">
-              <span>すでに公開中の <code>catalog.json</code>（${staticPackCards.length}枚）に追記して合体する</span>
-            </label>
-            <button id="admin-zip-build-btn" onclick="buildAndDownloadCardPackZip()" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-bold py-2.5 rounded-full shadow-md">
-              📦 透かし圧縮してZIPダウンロード
-            </button>
-            <div id="admin-zip-progress" class="text-[11px] text-center text-indigo-800 font-medium hidden"></div>
           </div>
         </div>
-
-        <details class="liquid-glass-input rounded-xl p-3 mb-3 border border-purple-200/80 bg-purple-50/40">
-          <summary class="text-xs font-bold text-illit-darkPurple cursor-pointer select-none">📦 少数をすぐFirestoreに一括登録（数枚〜数十枚向け）</summary>
-          <div class="space-y-2.5 mt-2.5">
-            <div class="flex gap-2">
-              <select id="admin-bulk-album" class="flex-1 liquid-glass-input rounded-lg px-2 py-2 text-xs">
-                ${ILLIT_CARD_ALBUMS.map(a => `<option value="${a.id}" ${a.id === adminCardsAlbum ? "selected" : ""}>${a.name}</option>`).join("")}
-              </select>
-              <input id="admin-bulk-prefix" type="text" maxlength="50" placeholder="共通名（例: Weverse特典 / 封入）" class="flex-1 liquid-glass-input rounded-lg px-2.5 py-2 text-xs">
-            </div>
-            <label class="block w-full bg-white/90 border border-purple-200 text-xs text-illit-darkPurple font-bold py-2.5 rounded-full cursor-pointer text-center hover:bg-white shadow-sm">
-              🖼️ 写真まとめて選択
-              <input type="file" id="admin-bulk-photos" accept="image/*" multiple class="hidden" onchange="handleAdminBulkSelect(this)">
-            </label>
-            <div id="admin-bulk-preview-area" class="space-y-2 hidden">
-              <div id="admin-bulk-list" class="space-y-1.5 max-h-60 overflow-y-auto pr-1"></div>
-              <div class="flex gap-2 pt-1">
-                <button onclick="clearAdminBulk()" class="flex-1 bg-white/80 text-gray-600 text-xs font-medium py-2 rounded-full border border-gray-200">クリア</button>
-                <button id="admin-bulk-submit-btn" onclick="adminSubmitBulkCards()" class="flex-[2] bg-gradient-to-r from-illit-purple to-illit-accent text-white text-xs font-bold py-2 rounded-full shadow">まとめて登録</button>
-              </div>
-            </div>
-          </div>
-        </details>
 
         <details class="liquid-glass-input rounded-xl p-3 mb-3 border border-teal-200/60">
           <summary class="text-xs font-bold text-teal-800 cursor-pointer select-none">＋ 1枚ずつ登録する（写真なしも可）</summary>
@@ -4177,7 +4052,6 @@ window.openAzukariApp = function() {
         <div class="space-y-2">
           ${cards.map(c => {
             const photo = getCardPhoto(c.id);
-            const isStatic = !!c.staticPack;
             const isAdminCard = !!c.admin || isAdminCatalogCard(c.id);
             const thumb = photo
               ? `<img src="${photo}" class="w-14 h-14 object-cover rounded-lg border border-white shadow-sm">`
@@ -4185,18 +4059,16 @@ window.openAzukariApp = function() {
             return `<div class="liquid-glass-input rounded-xl p-2.5 flex items-center gap-2.5">
               ${thumb}
               <div class="flex-1 min-w-0">
-                <div class="text-xs font-medium text-gray-900 truncate">${escapeHtml(c.name)}${isStatic ? ' <span class="text-[9px] text-indigo-600 font-bold">GitHubパック</span>' : (isAdminCard ? ' <span class="text-[9px] text-teal-600">管理者追加</span>' : "")}</div>
+                <div class="text-xs font-medium text-gray-900 truncate">${escapeHtml(c.name)}${isAdminCard ? ' <span class="text-[9px] text-teal-600">管理者追加</span>' : ""}</div>
                 <div class="text-[10px] text-gray-500">${c.member ? escapeHtml(c.member) : "—"} · <span class="${photo ? "text-green-600" : "text-pink-600"}">${photo ? "写真あり" : "写真なし"}</span></div>
               </div>
               <div class="flex flex-col gap-1 shrink-0">
-                ${isStatic ? `<span class="text-[9px] text-gray-400">静的配信中</span>` : `
-                  <label class="bg-illit-purple/90 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-full cursor-pointer hover:opacity-90 text-center">
-                    ${photo ? "差し替え" : "写真登録"}
-                    <input type="file" accept="image/*" class="hidden" onchange="adminUploadCardPhoto('${escapeHtml(c.id)}', this)">
-                  </label>
-                  ${photo ? `<button onclick="adminDeleteCardPhoto('${escapeHtml(c.id)}')" class="text-[10px] text-red-500 underline">写真削除</button>` : ""}
-                  ${isAdminCard ? `<button onclick="adminDeleteCatalogCard('${escapeHtml(c.id)}')" class="text-[10px] text-red-600 underline">カード削除</button>` : ""}
-                `}
+                <label class="bg-illit-purple/90 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-full cursor-pointer hover:opacity-90 text-center">
+                  ${photo ? "差し替え" : "写真登録"}
+                  <input type="file" accept="image/*" class="hidden" onchange="adminUploadCardPhoto('${escapeHtml(c.id)}', this)">
+                </label>
+                ${photo ? `<button onclick="adminDeleteCardPhoto('${escapeHtml(c.id)}')" class="text-[10px] text-red-500 underline">写真削除</button>` : ""}
+                ${isAdminCard ? `<button onclick="adminDeleteCatalogCard('${escapeHtml(c.id)}')" class="text-[10px] text-red-600 underline">カード削除</button>` : ""}
               </div>
             </div>`;
           }).join("") || '<p class="text-xs text-gray-500 text-center py-4">カードがありません</p>'}
@@ -4211,392 +4083,7 @@ window.openAzukariApp = function() {
         };
       }
       renderAdminBulkList();
-      updateAdminZipPackUI();
     }
-
-    // ===== まとめ画像からのトレカ枠自動検出ロジック =====
-    window.handleSheetAutoCropSelect = function(inputEl) {
-      const file = inputEl.files && inputEl.files[0];
-      inputEl.value = "";
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = () => {
-        const img = new Image();
-        img.onload = () => {
-          sheetCropState.img = img;
-          sheetCropState.fileName = file.name;
-          const area = document.getElementById("sheet-crop-area");
-          if (area) area.classList.remove("hidden");
-          rerunSheetAutoDetect();
-        };
-        img.src = reader.result;
-      };
-      reader.readAsDataURL(file);
-    };
-
-    window.closeSheetCropArea = function() {
-      sheetCropState.img = null;
-      sheetCropState.boxes = [];
-      const area = document.getElementById("sheet-crop-area");
-      if (area) area.classList.add("hidden");
-    };
-
-    window.rerunSheetAutoDetect = function() {
-      const img = sheetCropState.img;
-      if (!img) return;
-      const threshold = Number(document.getElementById("sheet-crop-threshold")?.value || 22);
-
-      // 解析用に最大幅 900px に縮小して高速スキャン
-      const maxScanW = 900;
-      const scale = img.width > maxScanW ? maxScanW / img.width : 1;
-      const sw = Math.round(img.width * scale);
-      const sh = Math.round(img.height * scale);
-
-      const off = document.createElement("canvas");
-      off.width = sw;
-      off.height = sh;
-      const ctx = off.getContext("2d", { willReadFrequently: true });
-      ctx.drawImage(img, 0, 0, sw, sh);
-      const { data } = ctx.getImageData(0, 0, sw, sh);
-
-      // 画像の外周ピクセルから背景色を推定（最頻値に近い平均）
-      let bgR = 255, bgG = 255, bgB = 255;
-      const samples = [];
-      for (let x = 0; x < sw; x += 4) {
-        samples.push([0, x], [sh - 1, x]);
-      }
-      for (let y = 0; y < sh; y += 4) {
-        samples.push([y, 0], [y, sw - 1]);
-      }
-      if (samples.length) {
-        let sr = 0, sg = 0, sb = 0;
-        samples.forEach(([y, x]) => {
-          const i = (y * sw + x) * 4;
-          sr += data[i]; sg += data[i + 1]; sb += data[i + 2];
-        });
-        bgR = sr / samples.length;
-        bgG = sg / samples.length;
-        bgB = sb / samples.length;
-      }
-
-      // 前景マスク作成（1=カード画素, 0=背景）
-      const mask = new Uint8Array(sw * sh);
-      for (let p = 0; p < sw * sh; p++) {
-        const i = p * 4;
-        const diff = Math.abs(data[i] - bgR) + Math.abs(data[i + 1] - bgG) + Math.abs(data[i + 2] - bgB);
-        if (diff > threshold * 3) mask[p] = 1;
-      }
-
-      // 連結成分ラベリング（BFS）で四角形バウンディングボックス抽出
-      const visited = new Uint8Array(sw * sh);
-      const queue = new Int32Array(sw * sh);
-      const rawBoxes = [];
-      const minW = Math.max(18, Math.round(sw * 0.04));
-      const minH = Math.max(24, Math.round(sh * 0.04));
-      const maxW = Math.round(sw * 0.45);
-      const maxH = Math.round(sh * 0.45);
-
-      for (let y = 0; y < sh; y++) {
-        for (let x = 0; x < sw; x++) {
-          const start = y * sw + x;
-          if (!mask[start] || visited[start]) continue;
-
-          let head = 0, tail = 0;
-          queue[tail++] = start;
-          visited[start] = 1;
-          let minX = x, maxX = x, minY = y, maxY = y, areaCount = 0;
-
-          while (head < tail) {
-            const cur = queue[head++];
-            const cx = cur % sw;
-            const cy = (cur - cx) / sw;
-            areaCount++;
-            if (cx < minX) minX = cx;
-            if (cx > maxX) maxX = cx;
-            if (cy < minY) minY = cy;
-            if (cy > maxY) maxY = cy;
-
-            // 4近傍
-            if (cx > 0 && mask[cur - 1] && !visited[cur - 1]) { visited[cur - 1] = 1; queue[tail++] = cur - 1; }
-            if (cx + 1 < sw && mask[cur + 1] && !visited[cur + 1]) { visited[cur + 1] = 1; queue[tail++] = cur + 1; }
-            if (cy > 0 && mask[cur - sw] && !visited[cur - sw]) { visited[cur - sw] = 1; queue[tail++] = cur - sw; }
-            if (cy + 1 < sh && mask[cur + sw] && !visited[cur + sw]) { visited[cur + sw] = 1; queue[tail++] = cur + sw; }
-          }
-
-          const bw = maxX - minX + 1;
-          const bh = maxY - minY + 1;
-          const ratio = bh / bw;
-          const fillRatio = areaCount / (bw * bh);
-
-          // トレカらしい縦横比（1.15〜1.85）＆矩形充填率（0.65以上）でフィルタ
-          if (bw >= minW && bh >= minH && bw <= maxW && bh <= maxH && ratio >= 1.15 && ratio <= 1.85 && fillRatio >= 0.65) {
-            rawBoxes.push({
-              x: Math.round(minX / scale),
-              y: Math.round(minY / scale),
-              w: Math.round(bw / scale),
-              h: Math.round(bh / scale),
-              active: true,
-              member: ""
-            });
-          }
-        }
-      }
-
-      // 上から下、左から右の順にソート（同じ行の誤差を許容）
-      rawBoxes.sort((a, b) => {
-        const rowTol = Math.max(20, a.h * 0.4);
-        if (Math.abs(a.y - b.y) > rowTol) return a.y - b.y;
-        return a.x - b.x;
-      });
-
-      sheetCropState.boxes = rawBoxes;
-      drawSheetCropPreview();
-    };
-
-    function drawSheetCropPreview() {
-      const img = sheetCropState.img;
-      const canvas = document.getElementById("sheet-crop-canvas");
-      const countEl = document.getElementById("sheet-crop-detected-count");
-      if (!img || !canvas) return;
-
-      const maxDispW = 760;
-      const dispScale = img.width > maxDispW ? maxDispW / img.width : 1;
-      sheetCropState.scale = dispScale;
-      canvas.width = Math.round(img.width * dispScale);
-      canvas.height = Math.round(img.height * dispScale);
-
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-      let activeCount = 0;
-      sheetCropState.boxes.forEach((b, idx) => {
-        if (b.active) activeCount++;
-        const bx = b.x * dispScale;
-        const by = b.y * dispScale;
-        const bw = b.w * dispScale;
-        const bh = b.h * dispScale;
-
-        ctx.lineWidth = b.active ? 2.5 : 1.5;
-        ctx.strokeStyle = b.active ? "#ff1e6e" : "rgba(180,180,180,0.6)";
-        ctx.fillStyle = b.active ? "rgba(255, 30, 110, 0.14)" : "rgba(0, 0, 0, 0.45)";
-        ctx.fillRect(bx, by, bw, bh);
-        ctx.strokeRect(bx, by, bw, bh);
-
-        if (b.active) {
-          const label = b.member ? `${idx + 1}:${b.member}` : `${idx + 1}`;
-          ctx.fillStyle = "#ff1e6e";
-          ctx.fillRect(bx, by, Math.min(bw, 54), 15);
-          ctx.fillStyle = "#ffffff";
-          ctx.font = "bold 10px sans-serif";
-          ctx.fillText(label, bx + 3, by + 11);
-        }
-      });
-
-      if (countEl) countEl.textContent = `${activeCount}枚有効 / 全${sheetCropState.boxes.length}枠`;
-    }
-
-    window.handleSheetCanvasClick = function(ev) {
-      const canvas = document.getElementById("sheet-crop-canvas");
-      if (!canvas || !sheetCropState.boxes.length) return;
-      const rect = canvas.getBoundingClientRect();
-      const clickX = ((ev.clientX - rect.left) / rect.width) * (canvas.width / sheetCropState.scale);
-      const clickY = ((ev.clientY - rect.top) / rect.height) * (canvas.height / sheetCropState.scale);
-
-      for (let i = sheetCropState.boxes.length - 1; i >= 0; i--) {
-        const b = sheetCropState.boxes[i];
-        if (clickX >= b.x && clickX <= b.x + b.w && clickY >= b.y && clickY <= b.y + b.h) {
-          b.active = !b.active;
-          drawSheetCropPreview();
-          break;
-        }
-      }
-    };
-
-    window.assignSheetRowMembers = function(mode) {
-      const activeBoxes = sheetCropState.boxes.filter(b => b.active);
-      if (!activeBoxes.length) return;
-      if (mode === "clear") {
-        sheetCropState.boxes.forEach(b => { b.member = ""; });
-        drawSheetCropPreview();
-        return;
-      }
-
-      const order = mode === "yunah_order"
-        ? ["ユナ", "ミンジュ", "モカ", "ウォニ", "イロハ"]
-        : ["ウォニ", "ミンジュ", "モカ", "ユナ", "イロハ"];
-
-      // Y座標が近いものを行（Row）としてグループ化
-      const rows = [];
-      activeBoxes.forEach(b => {
-        const rowTol = Math.max(20, b.h * 0.45);
-        const hitRow = rows.find(r => Math.abs(r.avgY - b.y) <= rowTol);
-        if (hitRow) {
-          hitRow.items.push(b);
-          hitRow.avgY = hitRow.items.reduce((s, it) => s + it.y, 0) / hitRow.items.length;
-        } else {
-          rows.push({ avgY: b.y, items: [b] });
-        }
-      });
-
-      rows.forEach((r, rowIdx) => {
-        const memberName = order[rowIdx] || "";
-        r.items.forEach(b => { b.member = memberName; });
-      });
-      drawSheetCropPreview();
-      showToast(`${rows.length}行にメンバー名を割り当てました`, "info");
-    };
-
-    window.commitSheetAutoCropsToZip = async function() {
-      const img = sheetCropState.img;
-      const activeBoxes = sheetCropState.boxes.filter(b => b.active);
-      if (!img || !activeBoxes.length) return alert("有効なトレカ枠がありません。");
-
-      const btn = document.getElementById("sheet-crop-confirm-btn");
-      if (btn) { btn.disabled = true; btn.textContent = "切り抜き中..."; }
-
-      const defaultAlbum = document.getElementById("admin-zip-album")?.value || adminCardsAlbum;
-      const baseStem = (sheetCropState.fileName || "sheet").replace(/\.[^.]+$/, "");
-
-      try {
-        for (let i = 0; i < activeBoxes.length; i++) {
-          const b = activeBoxes[i];
-          const cropCanvas = document.createElement("canvas");
-          cropCanvas.width = b.w;
-          cropCanvas.height = b.h;
-          const ctx = cropCanvas.getContext("2d");
-          ctx.drawImage(img, b.x, b.y, b.w, b.h, 0, 0, b.w, b.h);
-
-          const blob = await new Promise(resolve => cropCanvas.toBlob(resolve, "image/jpeg", 0.92));
-          if (!blob) continue;
-          const fileName = `${b.member ? b.member + "_" : ""}${baseStem}_${String(i + 1).padStart(2, "0")}.jpg`;
-          const croppedFile = new File([blob], fileName, { type: "image/jpeg" });
-
-          adminZipPackFiles.push({
-            file: croppedFile,
-            relPath: fileName,
-            albumId: defaultAlbum,
-            member: b.member || guessMemberFromFileName(fileName)
-          });
-        }
-
-        closeSheetCropArea();
-        updateAdminZipPackUI();
-        showToast(`${activeBoxes.length}枚を切り抜いてZIPリストに追加しました！`, "success");
-      } catch (e) {
-        console.error(e);
-        alert("切り抜き処理中にエラーが発生しました。");
-      } finally {
-        if (btn) { btn.disabled = false; btn.textContent = "✂️ 有効な枠を切り抜いてZIPリストへ追加"; }
-      }
-    };
-
-    window.handleAdminZipPackSelect = function(inputEl) {
-      const files = Array.from(inputEl.files || []);
-      inputEl.value = "";
-      if (!files.length) return;
-      const defaultAlbum = document.getElementById("admin-zip-album")?.value || adminCardsAlbum;
-      files.forEach(file => {
-        const relPath = file.webkitRelativePath || file.name;
-        adminZipPackFiles.push({
-          file,
-          relPath,
-          albumId: guessAlbumFromPath(relPath, defaultAlbum),
-          member: guessMemberFromFileName(file.name)
-        });
-      });
-      updateAdminZipPackUI();
-      showToast(`${files.length}枚を追加しました（合計 ${adminZipPackFiles.length}枚）`, "info");
-    };
-
-    window.clearAdminZipPack = function() {
-      adminZipPackFiles = [];
-      updateAdminZipPackUI();
-    };
-
-    function updateAdminZipPackUI() {
-      const area = document.getElementById("admin-zip-status-area");
-      const countEl = document.getElementById("admin-zip-count");
-      if (!area || !countEl) return;
-      if (!adminZipPackFiles.length) {
-        area.classList.add("hidden");
-        return;
-      }
-      area.classList.remove("hidden");
-      countEl.textContent = String(adminZipPackFiles.length);
-    }
-
-    window.buildAndDownloadCardPackZip = async function() {
-      if (!adminZipPackFiles.length) return;
-      if (typeof JSZip === "undefined") {
-        return alert("JSZipライブラリが読み込まれていません。ページを再読み込みしてください。");
-      }
-      const selectedAlbum = document.getElementById("admin-zip-album")?.value || adminCardsAlbum;
-      const prefix = (document.getElementById("admin-zip-prefix")?.value || "").trim();
-      const mergeExisting = !!document.getElementById("admin-zip-merge-existing")?.checked;
-      const btn = document.getElementById("admin-zip-build-btn");
-      const prog = document.getElementById("admin-zip-progress");
-      if (btn) btn.disabled = true;
-      if (prog) { prog.classList.remove("hidden"); prog.textContent = "準備中..."; }
-
-      try {
-        const zip = new JSZip();
-        const cardsFolder = zip.folder("cards");
-        const catalogList = mergeExisting
-          ? staticPackCards.map(c => ({ id: c.id, albumId: c.albumId, name: c.name, member: c.member, photo: c.photoUrl }))
-          : [];
-
-        const batchTs = Date.now().toString(36);
-        for (let i = 0; i < adminZipPackFiles.length; i++) {
-          const item = adminZipPackFiles[i];
-          if (prog && (i % 5 === 0 || i === adminZipPackFiles.length - 1)) {
-            prog.textContent = `透かし・圧縮処理中... (${i + 1} / ${adminZipPackFiles.length} 枚)`;
-            await new Promise(r => setTimeout(r, 0));
-          }
-          const dataUrl = await compressCardWithWatermark(item.file, PHOTO_THUMB);
-          if (!isJpegData(dataUrl)) continue;
-
-          const base64Data = dataUrl.split(",")[1];
-          const cardId = `pk_${batchTs}_${String(i + 1).padStart(4, "0")}`;
-          const fileName = `${cardId}.jpg`;
-          cardsFolder.file(fileName, base64Data, { base64: true });
-
-          const rawStem = item.file.name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim();
-          const cardName = prefix
-            ? [item.member, prefix].filter(Boolean).join(" ")
-            : (rawStem || [item.member, `トレカ ${i + 1}`].filter(Boolean).join(" "));
-
-          catalogList.push({
-            id: cardId,
-            albumId: selectedAlbum || item.albumId,
-            name: cardName,
-            member: item.member || "",
-            photo: `./cards/${fileName}`
-          });
-        }
-
-        if (prog) prog.textContent = "ZIPファイルを生成中（数秒かかります）...";
-        zip.file("catalog.json", JSON.stringify({ updatedAt: new Date().toISOString(), cards: catalogList }, null, 2));
-
-        const blob = await zip.generateAsync({ type: "blob", compression: "STORE" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `illit-cards-pack-${batchTs}.zip`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 10000);
-
-        if (prog) prog.textContent = `✅ 完了！合計 ${catalogList.length} 枚分のZIPをダウンロードしました`;
-        showToast("ZIPをダウンロードしました！解凍してGitHubに配置してください", "success");
-      } catch (e) {
-        console.error(e);
-        alert("ZIP生成中にエラーが発生しました: " + (e?.message || e));
-      } finally {
-        if (btn) btn.disabled = false;
-      }
-    };
 
     window.handleAdminBulkSelect = function(inputEl) {
       const files = Array.from(inputEl.files || []);
@@ -4826,10 +4313,9 @@ window.openAzukariApp = function() {
       const album = ILLIT_CARD_ALBUMS.find(a => a.id === albumId);
       if (!album) return [];
       const base = album.cards.slice();
-      const statics = staticPackCards.filter(c => c.albumId === albumId);
       const adminCards = catalogCardsCache.filter(c => c.albumId === albumId);
       const customs = (userData.customCards || []).filter(c => c.albumId === albumId);
-      return base.concat(statics).concat(adminCards).concat(customs);
+      return base.concat(adminCards).concat(customs);
     }
     function findCardById(cardId) {
       for (const a of ILLIT_CARD_ALBUMS) {
@@ -4907,7 +4393,7 @@ window.openAzukariApp = function() {
             const watching = !!(userData.cardWatch || {})[c.id];
 
             const imgHtml = photo
-              ? `<img src="${photo}" loading="lazy" alt="${escapeHtml(c.name)}" class="w-full h-full object-cover transition duration-200 ${isOwned ? "" : "opacity-55"}">`
+              ? `<img src="${photo}" alt="${escapeHtml(c.name)}" class="w-full h-full object-cover transition duration-200 ${isOwned ? "" : "opacity-55"}">`
               : `<div class="w-full h-full bg-gradient-to-br from-purple-50 to-pink-50 flex flex-col items-center justify-center p-1 text-center ${isOwned ? "" : "opacity-65"}">
                    <span class="text-lg leading-none mb-0.5">🃏</span>
                    <span class="text-[9px] text-gray-500 line-clamp-2 leading-tight">${escapeHtml(c.member || c.name)}</span>
@@ -5117,7 +4603,7 @@ window.openAzukariApp = function() {
       const map = userData.myCards || {};
       let owned = 0, want = 0;
       Object.values(map).forEach(v => { if (v === "owned") owned++; else if (v === "want") want++; });
-      const totalDefined = ILLIT_CARD_ALBUMS.reduce((s, a) => s + a.cards.length, 0) + staticPackCards.length + catalogCardsCache.length + (userData.customCards || []).length;
+      const totalDefined = ILLIT_CARD_ALBUMS.reduce((s, a) => s + a.cards.length, 0) + catalogCardsCache.length + (userData.customCards || []).length;
       el.innerHTML = `<div class="liquid-glass-input rounded-xl p-3 space-y-1">
         <div>所持: <b class="text-emerald-700">${owned}</b> 枚</div>
         <div>欲しい: <b class="text-pink-600">${want}</b> 枚</div>
@@ -5161,8 +4647,6 @@ window.openAzukariApp = function() {
       const link = location.origin + location.pathname + "?collection=" + currentUser.uid;
       navigator.clipboard.writeText(link).then(() => showToast("共有リンクをコピーしました", "success")).catch(() => alert(link));
     };
-
-      
 
 
 
