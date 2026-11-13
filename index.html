@@ -1233,7 +1233,7 @@ getRedirectResult(auth)
     let myCardsAlbum = "srm", myCardsTab = "own";
     let cardPhotoCache = {}; // cardId -> jpeg dataURL
     let adminCardsAlbum = "srm";
-    let cardPhotosLoaded = false;
+    
     let catalogCardsCache = []; // 管理者が登録したカード {id, albumId, name, member}
     let catalogCardsLoaded = false;
     let selectedPostCard = null; // { id, name, member, albumId } | null
@@ -3807,16 +3807,31 @@ window.openAzukariApp = function() {
       else if (!recorded && hasAgreedLocally() && !termsSaving) { termsSaving = true; saveUserData({ terms: { version: TERMS_VERSION, agreedAt: serverTimestamp() } }).finally(() => { termsSaving = false; }); }
     }
 
-    // ===== Myトレカ / トレカ写真（管理者登録） =====
-    async function ensureCardPhotosLoaded() {
-      if (cardPhotosLoaded) return;
+      const loadedPhotoAlbums = new Set();
+
+    async function ensureCardPhotosLoaded(targetAlbumId) {
+      const albumId = targetAlbumId || myCardsAlbum;
+      if (!albumId || loadedPhotoAlbums.has(albumId)) return;
+
+      await ensureCatalogCardsLoaded();
+      const cards = getAlbumCards(albumId);
+      const missingIds = cards.map(c => c.id).filter(id => !cardPhotoCache[id]);
+
+      if (missingIds.length === 0) {
+        loadedPhotoAlbums.add(albumId);
+        return;
+      }
+
       try {
-        const snap = await getDocs(collection(db, "cardPhotos"));
-        snap.docs.forEach(d => {
-          const data = d.data();
-          if (data && isJpegData(data.data)) cardPhotoCache[d.id] = data.data;
-        });
-        cardPhotosLoaded = true;
+        await Promise.all(missingIds.map(async (id) => {
+          try {
+            const snap = await getDoc(doc(db, "cardPhotos", id));
+            if (snap.exists() && snap.data()?.data) {
+              cardPhotoCache[id] = snap.data().data;
+            }
+          } catch (_) {}
+        }));
+        loadedPhotoAlbums.add(albumId);
       } catch (e) {
         console.warn("cardPhotos load:", e?.code || e);
       }
@@ -3840,7 +3855,7 @@ window.openAzukariApp = function() {
         console.warn("cardCatalog load:", e?.code || e);
       }
     }
-        let adminBulkFiles = [];
+    let adminBulkFiles = [];
     let detailCardId = null;
 
     function guessMemberFromFileName(filename) {
@@ -3862,6 +3877,11 @@ window.openAzukariApp = function() {
     }
 
     function renderAdminCardsPanel(el) {
+      if (!loadedPhotoAlbums.has(adminCardsAlbum)) {
+        el.innerHTML = `<p class="text-xs text-gray-500 text-center py-8">読み込み中...</p>`;
+        ensureCardPhotosLoaded(adminCardsAlbum).then(() => renderAdminCardsPanel(el));
+        return;
+      }
       const tabsEl = document.getElementById("admin-card-album-tabs");
       if (tabsEl) {
         const activeChip = "filter-chip bg-teal-500 text-white shadow-md text-[11px]";
@@ -4062,10 +4082,14 @@ window.openAzukariApp = function() {
       }
     };
 
-    window.setAdminCardsAlbum = function(id) {
+    window.setAdminCardsAlbum = async function(id) {
       adminCardsAlbum = id;
       const el = document.getElementById("admin-content");
-      if (el && adminTab === "cards") renderAdminCardsPanel(el);
+      if (el && adminTab === "cards") {
+        el.innerHTML = `<p class="text-xs text-gray-500 text-center py-8">読み込み中...</p>`;
+        await ensureCardPhotosLoaded(id);
+        renderAdminCardsPanel(el);
+      }
     };
     window.adminRegisterNewCard = async function() {
       if (!isAdmin()) return;
@@ -4191,7 +4215,7 @@ window.openAzukariApp = function() {
       if (!currentUser) return;
       myCardsTab = "own";
       setMyCardsTab("own");
-      await Promise.all([ensureCardPhotosLoaded(), ensureCatalogCardsLoaded()]);
+      await Promise.all([ensureCardPhotosLoaded(myCardsAlbum), ensureCatalogCardsLoaded()]);
       renderMyCardsAlbumTabs();
       renderMyCardsList();
       const pub = document.getElementById("mycards-public");
@@ -4222,11 +4246,295 @@ window.openAzukariApp = function() {
         `<button onclick="setMyCardsAlbum('${a.id}')" class="${a.id === myCardsAlbum ? activeChip : normalChip}">${a.name}</button>`
       ).join("");
     }
-    window.setMyCardsAlbum = function(id) {
+    window.setMyCardsAlbum = async function(id) {
       myCardsAlbum = id;
       renderMyCardsAlbumTabs();
+      const el = document.getElementById("mycards-list");
+      if (el) el.innerHTML = `<p class="text-xs text-gray-500 text-center py-8">読み込み中...</p>`;
+      await ensureCardPhotosLoaded(id);
       renderMyCardsList();
     };
+
+    function renderMyCardsList() {
+      const el = document.getElementById("mycards-list");
+      const cards = getAlbumCards(myCardsAlbum);
+      const album = ILLIT_CARD_ALBUMS.find(a => a.id === myCardsAlbum);
+      if (cards.length === 0) {
+        el.innerHTML = `<p class="text-xs text-gray-500 text-center py-6">このカテゴリにカードがありません。<br>下からカスタム追加できます。</p>`;
+        return;
+      }
+      const ownedCount = cards.filter(c => getCardStatus(c.id) === "owned").length;
+      const wantCount = cards.filter(c => getCardStatus(c.id) === "want").length;
+
+      el.innerHTML = `
+        <div class="flex items-center justify-between text-[11px] font-bold text-gray-600 mb-2 px-0.5">
+          <span>${album ? album.name : ""}（所持 ${ownedCount}/${cards.length}枚${wantCount ? `・欲しい ${wantCount}` : ""}）</span>
+          <span class="text-[10px] font-normal text-gray-500">タップで拡大・切替</span>
+        </div>
+        <div class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-1.5">
+          ${cards.map(c => {
+            const st = getCardStatus(c.id);
+            const isOwned = st === "owned";
+            const isWant = st === "want";
+            const photo = getCardPhoto(c.id);
+            const watching = !!(userData.cardWatch || {})[c.id];
+
+            const imgHtml = photo
+              ? `<img src="${photo}" alt="${escapeHtml(c.name)}" class="w-full h-full object-cover transition duration-200 ${isOwned ? "" : "opacity-55"}">`
+              : `<div class="w-full h-full bg-gradient-to-br from-purple-50 to-pink-50 flex flex-col items-center justify-center p-1 text-center ${isOwned ? "" : "opacity-65"}">
+                   <span class="text-lg leading-none mb-0.5">🃏</span>
+                   <span class="text-[9px] text-gray-500 line-clamp-2 leading-tight">${escapeHtml(c.member || c.name)}</span>
+                 </div>`;
+
+            let badgeHtml = `<span class="absolute top-1 right-1 px-1.5 py-0.5 rounded-full bg-black/55 text-white text-[9px] font-bold leading-none">未</span>`;
+            if (isOwned) {
+              badgeHtml = `<span class="absolute top-1 right-1 w-4 h-4 rounded-full bg-emerald-500 text-white text-[10px] flex items-center justify-center font-bold shadow">✓</span>`;
+            } else if (isWant) {
+              badgeHtml = `<span class="absolute top-1 right-1 px-1.5 py-0.5 rounded-full bg-pink-500 text-white text-[9px] font-bold leading-none shadow">欲</span>`;
+            }
+
+            const borderClass = isOwned
+              ? "border-emerald-400 ring-1 ring-emerald-400/50"
+              : (isWant ? "border-pink-400 ring-1 ring-pink-400/50" : "border-white/70");
+
+            return `<div onclick="openCardDetailModal('${escapeHtml(c.id)}')" class="relative aspect-[3/4] rounded-xl overflow-hidden cursor-pointer border ${borderClass} shadow-sm bg-white/60 active:scale-95 transition">
+              ${imgHtml}
+              ${watching ? `<span class="absolute top-1 left-1 w-4 h-4 rounded-full bg-amber-400 text-white text-[9px] flex items-center justify-center shadow">🔔</span>` : ""}
+              ${badgeHtml}
+              <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/45 to-transparent px-1 pt-3 pb-1">
+                <div class="text-[9px] font-bold text-white truncate leading-tight">${escapeHtml(c.name)}</div>
+              </div>
+            </div>`;
+          }).join("")}
+        </div>`;
+    }
+
+    window.openCardDetailModal = function(cardId) {
+      detailCardId = cardId;
+      renderCardDetailModal();
+      const modal = document.getElementById("card-detail-modal");
+      if (modal) modal.classList.remove("hidden");
+    };
+
+    window.closeCardDetailModal = function() {
+      detailCardId = null;
+      const modal = document.getElementById("card-detail-modal");
+      if (modal) modal.classList.add("hidden");
+    };
+
+    function renderCardDetailModal() {
+      if (!detailCardId) return;
+      const found = findCardById(detailCardId);
+      const bodyEl = document.getElementById("card-detail-body");
+      if (!found || !bodyEl) return;
+
+      const { card, album } = found;
+      const st = getCardStatus(card.id);
+      const isCustom = !!card.custom;
+      const photo = getCardPhoto(card.id);
+      const watching = !!(userData.cardWatch || {})[card.id];
+
+      const bigImg = photo
+        ? `<div class="w-48 mx-auto aspect-[3/4] rounded-2xl overflow-hidden shadow-lg border-2 border-white bg-white">
+             <img src="${photo}" alt="${escapeHtml(card.name)}" class="w-full h-full object-cover">
+           </div>`
+        : `<div class="w-48 mx-auto aspect-[3/4] rounded-2xl bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-white shadow-inner flex flex-col items-center justify-center text-purple-300">
+             <span class="text-4xl mb-1">🃏</span>
+             <span class="text-xs text-gray-400">画像未登録</span>
+           </div>`;
+
+      const statusBtn = (key, label, activeStyle) => {
+        const active = st === key;
+        return `<button onclick="setCardStatusFromDetail('${escapeHtml(card.id)}', '${key}')" class="flex-1 py-2.5 rounded-xl font-bold text-xs transition border ${
+          active
+            ? activeStyle + " shadow-sm"
+            : "bg-white/70 text-gray-500 border-gray-200 hover:bg-white"
+        }">${label}</button>`;
+      };
+
+      bodyEl.innerHTML = `
+        <div class="pt-1 space-y-3">
+          ${bigImg}
+          <div class="text-center space-y-0.5">
+            <div class="text-[11px] font-medium text-illit-darkPurple">${escapeHtml(album.name)}${card.member ? " · " + escapeHtml(card.member) : ""}</div>
+            <h3 class="text-base font-bold text-gray-900">${escapeHtml(card.name)}</h3>
+          </div>
+
+          <div class="space-y-1.5">
+            <div class="text-[11px] font-bold text-gray-600 px-0.5">所持ステータス</div>
+            <div class="flex gap-1.5">
+              ${statusBtn("none", "未所持", "bg-gray-600 text-white border-gray-600")}
+              ${statusBtn("owned", "✓ 所持", "bg-emerald-500 text-white border-emerald-500")}
+              ${statusBtn("want", "♥ 欲しい", "bg-pink-500 text-white border-pink-500")}
+            </div>
+          </div>
+
+          <button onclick="toggleCardWatch('${escapeHtml(card.id)}')" class="w-full py-2.5 rounded-xl font-bold text-xs transition flex items-center justify-center gap-1.5 border ${
+            watching
+              ? "bg-amber-100 text-amber-800 border-amber-300"
+              : "bg-white/80 text-gray-600 border-gray-200 hover:bg-white"
+          }">
+            <span>${watching ? "🔔 出品通知 ON（出品されたら通知）" : "🔕 出品通知 OFF（タップで通知ON）"}</span>
+          </button>
+
+          <button onclick="searchCardInListings('${escapeHtml(card.name)}')" class="w-full py-2.5 rounded-xl bg-teal-50 text-teal-700 border border-teal-200 font-bold text-xs hover:bg-teal-100 transition">
+            🔍 このトレカの出品を探す
+          </button>
+
+          ${isCustom ? `<button onclick="removeCustomCardFromDetail('${escapeHtml(card.id)}')" class="w-full py-1.5 text-[11px] text-red-500 underline">このカスタムカードを削除</button>` : ""}
+        </div>`;
+    }
+
+    window.setCardStatusFromDetail = async function(cardId, nextStatus) {
+      if (!currentUser) return;
+      const map = { ...(userData.myCards || {}) };
+      if (nextStatus === "none") delete map[cardId];
+      else map[cardId] = nextStatus;
+      userData.myCards = map;
+      renderCardDetailModal();
+      renderMyCardsList();
+      renderMyCardsShareStats();
+      try { await saveUserData({ myCards: map }); } catch (e) { showToast("保存に失敗しました", "error"); }
+    };
+
+    window.removeCustomCardFromDetail = async function(cardId) {
+      closeCardDetailModal();
+      await removeCustomCard(cardId);
+    };
+
+    window.searchCardInListings = function(cardName) {
+      closeCardDetailModal();
+      switchTab("home");
+      const searchEl = document.getElementById("search-input");
+      if (searchEl) searchEl.value = cardName;
+      setSearch(cardName);
+      showToast(`「${cardName}」で絞り込みました`, "info");
+    };
+
+    window.toggleCardWatch = async function(cardId) {
+      if (!currentUser || !cardId) return;
+      const map = { ...(userData.cardWatch || {}) };
+      const on = !!map[cardId];
+      try {
+        if (on) {
+          delete map[cardId];
+          await deleteDoc(doc(db, "cardWatchers", cardId, "users", currentUser.uid));
+        } else {
+          map[cardId] = true;
+          await setDoc(doc(db, "cardWatchers", cardId, "users", currentUser.uid), {
+            uid: currentUser.uid,
+            createdAt: serverTimestamp()
+          });
+        }
+        userData.cardWatch = map;
+        await saveUserData({ cardWatch: map });
+        renderMyCardsList();
+        if (detailCardId === cardId) renderCardDetailModal();
+        showToast(on ? "出品通知をオフにしました" : "出品されたら通知します", on ? "info" : "success");
+      } catch (e) {
+        console.error(e);
+        showToast("通知設定に失敗しました", "error");
+      }
+    };
+    window.cycleCardStatus = async function(cardId) {
+      if (!currentUser) return;
+      const order = ["none", "owned", "want"];
+      const cur = getCardStatus(cardId);
+      const next = order[(order.indexOf(cur) + 1) % order.length];
+      const map = { ...(userData.myCards || {}) };
+      if (next === "none") delete map[cardId];
+      else map[cardId] = next;
+      userData.myCards = map;
+      renderMyCardsList();
+      renderMyCardsShareStats();
+      try { await saveUserData({ myCards: map }); } catch (e) { showToast("保存に失敗しました", "error"); }
+    };
+    window.openAddCustomCard = function() {
+      const sel = document.getElementById("add-card-album");
+      sel.innerHTML = ILLIT_CARD_ALBUMS.map(a => `<option value="${a.id}">${a.name}</option>`).join("");
+      sel.value = myCardsAlbum || "other";
+      document.getElementById("add-card-name").value = "";
+      document.getElementById("add-card-member").value = "";
+      document.getElementById("add-card-modal").classList.remove("hidden");
+    };
+    window.closeAddCustomCard = function() { document.getElementById("add-card-modal").classList.add("hidden"); };
+    window.submitAddCustomCard = async function() {
+      const albumId = document.getElementById("add-card-album").value;
+      const name = document.getElementById("add-card-name").value.trim();
+      const member = document.getElementById("add-card-member").value;
+      if (!name) return alert("カード名を入力してください。");
+      const id = "custom_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
+      const list = [...(userData.customCards || [])];
+      list.push({ id, name, member, albumId, custom: true });
+      userData.customCards = list;
+      userData.myCards = { ...(userData.myCards || {}), [id]: "owned" };
+      closeAddCustomCard();
+      myCardsAlbum = albumId;
+      renderMyCardsAlbumTabs();
+      renderMyCardsList();
+      try { await saveUserData({ customCards: list, myCards: userData.myCards }); showToast("追加しました", "success"); }
+      catch (e) { showToast("保存に失敗しました", "error"); }
+    };
+    window.removeCustomCard = async function(cardId) {
+      if (!(await appConfirm("このカスタムカードを削除しますか？", "削除する", true))) return;
+      userData.customCards = (userData.customCards || []).filter(c => c.id !== cardId);
+      const map = { ...(userData.myCards || {}) };
+      delete map[cardId];
+      userData.myCards = map;
+      renderMyCardsList();
+      try { await saveUserData({ customCards: userData.customCards, myCards: map }); } catch (e) {}
+    };
+    function renderMyCardsShareStats() {
+      const el = document.getElementById("mycards-share-stats");
+      if (!el) return;
+      const map = userData.myCards || {};
+      let owned = 0, want = 0;
+      Object.values(map).forEach(v => { if (v === "owned") owned++; else if (v === "want") want++; });
+      const totalDefined = ILLIT_CARD_ALBUMS.reduce((s, a) => s + a.cards.length, 0) + catalogCardsCache.length + (userData.customCards || []).length;
+      el.innerHTML = `<div class="liquid-glass-input rounded-xl p-3 space-y-1">
+        <div>所持: <b class="text-emerald-700">${owned}</b> 枚</div>
+        <div>欲しい: <b class="text-pink-600">${want}</b> 枚</div>
+        <div class="text-[10px] text-gray-500">登録カード種（定義＋カスタム）: ${totalDefined}</div>
+      </div>`;
+    }
+    window.toggleCollectionPublic = async function(on) {
+      userData.collectionPublic = !!on;
+      try { await saveUserData({ collectionPublic: !!on }); showToast(on ? "コレクションを公開しました" : "非公開にしました", "info"); }
+      catch (e) { showToast("設定の保存に失敗しました", "error"); document.getElementById("mycards-public").checked = !on; }
+    };
+    window.shareMyCollectionText = function() {
+      const map = userData.myCards || {};
+      const lines = ["🃏 ILLIT Myトレカ 所持状況", ""];
+      ILLIT_CARD_ALBUMS.forEach(a => {
+        const cards = getAlbumCards(a.id);
+        const ownedNames = cards.filter(c => getCardStatus(c.id) === "owned").map(c => c.name);
+        if (ownedNames.length) {
+          lines.push(`【${a.name}】`);
+          ownedNames.forEach(n => lines.push("・" + n));
+          lines.push("");
+        }
+      });
+      const want = Object.entries(map).filter(([, v]) => v === "want");
+      if (want.length) {
+        lines.push("【欲しい】");
+        want.forEach(([id]) => {
+          for (const a of ILLIT_CARD_ALBUMS) {
+            const c = getAlbumCards(a.id).find(x => x.id === id);
+            if (c) { lines.push("・" + c.name + (a.name ? ` (${a.name})` : "")); break; }
+          }
+        });
+      }
+      lines.push("", "via ILLIT Trade");
+      const text = lines.join("\n");
+      const url = "https://twitter.com/intent/tweet?text=" + encodeURIComponent(text);
+      window.open(url, "_blank");
+    };
+    window.copyMyCollectionLink = function() {
+      if (!currentUser) return;
+      const link = location.origin + location.pathname + "?collection=" + currentUser.uid;
+      navigator.clipboard.writeText(link).then(() => showToast("共有リンクをコピーしました", "success")).catch(() => alert(link));
+    };
+
 
     function renderMyCardsList() {
       const el = document.getElementById("mycards-list");
