@@ -129,11 +129,13 @@
     body > nav button.nav-pressed { transform: scale(1.22); }
   </style>
 </head>
-
+<body class="bg-illit-bg min-h-screen text-gray-800 relative overflow-x-hidden">
+  <div class="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
     <div class="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-pink-300/40 rounded-full mix-blend-multiply filter blur-[80px] animate-blob"></div>
     <div class="absolute top-[20%] right-[-10%] w-[60vw] h-[60vw] bg-purple-300/40 rounded-full mix-blend-multiply filter blur-[80px] animate-blob animation-delay-2000"></div>
     <div class="absolute bottom-[-20%] left-[10%] w-[50vw] h-[50vw] bg-blue-300/40 rounded-full mix-blend-multiply filter blur-[100px] animate-blob animation-delay-4000"></div>
   </div>
+
 
   <div id="toast-container" class="fixed top-20 left-1/2 -translate-x-1/2 z-[110] space-y-2 w-[92%] max-w-sm pointer-events-none"></div>
 
