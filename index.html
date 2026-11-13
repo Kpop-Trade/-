@@ -2343,8 +2343,18 @@ getRedirectResult(auth)
     }
         async function compressImage(file, opt) { return compressFromImage(await loadImageFromFile(file), opt); }
 
+        function loadImageFast(file) {
+      return new Promise((res, rej) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => { URL.revokeObjectURL(url); res(img); };
+        img.onerror = (e) => { URL.revokeObjectURL(url); rej(e); };
+        img.src = url;
+      });
+    }
+
     async function compressCardWithWatermark(file, opt) {
-      const img = await loadImageFromFile(file);
+      const img = await loadImageFast(file);
       let maxSide = opt.maxSide, quality = opt.quality;
       for (let i = 0; i < 7; i++) {
         const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
@@ -2376,12 +2386,15 @@ getRedirectResult(auth)
         ctx.restore();
 
         const out = canvas.toDataURL("image/jpeg", quality);
+        canvas.width = 0;
+        canvas.height = 0;
         if (out.length < opt.maxChars) return out;
         maxSide = Math.round(maxSide * 0.8);
         quality = Math.max(0.4, quality - 0.07);
       }
-      throw new Error("画像大");
+      throw new Error("画像サイズが大きすぎます");
     }
+
 
     function pushStorageKey() { return "illit_push_" + currentUser.uid; }
 
@@ -4240,13 +4253,13 @@ window.openAzukariApp = function() {
       if (area) area.classList.add("hidden");
     };
 
-    window.rerunSheetAutoDetect = function() {
+        window.rerunSheetAutoDetect = function() {
       const img = sheetCropState.img;
       if (!img) return;
       const threshold = Number(document.getElementById("sheet-crop-threshold")?.value || 22);
 
-      // 解析用に最大幅 900px に縮小して高速スキャン
-      const maxScanW = 900;
+      // 解析用に最大幅 600px に縮小して高速・省メモリでスキャン
+      const maxScanW = 600;
       const scale = img.width > maxScanW ? maxScanW / img.width : 1;
       const sw = Math.round(img.width * scale);
       const sh = Math.round(img.height * scale);
@@ -4257,26 +4270,26 @@ window.openAzukariApp = function() {
       const ctx = off.getContext("2d", { willReadFrequently: true });
       ctx.drawImage(img, 0, 0, sw, sh);
       const { data } = ctx.getImageData(0, 0, sw, sh);
+      off.width = 0;
+      off.height = 0;
 
-      // 画像の外周ピクセルから背景色を推定（最頻値に近い平均）
-      let bgR = 255, bgG = 255, bgB = 255;
-      const samples = [];
-      for (let x = 0; x < sw; x += 4) {
-        samples.push([0, x], [sh - 1, x]);
+      // 画像全体から最頻色（一番面積が広い背景色＝白など）を自動推定
+      const colorCounts = new Map();
+      let bestKey = (255 << 16) | (255 << 8) | 255;
+      let bestCount = -1;
+      for (let p = 0; p < sw * sh; p += 4) {
+        const i = p * 4;
+        const r = data[i] & 0xf0;
+        const g = data[i + 1] & 0xf0;
+        const b = data[i + 2] & 0xf0;
+        const key = (r << 16) | (g << 8) | b;
+        const cnt = (colorCounts.get(key) || 0) + 1;
+        colorCounts.set(key, cnt);
+        if (cnt > bestCount) { bestCount = cnt; bestKey = key; }
       }
-      for (let y = 0; y < sh; y += 4) {
-        samples.push([y, 0], [y, sw - 1]);
-      }
-      if (samples.length) {
-        let sr = 0, sg = 0, sb = 0;
-        samples.forEach(([y, x]) => {
-          const i = (y * sw + x) * 4;
-          sr += data[i]; sg += data[i + 1]; sb += data[i + 2];
-        });
-        bgR = sr / samples.length;
-        bgG = sg / samples.length;
-        bgB = sb / samples.length;
-      }
+      const bgR = ((bestKey >> 16) & 0xff) + 8;
+      const bgG = ((bestKey >> 8) & 0xff) + 8;
+      const bgB = (bestKey & 0xff) + 8;
 
       // 前景マスク作成（1=カード画素, 0=背景）
       const mask = new Uint8Array(sw * sh);
@@ -4290,8 +4303,8 @@ window.openAzukariApp = function() {
       const visited = new Uint8Array(sw * sh);
       const queue = new Int32Array(sw * sh);
       const rawBoxes = [];
-      const minW = Math.max(18, Math.round(sw * 0.04));
-      const minH = Math.max(24, Math.round(sh * 0.04));
+      const minW = Math.max(12, Math.round(sw * 0.025));
+      const minH = Math.max(16, Math.round(sh * 0.025));
       const maxW = Math.round(sw * 0.45);
       const maxH = Math.round(sh * 0.45);
 
@@ -4315,7 +4328,6 @@ window.openAzukariApp = function() {
             if (cy < minY) minY = cy;
             if (cy > maxY) maxY = cy;
 
-            // 4近傍
             if (cx > 0 && mask[cur - 1] && !visited[cur - 1]) { visited[cur - 1] = 1; queue[tail++] = cur - 1; }
             if (cx + 1 < sw && mask[cur + 1] && !visited[cur + 1]) { visited[cur + 1] = 1; queue[tail++] = cur + 1; }
             if (cy > 0 && mask[cur - sw] && !visited[cur - sw]) { visited[cur - sw] = 1; queue[tail++] = cur - sw; }
@@ -4327,8 +4339,7 @@ window.openAzukariApp = function() {
           const ratio = bh / bw;
           const fillRatio = areaCount / (bw * bh);
 
-          // トレカらしい縦横比（1.15〜1.85）＆矩形充填率（0.65以上）でフィルタ
-          if (bw >= minW && bh >= minH && bw <= maxW && bh <= maxH && ratio >= 1.15 && ratio <= 1.85 && fillRatio >= 0.65) {
+          if (bw >= minW && bh >= minH && bw <= maxW && bh <= maxH && ratio >= 1.1 && ratio <= 1.9 && fillRatio >= 0.6) {
             rawBoxes.push({
               x: Math.round(minX / scale),
               y: Math.round(minY / scale),
@@ -4341,9 +4352,8 @@ window.openAzukariApp = function() {
         }
       }
 
-      // 上から下、左から右の順にソート（同じ行の誤差を許容）
       rawBoxes.sort((a, b) => {
-        const rowTol = Math.max(20, a.h * 0.4);
+        const rowTol = Math.max(16, a.h * 0.4);
         if (Math.abs(a.y - b.y) > rowTol) return a.y - b.y;
         return a.x - b.x;
       });
@@ -4351,6 +4361,7 @@ window.openAzukariApp = function() {
       sheetCropState.boxes = rawBoxes;
       drawSheetCropPreview();
     };
+
 
     function drawSheetCropPreview() {
       const img = sheetCropState.img;
@@ -4524,7 +4535,7 @@ window.openAzukariApp = function() {
       countEl.textContent = String(adminZipPackFiles.length);
     }
 
-    window.buildAndDownloadCardPackZip = async function() {
+        window.buildAndDownloadCardPackZip = async function() {
       if (!adminZipPackFiles.length) return;
       if (typeof JSZip === "undefined") {
         return alert("JSZipライブラリが読み込まれていません。ページを再読み込みしてください。");
@@ -4545,35 +4556,46 @@ window.openAzukariApp = function() {
           : [];
 
         const batchTs = Date.now().toString(36);
+        let processed = 0;
+        let skipped = 0;
+
         for (let i = 0; i < adminZipPackFiles.length; i++) {
           const item = adminZipPackFiles[i];
-          if (prog && (i % 5 === 0 || i === adminZipPackFiles.length - 1)) {
-            prog.textContent = `透かし・圧縮処理中... (${i + 1} / ${adminZipPackFiles.length} 枚)`;
-            await new Promise(r => setTimeout(r, 0));
+          if (prog) prog.textContent = `透かし・圧縮処理中... (${i + 1} / ${adminZipPackFiles.length} 枚)`;
+          await new Promise(r => setTimeout(r, 10));
+
+          try {
+            const dataUrl = await compressCardWithWatermark(item.file, PHOTO_THUMB);
+            if (!isJpegData(dataUrl)) { skipped++; continue; }
+
+            const base64Data = dataUrl.split(",")[1];
+            const cardId = `pk_${batchTs}_${String(i + 1).padStart(4, "0")}`;
+            const fileName = `${cardId}.jpg`;
+            cardsFolder.file(fileName, base64Data, { base64: true });
+
+            const rawStem = item.file.name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim();
+            const cardName = prefix
+              ? [item.member, prefix].filter(Boolean).join(" ")
+              : (rawStem || [item.member, `トレカ ${i + 1}`].filter(Boolean).join(" "));
+
+            catalogList.push({
+              id: cardId,
+              albumId: selectedAlbum || item.albumId,
+              name: cardName,
+              member: item.member || "",
+              photo: `./cards/${fileName}`
+            });
+            processed++;
+          } catch (itemErr) {
+            console.warn("Skip image:", item.file.name, itemErr);
+            skipped++;
           }
-          const dataUrl = await compressCardWithWatermark(item.file, PHOTO_THUMB);
-          if (!isJpegData(dataUrl)) continue;
-
-          const base64Data = dataUrl.split(",")[1];
-          const cardId = `pk_${batchTs}_${String(i + 1).padStart(4, "0")}`;
-          const fileName = `${cardId}.jpg`;
-          cardsFolder.file(fileName, base64Data, { base64: true });
-
-          const rawStem = item.file.name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim();
-          const cardName = prefix
-            ? [item.member, prefix].filter(Boolean).join(" ")
-            : (rawStem || [item.member, `トレカ ${i + 1}`].filter(Boolean).join(" "));
-
-          catalogList.push({
-            id: cardId,
-            albumId: selectedAlbum || item.albumId,
-            name: cardName,
-            member: item.member || "",
-            photo: `./cards/${fileName}`
-          });
         }
 
+        if (processed === 0) throw new Error("有効な画像を1枚も処理できませんでした。");
+
         if (prog) prog.textContent = "ZIPファイルを生成中（数秒かかります）...";
+        await new Promise(r => setTimeout(r, 20));
         zip.file("catalog.json", JSON.stringify({ updatedAt: new Date().toISOString(), cards: catalogList }, null, 2));
 
         const blob = await zip.generateAsync({ type: "blob", compression: "STORE" });
@@ -4586,15 +4608,17 @@ window.openAzukariApp = function() {
         a.remove();
         setTimeout(() => URL.revokeObjectURL(url), 10000);
 
-        if (prog) prog.textContent = `✅ 完了！合計 ${catalogList.length} 枚分のZIPをダウンロードしました`;
-        showToast("ZIPをダウンロードしました！解凍してGitHubに配置してください", "success");
+        if (prog) prog.textContent = `✅ 完了！${processed}枚処理（スキップ${skipped}枚）／合計 ${catalogList.length} 枚分のZIPをダウンロードしました`;
+        showToast("ZIPをダウンロードしました！", "success");
       } catch (e) {
         console.error(e);
+        if (prog) prog.textContent = "❌ エラー: " + (e?.message || e);
         alert("ZIP生成中にエラーが発生しました: " + (e?.message || e));
       } finally {
         if (btn) btn.disabled = false;
       }
     };
+
 
     window.handleAdminBulkSelect = function(inputEl) {
       const files = Array.from(inputEl.files || []);
