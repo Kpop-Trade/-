@@ -697,6 +697,7 @@
         <button onclick="switchAdminTab('trades')" id="admin-tab-trades" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">💬 取引監視</button>
         <button onclick="switchAdminTab('likes')" id="admin-tab-likes" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">❤️ いいね検証</button>
         <button onclick="switchAdminTab('broadcast')" id="admin-tab-broadcast" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">📢 一斉通知</button>
+        <button onclick="switchAdminTab('cards')" id="admin-tab-cards" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">🃏 トレカ写真</button>
       </div>
 
       <div id="admin-controls" class="hidden shrink-0 mt-2"></div>
@@ -1231,6 +1232,9 @@ getRedirectResult(auth)
     let currentDetailId = null, submittingSerial = false;
     let roomActionsKey = null, cancellingTrade = false;
     let myCardsAlbum = "srm", myCardsTab = "own";
+    let cardPhotoCache = {}; // cardId -> jpeg dataURL
+    let adminCardsAlbum = "srm";
+    let cardPhotosLoaded = false;
 
     const STATUS_LABEL = { negotiating: "交渉中", shipping: "取引・発送中", completed: "完了", cancelled: "キャンセル" };
     const STATUS_CLASS = { negotiating: "bg-yellow-400 text-yellow-900 border-yellow-200", shipping: "bg-blue-400 text-white border-blue-300", completed: "bg-green-400 text-white border-green-300", cancelled: "bg-gray-300 text-gray-700 border-gray-200" };
@@ -1681,7 +1685,7 @@ getRedirectResult(auth)
     window.switchAdminTab = function(tab) {
       adminTab = tab;
       adminSearchQuery = "";
-      const tabs = ["reports", "inquiries", "users", "posts", "trades", "stats", "likes", "broadcast"];
+      const tabs = ["reports", "inquiries", "users", "posts", "trades", "stats", "likes", "broadcast", "cards"];
       tabs.forEach((k) => {
         const el = document.getElementById("admin-tab-" + k);
         if (el) {
@@ -1690,7 +1694,7 @@ getRedirectResult(auth)
             el.classList.add("border-illit-darkPurple", "text-illit-darkPurple");
           } else {
             el.classList.add("border-transparent", "text-gray-500");
-            el.classList.remove("border-illit-darkPurple", "text-gray-500");
+            el.classList.remove("border-illit-darkPurple", "text-illit-darkPurple");
           }
         }
       });
@@ -1698,6 +1702,9 @@ getRedirectResult(auth)
       const controls = document.getElementById("admin-controls");
       if (tab === "users" || tab === "posts" || tab === "trades") {
         controls.innerHTML = `<input type="text" placeholder="名前, UID, またはキーワードで検索..." oninput="adminSearch(this.value)" class="liquid-glass-input w-full rounded-xl p-2.5 text-xs text-gray-800">`;
+        controls.classList.remove("hidden");
+      } else if (tab === "cards") {
+        controls.innerHTML = `<div class="flex gap-1.5 overflow-x-auto hide-scrollbar" id="admin-card-album-tabs"></div>`;
         controls.classList.remove("hidden");
       } else {
         controls.classList.add("hidden");
@@ -1753,6 +1760,12 @@ getRedirectResult(auth)
                 </div>
               </div>
             </div>`;
+          return;
+        }
+
+        if (adminTab === "cards") {
+          await ensureCardPhotosLoaded();
+          renderAdminCardsPanel(el);
           return;
         }
 
@@ -2844,9 +2857,10 @@ getRedirectResult(auth)
       }
       document.getElementById("detail-extra").innerHTML = extra;
       const actions = document.getElementById("detail-actions");
-      const isDirectPurchase = isGroup || !!p.isSell; // 売却・共同購入は合意スキップで即取引
+      // 売却のみ即購入（合意スキップ）。共同購入は応募→合意
+      const isDirectPurchase = !!p.isSell;
       if (!currentUser) {
-        const loginLabel = isDirectPurchase ? "ログインして購入" : "ログインして申し込む";
+        const loginLabel = isGroup ? "ログインして応募" : (isDirectPurchase ? "ログインして購入" : "ログインして申し込む");
         actions.innerHTML = `<button onclick="loginWithGoogle()" class="w-full bg-gradient-to-r from-illit-purple to-illit-accent text-white font-medium py-3 rounded-full shadow-md border border-white/30">${loginLabel}</button>`;
       } else if (p.userId === currentUser.uid) {
         actions.innerHTML = `${isGroup ? `<button onclick="toggleGroupClosed(${index})" class="w-full bg-teal-50 text-teal-700 border border-teal-200 font-medium py-3 rounded-full hover:bg-teal-100 transition shadow-sm mb-2">${closed ? '🔓 募集再開' : '🔒 募集締切'}</button>` : ''}<button onclick="openEditPost(${index})" class="w-full bg-white/80 border border-white text-illit-darkPurple font-medium py-3 rounded-full hover:bg-white transition shadow-sm">✏️ 編集</button><button onclick="deletePost(${index})" class="w-full bg-red-50 text-red-500 font-medium py-3 rounded-full border border-red-200 hover:bg-red-100 transition mt-2 shadow-sm">削除</button>`;
@@ -2863,7 +2877,7 @@ getRedirectResult(auth)
         } else if (isExpired(p)) {
           actions.innerHTML = `<p class="text-xs text-red-400 font-medium text-center bg-white/50 p-2 rounded-xl border border-white">期限切れです</p>`;
         } else {
-          const btnLabel = isGroup || p.isSell ? "購入する" : "申し込む";
+          const btnLabel = isGroup ? "応募する" : (p.isSell ? "購入する" : "申し込む");
           const btnGrad = isGroup ? "from-teal-400 to-teal-500" : "from-illit-purple to-illit-accent";
           actions.innerHTML = `<button onclick="${isGroup ? `joinGroup(${index})` : `applyToPost(${index})`}" class="w-full bg-gradient-to-r ${btnGrad} text-white font-medium py-3 rounded-full shadow-md border border-white/30">${btnLabel}</button>`;
         }
@@ -3071,22 +3085,21 @@ getRedirectResult(auth)
         });
         p.joinsCount = (typeof p.joinsCount === "number" ? p.joinsCount : 0) + 1;
         (groupJoins[p.id] = groupJoins[p.id] || []).push({ id: currentUser.uid, userName: getMyDisplayName(), bundleChoice: bc });
-        // 共同購入も合意スキップで即取引・発送中へ
-        const agreedMap = { [p.userId]: true, [currentUser.uid]: true };
+        // 共同購入は応募後、双方の合意ボタンで進行
         const ref = await addDoc(collection(db, "trades"), {
           kind: "group", isBuy: false, postId: p.id, postGive: p.give, postWant: "", postPrice: p.price || 0,
           postMember: p.member || "指定なし", postDeadline: p.deadline || "", postPhotoCount: p.photoCount || 0,
           postTarget: p.target || 0, postBundle: p.bundle || "ng", postBundleNote: p.bundleNote || "", bundleChoice: bc,
           paymentMethod: p.paymentMethod || (usesAzukariPayment(p) ? "azukari" : "paypay"),
           ownerId: p.userId, ownerName: p.userName, applicantId: currentUser.uid, applicantName: getMyDisplayName(),
-          participants: [p.userId, currentUser.uid], status: "shipping", agreed: agreedMap,
+          participants: [p.userId, currentUser.uid], status: "negotiating", agreed: {},
           shipped: {}, received: {}, disputed: {},
           lastMessageAt: serverTimestamp(), lastSenderId: currentUser.uid,
           createdAt: serverTimestamp(), updatedAt: serverTimestamp(), deviceId: getOrCreateDeviceId()
         });
         closeDetailModal();
         openTrade(ref.id);
-        showToast("購入が完了しました。取引ルームで決済・発送を進めてください。", "success");
+        showToast("応募が完了しました。取引ルームで合意を進めてください。", "success");
       } catch(e) {
         const msg = e && e.message;
         if (msg === "full") alert("満員です。");
@@ -3619,7 +3632,104 @@ window.openAzukariApp = function() {
       else if (!recorded && hasAgreedLocally() && !termsSaving) { termsSaving = true; saveUserData({ terms: { version: TERMS_VERSION, agreedAt: serverTimestamp() } }).finally(() => { termsSaving = false; }); }
     }
 
-    // ===== Myトレカ =====
+    // ===== Myトレカ / トレカ写真（管理者登録） =====
+    async function ensureCardPhotosLoaded() {
+      if (cardPhotosLoaded) return;
+      try {
+        const snap = await getDocs(collection(db, "cardPhotos"));
+        snap.docs.forEach(d => {
+          const data = d.data();
+          if (data && isJpegData(data.data)) cardPhotoCache[d.id] = data.data;
+        });
+        cardPhotosLoaded = true;
+      } catch (e) {
+        console.warn("cardPhotos load:", e?.code || e);
+      }
+    }
+    function getCardPhoto(cardId) {
+      return cardPhotoCache[cardId] || null;
+    }
+    function renderAdminCardsPanel(el) {
+      const tabsEl = document.getElementById("admin-card-album-tabs");
+      if (tabsEl) {
+        const activeChip = "filter-chip bg-teal-500 text-white shadow-md text-[11px]";
+        const normalChip = "filter-chip bg-white/70 text-teal-800 hover:bg-white text-[11px]";
+        tabsEl.innerHTML = ILLIT_CARD_ALBUMS.map(a =>
+          `<button onclick="setAdminCardsAlbum('${a.id}')" class="${a.id === adminCardsAlbum ? activeChip : normalChip}">${a.name}</button>`
+        ).join("");
+      }
+      const album = ILLIT_CARD_ALBUMS.find(a => a.id === adminCardsAlbum);
+      const cards = getAlbumCards(adminCardsAlbum);
+      if (!album) { el.innerHTML = "<p class='text-xs text-gray-500'>アルバムがありません</p>"; return; }
+      el.innerHTML = `
+        <p class="text-[11px] text-gray-600 mb-2">アルバムごとにトレカ写真を登録できます。登録した写真は全ユーザーの Myトレカ 一覧に表示されます。</p>
+        <div class="text-xs font-bold text-gray-700 mb-2">${escapeHtml(album.name)}${album.year ? " · " + album.year : ""} · ${cards.length}種</div>
+        <div class="space-y-2">
+          ${cards.map(c => {
+            const photo = getCardPhoto(c.id);
+            const thumb = photo
+              ? `<img src="${photo}" class="w-14 h-14 object-cover rounded-lg border border-white shadow-sm">`
+              : `<div class="w-14 h-14 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-400 text-lg">🃏</div>`;
+            return `<div class="liquid-glass-input rounded-xl p-2.5 flex items-center gap-2.5">
+              ${thumb}
+              <div class="flex-1 min-w-0">
+                <div class="text-xs font-medium text-gray-900 truncate">${escapeHtml(c.name)}</div>
+                <div class="text-[10px] text-gray-500">${c.member ? escapeHtml(c.member) : "—"} · <span class="${photo ? "text-green-600" : "text-pink-600"}">${photo ? "登録済" : "未登録"}</span></div>
+              </div>
+              <div class="flex flex-col gap-1 shrink-0">
+                <label class="bg-illit-purple/90 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-full cursor-pointer hover:opacity-90 text-center">
+                  ${photo ? "差し替え" : "写真登録"}
+                  <input type="file" accept="image/*" class="hidden" onchange="adminUploadCardPhoto('${escapeHtml(c.id)}', this)">
+                </label>
+                ${photo ? `<button onclick="adminDeleteCardPhoto('${escapeHtml(c.id)}')" class="text-[10px] text-red-500 underline">削除</button>` : ""}
+              </div>
+            </div>`;
+          }).join("") || '<p class="text-xs text-gray-500 text-center py-4">カードがありません</p>'}
+        </div>`;
+    }
+    window.setAdminCardsAlbum = function(id) {
+      adminCardsAlbum = id;
+      const el = document.getElementById("admin-content");
+      if (el && adminTab === "cards") renderAdminCardsPanel(el);
+    };
+    window.adminUploadCardPhoto = async function(cardId, inputEl) {
+      if (!isAdmin()) return;
+      const file = inputEl.files && inputEl.files[0];
+      inputEl.value = "";
+      if (!file) return;
+      try {
+        const dataUrl = await compressImage(file, PHOTO_THUMB);
+        if (!isJpegData(dataUrl)) return alert("画像の処理に失敗しました。");
+        await setDoc(doc(db, "cardPhotos", cardId), {
+          data: dataUrl,
+          updatedAt: serverTimestamp(),
+          updatedBy: currentUser.uid
+        }, { merge: true });
+        cardPhotoCache[cardId] = dataUrl;
+        showToast("写真を登録しました", "success");
+        const el = document.getElementById("admin-content");
+        if (el && adminTab === "cards") renderAdminCardsPanel(el);
+        if (!document.getElementById("mycards-modal").classList.contains("hidden")) renderMyCardsList();
+      } catch (e) {
+        console.error(e);
+        alert("登録に失敗しました。\n" + (e?.code || e?.message || ""));
+      }
+    };
+    window.adminDeleteCardPhoto = async function(cardId) {
+      if (!isAdmin()) return;
+      if (!(await appConfirm("このトレカ写真を削除しますか？", "削除する", true))) return;
+      try {
+        await deleteDoc(doc(db, "cardPhotos", cardId));
+        delete cardPhotoCache[cardId];
+        showToast("写真を削除しました", "info");
+        const el = document.getElementById("admin-content");
+        if (el && adminTab === "cards") renderAdminCardsPanel(el);
+        if (!document.getElementById("mycards-modal").classList.contains("hidden")) renderMyCardsList();
+      } catch (e) {
+        alert("削除に失敗しました。");
+      }
+    };
+
     function getCardStatus(cardId) {
       const s = (userData.myCards || {})[cardId];
       return s === "owned" || s === "want" ? s : "none";
@@ -3631,15 +3741,16 @@ window.openAzukariApp = function() {
       const customs = (userData.customCards || []).filter(c => c.albumId === albumId);
       return base.concat(customs);
     }
-    window.openMyCardsModal = function() {
+    window.openMyCardsModal = async function() {
       if (!currentUser) return alert("ログインが必要です。");
       myCardsTab = "own";
       setMyCardsTab("own");
+      document.getElementById("mycards-modal").classList.remove("hidden");
+      await ensureCardPhotosLoaded();
       renderMyCardsAlbumTabs();
       renderMyCardsList();
       document.getElementById("mycards-public").checked = !!userData.collectionPublic;
       renderMyCardsShareStats();
-      document.getElementById("mycards-modal").classList.remove("hidden");
     };
     window.closeMyCardsModal = function() { document.getElementById("mycards-modal").classList.add("hidden"); };
     window.setMyCardsTab = function(tab) {
@@ -3677,7 +3788,12 @@ window.openAzukariApp = function() {
         cards.map(c => {
           const st = getCardStatus(c.id);
           const isCustom = !!(c.custom);
-          return `<div class="liquid-glass-input rounded-xl p-3 flex items-center gap-2">
+          const photo = getCardPhoto(c.id);
+          const thumb = photo
+            ? `<img src="${photo}" alt="" class="w-12 h-12 object-cover rounded-lg border border-white shadow-sm shrink-0">`
+            : `<div class="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-50 to-pink-50 border border-white flex items-center justify-center text-purple-200 text-lg shrink-0">🃏</div>`;
+          return `<div class="liquid-glass-input rounded-xl p-2.5 flex items-center gap-2.5">
+            ${thumb}
             <div class="flex-1 min-w-0">
               <div class="text-xs font-medium text-gray-900 truncate">${escapeHtml(c.name)}</div>
               <div class="text-[10px] text-gray-500">${c.member ? escapeHtml(c.member) : "—"}${isCustom ? " · カスタム" : ""}</div>
