@@ -1075,7 +1075,10 @@
       messagingSenderId: "1060277997826",
       appId: "1:1060277997826:web:e47d21d9edc538bb86321b"
     };
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
 
+  
     const db = getFirestore(app);
 
     const provider = new GoogleAuthProvider();
