@@ -4416,10 +4416,13 @@ window.openAzukariApp = function() {
 
     window.handleSheetCanvasClick = function(ev) {
       const canvas = document.getElementById("sheet-crop-canvas");
-      if (!canvas || !sheetCropState.boxes.length) return;
+      if (!canvas || !sheetCropState.boxes || !sheetCropState.boxes.length) return;
       const rect = canvas.getBoundingClientRect();
-      const clickX = ((ev.clientX - rect.left) / rect.width) * (canvas.width / sheetCropState.scale);
-      const clickY = ((ev.clientY - rect.top) / rect.height) * (canvas.height / sheetCropState.scale);
+      if (!rect.width || !rect.height) return;
+      // 表示サイズ → 画像座標へ変換（scale は canvasバッファ / 元画像）
+      const scale = sheetCropState.scale > 0 ? sheetCropState.scale : 1;
+      const clickX = ((ev.clientX - rect.left) / rect.width) * (canvas.width / scale);
+      const clickY = ((ev.clientY - rect.top) / rect.height) * (canvas.height / scale);
 
       for (let i = sheetCropState.boxes.length - 1; i >= 0; i--) {
         const b = sheetCropState.boxes[i];
@@ -4466,48 +4469,130 @@ window.openAzukariApp = function() {
     };
 
     window.commitSheetAutoCropsToZip = async function() {
-      const img = sheetCropState.img;
-      const activeBoxes = sheetCropState.boxes.filter(b => b.active);
-      if (!img || !activeBoxes.length) return alert("有効なトレカ枠がありません。");
-
-      const btn = document.getElementById("sheet-crop-confirm-btn");
-      if (btn) { btn.disabled = true; btn.textContent = "切り抜き中..."; }
-
-      const defaultAlbum = document.getElementById("admin-zip-album")?.value || adminCardsAlbum;
-      const baseStem = (sheetCropState.fileName || "sheet").replace(/\.[^.]+$/, "");
-
       try {
-        for (let i = 0; i < activeBoxes.length; i++) {
-          const b = activeBoxes[i];
-          const cropCanvas = document.createElement("canvas");
-          cropCanvas.width = b.w;
-          cropCanvas.height = b.h;
-          const ctx = cropCanvas.getContext("2d");
-          ctx.drawImage(img, b.x, b.y, b.w, b.h, 0, 0, b.w, b.h);
+        const img = sheetCropState && sheetCropState.img;
+        const allBoxes = (sheetCropState && sheetCropState.boxes) ? sheetCropState.boxes : [];
+        // active が明示的に false でないものを有効とみなす（undefined も有効）
+        const boxes = allBoxes.filter(b => b && b.active !== false);
 
-          const blob = await new Promise(resolve => cropCanvas.toBlob(resolve, "image/jpeg", 0.92));
-          if (!blob) continue;
-          const fileName = `${b.member ? b.member + "_" : ""}${baseStem}_${String(i + 1).padStart(2, "0")}.jpg`;
-          const croppedFile = new File([blob], fileName, { type: "image/jpeg" });
-
-          adminZipPackFiles.push({
-            file: croppedFile,
-            relPath: fileName,
-            albumId: defaultAlbum,
-            member: b.member || guessMemberFromFileName(fileName)
-          });
+        if (!img) {
+          alert("元画像が読み込まれていません。もう一度画像を選んでください。");
+          return;
+        }
+        if (!boxes.length) {
+          alert("有効な枠がありません。\nプレビュー上の枠をタップして赤枠（有効）にしてから再度お試しください。\n検出数: " + allBoxes.length);
+          return;
         }
 
-        closeSheetCropArea();
-        updateAdminZipPackUI();
-        showToast(`${activeBoxes.length}枚を切り抜いてZIPリストに追加しました！`, "success");
+        const btn = document.getElementById("sheet-crop-confirm-btn");
+        const origText = btn ? btn.textContent : "✂️ 有効な枠を切り抜いてZIPリストへ追加";
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = "切り抜き中... (0 / " + boxes.length + ")";
+        }
+
+        const defaultAlbum = (document.getElementById("admin-zip-album") && document.getElementById("admin-zip-album").value) || adminCardsAlbum || "";
+        const baseStem = ((sheetCropState.fileName || "sheet").replace(/\.[^.]+$/, "") || "sheet");
+        let added = 0;
+        const errors = [];
+
+        for (let i = 0; i < boxes.length; i++) {
+          const b = boxes[i];
+          if (btn) btn.textContent = "切り抜き中... (" + (i + 1) + " / " + boxes.length + ")";
+          // ブラウザに描画フレームを渡して進捗表示を確実に更新
+          await new Promise(function(r) { setTimeout(r, 30); });
+
+          try {
+            const sx = Math.max(0, Math.round(Number(b.x) || 0));
+            const sy = Math.max(0, Math.round(Number(b.y) || 0));
+            const sw = Math.max(1, Math.min(img.naturalWidth || img.width, Math.round(Number(b.w) || 1)));
+            const sh = Math.max(1, Math.min(img.naturalHeight || img.height, Math.round(Number(b.h) || 1)));
+            // 画像外にはみ出さないよう再クランプ
+            const cropW = Math.min(sw, (img.naturalWidth || img.width) - sx);
+            const cropH = Math.min(sh, (img.naturalHeight || img.height) - sy);
+            if (cropW < 1 || cropH < 1) {
+              errors.push("#" + (i + 1) + " 範囲外");
+              continue;
+            }
+
+            const canvas = document.createElement("canvas");
+            canvas.width = cropW;
+            canvas.height = cropH;
+            const ctx = canvas.getContext("2d");
+            if (!ctx) {
+              errors.push("#" + (i + 1) + " canvas不可");
+              continue;
+            }
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, cropW, cropH);
+            ctx.drawImage(img, sx, sy, cropW, cropH, 0, 0, cropW, cropH);
+
+            const blob = await new Promise(function(resolve) {
+              try {
+                canvas.toBlob(function(b) { resolve(b); }, "image/jpeg", 0.92);
+              } catch (err) {
+                resolve(null);
+              }
+            });
+            // メモリ解放
+            canvas.width = 0;
+            canvas.height = 0;
+
+            if (!blob) {
+              errors.push("#" + (i + 1) + " blob失敗");
+              continue;
+            }
+
+            const member = (b.member || "").trim();
+            const fileName = (member ? member + "_" : "") + baseStem + "_" + String(i + 1).padStart(2, "0") + ".jpg";
+            const file = new File([blob], fileName, { type: "image/jpeg" });
+
+            adminZipPackFiles.push({
+              file: file,
+              relPath: fileName,
+              albumId: defaultAlbum,
+              member: member || (typeof guessMemberFromFileName === "function" ? guessMemberFromFileName(fileName) : "")
+            });
+            added++;
+          } catch (itemErr) {
+            console.error("crop item error", i, itemErr);
+            errors.push("#" + (i + 1) + " " + (itemErr && itemErr.message ? itemErr.message : "error"));
+          }
+        }
+
+        if (typeof closeSheetCropArea === "function") closeSheetCropArea();
+        if (typeof updateAdminZipPackUI === "function") updateAdminZipPackUI();
+
+        if (added > 0) {
+          if (typeof showToast === "function") {
+            showToast(added + "枚のトレカを切り抜いてZIPリストに追加しました！", "success");
+          } else {
+            alert(added + "枚をZIPリストに追加しました。");
+          }
+        } else {
+          alert("1枚も切り抜けませんでした。\n" + (errors.length ? errors.join("\n") : "不明なエラー"));
+        }
+        if (errors.length && added > 0) {
+          console.warn("一部スキップ:", errors);
+        }
+
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = origText;
+        }
       } catch (e) {
-        console.error(e);
-        alert("切り抜き処理中にエラーが発生しました。");
-      } finally {
-        if (btn) { btn.disabled = false; btn.textContent = "✂️ 有効な枠を切り抜いてZIPリストへ追加"; }
+        console.error("commitSheetAutoCropsToZip fatal", e);
+        alert("切り抜き処理中にエラーが発生しました:\n" + (e && e.message ? e.message : e));
+        const btn = document.getElementById("sheet-crop-confirm-btn");
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "✂️ 有効な枠を切り抜いてZIPリストへ追加";
+        }
       }
     };
+
+    // 互換エイリアス
+    window.applySheetCropsToZip = window.commitSheetAutoCropsToZip;
 
     window.handleAdminZipPackSelect = function(inputEl) {
       const files = Array.from(inputEl.files || []);
