@@ -165,6 +165,10 @@
 
   <main class="max-w-5xl mx-auto px-4 pb-6 space-y-6">
     <section id="intro-section" class="liquid-glass p-4 md:p-6 rounded-3xl space-y-3 transition duration-300 hover:shadow-[0_12px_40px_rgba(192,132,252,0.25)]">
+      <div id="site-announcement" class="hidden bg-amber-50/90 border border-amber-200 rounded-2xl p-3 text-xs text-amber-900 leading-relaxed">
+        <div class="font-bold mb-0.5">📢 お知らせ</div>
+        <div id="site-announcement-text" class="whitespace-pre-wrap"></div>
+      </div>
       <div class="flex items-start space-x-3">
         <div class="text-2xl drop-shadow-md">🤝</div>
         <div>
@@ -350,6 +354,7 @@
       <button onclick="switchAdminTab('likes')" id="admin-tab-likes" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">❤️ いいね検証</button>
       <button onclick="switchAdminTab('broadcast')" id="admin-tab-broadcast" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">📢 一斉通知</button>
       <button onclick="switchAdminTab('cards')" id="admin-tab-cards" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">🃏 トレカ写真</button>
+      <button onclick="switchAdminTab('logs')" id="admin-tab-logs" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">📝 操作ログ</button>
     </div>
 
     <div id="admin-controls" class="hidden"></div>
@@ -907,6 +912,30 @@
     </div>
   </div>
 
+  <!-- 管理者: ユーザー詳細 -->
+  <div id="admin-user-detail-modal" class="fixed inset-0 modal-backdrop hidden z-[70] flex items-center justify-center p-4" onclick="if(event.target===this) closeAdminUserDetail()">
+    <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-5 space-y-3 shadow-2xl max-h-[92vh] flex flex-col">
+      <div class="flex justify-between items-center border-b border-purple-200/50 pb-2 shrink-0">
+        <h3 class="font-bold text-base text-gray-800">ユーザー詳細</h3>
+        <button onclick="closeAdminUserDetail()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
+      </div>
+      <div id="admin-user-detail-body" class="flex-1 overflow-y-auto space-y-3 text-xs"></div>
+    </div>
+  </div>
+
+  <!-- ユーザープロフィール（評価・コメント・出品） -->
+  <div id="user-profile-modal" class="fixed inset-0 modal-backdrop hidden z-[60] flex items-center justify-center p-4" onclick="if(event.target===this) closeUserProfileModal()">
+    <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-5 space-y-4 shadow-2xl max-h-[92vh] flex flex-col">
+      <div class="flex justify-between items-center border-b border-purple-200/50 pb-3 shrink-0">
+        <h3 class="font-bold text-base text-gray-800">出品者プロフィール</h3>
+        <button onclick="closeUserProfileModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
+      </div>
+      <div id="user-profile-body" class="flex-1 overflow-y-auto space-y-4 text-xs">
+        <p class="text-center text-gray-500 py-8">読み込み中...</p>
+      </div>
+    </div>
+  </div>
+
   <!-- 詳細モーダル -->
   <div id="detail-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
     <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
@@ -925,19 +954,19 @@
           <div id="detail-desc-box" class="pt-2 border-t border-white/50 text-gray-800 text-xs whitespace-pre-wrap font-medium leading-relaxed"></div>
           <div id="detail-extra" class="text-xs text-gray-700 space-y-1 font-medium pt-1"></div>
         </div>
-        <div class="flex justify-between items-center bg-white/30 p-3 rounded-2xl border border-white/50 shadow-sm">
-          <div class="px-1 flex items-center gap-2.5">
-            <img id="detail-user-avatar" src="" alt="" class="w-8 h-8 rounded-full object-cover border-2 border-white shadow-sm hidden">
-            <div id="detail-user-avatar-placeholder" class="w-8 h-8 rounded-full bg-white/70 border border-white flex items-center justify-center text-sm text-gray-400">👤</div>
-            <div>
-              <span class="font-medium text-gray-700 text-xs">出品者</span>
-              <div class="flex items-center gap-1.5">
-                <span id="detail-user" class="text-gray-900 font-medium text-sm"></span>
-                <span id="detail-rating" class="text-yellow-500 font-medium text-[11px]"></span>
+        <div class="flex justify-between items-center bg-white/30 p-3 rounded-2xl border border-white/50 shadow-sm gap-2">
+          <button type="button" id="detail-seller-btn" onclick="openSellerProfileFromDetail()" class="px-1 flex items-center gap-2.5 min-w-0 flex-1 text-left rounded-xl hover:bg-white/50 transition active:scale-[.99]">
+            <img id="detail-user-avatar" src="" alt="" class="w-8 h-8 rounded-full object-cover border-2 border-white shadow-sm hidden shrink-0">
+            <div id="detail-user-avatar-placeholder" class="w-8 h-8 rounded-full bg-white/70 border border-white flex items-center justify-center text-sm text-gray-400 shrink-0">👤</div>
+            <div class="min-w-0">
+              <span class="font-medium text-gray-700 text-xs">出品者 · タップで評価・出品を見る</span>
+              <div class="flex items-center gap-1.5 min-w-0">
+                <span id="detail-user" class="text-gray-900 font-medium text-sm truncate"></span>
+                <span id="detail-rating" class="text-yellow-500 font-medium text-[11px] shrink-0"></span>
               </div>
             </div>
-          </div>
-          <button id="detail-like-btn" onclick="toggleDetailLike()" class="bg-white/80 text-pink-500 font-medium px-4 py-2 rounded-full text-xs border border-white hover:bg-white transition flex items-center space-x-1 shadow-md">
+          </button>
+          <button id="detail-like-btn" onclick="toggleDetailLike()" class="bg-white/80 text-pink-500 font-medium px-4 py-2 rounded-full text-xs border border-white hover:bg-white transition flex items-center space-x-1 shadow-md shrink-0">
             <span id="detail-like-icon">♡</span> <span id="detail-like-count">0</span>
           </button>
         </div>
@@ -962,7 +991,7 @@
   <div id="room-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center md:p-4">
     <div class="liquid-glass-heavy w-full max-w-md h-full md:h-[90vh] md:rounded-[2rem] shadow-2xl flex flex-col overflow-hidden">
       <div class="flex justify-between items-center px-5 py-4 border-b border-white/50 shrink-0 bg-white/40 backdrop-blur">
-        <h3 id="room-title" class="font-bold text-sm text-gray-900 truncate drop-shadow-sm"></h3>
+        <button type="button" id="room-title" onclick="openSellerProfileFromRoom()" class="font-bold text-sm text-gray-900 truncate drop-shadow-sm text-left hover:text-illit-darkPurple transition max-w-[80%]"></button>
         <button onclick="closeRoom()" class="text-gray-500 hover:text-gray-700 font-bold text-xl leading-none bg-white/50 w-8 h-8 rounded-full border border-white shadow-sm">&times;</button>
       </div>
       <div class="p-4 space-y-3 border-b border-white/50 bg-white/20 overflow-y-auto shrink-0 max-h-[52%]" id="room-top-box">
@@ -1559,7 +1588,7 @@ getRedirectResult(auth)
       btn.disabled = true; btn.innerText = "送信中…";
       try {
         await addDoc(collection(db, "inquiries"), {
-          userId: currentUser.uid, userName: getMyDisplayName(), subject, body, status: "open", createdAt: serverTimestamp(),
+          userId: currentUser.uid, userName: getMyDisplayName(), subject, body, status: "open", replies: [], createdAt: serverTimestamp(),
           deviceId: getOrCreateDeviceId()
         });
         showToast("お問い合わせを送信しました。返信をお待ちください。", "success");
@@ -1641,6 +1670,14 @@ getRedirectResult(auth)
       if (!currentUser || isAdmin()) return true;
       try {
         const deviceId = getOrCreateDeviceId();
+        // 端末BANチェック
+        try {
+          const banSnap = await getDoc(doc(db, "deviceBans", deviceId));
+          if (banSnap.exists()) {
+            alert("⚠️ この端末は利用が制限されています。\n運営にお問い合わせください。");
+            return false;
+          }
+        } catch (_) {}
         const ref = doc(db, "devices", deviceId);
         const snap = await getDoc(ref);
         if (!snap.exists()) {
@@ -1657,6 +1694,35 @@ getRedirectResult(auth)
         console.warn("checkDeviceLock error:", e);
         return true;
       }
+    }
+
+    async function logAdminAction(action, target, detail) {
+      if (!currentUser || !isAdmin()) return;
+      try {
+        await addDoc(collection(db, "adminLogs"), {
+          action: String(action || ""),
+          target: String(target || ""),
+          detail: String(detail || "").slice(0, 500),
+          by: currentUser.uid,
+          byName: getMyDisplayName(),
+          createdAt: serverTimestamp()
+        });
+      } catch (e) { console.warn("admin log failed", e); }
+    }
+
+    async function loadSiteAnnouncement() {
+      try {
+        const snap = await getDoc(doc(db, "siteConfig", "announcement"));
+        const box = document.getElementById("site-announcement");
+        const textEl = document.getElementById("site-announcement-text");
+        if (!box || !textEl) return;
+        if (snap.exists() && snap.data().active && (snap.data().text || "").trim()) {
+          textEl.textContent = String(snap.data().text || "");
+          box.classList.remove("hidden");
+        } else {
+          box.classList.add("hidden");
+        }
+      } catch (e) { console.warn("announce load", e); }
     }
     function saveUserData(data) { return setDoc(doc(db, "users", currentUser.uid), data, { merge: true }); }
     function updateUserAvatar() {
@@ -1707,10 +1773,12 @@ getRedirectResult(auth)
     let adminTab = "stats";
     let adminSearchQuery = "";
 
-    const ADMIN_ALLOWED_ACTIONS = ["adminSendWarning", "adminSuspendUser", "adminUnsuspendUser", "adminDeletePost", "adminForceCancelTrade", "deleteReportedPost", "markInquiryDone", "copyText", "adminFixLikes", "adminFixAllLikes", "adminReplyUser"];
+    const ADMIN_ALLOWED_ACTIONS = ["adminSendWarning", "adminSuspendUser", "adminUnsuspendUser", "adminDeletePost", "adminForceCancelTrade", "deleteReportedPost", "markInquiryDone", "copyText", "adminFixLikes", "adminFixAllLikes", "adminReplyUser", "adminOpenUserDetail", "adminHidePost", "adminUnhidePost", "adminBanDevice", "adminUnbanDevice", "adminReplyInquiry", "adminReplyReport"];
     window.copyText = function(t) { navigator.clipboard.writeText(String(t || "")).catch(() => {}); };
-    document.getElementById("admin-content").addEventListener("click", (e) => {
+    document.addEventListener("click", (e) => {
       const b = e.target.closest("[data-act]"); if (!b || !isAdmin()) return;
+      // 管理画面内の data-act のみ
+      if (!b.closest("#admin-content, #admin-user-detail-modal, #admin-section")) return;
       const fn = b.dataset.act; if (!ADMIN_ALLOWED_ACTIONS.includes(fn) || typeof window[fn] !== "function") return;
       window[fn](b.dataset.a1, b.dataset.a2);
     });
@@ -1731,7 +1799,7 @@ getRedirectResult(auth)
     window.switchAdminTab = function(tab) {
       adminTab = tab;
       adminSearchQuery = "";
-      const tabs = ["reports", "inquiries", "users", "posts", "trades", "stats", "likes", "broadcast", "cards"];
+      const tabs = ["reports", "inquiries", "users", "posts", "trades", "stats", "likes", "broadcast", "cards", "logs"];
       tabs.forEach((k) => {
         const el = document.getElementById("admin-tab-" + k);
         if (el) {
@@ -1867,13 +1935,14 @@ getRedirectResult(auth)
                 </div>
               </div>
               ${!isAdminUser ? `
-              <div class="flex justify-end gap-1.5 pt-2 border-t border-gray-100">
-                <button data-act="adminSendWarning" data-a1="${escapeHtml(u.id)}" data-a2="${escapeHtml(u.profile?.nickname || '')}" class="bg-yellow-100 text-yellow-700 hover:bg-yellow-200 font-medium px-3 py-1.5 rounded-lg text-[10px] transition">⚠️ 警告通知</button>
+              <div class="flex flex-wrap justify-end gap-1.5 pt-2 border-t border-gray-100">
+                <button data-act="adminOpenUserDetail" data-a1="${escapeHtml(u.id)}" class="bg-purple-100 text-purple-700 hover:bg-purple-200 font-medium px-3 py-1.5 rounded-lg text-[10px] transition">👤 詳細</button>
+                <button data-act="adminSendWarning" data-a1="${escapeHtml(u.id)}" data-a2="${escapeHtml(u.profile?.nickname || '')}" class="bg-yellow-100 text-yellow-700 hover:bg-yellow-200 font-medium px-3 py-1.5 rounded-lg text-[10px] transition">⚠️ 警告</button>
                 ${isSuspended 
                   ? `<button data-act="adminUnsuspendUser" data-a1="${escapeHtml(u.id)}" class="bg-green-100 text-green-700 hover:bg-green-200 font-medium px-3 py-1.5 rounded-lg text-[10px] transition">🔓 停止解除</button>` 
-                  : `<button data-act="adminSuspendUser" data-a1="${escapeHtml(u.id)}" data-a2="${escapeHtml(u.profile?.nickname || '')}" class="bg-red-100 text-red-700 hover:bg-red-200 font-medium px-3 py-1.5 rounded-lg text-[10px] transition">🚫 アカウント停止</button>`
+                  : `<button data-act="adminSuspendUser" data-a1="${escapeHtml(u.id)}" data-a2="${escapeHtml(u.profile?.nickname || '')}" class="bg-red-100 text-red-700 hover:bg-red-200 font-medium px-3 py-1.5 rounded-lg text-[10px] transition">🚫 停止</button>`
                 }
-              </div>` : ''}
+              </div>` : `<div class="flex justify-end pt-2 border-t border-gray-100"><button data-act="adminOpenUserDetail" data-a1="${escapeHtml(u.id)}" class="bg-purple-100 text-purple-700 hover:bg-purple-200 font-medium px-3 py-1.5 rounded-lg text-[10px] transition">👤 詳細</button></div>`}
             </div>`;
           }).join("");
           return;
@@ -1898,11 +1967,14 @@ getRedirectResult(auth)
               ${isJpegData(p.thumb) ? `<img src="${p.thumb}" class="w-16 h-16 object-cover rounded-lg border border-gray-200 shrink-0">` : '<div class="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center text-xs text-gray-400">No Image</div>'}
               <div class="flex-1 min-w-0 flex flex-col justify-between">
                 <div>
-                  <div class="text-[10px] text-gray-500 mb-0.5 flex justify-between"><span>${escapeHtml(p.userName)}</span> <span class="${p.status==='active'?'text-green-600':'text-gray-500'}">${escapeHtml(p.status)}</span></div>
+                  <div class="text-[10px] text-gray-500 mb-0.5 flex justify-between"><span>${escapeHtml(p.userName)}</span> <span class="${p.status==='active'?'text-green-600':(p.status==='hidden'?'text-amber-600 font-bold':'text-gray-500')}">${escapeHtml(p.status === 'hidden' ? '審査中(非公開)' : p.status)}</span></div>
                   <div class="font-bold text-xs text-gray-800 truncate">譲: ${escapeHtml(p.give)}</div>
                   ${p.want ? `<div class="text-[11px] text-gray-600 truncate">求: ${escapeHtml(p.want)}</div>` : ''}
                 </div>
-                <div class="flex justify-end gap-2 mt-2">
+                <div class="flex flex-wrap justify-end gap-1.5 mt-2">
+                  ${p.status === "hidden"
+                    ? `<button data-act="adminUnhidePost" data-a1="${escapeHtml(p.id)}" class="bg-green-500 text-white font-medium px-3 py-1 rounded-md text-[10px] shadow-sm">再公開</button>`
+                    : `<button data-act="adminHidePost" data-a1="${escapeHtml(p.id)}" class="bg-amber-500 text-white font-medium px-3 py-1 rounded-md text-[10px] shadow-sm">一時非公開</button>`}
                   <button data-act="adminDeletePost" data-a1="${escapeHtml(p.id)}" class="bg-red-500 text-white font-medium px-3 py-1 rounded-md text-[10px] shadow-sm hover:bg-red-600">強制削除</button>
                 </div>
               </div>
@@ -1954,13 +2026,24 @@ getRedirectResult(auth)
             const data = d.data();
             const reporterId = data.reporterId || "";
             const reporterName = data.reporterName || "通報者";
+            const st = data.status || "open";
+            const stLabel = st === "done" ? "完了" : (st === "replied" ? "返信済" : "未対応");
+            const stCls = st === "done" ? "bg-green-100 text-green-700" : (st === "replied" ? "bg-blue-100 text-blue-700" : "bg-red-100 text-red-700");
+            const hist = Array.isArray(data.replies) ? data.replies : [];
+            const histHtml = hist.length
+              ? `<div class="bg-white/80 rounded-lg p-2 border border-red-100 space-y-1">${hist.map(h => `<div class="text-[10px] text-gray-700"><span class="font-bold text-red-700">運営:</span> ${escapeHtml(h.text || "")}<div class="text-[9px] text-gray-400">${escapeHtml(fmtTime(h.at) || "")}</div></div>`).join("")}</div>`
+              : "";
             return `<div class="bg-red-50 border border-red-200 rounded-xl p-3 space-y-1.5 shadow-sm">
-              <div class="flex justify-between items-center text-[10px] text-red-700"><span>通報者: ${escapeHtml(reporterName)}</span><span>${fmtTime(data.createdAt)}</span></div>
+              <div class="flex justify-between items-center text-[10px] text-red-700 gap-2">
+                <span>通報者: ${escapeHtml(reporterName)}</span>
+                <span class="flex items-center gap-1"><span class="${stCls} px-2 py-0.5 rounded-full font-bold">${stLabel}</span><span>${fmtTime(data.createdAt)}</span></span>
+              </div>
               <div class="font-bold text-gray-800 text-xs">対象: ${escapeHtml(data.postGive || "")}</div>
               <div class="text-red-700 bg-white p-2 rounded-lg border border-red-100 text-xs">理由: ${escapeHtml(data.reason || "")}</div>
+              ${histHtml}
               <div class="flex flex-wrap justify-end gap-1.5 pt-1">
-                ${reporterId ? `<button data-act="adminReplyUser" data-a1="${escapeHtml(reporterId)}" data-a2="${escapeHtml(reporterName)}" class="bg-white border border-red-300 text-red-700 font-medium px-3 py-1.5 rounded-md text-[10px] hover:bg-red-100 shadow-sm">返信する</button>` : ""}
-                <button data-act="deleteReportedPost" data-a1="${escapeHtml(data.postId || "")}" data-a2="${escapeHtml(d.id)}" class="bg-red-500 text-white font-medium px-3 py-1.5 rounded-md text-[10px] hover:bg-red-600 shadow-sm">対象の投稿を強制削除</button>
+                ${reporterId ? `<button data-act="adminReplyReport" data-a1="${escapeHtml(d.id)}" data-a2="${escapeHtml(reporterId)}" class="bg-white border border-red-300 text-red-700 font-medium px-3 py-1.5 rounded-md text-[10px] hover:bg-red-100 shadow-sm">返信する</button>` : ""}
+                <button data-act="deleteReportedPost" data-a1="${escapeHtml(data.postId || "")}" data-a2="${escapeHtml(d.id)}" class="bg-red-500 text-white font-medium px-3 py-1.5 rounded-md text-[10px] hover:bg-red-600 shadow-sm">投稿を強制削除</button>
               </div>
             </div>`;
           }).join("");
@@ -1973,21 +2056,40 @@ getRedirectResult(auth)
             const subj = INQUIRY_SUBJECT_LABEL[data.subject] || data.subject;
             const uid = data.userId || "";
             const uname = data.userName || "ユーザー";
+            const st = data.status || "open";
+            const stLabel = st === "done" ? "完了" : (st === "replied" ? "返信済" : "未対応");
+            const stCls = st === "done" ? "bg-green-100 text-green-700" : (st === "replied" ? "bg-blue-100 text-blue-700" : "bg-amber-100 text-amber-700");
+            const hist = Array.isArray(data.replies) ? data.replies : [];
+            const histHtml = hist.length
+              ? `<div class="bg-purple-50/80 rounded-lg p-2 border border-purple-100 space-y-1">${hist.map(h => `<div class="text-[10px] text-gray-700"><span class="font-bold text-illit-darkPurple">運営:</span> ${escapeHtml(h.text || "")}<div class="text-[9px] text-gray-400">${escapeHtml(fmtTime(h.at) || "")}</div></div>`).join("")}</div>`
+              : "";
             return `<div class="bg-white/80 border border-purple-200 rounded-xl p-3 space-y-1.5 shadow-sm">
-              <div class="flex justify-between items-center text-[10px] text-gray-500"><span class="font-bold text-illit-darkPurple bg-purple-50 px-2 py-0.5 rounded">${escapeHtml(subj)}</span><span>${fmtTime(data.createdAt)}</span></div>
+              <div class="flex justify-between items-center text-[10px] text-gray-500 gap-2">
+                <span class="font-bold text-illit-darkPurple bg-purple-50 px-2 py-0.5 rounded">${escapeHtml(subj)}</span>
+                <span class="flex items-center gap-1"><span class="${stCls} px-2 py-0.5 rounded-full font-bold">${stLabel}</span><span>${fmtTime(data.createdAt)}</span></span>
+              </div>
               <div class="font-bold text-gray-800 text-xs">${escapeHtml(uname)}</div>
               <div class="text-gray-700 bg-white p-2 rounded-lg border border-gray-200 whitespace-pre-wrap text-xs leading-relaxed">${escapeHtml(data.body || "")}</div>
+              ${histHtml}
               <div class="flex flex-wrap justify-end gap-1.5 pt-1">
-                ${uid ? `<button data-act="adminReplyUser" data-a1="${escapeHtml(uid)}" data-a2="${escapeHtml(uname)}" class="bg-illit-purple text-white font-medium px-3 py-1.5 rounded-md text-[10px] hover:opacity-90 shadow-sm">返信する</button>` : ""}
-                <button data-act="markInquiryDone" data-a1="${escapeHtml(d.id)}" class="bg-green-500 hover:bg-green-600 text-white font-medium px-3 py-1.5 rounded-md text-[10px] shadow-sm">対応済みにする</button>
+                ${uid ? `<button data-act="adminReplyInquiry" data-a1="${escapeHtml(d.id)}" data-a2="${escapeHtml(uid)}" class="bg-illit-purple text-white font-medium px-3 py-1.5 rounded-md text-[10px] hover:opacity-90 shadow-sm">返信する</button>` : ""}
+                <button data-act="markInquiryDone" data-a1="${escapeHtml(d.id)}" class="bg-green-500 hover:bg-green-600 text-white font-medium px-3 py-1.5 rounded-md text-[10px] shadow-sm">対応済み</button>
               </div>
             </div>`;
           }).join("");
         }
-        else if (adminTab === "broadcast") {
+                else if (adminTab === "broadcast") {
           el.innerHTML = `
             <div class="space-y-4">
-              <div class="bg-red-50/80 border border-red-200 rounded-xl p-3 text-xs text-red-700 font-medium">⚠️ 送信した内容は全ユーザーの「通知一覧」に追加されます。</div>
+              <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-2">
+                <div class="font-bold text-amber-900 text-xs">📌 ホーム固定お知らせ</div>
+                <p class="text-[11px] text-amber-800">ホーム上部に常時表示されます（通知一覧には入りません）。</p>
+                <textarea id="admin-announce-text" rows="3" maxlength="400" placeholder="例: 本日22時〜メンテのため一時停止します" class="liquid-glass-input w-full rounded-xl p-2.5 text-xs text-gray-800"></textarea>
+                <label class="flex items-center gap-2 text-xs text-gray-700"><input type="checkbox" id="admin-announce-active" class="rounded"> 表示する</label>
+                <button onclick="saveSiteAnnouncement()" class="w-full bg-amber-500 text-white font-bold py-2.5 rounded-xl text-xs">固定お知らせを保存</button>
+                <p id="admin-announce-status" class="text-[11px] text-center text-gray-500"></p>
+              </div>
+              <div class="bg-red-50/80 border border-red-200 rounded-xl p-3 text-xs text-red-700 font-medium">⚠️ 下の一斉通知は全ユーザーの「通知一覧」に追加されます。</div>
               <div>
                 <label class="block font-medium text-gray-700 mb-1 text-xs">通知メッセージ内容</label>
                 <textarea id="admin-broadcast-msg" rows="5" maxlength="300" placeholder="例: メンテナンスのお知らせ" class="liquid-glass-input w-full rounded-xl p-3 text-sm text-gray-800 focus:ring-2 focus:ring-purple-400"></textarea>
@@ -1995,6 +2097,29 @@ getRedirectResult(auth)
               <button onclick="sendBroadcast()" id="broadcast-send-btn" class="w-full bg-gradient-to-r from-red-500 to-pink-500 text-white font-bold py-3.5 rounded-xl hover:opacity-90 transition shadow-md border border-white/30 text-sm">📢 全員に通知を送信する</button>
               <p id="broadcast-status" class="text-xs text-center text-gray-500 font-medium"></p>
             </div>`;
+          // 現在の固定お知らせを読み込み
+          getDoc(doc(db, "siteConfig", "announcement")).then(s => {
+            if (!s.exists()) return;
+            const d = s.data() || {};
+            const t = document.getElementById("admin-announce-text");
+            const a = document.getElementById("admin-announce-active");
+            if (t) t.value = d.text || "";
+            if (a) a.checked = !!d.active;
+          }).catch(() => {});
+        }
+        else if (adminTab === "logs") {
+          const snap = await getDocs(query(collection(db, "adminLogs"), orderBy("createdAt", "desc")));
+          const docs = snap.docs.slice(0, 80);
+          if (!docs.length) { el.innerHTML = '<p class="text-gray-500 text-center py-6">操作ログはまだありません。</p>'; return; }
+          el.innerHTML = `<div class="text-[11px] text-gray-500 mb-2">最新 ${docs.length} 件</div>` + docs.map(d => {
+            const x = d.data();
+            return `<div class="bg-white/80 border border-gray-200 rounded-xl p-3 text-xs space-y-0.5">
+              <div class="flex justify-between gap-2"><span class="font-bold text-gray-800">${escapeHtml(x.action || "")}</span><span class="text-[10px] text-gray-400">${fmtTime(x.createdAt)}</span></div>
+              <div class="text-gray-600">対象: ${escapeHtml(x.target || "—")}</div>
+              ${x.detail ? `<div class="text-gray-500">${escapeHtml(x.detail)}</div>` : ""}
+              <div class="text-[10px] text-gray-400">by ${escapeHtml(x.byName || x.by || "")}</div>
+            </div>`;
+          }).join("");
         }
 
       } catch(e) {
@@ -2057,6 +2182,7 @@ getRedirectResult(auth)
       if (!reason) return;
       try {
         await setDoc(doc(db, "suspensions", uid), { reason, name, createdAt: serverTimestamp() });
+        await logAdminAction("user_suspend", uid, reason);
         alert("アカウントを停止しました。");
         loadAdminData();
       } catch(e) { alert("失敗しました。"); }
@@ -2066,6 +2192,7 @@ getRedirectResult(auth)
       if (!(await appConfirm("アカウント停止を解除しますか？"))) return;
       try {
         await deleteDoc(doc(db, "suspensions", uid));
+        await logAdminAction("user_unsuspend", uid, "");
         alert("停止を解除しました。");
         loadAdminData();
       } catch(e) { alert("失敗しました。"); }
@@ -2081,6 +2208,7 @@ getRedirectResult(auth)
         
         await deleteDoc(doc(db, "posts", postId)); 
         delete photoCache[postId];
+        await logAdminAction("post_delete", postId, "");
         alert("削除しました。"); 
         loadAdminData();
       } catch(e){ alert("削除に失敗しました。"); }
@@ -2105,9 +2233,208 @@ getRedirectResult(auth)
       } catch(e) { alert("処理に失敗しました。"); }
     };
 
-    window.markInquiryDone = async function(id) {
-      if (!(await appConfirm("対応済みにしますか？（削除されます）"))) return;
-      try { await deleteDoc(doc(db, "inquiries", id)); loadAdminData(); } catch(e) {}
+        window.markInquiryDone = async function(id) {
+      if (!(await appConfirm("この問い合わせを対応済みにしますか？"))) return;
+      try {
+        await updateDoc(doc(db, "inquiries", id), { status: "done", doneAt: serverTimestamp() });
+        await logAdminAction("inquiry_done", id, "");
+        loadAdminData();
+      } catch(e) { alert("更新に失敗しました。"); }
+    };
+
+
+    window.adminHidePost = async function(postId) {
+      if (!(await appConfirm("この投稿を一時非公開（審査中）にしますか？\n一覧から一般ユーザーには見えなくなります。"))) return;
+      try {
+        await updateDoc(doc(db, "posts", postId), { status: "hidden", hiddenAt: serverTimestamp(), hiddenBy: currentUser.uid });
+        const lp = allPosts.find(x => x.id === postId); if (lp) lp.status = "hidden";
+        renderPosts();
+        await logAdminAction("post_hide", postId, "");
+        alert("一時非公開にしました。");
+        loadAdminData();
+      } catch(e) { alert("失敗しました。"); }
+    };
+    window.adminUnhidePost = async function(postId) {
+      if (!(await appConfirm("この投稿を再公開しますか？"))) return;
+      try {
+        await updateDoc(doc(db, "posts", postId), { status: "active", hiddenAt: null });
+        const lp = allPosts.find(x => x.id === postId); if (lp) lp.status = "active";
+        renderPosts();
+        await logAdminAction("post_unhide", postId, "");
+        alert("再公開しました。");
+        loadAdminData();
+      } catch(e) { alert("失敗しました。"); }
+    };
+
+    window.adminReplyInquiry = async function(inquiryId, uid) {
+      const msg = prompt("問い合わせへの返信を入力してください:\\n(相手の通知＋対応履歴に残ります)");
+      if (!msg || !msg.trim()) return;
+      try {
+        const ref = doc(db, "inquiries", inquiryId);
+        const snap = await getDoc(ref);
+        const data = snap.exists() ? snap.data() : {};
+        const replies = Array.isArray(data.replies) ? [...data.replies] : [];
+        replies.push({ text: msg.trim(), at: Date.now(), by: currentUser.uid });
+        await updateDoc(ref, { replies, status: "replied", updatedAt: serverTimestamp() });
+        // 通知
+        const userRef = doc(db, "users", uid);
+        const us = await getDoc(userRef);
+        if (us.exists()) {
+          const list = Array.isArray(us.data().notifications) ? [...us.data().notifications] : [];
+          list.unshift({ id: "admin_reply_" + Date.now(), text: "【運営からの返信】" + msg.trim(), type: "admin", read: false, createdAt: Date.now() });
+          if (typeof MAX_NOTIFICATIONS === "number" && list.length > MAX_NOTIFICATIONS) list.length = MAX_NOTIFICATIONS;
+          await updateDoc(userRef, { notifications: list });
+        }
+        await logAdminAction("inquiry_reply", inquiryId, msg.trim().slice(0, 80));
+        alert("返信しました。");
+        loadAdminData();
+      } catch(e) { console.error(e); alert("返信に失敗しました。"); }
+    };
+
+    window.adminReplyReport = async function(reportId, reporterId) {
+      const msg = prompt("通報者への返信を入力してください:\\n(相手の通知＋対応履歴に残ります)");
+      if (!msg || !msg.trim()) return;
+      try {
+        const ref = doc(db, "reports", reportId);
+        const snap = await getDoc(ref);
+        const data = snap.exists() ? snap.data() : {};
+        const replies = Array.isArray(data.replies) ? [...data.replies] : [];
+        replies.push({ text: msg.trim(), at: Date.now(), by: currentUser.uid });
+        await updateDoc(ref, { replies, status: "replied", updatedAt: serverTimestamp() });
+        const userRef = doc(db, "users", reporterId);
+        const us = await getDoc(userRef);
+        if (us.exists()) {
+          const list = Array.isArray(us.data().notifications) ? [...us.data().notifications] : [];
+          list.unshift({ id: "admin_reply_" + Date.now(), text: "【運営からの返信】" + msg.trim(), type: "admin", read: false, createdAt: Date.now() });
+          if (typeof MAX_NOTIFICATIONS === "number" && list.length > MAX_NOTIFICATIONS) list.length = MAX_NOTIFICATIONS;
+          await updateDoc(userRef, { notifications: list });
+        }
+        await logAdminAction("report_reply", reportId, msg.trim().slice(0, 80));
+        alert("返信しました。");
+        loadAdminData();
+      } catch(e) { console.error(e); alert("返信に失敗しました。"); }
+    };
+
+    window.saveSiteAnnouncement = async function() {
+      const t = (document.getElementById("admin-announce-text")?.value || "").trim();
+      const active = !!document.getElementById("admin-announce-active")?.checked;
+      const st = document.getElementById("admin-announce-status");
+      try {
+        await setDoc(doc(db, "siteConfig", "announcement"), { text: t, active: active && !!t, updatedAt: serverTimestamp(), updatedBy: currentUser.uid }, { merge: true });
+        await logAdminAction("announce_save", "siteConfig/announcement", (active ? "ON: " : "OFF: ") + t.slice(0, 60));
+        await loadSiteAnnouncement();
+        if (st) st.textContent = "保存しました";
+        showToast("固定お知らせを保存しました", "success");
+      } catch(e) {
+        if (st) st.textContent = "保存に失敗しました";
+        alert("保存に失敗しました。Firestoreルールを確認してください。");
+      }
+    };
+
+    window.closeAdminUserDetail = function() {
+      document.getElementById("admin-user-detail-modal")?.classList.add("hidden");
+    };
+
+    window.adminOpenUserDetail = async function(uid) {
+      if (!uid) return;
+      const modal = document.getElementById("admin-user-detail-modal");
+      const body = document.getElementById("admin-user-detail-body");
+      if (!modal || !body) return;
+      modal.classList.remove("hidden");
+      body.innerHTML = `<p class="text-center text-gray-500 py-6">読み込み中...</p>`;
+      try {
+        const [userSnap, suspSnap, reviewsSnap, tradesSnap] = await Promise.all([
+          getDoc(doc(db, "users", uid)),
+          getDoc(doc(db, "suspensions", uid)),
+          getDocs(query(collection(db, "reviews"), where("toId", "==", uid))),
+          getDocs(query(collection(db, "trades"), where("participants", "array-contains", uid)))
+        ]);
+        const u = userSnap.exists() ? userSnap.data() : {};
+        const name = u.profile?.nickname || "名無し";
+        const cancelHist = Array.isArray(u.cancelHistory) ? u.cancelHistory : [];
+        const blocked = Array.isArray(u.blocked) ? u.blocked.length : 0;
+        let avg = 0, rc = reviewsSnap.size;
+        if (rc) {
+          let sum = 0; reviewsSnap.forEach(d => { sum += Number(d.data().rating) || 0; });
+          avg = sum / rc;
+        }
+        const trades = tradesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const completed = trades.filter(t => t.status === "completed").length;
+        const activeT = trades.filter(t => t.status === "negotiating" || t.status === "shipping").length;
+        const cancelled = trades.filter(t => t.status === "cancelled").length;
+        const listings = (allPosts || []).filter(p => p.userId === uid);
+        const activeListings = listings.filter(p => p.status === "active").length;
+        const hiddenListings = listings.filter(p => p.status === "hidden").length;
+
+        // 端末: devices のうち uid 一致
+        let deviceIds = [];
+        try {
+          const devSnap = await getDocs(query(collection(db, "devices"), where("uid", "==", uid)));
+          deviceIds = devSnap.docs.map(d => d.id);
+        } catch (_) {}
+
+        let banHtml = "";
+        if (deviceIds.length) {
+          banHtml = deviceIds.map(did => {
+            return `<div class="flex items-center justify-between gap-2 bg-white/70 rounded-lg px-2 py-1.5 border border-white">
+              <span class="font-mono text-[10px] text-gray-600 truncate">${escapeHtml(did)}</span>
+              <span class="flex gap-1 shrink-0">
+                <button data-act="adminBanDevice" data-a1="${escapeHtml(did)}" data-a2="${escapeHtml(uid)}" class="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-1 rounded">BAN</button>
+                <button data-act="adminUnbanDevice" data-a1="${escapeHtml(did)}" class="bg-green-100 text-green-700 text-[10px] font-bold px-2 py-1 rounded">解除</button>
+              </span>
+            </div>`;
+          }).join("");
+        } else {
+          banHtml = `<p class="text-gray-400">紐づく端末IDが見つかりません</p>`;
+        }
+
+        body.innerHTML = `
+          <div class="bg-white/60 border border-white rounded-xl p-3 space-y-1">
+            <div class="font-bold text-sm text-gray-900">${escapeHtml(name)} ${suspSnap.exists() ? '<span class="text-red-600 text-[10px]">停止中</span>' : ""}</div>
+            <div class="font-mono text-[10px] text-gray-400 break-all">UID: ${escapeHtml(uid)}</div>
+            <div class="text-yellow-600 font-bold">${rc ? ("⭐ " + avg.toFixed(1) + "（" + rc + "件）") : "評価なし"}</div>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div class="bg-white/70 rounded-xl p-2.5 border border-white"><div class="text-[10px] text-gray-500">取引完了</div><div class="font-bold text-sm">${completed}</div></div>
+            <div class="bg-white/70 rounded-xl p-2.5 border border-white"><div class="text-[10px] text-gray-500">取引中</div><div class="font-bold text-sm">${activeT}</div></div>
+            <div class="bg-white/70 rounded-xl p-2.5 border border-white"><div class="text-[10px] text-gray-500">キャンセル</div><div class="font-bold text-sm">${cancelled}</div></div>
+            <div class="bg-white/70 rounded-xl p-2.5 border border-white"><div class="text-[10px] text-gray-500">出品中 / 非公開</div><div class="font-bold text-sm">${activeListings} / ${hiddenListings}</div></div>
+            <div class="bg-white/70 rounded-xl p-2.5 border border-white"><div class="text-[10px] text-gray-500">キャンセル履歴</div><div class="font-bold text-sm">${cancelHist.length}</div></div>
+            <div class="bg-white/70 rounded-xl p-2.5 border border-white"><div class="text-[10px] text-gray-500">ブロック数</div><div class="font-bold text-sm">${blocked}</div></div>
+          </div>
+          <div>
+            <div class="font-bold text-gray-800 mb-1">端末BAN</div>
+            <div class="space-y-1">${banHtml}</div>
+          </div>
+          <div class="flex flex-wrap gap-1.5">
+            <button data-act="adminSendWarning" data-a1="${escapeHtml(uid)}" data-a2="${escapeHtml(name)}" class="bg-yellow-100 text-yellow-800 font-bold px-3 py-2 rounded-lg text-[10px]">警告</button>
+            ${suspSnap.exists()
+              ? `<button data-act="adminUnsuspendUser" data-a1="${escapeHtml(uid)}" class="bg-green-100 text-green-800 font-bold px-3 py-2 rounded-lg text-[10px]">停止解除</button>`
+              : `<button data-act="adminSuspendUser" data-a1="${escapeHtml(uid)}" data-a2="${escapeHtml(name)}" class="bg-red-100 text-red-800 font-bold px-3 py-2 rounded-lg text-[10px]">アカウント停止</button>`}
+          </div>`;
+      } catch (e) {
+        console.error(e);
+        body.innerHTML = `<p class="text-red-600 text-center py-6">読み込みに失敗しました</p>`;
+      }
+    };
+
+    window.adminBanDevice = async function(deviceId, uid) {
+      if (!deviceId) return;
+      const reason = prompt("端末BANの理由（任意）:") || "admin";
+      try {
+        await setDoc(doc(db, "deviceBans", deviceId), { reason, uid: uid || "", by: currentUser.uid, createdAt: serverTimestamp() });
+        await logAdminAction("device_ban", deviceId, reason);
+        alert("端末をBANしました。");
+      } catch(e) { alert("BANに失敗しました。"); }
+    };
+    window.adminUnbanDevice = async function(deviceId) {
+      if (!deviceId) return;
+      if (!(await appConfirm("この端末のBANを解除しますか？"))) return;
+      try {
+        await deleteDoc(doc(db, "deviceBans", deviceId));
+        await logAdminAction("device_unban", deviceId, "");
+        alert("BANを解除しました。");
+      } catch(e) { alert("解除に失敗しました。"); }
     };
 
     window.sendBroadcast = async function() {
@@ -2912,6 +3239,8 @@ getRedirectResult(auth)
       const filtered = [];
       allPosts.forEach((p, index) => {
         if (blocked.includes(p.userId)) return;
+        // 審査中（hidden）は本人・管理者以外に見せない
+        if (p.status === "hidden" && !(currentUser && (p.userId === currentUser.uid || isAdmin()))) return;
         if (activeOnly && p.status !== "active") return;
         if (p.kind === "group" && Number(p.target || 0) > 0) {
           const jcnt = Math.max(0, typeof p.joinsCount === "number" ? p.joinsCount : joinsOf(p.id).length);
@@ -3156,6 +3485,109 @@ getRedirectResult(auth)
       } catch(e){}
     }
 
+    window.openSellerProfileFromDetail = function() {
+      const p = (currentDetailIndex >= 0) ? allPosts[currentDetailIndex] : null;
+      if (!p || !p.userId) return;
+      openUserProfile(p.userId, p.userName || "出品者", p.userPhoto || "");
+    };
+    window.openSellerProfileFromRoom = function() {
+      const t = currentTrade; if (!t || !currentUser) return;
+      const otherId = currentUser.uid === t.ownerId ? t.applicantId : t.ownerId;
+      const otherName = currentUser.uid === t.ownerId ? t.applicantName : t.ownerName;
+      if (!otherId) return;
+      openUserProfile(otherId, otherName || "相手", "");
+    };
+    window.closeUserProfileModal = function() {
+      const m = document.getElementById("user-profile-modal");
+      if (m) m.classList.add("hidden");
+    };
+    window.openUserProfile = async function(userId, displayName, photoUrl) {
+      if (!userId) return;
+      const modal = document.getElementById("user-profile-modal");
+      const body = document.getElementById("user-profile-body");
+      if (!modal || !body) return;
+      modal.classList.remove("hidden");
+      body.innerHTML = `<p class="text-center text-gray-500 py-8">読み込み中...</p>`;
+
+      let avg = 0, count = 0, reviews = [];
+      try {
+        const snap = await getDocs(query(collection(db, "reviews"), where("toId", "==", userId)));
+        reviews = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        reviews.sort((a, b) => {
+          const ta = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt || 0);
+          const tb = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt || 0);
+          return tb - ta;
+        });
+        count = reviews.length;
+        if (count) {
+          avg = reviews.reduce((s, r) => s + (Number(r.rating) || 0), 0) / count;
+        }
+      } catch (e) { console.warn("reviews load", e); }
+
+      // 公開中の出品（クライアント側の allPosts から）
+      const listings = (allPosts || []).filter(p => p.userId === userId && p.status !== "traded" && !isExpired(p));
+
+      let photo = photoUrl || "";
+      if ((!photo || !isJpegData(photo)) && listings.length) {
+        const hit = listings.find(p => p.userPhoto && isJpegData(p.userPhoto));
+        if (hit) photo = hit.userPhoto;
+      }
+
+      const stars = (n) => {
+        const r = Math.round(Number(n) || 0);
+        return [1,2,3,4,5].map(i => i <= r ? "★" : "☆").join("");
+      };
+
+      const avatarHtml = (photo && typeof isJpegData === "function" && isJpegData(photo))
+        ? `<img src="${photo}" class="w-14 h-14 rounded-full object-cover border-2 border-white shadow-md">`
+        : `<div class="w-14 h-14 rounded-full bg-white/70 border border-white flex items-center justify-center text-2xl shadow-md">👤</div>`;
+
+      const reviewsHtml = reviews.length
+        ? reviews.slice(0, 30).map(r => {
+            const comment = (r.comment || "").trim();
+            const when = fmtTime(r.createdAt);
+            const from = r.fromName ? escapeHtml(r.fromName) : "取引相手";
+            return `<div class="bg-white/70 border border-white rounded-xl p-3 space-y-1">
+              <div class="flex justify-between items-center gap-2">
+                <span class="text-yellow-500 font-bold tracking-tight">${stars(r.rating)}</span>
+                <span class="text-[10px] text-gray-400">${escapeHtml(when)}</span>
+              </div>
+              <div class="text-[11px] text-gray-500">${from} さん</div>
+              ${comment ? `<div class="text-xs text-gray-800 leading-relaxed whitespace-pre-wrap">${escapeHtml(comment)}</div>` : `<div class="text-[11px] text-gray-400">コメントなし</div>`}
+            </div>`;
+          }).join("")
+        : `<p class="text-center text-gray-500 py-3 bg-white/40 rounded-xl">まだ評価がありません</p>`;
+
+      const listHtml = listings.length
+        ? `<div class="grid grid-cols-2 gap-2">${listings.slice(0, 20).map(p => {
+            const price = (p.isSell || p.isBuy || p.kind === "group") && p.price != null
+              ? `<div class="text-[10px] font-bold text-pink-600">￥${Number(p.price).toLocaleString()}</div>` : "";
+            return `<button type="button" onclick="closeUserProfileModal(); const i=allPosts.findIndex(x=>x.id==='${escapeHtml(p.id)}'); if(i>=0) openDetailModal(i);" class="text-left bg-white/70 border border-white rounded-xl p-2.5 hover:bg-white transition space-y-1">
+              <div class="text-[11px] font-bold text-gray-900 line-clamp-2 leading-snug">${escapeHtml(p.give || "")}</div>
+              ${price}
+              <div class="text-[10px] text-gray-500">${escapeHtml(p.member || "")}</div>
+            </button>`;
+          }).join("")}</div>`
+        : `<p class="text-center text-gray-500 py-3 bg-white/40 rounded-xl">公開中の出品はありません</p>`;
+
+      body.innerHTML = `
+        <div class="flex items-center gap-3 bg-white/50 border border-white rounded-2xl p-3">
+          ${avatarHtml}
+          <div class="min-w-0 flex-1">
+            <div class="font-bold text-sm text-gray-900 truncate">${escapeHtml(displayName || "ユーザー")}</div>
+            <div class="text-yellow-500 font-bold text-sm mt-0.5">${count ? ("⭐ " + avg.toFixed(1) + "（" + count + "件）") : "評価なし"}</div>
+          </div>
+        </div>
+        <div>
+          <div class="font-bold text-sm text-gray-800 mb-2">評価・コメント</div>
+          <div class="space-y-2">${reviewsHtml}</div>
+        </div>
+        <div>
+          <div class="font-bold text-sm text-gray-800 mb-2">出品中（${listings.length}）</div>
+          ${listHtml}
+        </div>`;
+    };
+
     window.deletePost = async function(index) {
       const p = allPosts[index]; if (!p) return;
       if (myTrades.some(t => t.postId === p.id && (t.status === "negotiating" || t.status === "shipping"))) {
@@ -3177,7 +3609,7 @@ getRedirectResult(auth)
       const reason = prompt("通報の理由を入力してください:");
       if (!reason || !reason.trim()) return;
       try {
-        await addDoc(collection(db, "reports"), { reporterId: currentUser.uid, reporterName: getMyDisplayName(), postId: p.id, postGive: p.give || "", postUserId: p.userId || "", reason: reason.trim().slice(0, 200), createdAt: serverTimestamp(), deviceId: getOrCreateDeviceId() });
+        await addDoc(collection(db, "reports"), { reporterId: currentUser.uid, reporterName: getMyDisplayName(), postId: p.id, postGive: p.give || "", postUserId: p.userId || "", reason: reason.trim().slice(0, 200), status: "open", replies: [], createdAt: serverTimestamp(), deviceId: getOrCreateDeviceId() });
         showToast("通報を送信しました。ご協力ありがとうございます。", "success");
       } catch(e) { alert("通報の送信に失敗しました。"); }
     };
@@ -3452,9 +3884,22 @@ getRedirectResult(auth)
           const text = [who, reason].filter(Boolean).join(" ／ ");
           if (text) note = `<div class="text-[11px] text-gray-500 relative z-10">${escapeHtml(text)}</div>`;
         }
-        return `<button data-trade-id="${escapeHtml(t.id)}" class="w-full text-left liquid-glass-input rounded-2xl p-4 hover:bg-white/70 transition space-y-2 shadow-sm relative overflow-hidden group">
-            <div class="flex justify-between items-center relative z-10"><span class="text-xs text-gray-700 font-medium">${escapeHtml(otherName)} さん</span><span class="flex items-center gap-1">${t.lastSenderId !== currentUser.uid && isUnread(t) ? '<span class="bg-pink-500 text-white text-[10px] font-medium px-2 py-0.5 rounded-full shadow-sm border border-white/50">新着</span>' : ''}<span class="text-[10px] font-medium px-2.5 py-0.5 rounded-full border shadow-sm ${STATUS_CLASS[t.status] || ''}">${STATUS_LABEL[t.status] || ""}</span></span></div>
-            <div class="text-sm font-medium text-gray-900 relative z-10">${escapeHtml(t.postGive)}</div>${note}
+        const unread = !!(currentUser && t.lastSenderId !== currentUser.uid && isUnread(t));
+        const unreadCls = unread
+          ? "bg-pink-50/90 border-pink-300 ring-2 ring-pink-200 shadow-md"
+          : "liquid-glass-input hover:bg-white/70 shadow-sm";
+        return `<button data-trade-id="${escapeHtml(t.id)}" class="w-full text-left rounded-2xl p-4 transition space-y-2 relative overflow-hidden group border ${unreadCls}">
+            ${unread ? '<span class="absolute left-0 top-0 bottom-0 w-1.5 bg-pink-500"></span>' : ''}
+            <div class="flex justify-between items-center relative z-10 pl-1">
+              <span class="text-xs ${unread ? "text-pink-800 font-bold" : "text-gray-700 font-medium"}">${escapeHtml(otherName)} さん</span>
+              <span class="flex items-center gap-1">
+                ${unread ? '<span class="bg-pink-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm border border-white/50 animate-pulse">未読</span>' : ''}
+                <span class="text-[10px] font-medium px-2.5 py-0.5 rounded-full border shadow-sm ${STATUS_CLASS[t.status] || ''}">${STATUS_LABEL[t.status] || ""}</span>
+              </span>
+            </div>
+            <div class="text-sm ${unread ? "font-bold text-gray-900" : "font-medium text-gray-900"} relative z-10 pl-1">${escapeHtml(t.postGive)}</div>
+            ${unread ? '<div class="text-[11px] text-pink-600 font-medium relative z-10 pl-1">💬 新しいメッセージがあります</div>' : ''}
+            ${note}
           </button>`;
       };
       const active = myTrades.filter(t => t.status === "negotiating" || t.status === "shipping");
@@ -3474,7 +3919,7 @@ getRedirectResult(auth)
         </details>`;
       };
       el.innerHTML = [
-        section("active", "💬 取引中", active, "取引中のものはありません。"),
+        section("active", "💬 取引中" + (active.filter(t => isUnread(t)).length ? ` · 未読${active.filter(t => isUnread(t)).length}` : ""), active, "取引中のものはありません。"),
         section("done", "🎉 完了", done, ""),
         section("cancel_other", "🚫 キャンセルされたもの", byOther, ""),
         section("cancel_me", "↩️ キャンセルしたもの", byMe, ""),
@@ -3741,7 +4186,8 @@ window.openAzukariApp = function() {
       const t = currentTrade; if (!t) return;
       const uid = currentUser.uid, iAmOwner = uid === t.ownerId, otherId = iAmOwner ? t.applicantId : t.ownerId, otherName = iAmOwner ? t.applicantName : t.ownerName, payFlow = isPayTrade(t);
       const iAmPayer = t.isBuy ? iAmOwner : !iAmOwner; // 買取は出品者が支払う側
-      document.getElementById("room-title").innerText = otherName + " さんとの取引";
+      const roomTitleEl = document.getElementById("room-title");
+      if (roomTitleEl) roomTitleEl.textContent = (otherName || "相手") + " さんとの取引（プロフィール）";
       const order = ["negotiating", "shipping", "completed"], labels = payFlow ? ["① 条件確認", usesAzukariPayment(t) ? "② アズカリ決済・発送" : "② 送金・発送", "③ 完了"] : ["① 交渉・合意", "② 発送・受取", "③ 完了"];
       const idx = order.indexOf(t.status); const on = payFlow ? "bg-gradient-to-r from-pink-400 to-pink-500 text-white shadow-md border border-white/50" : "bg-gradient-to-r from-illit-purple to-illit-accent text-white shadow-md border border-white/50";
       document.getElementById("room-steps").innerHTML = t.status === "cancelled" ? '<div class="text-xs font-medium text-gray-600 bg-white/60 border border-white rounded-xl p-2 text-center shadow-sm">この取引はキャンセルされました</div>' : '<div class="flex space-x-2">' + labels.map((l, i) => `<div class="flex-1 text-center text-[10px] font-medium py-2 rounded-xl border ${i <= idx ? on : "bg-white/40 border-white text-gray-500"}">${l}</div>`).join("") + "</div>";
@@ -3773,7 +4219,7 @@ window.openAzukariApp = function() {
         }
       } else if (t.status === "completed") {
         html += `<p class="text-xs text-green-700 font-medium text-center bg-white/60 p-3 rounded-xl border border-white shadow-sm">🎉 取引が完了しました！</p>`;
-        if (reviewState.done === false) html += `<div class="bg-white/80 rounded-2xl p-4 border border-white space-y-3 shadow-md mt-4"><div class="text-xs font-medium text-gray-700 text-center">相手を評価してください</div><div class="flex justify-center space-x-2">${[1,2,3,4,5].map(n => `<button data-star="${n}" onclick="setRating(${n})" class="text-3xl text-gray-300 hover:scale-110 transition drop-shadow-sm">★</button>`).join("")}</div><button onclick="submitReview()" class="${primary}">評価を送信</button></div>`;
+        if (reviewState.done === false) html += `<div class="bg-white/80 rounded-2xl p-4 border border-white space-y-3 shadow-md mt-4"><div class="text-xs font-medium text-gray-700 text-center">相手を評価してください</div><div class="flex justify-center space-x-2">${[1,2,3,4,5].map(n => `<button data-star="${n}" onclick="setRating(${n})" class="text-3xl text-gray-300 hover:scale-110 transition drop-shadow-sm">★</button>`).join("")}</div><textarea id="review-comment" rows="2" maxlength="200" placeholder="任意：取引の感想コメント（相手のプロフィールに表示されます）" class="w-full liquid-glass-input rounded-xl p-2.5 text-xs text-gray-800"></textarea><button onclick="submitReview()" class="${primary}">評価を送信</button></div>`;
       }
       const actionsKey = t.id + "|" + html;
       const actionsChanged = roomActionsKey !== actionsKey;
@@ -3840,7 +4286,23 @@ window.openAzukariApp = function() {
     window.submitReview = async function() {
       const t = currentTrade; if (!t) return; if (selectedRating < 1) return alert("星を選んでください。");
       const toId = currentUser.uid === t.ownerId ? t.applicantId : t.ownerId;
-      try { await setDoc(doc(db, "reviews", t.id + "_" + currentUser.uid), { tradeId: t.id, fromId: currentUser.uid, toId: toId, rating: selectedRating, createdAt: serverTimestamp(), deviceId: getOrCreateDeviceId() }); reviewState.done = true; renderRoom(); } catch(e) { alert("失敗しました。"); }
+      const commentEl = document.getElementById("review-comment");
+      const comment = (commentEl && commentEl.value ? commentEl.value : "").trim().slice(0, 200);
+      try {
+        await setDoc(doc(db, "reviews", t.id + "_" + currentUser.uid), {
+          tradeId: t.id,
+          fromId: currentUser.uid,
+          fromName: getMyDisplayName(),
+          toId: toId,
+          rating: selectedRating,
+          comment: comment,
+          createdAt: serverTimestamp(),
+          deviceId: getOrCreateDeviceId()
+        });
+        reviewState.done = true;
+        renderRoom();
+        showToast("評価を送信しました", "success");
+      } catch(e) { alert("失敗しました。"); }
     };
 
     // この日時以降に作成された出品・取引はアズカリ表示（既存はPayPay）
@@ -4130,20 +4592,20 @@ window.openAzukariApp = function() {
           <p class="text-[11px] text-gray-600 leading-relaxed">
             選んだ画像を自動で<strong>透かし＋軽量JPEG圧縮</strong>し、GitHubに置くだけの <code>catalog.json</code> と <code>cards/</code> フォルダをZIPで出力します。
           </p>
-          <div class="flex gap-2">
-            <select id="admin-zip-album" class="flex-1 liquid-glass-input rounded-lg px-2 py-2 text-xs">
+          <div class="space-y-2">
+            <select id="admin-zip-album" class="w-full liquid-glass-input rounded-lg px-2.5 py-2.5 text-xs">
               ${ILLIT_CARD_ALBUMS.map(a => `<option value="${a.id}" ${a.id === adminCardsAlbum ? "selected" : ""}>${a.name}</option>`).join("")}
             </select>
-            <input id="admin-zip-prefix" type="text" maxlength="50" placeholder="共通名（空欄ならファイル名を使用）" class="flex-1 liquid-glass-input rounded-lg px-2.5 py-2 text-xs">
+            <input id="admin-zip-prefix" type="text" maxlength="50" placeholder="共通名（空ならファイル名）" class="w-full liquid-glass-input rounded-lg px-2.5 py-2.5 text-xs">
           </div>
 
-          <div class="grid grid-cols-2 gap-2">
-            <label class="bg-white border border-indigo-200 text-[11px] text-indigo-800 font-bold py-2.5 px-2 rounded-full cursor-pointer text-center hover:bg-indigo-50 shadow-sm flex items-center justify-center gap-1">
-              <span>🖼️ 単体画像を複数追加</span>
+          <div class="grid grid-cols-1 gap-2">
+            <label class="bg-white border border-indigo-200 text-[11px] text-indigo-800 font-bold py-2.5 px-3 rounded-full cursor-pointer text-center hover:bg-indigo-50 shadow-sm block">
+              🖼️ 単体画像を複数追加
               <input type="file" accept="image/*" multiple class="hidden" onchange="handleAdminZipPackSelect(this)">
             </label>
-            <label class="bg-gradient-to-r from-pink-500 to-purple-500 text-white text-[11px] font-bold py-2.5 px-2 rounded-full cursor-pointer text-center hover:opacity-95 shadow-sm flex items-center justify-center gap-1">
-              <span>✂️ まとめ画像から自動切り抜き</span>
+            <label class="bg-gradient-to-r from-pink-500 to-purple-500 text-white text-[11px] font-bold py-2.5 px-3 rounded-full cursor-pointer text-center hover:opacity-95 shadow-sm block">
+              ✂️ まとめ画像から自動切り抜き
               <input type="file" accept="image/*" class="hidden" onchange="handleSheetAutoCropSelect(this)">
             </label>
           </div>
@@ -4202,11 +4664,11 @@ window.openAzukariApp = function() {
         <details class="liquid-glass-input rounded-xl p-3 mb-3 border border-purple-200/80 bg-purple-50/40">
           <summary class="text-xs font-bold text-illit-darkPurple cursor-pointer select-none">📦 少数をすぐFirestoreに一括登録（数枚〜数十枚向け）</summary>
           <div class="space-y-2.5 mt-2.5">
-            <div class="flex gap-2">
-              <select id="admin-bulk-album" class="flex-1 liquid-glass-input rounded-lg px-2 py-2 text-xs">
+            <div class="space-y-2">
+              <select id="admin-bulk-album" class="w-full liquid-glass-input rounded-lg px-2.5 py-2.5 text-xs">
                 ${ILLIT_CARD_ALBUMS.map(a => `<option value="${a.id}" ${a.id === adminCardsAlbum ? "selected" : ""}>${a.name}</option>`).join("")}
               </select>
-              <input id="admin-bulk-prefix" type="text" maxlength="50" placeholder="共通名（例: Weverse特典 / 封入）" class="flex-1 liquid-glass-input rounded-lg px-2.5 py-2 text-xs">
+              <input id="admin-bulk-prefix" type="text" maxlength="50" placeholder="共通名（例: Weverse特典）" class="w-full liquid-glass-input rounded-lg px-2.5 py-2.5 text-xs">
             </div>
             <label class="block w-full bg-white/90 border border-purple-200 text-xs text-illit-darkPurple font-bold py-2.5 rounded-full cursor-pointer text-center hover:bg-white shadow-sm">
               🖼️ 写真まとめて選択
@@ -5505,7 +5967,7 @@ window.openAzukariApp = function() {
       nav.addEventListener("contextmenu", (e) => e.preventDefault());
     })();
     if (!hasAgreedLocally()) openTerms(false);
-    renderFilters(); subscribePosts(); switchTab('home');
+    renderFilters(); subscribePosts(); switchTab('home'); loadSiteAnnouncement();
 
     // 👇 ここから追加・修正（Xなどのアプリ内ブラウザを自然に案内） 👇
     const ua = navigator.userAgent;
