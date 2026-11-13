@@ -129,23 +129,7 @@
     body > nav button.nav-pressed { transform: scale(1.22); }
   </style>
 </head>
-<body class="bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 text-gray-800 min-h-screen font-sans relative overflow-x-hidden">
-<script>
-  function showErr(msg) {
-    var d = document.createElement('div');
-    d.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#b91c1c;color:#fff;font-size:12px;padding:8px;white-space:pre-wrap;word-break:break-all';
-    d.textContent = msg;
-    document.body.appendChild(d);
-  }
-  window.addEventListener('error', function(e) {
-    showErr('ERROR: ' + e.message + ' (' + (e.lineno || '?') + ')');
-  });
-  window.addEventListener('unhandledrejection', function(e) {
-    showErr('REJECT: ' + (e.reason && (e.reason.message || e.reason)));
-  });
-</script>
 
-  <div class="fixed top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
     <div class="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-pink-300/40 rounded-full mix-blend-multiply filter blur-[80px] animate-blob"></div>
     <div class="absolute top-[20%] right-[-10%] w-[60vw] h-[60vw] bg-purple-300/40 rounded-full mix-blend-multiply filter blur-[80px] animate-blob animation-delay-2000"></div>
     <div class="absolute bottom-[-20%] left-[10%] w-[50vw] h-[50vw] bg-blue-300/40 rounded-full mix-blend-multiply filter blur-[100px] animate-blob animation-delay-4000"></div>
