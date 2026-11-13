@@ -1183,77 +1183,8 @@ getRedirectResult(auth)
     const MAX_NOTIFICATIONS = 50;
 
     // ===== Myトレカ：主要アルバム別カード定義（公式アルバムPC中心） =====
-    const ILLIT_CARD_ALBUMS = [
-      { id: "srm", name: "SUPER REAL ME", year: "2024.03",
-        cards: [
-          { id: "srm_wonhee_a", name: "ウォニ 標準A", member: "ウォニ" },
-          { id: "srm_wonhee_b", name: "ウォニ 標準B", member: "ウォニ" },
-          { id: "srm_minju_a", name: "ミンジュ 標準A", member: "ミンジュ" },
-          { id: "srm_minju_b", name: "ミンジュ 標準B", member: "ミンジュ" },
-          { id: "srm_iroha_a", name: "イロハ 標準A", member: "イロハ" },
-          { id: "srm_iroha_b", name: "イロハ 標準B", member: "イロハ" },
-          { id: "srm_moka_a", name: "モカ 標準A", member: "モカ" },
-          { id: "srm_moka_b", name: "モカ 標準B", member: "モカ" },
-          { id: "srm_yuna_a", name: "ユナ 標準A", member: "ユナ" },
-          { id: "srm_yuna_b", name: "ユナ 標準B", member: "ユナ" },
-          { id: "srm_ot5", name: "OT5 グループ", member: "OT5" },
-          { id: "srm_weverse", name: "Weverse特典", member: "" }
-        ]},
-      { id: "ily", name: "I'LL LIKE YOU", year: "2024.10",
-        cards: [
-          { id: "ily_wonhee_a", name: "ウォニ Photocard A", member: "ウォニ" },
-          { id: "ily_wonhee_b", name: "ウォニ Photocard B", member: "ウォニ" },
-          { id: "ily_minju_a", name: "ミンジュ Photocard A", member: "ミンジュ" },
-          { id: "ily_minju_b", name: "ミンジュ Photocard B", member: "ミンジュ" },
-          { id: "ily_iroha_a", name: "イロハ Photocard A", member: "イロハ" },
-          { id: "ily_iroha_b", name: "イロハ Photocard B", member: "イロハ" },
-          { id: "ily_moka_a", name: "モカ Photocard A", member: "モカ" },
-          { id: "ily_moka_b", name: "モカ Photocard B", member: "モカ" },
-          { id: "ily_yuna_a", name: "ユナ Photocard A", member: "ユナ" },
-          { id: "ily_yuna_b", name: "ユナ Photocard B", member: "ユナ" },
-          { id: "ily_qa", name: "Q&A フォトカード", member: "" },
-          { id: "ily_weverse_set", name: "Weverse メンバーセット", member: "OT5" }
-        ]},
-      { id: "bomb", name: "bomb", year: "2025.06",
-        cards: [
-          { id: "bomb_wonhee", name: "ウォニ 標準", member: "ウォニ" },
-          { id: "bomb_minju", name: "ミンジュ 標準", member: "ミンジュ" },
-          { id: "bomb_iroha", name: "イロハ 標準", member: "イロハ" },
-          { id: "bomb_moka", name: "モカ 標準", member: "モカ" },
-          { id: "bomb_yuna", name: "ユナ 標準", member: "ユナ" },
-          { id: "bomb_gllit", name: "GLLIT ver. ランダム", member: "" },
-          { id: "bomb_weverse", name: "Weverse特典", member: "" }
-        ]},
-      { id: "nca", name: "NOT CUTE ANYMORE", year: "2025.11",
-        cards: [
-          { id: "nca_wonhee", name: "ウォニ 標準", member: "ウォニ" },
-          { id: "nca_minju", name: "ミンジュ 標準", member: "ミンジュ" },
-          { id: "nca_iroha", name: "イロハ 標準", member: "イロハ" },
-          { id: "nca_moka", name: "モカ 標準", member: "モカ" },
-          { id: "nca_yuna", name: "ユナ 標準", member: "ユナ" },
-          { id: "nca_selfie", name: "セルフィー特典", member: "" }
-        ]},
-      { id: "mami", name: "MAMIHLAPINATAPAI", year: "2026.04",
-        cards: [
-          { id: "mami_wonhee", name: "ウォニ 標準", member: "ウォニ" },
-          { id: "mami_minju", name: "ミンジュ 標準", member: "ミンジュ" },
-          { id: "mami_iroha", name: "イロハ 標準", member: "イロハ" },
-          { id: "mami_moka", name: "モカ 標準", member: "モカ" },
-          { id: "mami_yuna", name: "ユナ 標準", member: "ユナ" },
-          { id: "mami_paw", name: "PAW PAW ver.", member: "" }
-        ]},
-      { id: "be", name: "BREAK EVEN", year: "2026.10",
-        cards: [
-          { id: "be_wonhee", name: "ウォニ 標準", member: "ウォニ" },
-          { id: "be_minju", name: "ミンジュ 標準", member: "ミンジュ" },
-          { id: "be_iroha", name: "イロハ 標準", member: "イロハ" },
-          { id: "be_moka", name: "モカ 標準", member: "モカ" },
-          { id: "be_yuna", name: "ユナ 標準", member: "ユナ" },
-          { id: "be_weverse", name: "Weverse特典", member: "" }
-        ]},
-      { id: "other", name: "その他・イベント・カスタム", year: "",
-        cards: [] }
-    ];
+        const ILLIT_CARDS = [];
+
     const CARD_STATUS = { owned: "所持", none: "未所持", want: "欲しい" };
     const CARD_STATUS_CLASS = {
       owned: "bg-emerald-100 text-emerald-800 border-emerald-200",
