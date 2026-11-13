@@ -3840,12 +3840,27 @@ window.openAzukariApp = function() {
         console.warn("cardCatalog load:", e?.code || e);
       }
     }
+        let adminBulkFiles = [];
+    let detailCardId = null;
+
+    function guessMemberFromFileName(filename) {
+      const n = String(filename || "").toLowerCase();
+      if (n.includes("wonhee") || n.includes("ウォニ")) return "ウォニ";
+      if (n.includes("minju") || n.includes("ミンジュ")) return "ミンジュ";
+      if (n.includes("iroha") || n.includes("イロハ")) return "イロハ";
+      if (n.includes("moka") || n.includes("モカ")) return "モカ";
+      if (n.includes("yuna") || n.includes("ユナ")) return "ユナ";
+      if (n.includes("ot5") || n.includes("group") || n.includes("全員")) return "OT5";
+      return "";
+    }
+
     function getCardPhoto(cardId) {
       return cardPhotoCache[cardId] || null;
     }
     function isAdminCatalogCard(cardId) {
       return catalogCardsCache.some(c => c.id === cardId);
     }
+
     function renderAdminCardsPanel(el) {
       const tabsEl = document.getElementById("admin-card-album-tabs");
       if (tabsEl) {
@@ -3859,29 +3874,55 @@ window.openAzukariApp = function() {
       const cards = getAlbumCards(adminCardsAlbum);
       if (!album) { el.innerHTML = "<p class='text-xs text-gray-500'>アルバムがありません</p>"; return; }
       const memberOpts = ["", "ウォニ", "ミンジュ", "イロハ", "モカ", "ユナ", "OT5"].map(m =>
-        `<option value="${m}">${m || "（指定なし）"}</option>`
+        `<option value="${m}">${m || "（メンバーなし）"}</option>`
       ).join("");
+
       el.innerHTML = `
-        <div class="liquid-glass-input rounded-xl p-3 mb-3 space-y-2 border border-teal-200/60">
-          <div class="text-xs font-bold text-teal-800">＋ 新しいトレカを登録</div>
-          <p class="text-[10px] text-gray-500">全ユーザーの Myトレカ に表示されます。写真は任意です。</p>
-          <input id="admin-new-card-name" type="text" maxlength="80" placeholder="カード名（例: ウォニ Weverse特典）" class="w-full liquid-glass-input rounded-lg px-2.5 py-2 text-xs">
+        <div class="liquid-glass-input rounded-xl p-3 mb-3 space-y-2.5 border border-purple-200/80 bg-purple-50/40">
+          <div class="flex items-center justify-between">
+            <div class="text-xs font-bold text-illit-darkPurple">📦 まとめて一括登録（透かし自動付与）</div>
+            <span class="text-[10px] text-gray-500">複数枚OK</span>
+          </div>
           <div class="flex gap-2">
-            <select id="admin-new-card-member" class="flex-1 liquid-glass-input rounded-lg px-2 py-2 text-xs">${memberOpts}</select>
-            <select id="admin-new-card-album" class="flex-1 liquid-glass-input rounded-lg px-2 py-2 text-xs">
+            <select id="admin-bulk-album" class="flex-1 liquid-glass-input rounded-lg px-2 py-2 text-xs">
               ${ILLIT_CARD_ALBUMS.map(a => `<option value="${a.id}" ${a.id === adminCardsAlbum ? "selected" : ""}>${a.name}</option>`).join("")}
             </select>
+            <input id="admin-bulk-prefix" type="text" maxlength="50" placeholder="共通名（例: Weverse特典 / 封入）" class="flex-1 liquid-glass-input rounded-lg px-2.5 py-2 text-xs">
           </div>
-          <div class="flex items-center gap-2">
-            <label class="flex-1 bg-white/80 border border-white text-[11px] text-gray-700 font-medium px-2.5 py-2 rounded-full cursor-pointer text-center hover:bg-white">
-              写真を選ぶ（任意）
-              <input type="file" id="admin-new-card-photo" accept="image/*" class="hidden">
-            </label>
-            <button onclick="adminRegisterNewCard()" class="shrink-0 bg-gradient-to-r from-teal-400 to-teal-500 text-white text-xs font-bold px-4 py-2 rounded-full shadow">登録</button>
+          <label class="block w-full bg-white/90 border border-purple-200 text-xs text-illit-darkPurple font-bold py-2.5 rounded-full cursor-pointer text-center hover:bg-white shadow-sm">
+            🖼️ 写真まとめて選択
+            <input type="file" id="admin-bulk-photos" accept="image/*" multiple class="hidden" onchange="handleAdminBulkSelect(this)">
+          </label>
+          <div id="admin-bulk-preview-area" class="space-y-2 hidden">
+            <div id="admin-bulk-list" class="space-y-1.5 max-h-60 overflow-y-auto pr-1"></div>
+            <div class="flex gap-2 pt-1">
+              <button onclick="clearAdminBulk()" class="flex-1 bg-white/80 text-gray-600 text-xs font-medium py-2 rounded-full border border-gray-200">クリア</button>
+              <button id="admin-bulk-submit-btn" onclick="adminSubmitBulkCards()" class="flex-[2] bg-gradient-to-r from-illit-purple to-illit-accent text-white text-xs font-bold py-2 rounded-full shadow">まとめて登録</button>
+            </div>
           </div>
-          <p id="admin-new-card-photo-name" class="text-[10px] text-gray-400 truncate"></p>
         </div>
-        <p class="text-[11px] text-gray-600 mb-2">既存カードの写真登録・管理。管理者追加カードは削除できます。</p>
+
+        <details class="liquid-glass-input rounded-xl p-3 mb-3 border border-teal-200/60">
+          <summary class="text-xs font-bold text-teal-800 cursor-pointer select-none">＋ 1枚ずつ登録する（写真なしも可）</summary>
+          <div class="space-y-2 mt-2.5">
+            <input id="admin-new-card-name" type="text" maxlength="80" placeholder="カード名（例: ウォニ Weverse特典）" class="w-full liquid-glass-input rounded-lg px-2.5 py-2 text-xs">
+            <div class="flex gap-2">
+              <select id="admin-new-card-member" class="flex-1 liquid-glass-input rounded-lg px-2 py-2 text-xs">${memberOpts}</select>
+              <select id="admin-new-card-album" class="flex-1 liquid-glass-input rounded-lg px-2 py-2 text-xs">
+                ${ILLIT_CARD_ALBUMS.map(a => `<option value="${a.id}" ${a.id === adminCardsAlbum ? "selected" : ""}>${a.name}</option>`).join("")}
+              </select>
+            </div>
+            <div class="flex items-center gap-2">
+              <label class="flex-1 bg-white/80 border border-white text-[11px] text-gray-700 font-medium px-2.5 py-2 rounded-full cursor-pointer text-center hover:bg-white">
+                写真を選ぶ（任意）
+                <input type="file" id="admin-new-card-photo" accept="image/*" class="hidden">
+              </label>
+              <button onclick="adminRegisterNewCard()" class="shrink-0 bg-gradient-to-r from-teal-400 to-teal-500 text-white text-xs font-bold px-4 py-2 rounded-full shadow">登録</button>
+            </div>
+            <p id="admin-new-card-photo-name" class="text-[10px] text-gray-400 truncate"></p>
+          </div>
+        </details>
+
         <div class="text-xs font-bold text-gray-700 mb-2">${escapeHtml(album.name)}${album.year ? " · " + album.year : ""} · ${cards.length}種</div>
         <div class="space-y-2">
           ${cards.map(c => {
@@ -3907,6 +3948,7 @@ window.openAzukariApp = function() {
             </div>`;
           }).join("") || '<p class="text-xs text-gray-500 text-center py-4">カードがありません</p>'}
         </div>`;
+
       const photoInput = document.getElementById("admin-new-card-photo");
       if (photoInput) {
         photoInput.onchange = () => {
@@ -3915,7 +3957,111 @@ window.openAzukariApp = function() {
           if (label) label.textContent = f ? f.name : "";
         };
       }
+      renderAdminBulkList();
     }
+
+    window.handleAdminBulkSelect = function(inputEl) {
+      const files = Array.from(inputEl.files || []);
+      inputEl.value = "";
+      if (!files.length) return;
+      files.forEach(file => {
+        adminBulkFiles.push({
+          file,
+          previewUrl: URL.createObjectURL(file),
+          member: guessMemberFromFileName(file.name)
+        });
+      });
+      renderAdminBulkList();
+    };
+
+    function renderAdminBulkList() {
+      const area = document.getElementById("admin-bulk-preview-area");
+      const listEl = document.getElementById("admin-bulk-list");
+      const btn = document.getElementById("admin-bulk-submit-btn");
+      if (!area || !listEl) return;
+      if (!adminBulkFiles.length) {
+        area.classList.add("hidden");
+        return;
+      }
+      area.classList.remove("hidden");
+      if (btn) btn.textContent = `まとめて登録 (${adminBulkFiles.length}枚)`;
+      const members = ["", "ウォニ", "ミンジュ", "イロハ", "モカ", "ユナ", "OT5"];
+      listEl.innerHTML = adminBulkFiles.map((item, idx) => `
+        <div class="bg-white/85 rounded-lg p-1.5 flex items-center gap-2 border border-white">
+          <img src="${item.previewUrl}" class="w-10 h-10 object-cover rounded shrink-0">
+          <select onchange="adminBulkFiles[${idx}].member = this.value" class="flex-1 liquid-glass-input rounded px-2 py-1.5 text-xs font-medium">
+            ${members.map(m => `<option value="${m}" ${m === item.member ? "selected" : ""}>${m || "（メンバーなし）"}</option>`).join("")}
+          </select>
+          <button onclick="removeAdminBulkItem(${idx})" class="text-gray-400 hover:text-red-500 px-1.5 text-xs font-bold">✕</button>
+        </div>
+      `).join("");
+    }
+
+    window.removeAdminBulkItem = function(idx) {
+      const item = adminBulkFiles[idx];
+      if (item && item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+      adminBulkFiles.splice(idx, 1);
+      renderAdminBulkList();
+    };
+
+    window.clearAdminBulk = function() {
+      adminBulkFiles.forEach(item => { if (item.previewUrl) URL.revokeObjectURL(item.previewUrl); });
+      adminBulkFiles = [];
+      renderAdminBulkList();
+    };
+
+    window.adminSubmitBulkCards = async function() {
+      if (!isAdmin() || !adminBulkFiles.length) return;
+      const albumId = document.getElementById("admin-bulk-album")?.value || adminCardsAlbum;
+      const prefix = (document.getElementById("admin-bulk-prefix")?.value || "").trim();
+      const btn = document.getElementById("admin-bulk-submit-btn");
+      if (btn) { btn.disabled = true; btn.textContent = "登録中..."; }
+
+      let successCount = 0;
+      try {
+        for (let i = 0; i < adminBulkFiles.length; i++) {
+          const item = adminBulkFiles[i];
+          if (btn) btn.textContent = `登録中 (${i + 1}/${adminBulkFiles.length})...`;
+          const cardName = [item.member, prefix].filter(Boolean).join(" ") || `トレカ ${i + 1}`;
+          const dataUrl = await compressCardWithWatermark(item.file, PHOTO_THUMB);
+          if (!isJpegData(dataUrl)) continue;
+
+          const ref = doc(collection(db, "cardCatalog"));
+          const cardId = ref.id;
+          await setDoc(ref, {
+            albumId,
+            name: cardName,
+            member: item.member || "",
+            createdAt: serverTimestamp(),
+            createdBy: currentUser.uid
+          });
+          await setDoc(doc(db, "cardPhotos", cardId), {
+            data: dataUrl,
+            updatedAt: serverTimestamp(),
+            updatedBy: currentUser.uid
+          }, { merge: true });
+
+          cardPhotoCache[cardId] = dataUrl;
+          catalogCardsCache.push({ id: cardId, albumId, name: cardName, member: item.member || "", admin: true });
+          successCount++;
+        }
+        clearAdminBulk();
+        adminCardsAlbum = albumId;
+        showToast(`${successCount}枚をまとめて登録しました`, "success");
+        const el = document.getElementById("admin-content");
+        if (el && adminTab === "cards") renderAdminCardsPanel(el);
+        if (isMyCardsPageOpen()) {
+          renderMyCardsAlbumTabs();
+          renderMyCardsList();
+        }
+      } catch (e) {
+        console.error(e);
+        alert(`一括登録中にエラーが発生しました（${successCount}枚は登録済み）。\n` + (e?.code || e?.message || ""));
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = "まとめて登録"; }
+      }
+    };
+
     window.setAdminCardsAlbum = function(id) {
       adminCardsAlbum = id;
       const el = document.getElementById("admin-content");
@@ -3942,11 +4088,10 @@ window.openAzukariApp = function() {
           createdAt: serverTimestamp(),
           createdBy: currentUser.uid
         });
-                const file = photoEl?.files && photoEl.files[0];
+        const file = photoEl?.files && photoEl.files[0];
         if (file) {
           const dataUrl = await compressCardWithWatermark(file, PHOTO_THUMB);
           if (isJpegData(dataUrl)) {
-
             await setDoc(doc(db, "cardPhotos", cardId), {
               data: dataUrl,
               updatedAt: serverTimestamp(),
@@ -3985,7 +4130,7 @@ window.openAzukariApp = function() {
         alert("削除に失敗しました。");
       }
     };
-        window.adminUploadCardPhoto = async function(cardId, inputEl) {
+    window.adminUploadCardPhoto = async function(cardId, inputEl) {
       if (!isAdmin()) return;
       const file = inputEl.files && inputEl.files[0];
       inputEl.value = "";
@@ -3993,7 +4138,6 @@ window.openAzukariApp = function() {
       try {
         const dataUrl = await compressCardWithWatermark(file, PHOTO_THUMB);
         if (!isJpegData(dataUrl)) return alert("画像の処理に失敗しました。");
-
         await setDoc(doc(db, "cardPhotos", cardId), {
           data: dataUrl,
           updatedAt: serverTimestamp(),
@@ -4036,6 +4180,13 @@ window.openAzukariApp = function() {
       const customs = (userData.customCards || []).filter(c => c.albumId === albumId);
       return base.concat(adminCards).concat(customs);
     }
+    function findCardById(cardId) {
+      for (const a of ILLIT_CARD_ALBUMS) {
+        const hit = getAlbumCards(a.id).find(c => c.id === cardId);
+        if (hit) return { card: hit, album: a };
+      }
+      return null;
+    }
     async function openMyCardsPage() {
       if (!currentUser) return;
       myCardsTab = "own";
@@ -4076,6 +4227,7 @@ window.openAzukariApp = function() {
       renderMyCardsAlbumTabs();
       renderMyCardsList();
     };
+
     function renderMyCardsList() {
       const el = document.getElementById("mycards-list");
       const cards = getAlbumCards(myCardsAlbum);
@@ -4084,27 +4236,154 @@ window.openAzukariApp = function() {
         el.innerHTML = `<p class="text-xs text-gray-500 text-center py-6">このカテゴリにカードがありません。<br>下からカスタム追加できます。</p>`;
         return;
       }
-      el.innerHTML = `<div class="text-[11px] font-bold text-gray-600 mb-1">${album ? album.name + (album.year ? " · " + album.year : "") : ""} · ${cards.length}種</div>` +
-        cards.map(c => {
-          const st = getCardStatus(c.id);
-          const isCustom = !!(c.custom);
-          const photo = getCardPhoto(c.id);
-          const watching = !!(userData.cardWatch || {})[c.id];
-          const thumb = photo
-            ? `<img src="${photo}" alt="" class="w-12 h-12 object-cover rounded-lg border border-white shadow-sm shrink-0">`
-            : `<div class="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-50 to-pink-50 border border-white flex items-center justify-center text-purple-200 text-lg shrink-0">🃏</div>`;
-          return `<div class="liquid-glass-input rounded-xl p-2.5 flex items-center gap-2.5">
-            ${thumb}
-            <div class="flex-1 min-w-0">
-              <div class="text-xs font-medium text-gray-900 truncate">${escapeHtml(c.name)}</div>
-              <div class="text-[10px] text-gray-500">${c.member ? escapeHtml(c.member) : "—"}${isCustom ? " · カスタム" : ""}</div>
-            </div>
-            <button onclick="toggleCardWatch('${escapeHtml(c.id)}')" title="出品されたら通知" class="shrink-0 text-[10px] font-bold px-2 py-1.5 rounded-full border ${watching ? "bg-amber-100 text-amber-700 border-amber-300" : "bg-white/70 text-gray-500 border-gray-200"}">${watching ? "🔔 ON" : "🔔"}</button>
-            <button onclick="cycleCardStatus('${escapeHtml(c.id)}')" class="shrink-0 text-[11px] font-bold px-2.5 py-1.5 rounded-full border ${CARD_STATUS_CLASS[st]}">${CARD_STATUS[st]}</button>
-            ${isCustom ? `<button onclick="removeCustomCard('${escapeHtml(c.id)}')" class="text-gray-400 text-xs px-1" title="削除">✕</button>` : ""}
-          </div>`;
-        }).join("");
+      const ownedCount = cards.filter(c => getCardStatus(c.id) === "owned").length;
+      const wantCount = cards.filter(c => getCardStatus(c.id) === "want").length;
+
+      el.innerHTML = `
+        <div class="flex items-center justify-between text-[11px] font-bold text-gray-600 mb-2 px-0.5">
+          <span>${album ? album.name : ""}（所持 ${ownedCount}/${cards.length}枚${wantCount ? `・欲しい ${wantCount}` : ""}）</span>
+          <span class="text-[10px] font-normal text-gray-500">タップで拡大・切替</span>
+        </div>
+        <div class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-1.5">
+          ${cards.map(c => {
+            const st = getCardStatus(c.id);
+            const isOwned = st === "owned";
+            const isWant = st === "want";
+            const photo = getCardPhoto(c.id);
+            const watching = !!(userData.cardWatch || {})[c.id];
+
+            const imgHtml = photo
+              ? `<img src="${photo}" alt="${escapeHtml(c.name)}" class="w-full h-full object-cover transition duration-200 ${isOwned ? "" : "opacity-55"}">`
+              : `<div class="w-full h-full bg-gradient-to-br from-purple-50 to-pink-50 flex flex-col items-center justify-center p-1 text-center ${isOwned ? "" : "opacity-65"}">
+                   <span class="text-lg leading-none mb-0.5">🃏</span>
+                   <span class="text-[9px] text-gray-500 line-clamp-2 leading-tight">${escapeHtml(c.member || c.name)}</span>
+                 </div>`;
+
+            let badgeHtml = `<span class="absolute top-1 right-1 px-1.5 py-0.5 rounded-full bg-black/55 text-white text-[9px] font-bold leading-none">未</span>`;
+            if (isOwned) {
+              badgeHtml = `<span class="absolute top-1 right-1 w-4 h-4 rounded-full bg-emerald-500 text-white text-[10px] flex items-center justify-center font-bold shadow">✓</span>`;
+            } else if (isWant) {
+              badgeHtml = `<span class="absolute top-1 right-1 px-1.5 py-0.5 rounded-full bg-pink-500 text-white text-[9px] font-bold leading-none shadow">欲</span>`;
+            }
+
+            const borderClass = isOwned
+              ? "border-emerald-400 ring-1 ring-emerald-400/50"
+              : (isWant ? "border-pink-400 ring-1 ring-pink-400/50" : "border-white/70");
+
+            return `<div onclick="openCardDetailModal('${escapeHtml(c.id)}')" class="relative aspect-[3/4] rounded-xl overflow-hidden cursor-pointer border ${borderClass} shadow-sm bg-white/60 active:scale-95 transition">
+              ${imgHtml}
+              ${watching ? `<span class="absolute top-1 left-1 w-4 h-4 rounded-full bg-amber-400 text-white text-[9px] flex items-center justify-center shadow">🔔</span>` : ""}
+              ${badgeHtml}
+              <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/45 to-transparent px-1 pt-3 pb-1">
+                <div class="text-[9px] font-bold text-white truncate leading-tight">${escapeHtml(c.name)}</div>
+              </div>
+            </div>`;
+          }).join("")}
+        </div>`;
     }
+
+    window.openCardDetailModal = function(cardId) {
+      detailCardId = cardId;
+      renderCardDetailModal();
+      const modal = document.getElementById("card-detail-modal");
+      if (modal) modal.classList.remove("hidden");
+    };
+
+    window.closeCardDetailModal = function() {
+      detailCardId = null;
+      const modal = document.getElementById("card-detail-modal");
+      if (modal) modal.classList.add("hidden");
+    };
+
+    function renderCardDetailModal() {
+      if (!detailCardId) return;
+      const found = findCardById(detailCardId);
+      const bodyEl = document.getElementById("card-detail-body");
+      if (!found || !bodyEl) return;
+
+      const { card, album } = found;
+      const st = getCardStatus(card.id);
+      const isCustom = !!card.custom;
+      const photo = getCardPhoto(card.id);
+      const watching = !!(userData.cardWatch || {})[card.id];
+
+      const bigImg = photo
+        ? `<div class="w-48 mx-auto aspect-[3/4] rounded-2xl overflow-hidden shadow-lg border-2 border-white bg-white">
+             <img src="${photo}" alt="${escapeHtml(card.name)}" class="w-full h-full object-cover">
+           </div>`
+        : `<div class="w-48 mx-auto aspect-[3/4] rounded-2xl bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-white shadow-inner flex flex-col items-center justify-center text-purple-300">
+             <span class="text-4xl mb-1">🃏</span>
+             <span class="text-xs text-gray-400">画像未登録</span>
+           </div>`;
+
+      const statusBtn = (key, label, activeStyle) => {
+        const active = st === key;
+        return `<button onclick="setCardStatusFromDetail('${escapeHtml(card.id)}', '${key}')" class="flex-1 py-2.5 rounded-xl font-bold text-xs transition border ${
+          active
+            ? activeStyle + " shadow-sm"
+            : "bg-white/70 text-gray-500 border-gray-200 hover:bg-white"
+        }">${label}</button>`;
+      };
+
+      bodyEl.innerHTML = `
+        <div class="pt-1 space-y-3">
+          ${bigImg}
+          <div class="text-center space-y-0.5">
+            <div class="text-[11px] font-medium text-illit-darkPurple">${escapeHtml(album.name)}${card.member ? " · " + escapeHtml(card.member) : ""}</div>
+            <h3 class="text-base font-bold text-gray-900">${escapeHtml(card.name)}</h3>
+          </div>
+
+          <div class="space-y-1.5">
+            <div class="text-[11px] font-bold text-gray-600 px-0.5">所持ステータス</div>
+            <div class="flex gap-1.5">
+              ${statusBtn("none", "未所持", "bg-gray-600 text-white border-gray-600")}
+              ${statusBtn("owned", "✓ 所持", "bg-emerald-500 text-white border-emerald-500")}
+              ${statusBtn("want", "♥ 欲しい", "bg-pink-500 text-white border-pink-500")}
+            </div>
+          </div>
+
+          <button onclick="toggleCardWatch('${escapeHtml(card.id)}')" class="w-full py-2.5 rounded-xl font-bold text-xs transition flex items-center justify-center gap-1.5 border ${
+            watching
+              ? "bg-amber-100 text-amber-800 border-amber-300"
+              : "bg-white/80 text-gray-600 border-gray-200 hover:bg-white"
+          }">
+            <span>${watching ? "🔔 出品通知 ON（出品されたら通知）" : "🔕 出品通知 OFF（タップで通知ON）"}</span>
+          </button>
+
+          <button onclick="searchCardInListings('${escapeHtml(card.name)}')" class="w-full py-2.5 rounded-xl bg-teal-50 text-teal-700 border border-teal-200 font-bold text-xs hover:bg-teal-100 transition">
+            🔍 このトレカの出品を探す
+          </button>
+
+          ${isCustom ? `<button onclick="removeCustomCardFromDetail('${escapeHtml(card.id)}')" class="w-full py-1.5 text-[11px] text-red-500 underline">このカスタムカードを削除</button>` : ""}
+        </div>`;
+    }
+
+    window.setCardStatusFromDetail = async function(cardId, nextStatus) {
+      if (!currentUser) return;
+      const map = { ...(userData.myCards || {}) };
+      if (nextStatus === "none") delete map[cardId];
+      else map[cardId] = nextStatus;
+      userData.myCards = map;
+      renderCardDetailModal();
+      renderMyCardsList();
+      renderMyCardsShareStats();
+      try { await saveUserData({ myCards: map }); } catch (e) { showToast("保存に失敗しました", "error"); }
+    };
+
+    window.removeCustomCardFromDetail = async function(cardId) {
+      closeCardDetailModal();
+      await removeCustomCard(cardId);
+    };
+
+    window.searchCardInListings = function(cardName) {
+      closeCardDetailModal();
+      switchTab("home");
+      const searchEl = document.getElementById("search-input");
+      if (searchEl) searchEl.value = cardName;
+      setSearch(cardName);
+      showToast(`「${cardName}」で絞り込みました`, "info");
+    };
+
     window.toggleCardWatch = async function(cardId) {
       if (!currentUser || !cardId) return;
       const map = { ...(userData.cardWatch || {}) };
@@ -4123,6 +4402,7 @@ window.openAzukariApp = function() {
         userData.cardWatch = map;
         await saveUserData({ cardWatch: map });
         renderMyCardsList();
+        if (detailCardId === cardId) renderCardDetailModal();
         showToast(on ? "出品通知をオフにしました" : "出品されたら通知します", on ? "info" : "success");
       } catch (e) {
         console.error(e);
@@ -4228,6 +4508,7 @@ window.openAzukariApp = function() {
       navigator.clipboard.writeText(link).then(() => showToast("共有リンクをコピーしました", "success")).catch(() => alert(link));
     };
 
+
     // ===== 下部ナビ：長押しで透けるレンズ =====
     (function initNavLens() {
       const nav = document.querySelector("body > nav"); if (!nav) return;
@@ -4305,12 +4586,21 @@ window.openAzukariApp = function() {
       </div>
       <h3 class="font-bold text-base text-gray-900">ブラウザの切り替えが必要です</h3>
       <p id="promptMessage" class="text-xs text-gray-600 leading-relaxed bg-white/60 p-4 rounded-2xl border border-white/80 text-left shadow-inner"></p>
-      <div class="text-[11px] text-gray-400">
+            <div class="text-[11px] text-gray-400">
         ※Safariなどの外部ブラウザで開くことで、いつも通りログインしてご利用いただけるようになります。
       </div>
     </div>
   </div>
+
+  <!-- トレカ拡大・所持/通知設定モーダル -->
+  <div id="card-detail-modal" class="hidden fixed inset-0 z-[75] modal-backdrop flex items-center justify-center p-4" onclick="if(event.target===this) closeCardDetailModal()">
+    <div class="liquid-glass-heavy rounded-[2rem] max-w-sm w-full p-5 space-y-4 shadow-2xl border border-white relative">
+      <button onclick="closeCardDetailModal()" class="absolute top-3.5 right-3.5 w-8 h-8 rounded-full bg-white/80 text-gray-600 flex items-center justify-center font-bold shadow-sm hover:bg-white">✕</button>
+      <div id="card-detail-body"></div>
+    </div>
+  </div>
 </body>
 </html>
+
 
           
