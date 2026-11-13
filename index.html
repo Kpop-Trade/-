@@ -1058,8 +1058,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-, collection, collectionGroup, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, where, orderBy, limit, startAfter, onSnapshot, serverTimestamp, increment, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, collectionGroup, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, where, orderBy, limit, startAfter, onSnapshot, serverTimestamp, increment, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getMessaging, getToken, deleteToken, onMessage } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js";
 
     const firebaseConfig = {
@@ -1073,12 +1072,7 @@
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
-    const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({
-    tabManager: persistentMultipleTabManager()
-  })
-});
-
+    const db = getFirestore(app);
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: "select_account" });
     const VAPID_KEY = "BDDp7KKSAF7CUspZG5J6wnkIqJlwgPaabfUnjuAQd8EcIgeiVj8zzazsy_O4Ick_t8w__7NasrngncK102c7wWg";
@@ -3813,79 +3807,7 @@ window.openAzukariApp = function() {
       else if (!recorded && hasAgreedLocally() && !termsSaving) { termsSaving = true; saveUserData({ terms: { version: TERMS_VERSION, agreedAt: serverTimestamp() } }).finally(() => { termsSaving = false; }); }
     }
 
-          // ===== IndexedDB キャッシュヘルパー（スマホ・PC本体に永久保存） =====
-    const IDB_NAME = "illit_trade_cache_v1";
-    const IDB_STORE = "kv";
-    let idbPromise = null;
-
-    function openCacheDB() {
-      if (idbPromise) return idbPromise;
-      idbPromise = new Promise((resolve) => {
-        try {
-          const req = indexedDB.open(IDB_NAME, 1);
-          req.onupgradeneeded = () => {
-            const dbInst = req.result;
-            if (!dbInst.objectStoreNames.contains(IDB_STORE)) {
-              dbInst.createObjectStore(IDB_STORE);
-            }
-          };
-          req.onsuccess = () => resolve(req.result);
-          req.onerror = () => resolve(null);
-        } catch (_) {
-          resolve(null);
-        }
-      });
-      return idbPromise;
-    }
-
-    async function idbGet(key) {
-      const dbInst = await openCacheDB();
-      if (!dbInst) return null;
-      return new Promise((resolve) => {
-        try {
-          const tx = dbInst.transaction(IDB_STORE, "readonly");
-          const req = tx.objectStore(IDB_STORE).get(key);
-          req.onsuccess = () => resolve(req.result ?? null);
-          req.onerror = () => resolve(null);
-        } catch (_) {
-          resolve(null);
-        }
-      });
-    }
-
-    async function idbSet(key, val) {
-      const dbInst = await openCacheDB();
-      if (!dbInst) return;
-      return new Promise((resolve) => {
-        try {
-          const tx = dbInst.transaction(IDB_STORE, "readwrite");
-          tx.objectStore(IDB_STORE).put(val, key);
-          tx.oncomplete = () => resolve();
-          tx.onerror = () => resolve();
-        } catch (_) {
-          resolve();
-        }
-      });
-    }
-
-    async function idbDelete(key) {
-      const dbInst = await openCacheDB();
-      if (!dbInst) return;
-      return new Promise((resolve) => {
-        try {
-          const tx = dbInst.transaction(IDB_STORE, "readwrite");
-          tx.objectStore(IDB_STORE).delete(key);
-          tx.oncomplete = () => resolve();
-          tx.onerror = () => resolve();
-        } catch (_) {
-          resolve();
-        }
-      });
-    }
-
-    // ===== トレカ画像・カタログ読み込み（IndexedDB優先） =====
-    const loadedPhotoAlbums = new Set();
-    const CATALOG_CACHE_TTL = 1000 * 60 * 60 * 6; // カタログは6時間キャッシュ
+      const loadedPhotoAlbums = new Set();
 
     async function ensureCardPhotosLoaded(targetAlbumId) {
       const albumId = targetAlbumId || myCardsAlbum;
@@ -3893,54 +3815,29 @@ window.openAzukariApp = function() {
 
       await ensureCatalogCardsLoaded();
       const cards = getAlbumCards(albumId);
-      const missingIds = [];
+      const missingIds = cards.map(c => c.id).filter(id => !cardPhotoCache[id]);
 
-      // 1. まずブラウザのIndexedDBから探す（Firestore読み取り 0回）
-      await Promise.all(cards.map(async (c) => {
-        if (cardPhotoCache[c.id]) return;
-        const cached = await idbGet("photo_" + c.id);
-        if (cached) {
-          cardPhotoCache[c.id] = cached;
-        } else {
-          missingIds.push(c.id);
-        }
-      }));
-
-      // 2. IndexedDBに無かった画像だけをFirestoreから取得して保存
-      if (missingIds.length > 0) {
-        try {
-          await Promise.all(missingIds.map(async (id) => {
-            try {
-              const snap = await getDoc(doc(db, "cardPhotos", id));
-              if (snap.exists() && snap.data()?.data) {
-                const imgData = snap.data().data;
-                cardPhotoCache[id] = imgData;
-                await idbSet("photo_" + id, imgData);
-              }
-            } catch (_) {}
-          }));
-        } catch (e) {
-          console.warn("cardPhotos load:", e?.code || e);
-        }
+      if (missingIds.length === 0) {
+        loadedPhotoAlbums.add(albumId);
+        return;
       }
 
-      loadedPhotoAlbums.add(albumId);
+      try {
+        await Promise.all(missingIds.map(async (id) => {
+          try {
+            const snap = await getDoc(doc(db, "cardPhotos", id));
+            if (snap.exists() && snap.data()?.data) {
+              cardPhotoCache[id] = snap.data().data;
+            }
+          } catch (_) {}
+        }));
+        loadedPhotoAlbums.add(albumId);
+      } catch (e) {
+        console.warn("cardPhotos load:", e?.code || e);
+      }
     }
-
-    async function ensureCatalogCardsLoaded(forceRefresh = false) {
-      if (catalogCardsLoaded && !forceRefresh) return;
-
-      // 1. 6時間以内に取得したカタログがIndexedDBにあればそれを使う（0回）
-      if (!forceRefresh) {
-        const cached = await idbGet("catalog_cards");
-        if (cached && Array.isArray(cached.items) && (Date.now() - cached.savedAt < CATALOG_CACHE_TTL)) {
-          catalogCardsCache = cached.items;
-          catalogCardsLoaded = true;
-          return;
-        }
-      }
-
-      // 2. キャッシュ期限切れまたは初回のみFirestoreから取得
+    async function ensureCatalogCardsLoaded() {
+      if (catalogCardsLoaded) return;
       try {
         const snap = await getDocs(collection(db, "cardCatalog"));
         catalogCardsCache = snap.docs.map(d => {
@@ -3954,12 +3851,10 @@ window.openAzukariApp = function() {
           };
         }).filter(c => c.name);
         catalogCardsLoaded = true;
-        await idbSet("catalog_cards", { items: catalogCardsCache, savedAt: Date.now() });
       } catch (e) {
         console.warn("cardCatalog load:", e?.code || e);
       }
     }
-
     let adminBulkFiles = [];
     let detailCardId = null;
 
@@ -4167,11 +4062,9 @@ window.openAzukariApp = function() {
           }, { merge: true });
 
           cardPhotoCache[cardId] = dataUrl;
-          await idbSet("photo_" + cardId, dataUrl);
           catalogCardsCache.push({ id: cardId, albumId, name: cardName, member: item.member || "", admin: true });
           successCount++;
         }
-        await idbDelete("catalog_cards");
         clearAdminBulk();
         adminCardsAlbum = albumId;
         showToast(`${successCount}枚をまとめて登録しました`, "success");
@@ -4229,11 +4122,9 @@ window.openAzukariApp = function() {
               updatedBy: currentUser.uid
             }, { merge: true });
             cardPhotoCache[cardId] = dataUrl;
-            await idbSet("photo_" + cardId, dataUrl);
           }
         }
         catalogCardsCache.push({ id: cardId, albumId, name, member, admin: true });
-        await idbDelete("catalog_cards");
         adminCardsAlbum = albumId;
         showToast("トレカを登録しました", "success");
         const el = document.getElementById("admin-content");
@@ -4255,8 +4146,6 @@ window.openAzukariApp = function() {
         try { await deleteDoc(doc(db, "cardPhotos", cardId)); } catch (_) {}
         catalogCardsCache = catalogCardsCache.filter(c => c.id !== cardId);
         delete cardPhotoCache[cardId];
-        await idbDelete("photo_" + cardId);
-        await idbDelete("catalog_cards");
         showToast("トレカを削除しました", "info");
         const el = document.getElementById("admin-content");
         if (el && adminTab === "cards") renderAdminCardsPanel(el);
@@ -4279,7 +4168,6 @@ window.openAzukariApp = function() {
           updatedBy: currentUser.uid
         }, { merge: true });
         cardPhotoCache[cardId] = dataUrl;
-        await idbSet("photo_" + cardId, dataUrl);
         showToast("写真を登録しました", "success");
         const el = document.getElementById("admin-content");
         if (el && adminTab === "cards") renderAdminCardsPanel(el);
@@ -4295,7 +4183,6 @@ window.openAzukariApp = function() {
       try {
         await deleteDoc(doc(db, "cardPhotos", cardId));
         delete cardPhotoCache[cardId];
-        await idbDelete("photo_" + cardId);
         showToast("写真を削除しました", "info");
         const el = document.getElementById("admin-content");
         if (el && adminTab === "cards") renderAdminCardsPanel(el);
@@ -4647,7 +4534,6 @@ window.openAzukariApp = function() {
       const link = location.origin + location.pathname + "?collection=" + currentUser.uid;
       navigator.clipboard.writeText(link).then(() => showToast("共有リンクをコピーしました", "success")).catch(() => alert(link));
     };
-
 
 
     function renderMyCardsList() {
