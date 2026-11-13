@@ -232,11 +232,20 @@
       </div>
     </section>
 
-    <section id="post-list-section" class="space-y-4">
+        <section id="post-list-section" class="space-y-4">
       <div class="flex justify-between items-center px-2">
         <h3 id="list-section-title" class="font-bold text-base text-gray-800 drop-shadow-sm">最新の募集</h3>
         <span class="text-xs font-bold text-illit-accent bg-white/50 px-2 py-1 rounded-full border border-white">手数料 0円</span>
       </div>
+
+      <!-- 【追加】ここに常時表示の検索バー -->
+      <div class="px-1">
+        <div class="relative">
+          <input type="text" id="main-search-input" oninput="syncSearch(this.value)" placeholder="🔍 メンバー名・トレカ名・出品者名で検索" class="w-full liquid-glass-input rounded-2xl pl-4 pr-9 py-2.5 text-xs outline-none text-gray-700 placeholder-gray-500 bg-white/75 backdrop-blur-md border border-white/50">
+          <button id="main-search-clear" onclick="syncSearch('')" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm font-bold">×</button>
+        </div>
+      </div>
+
 
       <div class="liquid-glass rounded-2xl px-3 py-2.5 flex items-center justify-between gap-2">
         <label class="flex items-center gap-2 cursor-pointer select-none">
