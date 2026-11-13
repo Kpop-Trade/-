@@ -3111,9 +3111,19 @@ getRedirectResult(auth)
     }
     window.setMember = function(i) { selectedMember = MEMBERS[i]; renderFilters(); renderPosts(); };
     window.setKind = function(k) { kindFilter = k; renderFilters(); renderPosts(); };
-    window.setBundle = function(k) { bundleFilter = k; renderFilters(); renderPosts(); };
+        window.setBundle = function(k) { bundleFilter = k; renderFilters(); renderPosts(); };
     window.setSearch = function(v) { searchText = v.trim().toLowerCase(); renderPosts(); };
+    window.syncSearch = function(v) {
+      const mainInput = document.getElementById("main-search-input");
+      const modalInput = document.getElementById("search-input");
+      const clearBtn = document.getElementById("main-search-clear");
+      if (mainInput && mainInput.value !== v) mainInput.value = v;
+      if (modalInput && modalInput.value !== v) modalInput.value = v;
+      if (clearBtn) clearBtn.classList.toggle("hidden", !v);
+      setSearch(v);
+    };
     window.setActiveOnly = function(v) { activeOnly = !!v; renderPosts(); };
+
     window.cycleSort = function() {
       const idx = SORT_OPTIONS.findIndex(s => s.key === sortFilter);
       sortFilter = SORT_OPTIONS[(idx + 1) % SORT_OPTIONS.length].key;
@@ -3989,7 +3999,8 @@ window.openAzukariApp = function() {
     window.openAzukariGuide = function() {
       openProfileModal("paypay"); // reuse section id which now shows Azukari guide
     };
-    window.sendMyPayPayId = async function() { /* deprecated */ };
+    
+
     window.copyAmount = function(amt) { navigator.clipboard.writeText(String(amt)).then(()=>alert(`コピー完了`)).catch(()=>{}); };
 
     window.openTrade = function(id) {
