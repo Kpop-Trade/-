@@ -333,6 +333,30 @@
         <button onclick="openTerms(true)" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">📜 利用規約</span><span class="text-gray-400">›</span></button>
       </div>
     </section>
+  <!-- 管理画面（通常ページ） -->
+  <section id="admin-section" class="hidden space-y-4 pb-28">
+    <div class="flex items-center justify-between px-1">
+      <h2 class="font-bold text-lg text-gray-900 flex items-center gap-2">👑 運営ダッシュボード</h2>
+      <button onclick="closeAdminModal()" class="text-xs font-bold text-gray-500 bg-white/70 border border-white px-3 py-1.5 rounded-full hover:bg-white transition">閉じる</button>
+    </div>
+
+    <div class="liquid-glass rounded-2xl px-2 py-1 flex overflow-x-auto hide-scrollbar gap-1 text-[11px] md:text-xs font-bold">
+      <button onclick="switchAdminTab('stats')" id="admin-tab-stats" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">📊 統計</button>
+      <button onclick="switchAdminTab('reports')" id="admin-tab-reports" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">🚨 通報</button>
+      <button onclick="switchAdminTab('inquiries')" id="admin-tab-inquiries" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">📩 問合せ</button>
+      <button onclick="switchAdminTab('users')" id="admin-tab-users" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">👥 ユーザー</button>
+      <button onclick="switchAdminTab('posts')" id="admin-tab-posts" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">📦 投稿管理</button>
+      <button onclick="switchAdminTab('trades')" id="admin-tab-trades" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">💬 取引監視</button>
+      <button onclick="switchAdminTab('likes')" id="admin-tab-likes" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">❤️ いいね検証</button>
+      <button onclick="switchAdminTab('broadcast')" id="admin-tab-broadcast" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">📢 一斉通知</button>
+      <button onclick="switchAdminTab('cards')" id="admin-tab-cards" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">🃏 トレカ写真</button>
+    </div>
+
+    <div id="admin-controls" class="hidden"></div>
+    <div id="admin-content" class="space-y-3 text-sm"></div>
+  </section>
+
+
   </main>
 
   <button id="sell-fab" onclick="openPostTypeSheet()" class="hidden fixed left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-[480px] bottom-[104px] md:bottom-6 z-30 bg-gradient-to-r from-rose-500 to-pink-500 text-white font-bold text-base py-4 rounded-xl shadow-xl items-center justify-center gap-2 active:scale-[.98] transition">
@@ -685,34 +709,6 @@
   </div>
 
   <!-- 管理者パネル -->
-  <div id="admin-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
-    <div class="liquid-glass-heavy w-full max-w-2xl rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[90vh] flex flex-col">
-      <div class="flex justify-between items-center border-b border-purple-200/50 pb-3 shrink-0">
-        <h3 class="font-bold text-lg text-gray-800 flex items-center gap-2">👑 運営ダッシュボード</h3>
-        <button onclick="closeAdminModal()" class="text-gray-400 hover:text-gray-600 font-bold text-2xl leading-none">&times;</button>
-      </div>
-      
-      <div class="flex border-b border-purple-200/50 text-[11px] md:text-xs font-bold shrink-0 overflow-x-auto hide-scrollbar gap-1">
-        <button onclick="switchAdminTab('stats')" id="admin-tab-stats" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">📊 統計</button>
-        <button onclick="switchAdminTab('reports')" id="admin-tab-reports" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">🚨 通報</button>
-        <button onclick="switchAdminTab('inquiries')" id="admin-tab-inquiries" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">📩 問合せ</button>
-        <button onclick="switchAdminTab('users')" id="admin-tab-users" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">👥 ユーザー</button>
-        <button onclick="switchAdminTab('posts')" id="admin-tab-posts" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">📦 投稿管理</button>
-        <button onclick="switchAdminTab('trades')" id="admin-tab-trades" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">💬 取引監視</button>
-        <button onclick="switchAdminTab('likes')" id="admin-tab-likes" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">❤️ いいね検証</button>
-        <button onclick="switchAdminTab('broadcast')" id="admin-tab-broadcast" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">📢 一斉通知</button>
-        <button onclick="switchAdminTab('cards')" id="admin-tab-cards" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">🃏 トレカ写真</button>
-      </div>
-
-      <div id="admin-controls" class="hidden shrink-0 mt-2"></div>
-      <div id="admin-content" class="flex-1 overflow-y-auto space-y-3 text-sm bg-white/40 p-3 rounded-xl border border-white/50 shadow-inner"></div>
-      
-      <div class="pt-2 border-t border-purple-200/50 shrink-0">
-        <button onclick="closeAdminModal()" class="w-full bg-white/80 text-gray-700 border border-white font-medium py-3 rounded-full hover:bg-white transition text-sm shadow-sm">ダッシュボードを閉じる</button>
-      </div>
-    </div>
-  </div>
-
   <!-- プロフィール設定 -->
   <div id="profile-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
     <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
@@ -1599,8 +1595,10 @@ getRedirectResult(auth)
       document.getElementById("intro-section").classList.toggle("hidden", tab !== 'home' && tab !== 'likes');
       const mycardsSec = document.getElementById("mycards-section");
       const mypageSec = document.getElementById("mypage-section");
+      const adminSec = document.getElementById("admin-section");
       if (mycardsSec) mycardsSec.classList.toggle("hidden", tab !== 'mycards');
       if (mypageSec) mypageSec.classList.toggle("hidden", tab !== 'mypage');
+      if (adminSec) adminSec.classList.toggle("hidden", tab !== 'admin');
       const fab = document.getElementById("sell-fab");
       fab.classList.toggle("hidden", tab !== 'post');
       fab.classList.toggle("flex", tab === 'post');
@@ -1709,7 +1707,7 @@ getRedirectResult(auth)
     let adminTab = "stats";
     let adminSearchQuery = "";
 
-    const ADMIN_ALLOWED_ACTIONS = ["adminSendWarning", "adminSuspendUser", "adminUnsuspendUser", "adminDeletePost", "adminForceCancelTrade", "deleteReportedPost", "markInquiryDone", "copyText", "adminFixLikes", "adminFixAllLikes"];
+    const ADMIN_ALLOWED_ACTIONS = ["adminSendWarning", "adminSuspendUser", "adminUnsuspendUser", "adminDeletePost", "adminForceCancelTrade", "deleteReportedPost", "markInquiryDone", "copyText", "adminFixLikes", "adminFixAllLikes", "adminReplyUser"];
     window.copyText = function(t) { navigator.clipboard.writeText(String(t || "")).catch(() => {}); };
     document.getElementById("admin-content").addEventListener("click", (e) => {
       const b = e.target.closest("[data-act]"); if (!b || !isAdmin()) return;
@@ -1719,12 +1717,15 @@ getRedirectResult(auth)
 
     window.openAdminModal = function() { 
       if (!isAdmin()) return; 
-      document.getElementById("admin-modal").classList.remove("hidden"); 
-      switchAdminTab('stats');
+      // 通常ページとして開く（浮きモーダルにしない）
+      switchTab('admin');
+      switchAdminTab(adminTab || 'stats');
     };
     
     window.closeAdminModal = function() { 
-      document.getElementById("admin-modal").classList.add("hidden"); 
+      const adminSec = document.getElementById("admin-section");
+      if (adminSec) adminSec.classList.add("hidden");
+      switchTab('home');
     };
 
     window.switchAdminTab = function(tab) {
@@ -1749,8 +1750,9 @@ getRedirectResult(auth)
         controls.innerHTML = `<input type="text" placeholder="名前, UID, またはキーワードで検索..." oninput="adminSearch(this.value)" class="liquid-glass-input w-full rounded-xl p-2.5 text-xs text-gray-800">`;
         controls.classList.remove("hidden");
       } else if (tab === "cards") {
-        controls.innerHTML = `<div class="flex gap-1.5 overflow-x-auto hide-scrollbar" id="admin-card-album-tabs"></div>`;
-        controls.classList.remove("hidden");
+        // アルバムタブはコンテンツ内に描画（外枠の出し入れでレイアウトがズレないように）
+        controls.innerHTML = "";
+        controls.classList.add("hidden");
       } else {
         controls.classList.add("hidden");
         controls.innerHTML = "";
@@ -1948,7 +1950,20 @@ getRedirectResult(auth)
         if (adminTab === "reports") {
           const snap = await getDocs(query(collection(db, "reports"), orderBy("createdAt", "desc")));
           if (snap.empty) { el.innerHTML = '<p class="text-gray-500 text-center py-6 font-medium">通報はありません。</p>'; return; }
-          el.innerHTML = snap.docs.map(d => `<div class="bg-red-50 border border-red-200 rounded-xl p-3 space-y-1.5 shadow-sm"><div class="flex justify-between items-center text-[10px] text-red-700"><span>通報者: ${escapeHtml(d.data().reporterName)}</span><span>${fmtTime(d.data().createdAt)}</span></div><div class="font-bold text-gray-800 text-xs">対象: ${escapeHtml(d.data().postGive)}</div><div class="text-red-700 bg-white p-2 rounded-lg border border-red-100 text-xs">理由: ${escapeHtml(d.data().reason)}</div><div class="flex justify-end pt-1"><button data-act="deleteReportedPost" data-a1="${escapeHtml(d.data().postId)}" data-a2="${escapeHtml(d.id)}" class="bg-red-500 text-white font-medium px-3 py-1.5 rounded-md text-[10px] hover:bg-red-600 shadow-sm">対象の投稿を強制削除</button></div></div>`).join("");
+          el.innerHTML = snap.docs.map(d => {
+            const data = d.data();
+            const reporterId = data.reporterId || "";
+            const reporterName = data.reporterName || "通報者";
+            return `<div class="bg-red-50 border border-red-200 rounded-xl p-3 space-y-1.5 shadow-sm">
+              <div class="flex justify-between items-center text-[10px] text-red-700"><span>通報者: ${escapeHtml(reporterName)}</span><span>${fmtTime(data.createdAt)}</span></div>
+              <div class="font-bold text-gray-800 text-xs">対象: ${escapeHtml(data.postGive || "")}</div>
+              <div class="text-red-700 bg-white p-2 rounded-lg border border-red-100 text-xs">理由: ${escapeHtml(data.reason || "")}</div>
+              <div class="flex flex-wrap justify-end gap-1.5 pt-1">
+                ${reporterId ? `<button data-act="adminReplyUser" data-a1="${escapeHtml(reporterId)}" data-a2="${escapeHtml(reporterName)}" class="bg-white border border-red-300 text-red-700 font-medium px-3 py-1.5 rounded-md text-[10px] hover:bg-red-100 shadow-sm">返信する</button>` : ""}
+                <button data-act="deleteReportedPost" data-a1="${escapeHtml(data.postId || "")}" data-a2="${escapeHtml(d.id)}" class="bg-red-500 text-white font-medium px-3 py-1.5 rounded-md text-[10px] hover:bg-red-600 shadow-sm">対象の投稿を強制削除</button>
+              </div>
+            </div>`;
+          }).join("");
         }
         else if (adminTab === "inquiries") {
           const snap = await getDocs(query(collection(db, "inquiries"), orderBy("createdAt", "desc")));
@@ -1956,11 +1971,16 @@ getRedirectResult(auth)
           el.innerHTML = snap.docs.map(d => {
             const data = d.data();
             const subj = INQUIRY_SUBJECT_LABEL[data.subject] || data.subject;
+            const uid = data.userId || "";
+            const uname = data.userName || "ユーザー";
             return `<div class="bg-white/80 border border-purple-200 rounded-xl p-3 space-y-1.5 shadow-sm">
               <div class="flex justify-between items-center text-[10px] text-gray-500"><span class="font-bold text-illit-darkPurple bg-purple-50 px-2 py-0.5 rounded">${escapeHtml(subj)}</span><span>${fmtTime(data.createdAt)}</span></div>
-              <div class="font-bold text-gray-800 text-xs">${escapeHtml(data.userName || "")}</div>
+              <div class="font-bold text-gray-800 text-xs">${escapeHtml(uname)}</div>
               <div class="text-gray-700 bg-white p-2 rounded-lg border border-gray-200 whitespace-pre-wrap text-xs leading-relaxed">${escapeHtml(data.body || "")}</div>
-              <div class="flex justify-end pt-1"><button data-act="markInquiryDone" data-a1="${escapeHtml(d.id)}" class="bg-green-500 hover:bg-green-600 text-white font-medium px-4 py-1.5 rounded-md text-[10px] shadow-sm">対応済みにする</button></div>
+              <div class="flex flex-wrap justify-end gap-1.5 pt-1">
+                ${uid ? `<button data-act="adminReplyUser" data-a1="${escapeHtml(uid)}" data-a2="${escapeHtml(uname)}" class="bg-illit-purple text-white font-medium px-3 py-1.5 rounded-md text-[10px] hover:opacity-90 shadow-sm">返信する</button>` : ""}
+                <button data-act="markInquiryDone" data-a1="${escapeHtml(d.id)}" class="bg-green-500 hover:bg-green-600 text-white font-medium px-3 py-1.5 rounded-md text-[10px] shadow-sm">対応済みにする</button>
+              </div>
             </div>`;
           }).join("");
         }
@@ -2002,6 +2022,34 @@ getRedirectResult(auth)
         await updateDoc(userRef, { notifications: list });
         alert("警告を送信しました。");
       } catch (e) { alert("送信に失敗しました。"); }
+    };
+
+    // 通報者・問い合わせ者などへの個別返信（通知に届く）
+    window.adminReplyUser = async function(uid, name) {
+      if (!uid) return alert("送信先ユーザーが不明です。");
+      const label = name || "ユーザー";
+      const msg = prompt(`【${label}】への返信を入力してください:\n(相手の通知一覧に「運営からの返信」として届きます)`);
+      if (!msg || !msg.trim()) return;
+      try {
+        const userRef = doc(db, "users", uid);
+        const snap = await getDoc(userRef);
+        if (!snap.exists()) return alert("ユーザーデータが見つかりません。");
+        const data = snap.data() || {};
+        const list = Array.isArray(data.notifications) ? [...data.notifications] : [];
+        list.unshift({
+          id: "admin_reply_" + Date.now(),
+          text: `【運営からの返信】${msg.trim()}`,
+          type: "admin",
+          read: false,
+          createdAt: Date.now()
+        });
+        if (typeof MAX_NOTIFICATIONS === "number" && list.length > MAX_NOTIFICATIONS) list.length = MAX_NOTIFICATIONS;
+        await updateDoc(userRef, { notifications: list });
+        alert("返信を送信しました。相手の通知一覧に届きます。");
+      } catch (e) {
+        console.error(e);
+        alert("返信の送信に失敗しました。\n" + (e?.message || e));
+      }
     };
 
     window.adminSuspendUser = async function(uid, name) {
@@ -4060,23 +4108,21 @@ window.openAzukariApp = function() {
         ensureCardPhotosLoaded(adminCardsAlbum).then(() => renderAdminCardsPanel(el));
         return;
       }
-      const tabsEl = document.getElementById("admin-card-album-tabs");
-      if (tabsEl) {
-        const activeChip = "filter-chip bg-teal-500 text-white shadow-md text-[11px]";
-        const normalChip = "filter-chip bg-white/70 text-teal-800 hover:bg-white text-[11px]";
-        tabsEl.innerHTML = ILLIT_CARD_ALBUMS.map(a =>
-          `<button onclick="setAdminCardsAlbum('${a.id}')" class="${a.id === adminCardsAlbum ? activeChip : normalChip}">${a.name}</button>`
-        ).join("");
-      }
       const album = ILLIT_CARD_ALBUMS.find(a => a.id === adminCardsAlbum);
       const cards = getAlbumCards(adminCardsAlbum);
       if (!album) { el.innerHTML = "<p class='text-xs text-gray-500'>アルバムがありません</p>"; return; }
       const memberOpts = ["", "ウォニ", "ミンジュ", "イロハ", "モカ", "ユナ", "OT5"].map(m =>
         `<option value="${m}">${m || "（メンバーなし）"}</option>`
       ).join("");
+      const activeChip = "filter-chip bg-teal-500 text-white shadow-md text-[11px]";
+      const normalChip = "filter-chip bg-white/70 text-teal-800 hover:bg-white text-[11px]";
+      const albumTabsHtml = ILLIT_CARD_ALBUMS.map(a =>
+        `<button type="button" onclick="setAdminCardsAlbum('${a.id}')" class="${a.id === adminCardsAlbum ? activeChip : normalChip}">${a.name}</button>`
+      ).join("");
 
       el.innerHTML = `
-        <div class="liquid-glass-input rounded-xl p-3 mb-3 space-y-2.5 border border-indigo-300 bg-gradient-to-br from-indigo-50/80 to-purple-50/80">
+        <div class="flex gap-1.5 overflow-x-auto hide-scrollbar pb-1 mb-2" id="admin-card-album-tabs">${albumTabsHtml}</div>
+        <div class="liquid-glass rounded-2xl p-3 mb-3 space-y-2.5 border border-indigo-200/60 bg-gradient-to-br from-indigo-50/80 to-purple-50/80">
           <div class="flex items-center justify-between">
             <div class="text-xs font-bold text-indigo-900">🚀 2400枚大量パック生成（Firestore消費0回）</div>
             <span class="text-[10px] font-bold text-indigo-600">ZIP書き出し</span>
@@ -4145,6 +4191,10 @@ window.openAzukariApp = function() {
             <button id="admin-zip-build-btn" onclick="buildAndDownloadCardPackZip()" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-bold py-2.5 rounded-full shadow-md">
               📦 透かし圧縮してZIPダウンロード
             </button>
+            <button id="admin-zip-firestore-btn" onclick="adminRegisterZipPackToFirestore()" class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-xs font-bold py-2.5 rounded-full shadow-md">
+              🔥 Firestoreに登録してMyトレカへ反映
+            </button>
+            <p class="text-[10px] text-gray-500 text-center leading-snug">上: GitHub用ZIP　／　下: その場でカタログ＆Myトレカに反映（読み取り・書き込み発生）</p>
             <div id="admin-zip-progress" class="text-[11px] text-center text-indigo-800 font-medium hidden"></div>
           </div>
         </div>
@@ -4713,6 +4763,125 @@ window.openAzukariApp = function() {
       }
     };
 
+
+
+    window.adminRegisterZipPackToFirestore = async function() {
+      if (typeof isAdmin === "function" && !isAdmin()) {
+        alert("管理者のみ実行できます。");
+        return;
+      }
+      if (!adminZipPackFiles || !adminZipPackFiles.length) {
+        alert("登録する画像がありません。先に切り抜きまたは画像追加をしてください。");
+        return;
+      }
+      if (!currentUser) {
+        alert("ログインが必要です。");
+        return;
+      }
+
+      const albumId = (document.getElementById("admin-zip-album") && document.getElementById("admin-zip-album").value) || adminCardsAlbum || "";
+      const prefix = ((document.getElementById("admin-zip-prefix") && document.getElementById("admin-zip-prefix").value) || "").trim();
+      const btn = document.getElementById("admin-zip-firestore-btn");
+      const prog = document.getElementById("admin-zip-progress");
+      const origText = btn ? btn.textContent : "🔥 Firestoreに登録してMyトレカへ反映";
+
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "登録中...";
+      }
+      if (prog) {
+        prog.classList.remove("hidden");
+        prog.textContent = "準備中...";
+      }
+
+      let successCount = 0;
+      let skipped = 0;
+      const errors = [];
+
+      try {
+        for (let i = 0; i < adminZipPackFiles.length; i++) {
+          const item = adminZipPackFiles[i];
+          if (btn) btn.textContent = "登録中 (" + (i + 1) + "/" + adminZipPackFiles.length + ")...";
+          if (prog) prog.textContent = "透かし・登録中... (" + (i + 1) + " / " + adminZipPackFiles.length + ")";
+          await new Promise(function(r) { setTimeout(r, 20); });
+
+          try {
+            const dataUrl = await compressCardWithWatermark(item.file, PHOTO_THUMB);
+            if (!isJpegData(dataUrl)) {
+              skipped++;
+              errors.push((item.file && item.file.name ? item.file.name : "#" + (i + 1)) + " 画像処理失敗");
+              continue;
+            }
+
+            const rawStem = (item.file && item.file.name ? item.file.name : "").replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim();
+            const cardName = prefix
+              ? [item.member, prefix].filter(Boolean).join(" ")
+              : (rawStem || [item.member, "トレカ " + (i + 1)].filter(Boolean).join(" "));
+
+            const ref = doc(collection(db, "cardCatalog"));
+            const cardId = ref.id;
+            await setDoc(ref, {
+              albumId: albumId || item.albumId || "",
+              name: cardName,
+              member: item.member || "",
+              createdAt: serverTimestamp(),
+              createdBy: currentUser.uid
+            });
+            await setDoc(doc(db, "cardPhotos", cardId), {
+              data: dataUrl,
+              updatedAt: serverTimestamp(),
+              updatedBy: currentUser.uid
+            }, { merge: true });
+
+            cardPhotoCache[cardId] = dataUrl;
+            if (typeof idbSet === "function") await idbSet("photo_" + cardId, dataUrl);
+            catalogCardsCache.push({
+              id: cardId,
+              albumId: albumId || item.albumId || "",
+              name: cardName,
+              member: item.member || "",
+              admin: true
+            });
+            successCount++;
+          } catch (itemErr) {
+            console.error("register item error", i, itemErr);
+            skipped++;
+            errors.push("#" + (i + 1) + " " + (itemErr && (itemErr.code || itemErr.message) ? (itemErr.code || itemErr.message) : "error"));
+          }
+        }
+
+        if (typeof idbDelete === "function") await idbDelete("catalog_cards");
+        adminCardsAlbum = albumId || adminCardsAlbum;
+
+        if (prog) {
+          prog.textContent = "✅ " + successCount + "枚をFirestoreに登録（スキップ" + skipped + "枚）";
+        }
+        if (typeof showToast === "function") {
+          showToast(successCount + "枚を登録しました。Myトレカに反映されます", "success");
+        } else {
+          alert(successCount + "枚を登録しました。");
+        }
+        if (errors.length) console.warn("一部スキップ:", errors);
+
+        const el = document.getElementById("admin-content");
+        if (el && adminTab === "cards" && typeof renderAdminCardsPanel === "function") {
+          renderAdminCardsPanel(el);
+        }
+        if (typeof isMyCardsPageOpen === "function" && isMyCardsPageOpen()) {
+          if (typeof renderMyCardsAlbumTabs === "function") renderMyCardsAlbumTabs();
+          if (typeof renderMyCardsList === "function") renderMyCardsList();
+        }
+      } catch (e) {
+        console.error(e);
+        if (prog) prog.textContent = "❌ エラー: " + (e && e.message ? e.message : e);
+        alert("登録中にエラーが発生しました（" + successCount + "枚は登録済み）。\n" + (e && (e.code || e.message) ? (e.code || e.message) : e));
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = origText;
+        }
+      }
+    };
 
     window.handleAdminBulkSelect = function(inputEl) {
       const files = Array.from(inputEl.files || []);
