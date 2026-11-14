@@ -4576,8 +4576,7 @@ window.openAzukariApp = function() {
     const CATALOG_CACHE_TTL = 1000 * 60 * 60 * 6; // カタログは6時間キャッシュ
     let staticPackCards = [];
     let staticPackLoaded = false;
-
-        async function loadStaticCardPack(force = false) {
+    async function loadStaticCardPack(force = false) {
       if (!force && staticPackLoaded && staticPackCards.length > 0) return;
       try {
         const res = await fetch("./catalog.json?t=" + Date.now(), { cache: "no-store" });
@@ -4995,31 +4994,6 @@ window.openAzukariApp = function() {
         </div>`;
       }
     };
-
-
-    async function loadStaticCardPack(force = false) {
-      if (!force && staticPackLoaded && staticPackCards.length > 0) return;
-      try {
-        const res = await fetch("./catalog.json?t=" + Date.now(), { cache: "no-store" });
-        if (!res.ok) return;
-        const data = await res.json();
-        const items = Array.isArray(data) ? data : (Array.isArray(data.cards) ? data.cards : []);
-        staticPackCards = items.map(c => ({
-          id: String(c.id || ""),
-          albumId: String(c.albumId || "other"),
-          name: String(c.name || ""),
-          member: String(c.member || ""),
-          photoUrl: c.photo ? String(c.photo) : "",
-          staticPack: true
-        })).filter(c => c.id && c.name);
-        staticPackCards.forEach(c => {
-          if (c.photoUrl) cardPhotoCache[c.id] = c.photoUrl;
-        });
-        staticPackLoaded = true;
-      } catch (e) {
-        console.warn("catalog.json load error:", e);
-      }
-    }
 
 
     let adminBulkFiles = [];
