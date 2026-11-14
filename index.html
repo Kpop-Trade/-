@@ -4749,11 +4749,20 @@ window.openAzukariApp = function() {
             </div>
           </div>
 
-          <div id="admin-zip-status-area" class="hidden space-y-2 pt-1">
-            <div class="flex items-center justify-between bg-white/80 rounded-lg px-3 py-2 text-xs">
-              <span>選択済み: <b id="admin-zip-count" class="text-indigo-700">0</b> 枚（既存パック ${staticPackCards.length} 枚と合体可能）</span>
-              <button onclick="clearAdminZipPack()" class="text-[11px] text-red-500 underline">リセット</button>
+                      <div class="flex items-center gap-2 bg-white/80 rounded-lg px-2.5 py-1.5 text-xs">
+              <span class="text-gray-600 shrink-0 text-[11px] font-bold">全員一括:</span>
+              <select onchange="setAllAdminZipMember(this.value)" class="flex-1 liquid-glass-input rounded px-2 py-1 text-xs">
+                <option value="">（個別設定のまま）</option>
+                <option value="ウォニ">ウォニ</option>
+                <option value="ミンジュ">ミンジュ</option>
+                <option value="イロハ">イロハ</option>
+                <option value="モカ">モカ</option>
+                <option value="ユナ">ユナ</option>
+                <option value="OT5">OT5</option>
+              </select>
             </div>
+            <div id="admin-zip-list" class="space-y-1.5 max-h-56 overflow-y-auto pr-1"></div>
+
             <label class="flex items-center gap-2 text-[11px] text-gray-700 px-1">
               <input type="checkbox" id="admin-zip-merge-existing" checked class="rounded">
               <span>すでに公開中の <code>catalog.json</code>（${staticPackCards.length}枚）に追記して合体する</span>
@@ -5233,21 +5242,59 @@ window.openAzukariApp = function() {
     };
 
     window.clearAdminZipPack = function() {
+      adminZipPackFiles.forEach(item => { if (item.previewUrl) URL.revokeObjectURL(item.previewUrl); });
       adminZipPackFiles = [];
+      updateAdminZipPackUI();
+    };
+
+    window.removeAdminZipItem = function(idx) {
+      const item = adminZipPackFiles[idx];
+      if (item && item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+      adminZipPackFiles.splice(idx, 1);
+      updateAdminZipPackUI();
+    };
+
+    window.setAllAdminZipMember = function(member) {
+      if (!member) return;
+      adminZipPackFiles.forEach(item => { item.member = member; });
       updateAdminZipPackUI();
     };
 
     function updateAdminZipPackUI() {
       const area = document.getElementById("admin-zip-status-area");
       const countEl = document.getElementById("admin-zip-count");
+      const listEl = document.getElementById("admin-zip-list");
       if (!area || !countEl) return;
       if (!adminZipPackFiles.length) {
         area.classList.add("hidden");
+        if (listEl) listEl.innerHTML = "";
         return;
       }
       area.classList.remove("hidden");
       countEl.textContent = String(adminZipPackFiles.length);
+
+      if (listEl) {
+        const members = ["", "ウォニ", "ミンジュ", "イロハ", "モカ", "ユナ", "OT5"];
+        listEl.innerHTML = adminZipPackFiles.map((item, idx) => {
+          if (!item.previewUrl && item.file) {
+            item.previewUrl = URL.createObjectURL(item.file);
+          }
+          return `
+            <div class="bg-white/90 rounded-lg p-1.5 flex items-center gap-2 border border-indigo-100">
+              ${item.previewUrl ? `<img src="${item.previewUrl}" class="w-10 h-10 object-cover rounded shrink-0">` : ""}
+              <div class="flex-1 min-w-0 space-y-1">
+                <div class="text-[10px] text-gray-500 truncate">${escapeHtml(item.file?.name || `画像 ${idx + 1}`)}</div>
+                <select onchange="adminZipPackFiles[${idx}].member = this.value" class="w-full liquid-glass-input rounded px-2 py-1 text-xs font-bold text-gray-800">
+                  ${members.map(m => `<option value="${m}" ${m === item.member ? "selected" : ""}>${m || "（メンバー選択）"}</option>`).join("")}
+                </select>
+              </div>
+              <button onclick="removeAdminZipItem(${idx})" class="text-gray-400 hover:text-red-500 px-1.5 text-xs font-bold">✕</button>
+            </div>
+          `;
+        }).join("");
+      }
     }
+
 
         window.buildAndDownloadCardPackZip = async function() {
       if (!adminZipPackFiles.length) return;
