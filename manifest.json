@@ -2,26 +2,26 @@
   "name": "ILLIT Trade",
   "short_name": "ILLIT Trade",
   "description": "ILLITファン同士のトレカ・シリアル・アルバム交換・買取・共同購入。手数料0円の非公式プラットフォーム",
-  "start_url": "/",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#faf5ff",
   "theme_color": "#b794f4",
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/icon-192.png",
+      "src": "icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icon-512.png",
+      "src": "icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icon-512.png",
+      "src": "icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
