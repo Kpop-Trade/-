@@ -5827,15 +5827,17 @@ window.openAzukariApp = function() {
     };
 
 
-    function renderMyCardsList() {
+      function renderMyCardsList() {
       const el = document.getElementById("mycards-list");
       const allAlbumCards = getAlbumCards(myCardsAlbum);
-       const cards = myCardsMember === "ALL"
-    ? allAlbumCards
-    : allAlbumCards.filter(c => c.member === myCardsMember);
+      const norm = s => String(s || "").split(" ")[0];
+      const cards = myCardsMember === "ALL"
+        ? allAlbumCards
+        : allAlbumCards.filter(c => norm(c.member) === myCardsMember);
 
       const album = ILLIT_CARD_ALBUMS.find(a => a.id === myCardsAlbum);
       if (cards.length === 0) {
+
         el.innerHTML = `<p class="text-xs text-gray-500 text-center py-6">該当するカードがありません。<br>下からカスタム追加できます。</p>`;
         return;
       }
