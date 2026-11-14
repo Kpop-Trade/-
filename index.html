@@ -4577,11 +4577,10 @@ window.openAzukariApp = function() {
     let staticPackCards = [];
     let staticPackLoaded = false;
 
-    async function loadStaticCardPack() {
-      if (staticPackLoaded) return;
-      staticPackLoaded = true;
+        async function loadStaticCardPack() {
+      if (staticPackLoaded && staticPackCards.length > 0) return;
       try {
-        const res = await fetch("./catalog.json?v=" + Math.floor(Date.now() / (1000 * 60 * 30)));
+        const res = await fetch("./catalog.json?t=" + Date.now(), { cache: "no-store" });
         if (!res.ok) return;
         const data = await res.json();
         const items = Array.isArray(data) ? data : (Array.isArray(data.cards) ? data.cards : []);
@@ -4596,54 +4595,12 @@ window.openAzukariApp = function() {
         staticPackCards.forEach(c => {
           if (c.photoUrl) cardPhotoCache[c.id] = c.photoUrl;
         });
-      } catch (_) {
-        // catalog.json がまだ無い場合はスキップ
+        staticPackLoaded = true;
+      } catch (e) {
+        console.warn("catalog.json load error:", e);
       }
     }
 
-    async function ensureCardPhotosLoaded(targetAlbumId) {
-      const albumId = targetAlbumId || myCardsAlbum;
-      if (!albumId || loadedPhotoAlbums.has(albumId)) return;
-
-      await ensureCatalogCardsLoaded();
-      const cards = getAlbumCards(albumId);
-      const missingIds = [];
-
-      // 1. 静的パックURLまたはIndexedDBから探す（Firestore読み取り 0回）
-      await Promise.all(cards.map(async (c) => {
-        if (c.photoUrl) {
-          cardPhotoCache[c.id] = c.photoUrl;
-          return;
-        }
-        if (cardPhotoCache[c.id]) return;
-        const cached = await idbGet("photo_" + c.id);
-        if (cached) {
-          cardPhotoCache[c.id] = cached;
-        } else if (!c.staticPack) {
-          missingIds.push(c.id);
-        }
-      }));
-
-      // 2. 静的パックにもIndexedDBにも無かったFirestore画像だけを取得
-      if (missingIds.length > 0) {
-        try {
-          await Promise.all(missingIds.map(async (id) => {
-            try {
-              const snap = await getDoc(doc(db, "cardPhotos", id));
-              if (snap.exists() && snap.data()?.data) {
-                const imgData = snap.data().data;
-                cardPhotoCache[id] = imgData;
-                await idbSet("photo_" + id, imgData);
-              }
-            } catch (_) {}
-          }));
-        } catch (e) {
-          console.warn("cardPhotos load:", e?.code || e);
-        }
-      }
-
-      loadedPhotoAlbums.add(albumId);
-    }
         // ==========================================
     // 🔍 トレカ画像認識（v3: pHash + パッチ相関 + 顔領域・厳格ゲート）
     // ==========================================
