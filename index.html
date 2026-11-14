@@ -5176,171 +5176,111 @@ window.openAzukariApp = function() {
     };
 
     window.rerunSheetAutoDetect = function() {
-      const img = sheetCropState.img;
-      if (!img) return;
-      const threshold = Number(document.getElementById("sheet-crop-threshold")?.value || 22);
+  const img = sheetCropState.img;
+  if (!img) return;
+  const threshold = Number(document.getElementById("sheet-crop-threshold")?.value || 22);
 
-      // 解析用に最大幅 800px でスキャン（細かい余白や境界線を正確に捉えるため）
-      const maxScanW = 800;
-      const scale = img.width > maxScanW ? maxScanW / img.width : 1;
-      const sw = Math.round(img.width * scale);
-      const sh = Math.round(img.height * scale);
+  // 1. 解析用に最大1600pxで読む（縮小しすぎない）
+  const maxScanW = 1600;
+  const scale = img.width > maxScanW ? maxScanW / img.width : 1;
+  const sw = Math.round(img.width * scale), sh = Math.round(img.height * scale);
+  const off = document.createElement("canvas");
+  off.width = sw; off.height = sh;
+  const ctx = off.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(img, 0, 0, sw, sh);
+  const { data } = ctx.getImageData(0, 0, sw, sh);
+  off.width = 0; off.height = 0;
 
-      const off = document.createElement("canvas");
-      off.width = sw;
-      off.height = sh;
-      const ctx = off.getContext("2d", { willReadFrequently: true });
-      ctx.drawImage(img, 0, 0, sw, sh);
-      const { data } = ctx.getImageData(0, 0, sw, sh);
-      off.width = 0;
-      off.height = 0;
+  // 2. 背景色＝外周の最頻色
+  const cc = new Map(); let bestKey = 0xf8f8f8, bestCnt = -1;
+  const add = (x, y) => {
+    const i = (y * sw + x) * 4;
+    const k = ((data[i] & 0xf8) << 16) | ((data[i+1] & 0xf8) << 8) | (data[i+2] & 0xf8);
+    const n = (cc.get(k) || 0) + 1; cc.set(k, n);
+    if (n > bestCnt) { bestCnt = n; bestKey = k; }
+  };
+  for (let x = 0; x < sw; x += 2) for (let b = 0; b < Math.min(5, sh); b++) { add(x, b); add(x, sh - 1 - b); }
+  for (let y = 0; y < sh; y += 2) for (let b = 0; b < Math.min(5, sw); b++) { add(b, y); add(sw - 1 - b, y); }
+  const bgR = ((bestKey >> 16) & 0xff) + 4, bgG = ((bestKey >> 8) & 0xff) + 4, bgB = (bestKey & 0xff) + 4;
 
-      // 1. 画像の外周（上下左右のフチ5px）から背景色を推定（カード内部の白に引っ張られないようにする）
-      const colorCounts = new Map();
-      let bestKey = (255 << 16) | (255 << 8) | 255;
-      let bestCount = -1;
-      const addSample = (x, y) => {
-        const i = (y * sw + x) * 4;
-        const r = data[i] & 0xf8;
-        const g = data[i + 1] & 0xf8;
-        const b = data[i + 2] & 0xf8;
-        const key = (r << 16) | (g << 8) | b;
-        const cnt = (colorCounts.get(key) || 0) + 1;
-        colorCounts.set(key, cnt);
-        if (cnt > bestCount) { bestCount = cnt; bestKey = key; }
-      };
-      for (let x = 0; x < sw; x += 2) {
-        for (let b = 0; b < Math.min(5, sh); b++) {
-          addSample(x, b);
-          addSample(x, sh - 1 - b);
-        }
-      }
-      for (let y = 0; y < sh; y += 2) {
-        for (let b = 0; b < Math.min(5, sw); b++) {
-          addSample(b, y);
-          addSample(sw - 1 - b, y);
-        }
-      }
-      const bgR = ((bestKey >> 16) & 0xff) + 4;
-      const bgG = ((bestKey >> 8) & 0xff) + 4;
-      const bgB = (bestKey & 0xff) + 4;
+  // 3. 前景マスク（膨張しない）
+  const mask = new Uint8Array(sw * sh);
+  const tol = threshold * 2.4;
+  for (let p = 0; p < sw * sh; p++) {
+    const i = p * 4;
+    const dr = Math.abs(data[i] - bgR), dg = Math.abs(data[i+1] - bgG), db = Math.abs(data[i+2] - bgB);
+    if (dr + dg + db > tol || Math.max(dr, dg, db) > threshold * 1.15) mask[p] = 1;
+  }
 
-      // 2. 前景マスク作成（色差＋輝度差で薄い白フチも拾う）
-      const rawMask = new Uint8Array(sw * sh);
-      const tol = threshold * 2.4;
-      for (let p = 0; p < sw * sh; p++) {
-        const i = p * 4;
-        const dr = Math.abs(data[i] - bgR);
-        const dg = Math.abs(data[i + 1] - bgG);
-        const db = Math.abs(data[i + 2] - bgB);
-        if (dr + dg + db > tol || Math.max(dr, dg, db) > threshold * 1.15) {
-          rawMask[p] = 1;
-        }
-      }
+  const minW = Math.max(20, Math.round(sw * 0.04));
+  const minH = Math.max(40, Math.round(sh * 0.04));
 
-      // 3. 1px膨張（穴埋め処理）でカード内の白い服・肌による枠の分裂を防止
-      const mask = new Uint8Array(sw * sh);
-      for (let y = 1; y < sh - 1; y++) {
-        const row = y * sw;
-        for (let x = 1; x < sw - 1; x++) {
-          const idx = row + x;
-          if (
-            rawMask[idx] ||
-            rawMask[idx - 1] || rawMask[idx + 1] ||
-            rawMask[idx - sw] || rawMask[idx + sw]
-          ) {
-            mask[idx] = 1;
-          }
-        }
-      }
+  // 4. 行の帯を探す（文字・見出しバーは高さが足りず除外される）
+  const rowCnt = new Int32Array(sh);
+  for (let y = 0; y < sh; y++) { let c = 0; for (let x = 0; x < sw; x++) c += mask[y * sw + x]; rowCnt[y] = c; }
+  let bands = [], y = 0;
+  while (y < sh) {
+    if (rowCnt[y] > sw * 0.01) {
+      const y0 = y; while (y < sh && rowCnt[y] > sw * 0.01) y++;
+      if (y - y0 >= minH) bands.push([y0, y - 1]);
+    } else y++;
+  }
+  if (!bands.length) { sheetCropState.boxes = []; drawSheetCropPreview(); return; }
+  // 高さが中央値から外れる帯（上部バナーなど）を除外
+  const hs = bands.map(b => b[1] - b[0] + 1).sort((a, b) => a - b);
+  const med = hs[Math.floor(hs.length / 2)];
+  bands = bands.filter(b => { const h = b[1] - b[0] + 1; return h >= med * 0.6 && h <= med * 1.7; });
 
-      // 4. 連結成分ラベリング（BFS）で四角形バウンディングボックス抽出
-      const visited = new Uint8Array(sw * sh);
-      const queue = new Int32Array(sw * sh);
-      let candidates = [];
-      const minW = Math.max(24, Math.round(sw * 0.055));
-      const minH = Math.max(36, Math.round(sh * 0.055));
-      const maxW = Math.round(sw * 0.42);
-      const maxH = Math.round(sh * 0.42);
+  // 5. 各帯を縦の隙間で分割 → 端の文字・線をトリム
+  const rowDens = (yy, x0, x1) => { let c = 0; for (let x = x0; x <= x1; x++) c += mask[yy * sw + x]; return c; };
+  const colDens = (xx, y0, y1) => { let c = 0; for (let yy = y0; yy <= y1; yy++) c += mask[yy * sw + xx]; return c; };
+  const segs = [];
+  for (const [by0, by1] of bands) {
+    const bh = by1 - by0 + 1;
+    const colOn = new Uint8Array(sw);
+    for (let x = 0; x < sw; x++) colOn[x] = colDens(x, by0, by1) > bh * 0.12 ? 1 : 0;
+    let x = 0;
+    while (x < sw) {
+      if (!colOn[x]) { x++; continue; }
+      let x0 = x; while (x < sw && colOn[x]) x++;
+      let x1 = x - 1, y0 = by0, y1 = by1;
+      if (x1 - x0 + 1 < minW) continue;
+      let w = x1 - x0 + 1;
+      while (y1 > y0 && rowDens(y1, x0, x1) < w * 0.5) y1--;
+      while (y0 < y1 && rowDens(y0, x0, x1) < w * 0.5) y0++;
+      const h = y1 - y0 + 1;
+      while (x1 > x0 && colDens(x1, y0, y1) < h * 0.5) x1--;
+      while (x0 < x1 && colDens(x0, y0, y1) < h * 0.5) x0++;
+      segs.push({ x0, x1, y0, y1 });
+    }
+  }
 
-      for (let y = 0; y < sh; y++) {
-        for (let x = 0; x < sw; x++) {
-          const start = y * sw + x;
-          if (!mask[start] || visited[start]) continue;
-
-          let head = 0, tail = 0;
-          queue[tail++] = start;
-          visited[start] = 1;
-          let minX = x, maxX = x, minY = y, maxY = y, areaCount = 0;
-
-          while (head < tail) {
-            const cur = queue[head++];
-            const cx = cur % sw;
-            const cy = (cur - cx) / sw;
-            areaCount++;
-            if (cx < minX) minX = cx;
-            if (cx > maxX) maxX = cx;
-            if (cy < minY) minY = cy;
-            if (cy > maxY) maxY = cy;
-
-            if (cx > 0 && mask[cur - 1] && !visited[cur - 1]) { visited[cur - 1] = 1; queue[tail++] = cur - 1; }
-            if (cx + 1 < sw && mask[cur + 1] && !visited[cur + 1]) { visited[cur + 1] = 1; queue[tail++] = cur + 1; }
-            if (cy > 0 && mask[cur - sw] && !visited[cur - sw]) { visited[cur - sw] = 1; queue[tail++] = cur - sw; }
-            if (cy + 1 < sh && mask[cur + sw] && !visited[cur + sw]) { visited[cur + sw] = 1; queue[tail++] = cur + sw; }
-          }
-
-          const bw = maxX - minX + 1;
-          const bh = maxY - minY + 1;
-          const ratio = bh / bw;
-          const fillRatio = areaCount / (bw * bh);
-
-          // トレカ標準比率（55x85mm ≒ 1.54）に合わせて厳格化
-          if (
-            bw >= minW && bh >= minH &&
-            bw <= maxW && bh <= maxH &&
-            ratio >= 1.32 && ratio <= 1.78 &&
-            fillRatio >= 0.78
-          ) {
-            candidates.push({ minX, minY, maxX, maxY, bw, bh });
-          }
-        }
-      }
-
-      // 5. 別の枠の内側に入り込んだ重複・ゴミ枠を除外
-      candidates = candidates.filter((a, idxA) => {
-        return !candidates.some((b, idxB) => {
-          if (idxA === idxB) return false;
-          return a.minX >= b.minX - 2 && a.minY >= b.minY - 2 &&
-                 a.maxX <= b.maxX + 2 && a.maxY <= b.maxY + 2 &&
-                 (b.bw * b.bh) > (a.bw * a.bh);
-        });
+  // 6. くっついた複数カードは、カード幅の目安で等分割
+  const ratios = segs.map(s => (s.x1 - s.x0 + 1) / (s.y1 - s.y0 + 1)).filter(r => r > 0.5 && r < 0.8).sort((a, b) => a - b);
+  const aspect = ratios.length ? ratios[Math.floor(ratios.length / 2)] : 0.65;
+  const pad = 2, boxes = [];
+  for (const s of segs) {
+    const bw = s.x1 - s.x0 + 1, bh = s.y1 - s.y0 + 1;
+    let n = 1;
+    if (bw / bh > aspect * 1.3) n = Math.round(bw / (bh * aspect));
+    if (n < 1 || n > 8) n = 1;
+    for (let k = 0; k < n; k++) {
+      const cx0 = s.x0 + Math.round(bw * k / n), cx1 = s.x0 + Math.round(bw * (k + 1) / n) - 1;
+      const w = cx1 - cx0 + 1, r = bh / w;
+      if (w < minW || bh < minH || r < 1.2 || r > 1.95) continue;
+      const X = Math.max(0, cx0 - pad), Y = Math.max(0, s.y0 - pad);
+      boxes.push({
+        x: Math.round(X / scale), y: Math.round(Y / scale),
+        w: Math.round((Math.min(sw - 1, cx1 + pad) - X + 1) / scale),
+        h: Math.round((Math.min(sh - 1, s.y1 + pad) - Y + 1) / scale),
+        active: true, member: ""
       });
+    }
+  }
+  sheetCropState.boxes = boxes;
+  drawSheetCropPreview();
+};
 
-      // 6. 左上から右下へ綺麗に整列
-      candidates.sort((a, b) => {
-        if (Math.abs(a.minY - b.minY) > a.bh * 0.4) return a.minY - b.minY;
-        return a.minX - b.minX;
-      });
-
-      const rawBoxes = candidates.map(c => ({
-        x: Math.round(c.minX / scale),
-        y: Math.round(c.minY / scale),
-        w: Math.round(c.bw / scale),
-        h: Math.round(c.bh / scale),
-        active: true,
-        member: ""
-      }));
-
-
-      rawBoxes.sort((a, b) => {
-        const rowTol = Math.max(16, a.h * 0.4);
-        if (Math.abs(a.y - b.y) > rowTol) return a.y - b.y;
-        return a.x - b.x;
-      });
-
-      sheetCropState.boxes = rawBoxes;
-      drawSheetCropPreview();
-    };
 
 
     function drawSheetCropPreview() {
