@@ -5742,17 +5742,27 @@ window.openAzukariApp = function() {
       return null;
     }
         async function openMyCardsPage() {
-      if (!currentUser) return;
-      myCardsTab = "own";
-      setMyCardsTab("own");
-      await Promise.all([ensureCardPhotosLoaded(myCardsAlbum), ensureCatalogCardsLoaded()]);
-      renderMyCardsAlbumTabs();
-      renderMyCardsMemberTabs();
-      renderMyCardsList();
-      const pub = document.getElementById("mycards-public");
-      if (pub) pub.checked = !!userData.collectionPublic;
-      renderMyCardsShareStats();
-    }
+  if (!currentUser) return;
+  myCardsTab = "own";
+  setMyCardsTab("own");
+
+  // 先にタブを出す
+  renderMyCardsAlbumTabs();
+  renderMyCardsMemberTabs();
+  renderMyCardsList();
+
+  try {
+    await Promise.all([ensureCardPhotosLoaded(myCardsAlbum), ensureCatalogCardsLoaded()]);
+  } catch (e) { console.warn("mycards load:", e); }
+
+  renderMyCardsAlbumTabs();
+  renderMyCardsMemberTabs();
+  renderMyCardsList();
+  const pub = document.getElementById("mycards-public");
+  if (pub) pub.checked = !!userData.collectionPublic;
+  renderMyCardsShareStats();
+}
+
     window.openMyCardsModal = function() { switchTab('mycards'); };
     window.closeMyCardsModal = function() { switchTab('home'); };
     function isMyCardsPageOpen() {
@@ -5769,15 +5779,18 @@ window.openAzukariApp = function() {
       document.getElementById("mycards-tab-share").className = tab === "share" ? active : normal;
       if (tab === "share") renderMyCardsShareStats();
     };
-        function renderMyCardsAlbumTabs() {
-      const el = document.getElementById("mycards-album-tabs");
-      if (!el) return;
-      const activeChip = "filter-chip bg-teal-500 text-white shadow-md text-[11px]";
-      const normalChip = "filter-chip bg-white/70 text-teal-800 hover:bg-white text-[11px]";
-      el.innerHTML = ILLIT_CARD_ALBUMS.map(a =>
-        `<button onclick="setMyCardsAlbum('${a.id}')" class="${a.id === myCardsAlbum ? activeChip : normalChip}">${a.name}</button>`
-      ).join("");
-    }
+        function renderMyCardsMemberTabs() {
+  const el = document.getElementById("mycards-member-tabs");
+  if (!el) return;
+  const names = ["ウォニ", "ミンジュ", "イロハ", "モカ", "ユナ", "OT5"];
+  const tabs = [{ key: "ALL", label: "全員" }, ...names.map(m => ({ key: m, label: m }))];
+  const on = "filter-chip bg-gradient-to-r from-illit-purple to-illit-accent text-white shadow-md text-[11px] shrink-0 whitespace-nowrap";
+  const off = "filter-chip bg-white/70 text-gray-700 hover:bg-white text-[11px] shrink-0 whitespace-nowrap";
+  el.innerHTML = tabs.map(t =>
+    `<button onclick="setMyCardsMember('${t.key}')" class="${t.key === myCardsMember ? on : off}">${t.label}</button>`
+  ).join("");
+}
+
     function renderMyCardsMemberTabs() {
       const el = document.getElementById("mycards-member-tabs");
       if (!el) return;
@@ -5817,9 +5830,10 @@ window.openAzukariApp = function() {
     function renderMyCardsList() {
       const el = document.getElementById("mycards-list");
       const allAlbumCards = getAlbumCards(myCardsAlbum);
-      const cards = myCardsMember === "ALL"
-        ? allAlbumCards
-        : allAlbumCards.filter(c => c.member === myCardsMember);
+       const cards = myCardsMember === "ALL"
+    ? allAlbumCards
+    : allAlbumCards.filter(c => c.member === myCardsMember);
+
       const album = ILLIT_CARD_ALBUMS.find(a => a.id === myCardsAlbum);
       if (cards.length === 0) {
         el.innerHTML = `<p class="text-xs text-gray-500 text-center py-6">該当するカードがありません。<br>下からカスタム追加できます。</p>`;
