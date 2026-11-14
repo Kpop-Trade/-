@@ -36,7 +36,18 @@ async function main() {
   const sa = JSON.parse(raw);
   const token = await getAccessToken(sa);
 
-  const prompt = `現在の日付は ${new Date().toISOString().split("T")[0]} です。K-POPグループ「ILLIT（アイリット）」の今後1〜2ヶ月間の公式スケジュール（カムバック、リリース、音楽番組出演、ライブ・イベント、メンバー誕生日、テレビ出演など）をGoogle検索で調査し、以下のJSON配列形式のみを出力してください。マークダウンのコードブロックは不要です。\n[{"date":"YYYY-MM-DD","time":"HH:MM（不明な場合は終日）","title":"イベント名","category":"release | media | event | birthday | other","detail":"補足情報や放送局・会場など"}]`;
+  const prompt = `現在の日付は ${new Date().toISOString().split("T")[0]} です。K-POPグループ「ILLIT（アイリット）」の日本および韓国の今後1〜2ヶ月間の公式スケジュールをGoogle検索で網羅的に調査し、以下のJSON配列形式のみを出力してください。マークダウンのコードブロックは不要です。
+
+【必ず重点的に調査・抽出する項目】
+1. シリアルナンバー特典の応募受付開始日・最終受付締切日（オフラインイベント、サイン会、ヨントン、お見送り会など）
+2. チケット関連の重要日程（FC先行/ローチケ/一般の申込締切日、当落発表日、入金最終期限、アプグレ受付・入金締切）
+3. CD・アルバムの発売日（カムバック、日本リリース）およびラッキードロー（ラキドロ）開催・締切日
+4. ライブ・コンサート・フェス・ファンミーティング日程
+5. 音楽番組・テレビ出演・メンバー誕生日
+
+【出力形式】
+[{"date":"YYYY-MM-DD","time":"HH:MM（締切時刻があれば23:59など記載、不明なら終日）","title":"イベント名（例：【締切】〇〇シリアル応募最終日 / 【入金期限】〇〇FC先行など）","category":"deadline | ticket | release | event | media | birthday","detail":"対象形態・プレイガイド（ローチケ等）・時間・会場などの補足情報"}]
+※同一イベントでも「応募締切日」「当落発表日」「入金最終日」は必ず別々の項目として日付ごとに分けて出力してください。`;
 
   const url = `https://us-central1-aiplatform.googleapis.com/v1/projects/${sa.project_id}/locations/us-central1/publishers/google/models/gemini-2.5-flash:generateContent`;
   const res = await fetch(url, {
