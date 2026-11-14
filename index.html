@@ -4924,9 +4924,10 @@ window.openAzukariApp = function() {
     // AI画像検索 (Transformers.js CLIP-ViT-B-32 + card_vectors.json)
     let _aiCardVectorsPromise = null;
     let _aiClipExtractorPromise = null;
-    function getAiCardVectors() {
+    setTimeout(() => { try { getAiCardVectors(); } catch(_) {} }, 3000);
+function getAiCardVectors() {
       if (!_aiCardVectorsPromise) {
-        _aiCardVectorsPromise = fetch("./card_vectors.json?v=" + Date.now())
+        _aiCardVectorsPromise = fetch("./card_vectors.json")
           .then(r => r.ok ? r.json() : null)
           .then(d => (d && d.vectors) ? d.vectors : null)
           .catch(() => null);
@@ -4938,7 +4939,15 @@ window.openAzukariApp = function() {
         _aiClipExtractorPromise = import("https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.4.1")
           .then(({ pipeline, env }) => {
             env.allowLocalModels = false;
-            return pipeline("image-feature-extraction", "Xenova/clip-vit-base-patch32", { dtype: "q8" });
+            return pipeline("image-feature-extraction", "Xenova/clip-vit-base-patch32", {
+          dtype: "q8",
+          progress_callback: (p) => {
+            const resEl = document.getElementById("mycards-image-search-result");
+            if (resEl && p && typeof p.progress === "number") {
+              resEl.textContent = "🤖 AIモデル準備中... " + Math.round(p.progress) + "%（初回のみキャッシュ保存）";
+            }
+          }
+        });
           })
           .catch(e => { _aiClipExtractorPromise = null; throw e; });
       }
@@ -4987,7 +4996,7 @@ window.openAzukariApp = function() {
         let dot = 0;
         for (let i = 0; i < qVec.length; i++) dot += qVec[i] * v[i];
         const pct = Math.max(0, Math.min(100, Math.round(((dot - 0.50) / 0.45) * 100)));
-        if (dot >= 0.62) scored.push({ card: c, score: pct, raw: dot });
+        if (dot >= 0.52) scored.push({ card: c, score: pct, raw: dot });
       }
       scored.sort((a, b) => b.raw - a.raw);
       return scored.slice(0, 24);
@@ -4996,7 +5005,7 @@ window.openAzukariApp = function() {
     async function findSimilarCards(uploadedDataUrl) {
       try {
         const aiHits = await findSimilarCardsWithAI(dataUrl);
-        if (Array.isArray(aiHits) && aiHits.length > 0) return aiHits;
+        if (Array.isArray(aiHits)) return aiHits;
       } catch (aiErr) {
         console.warn("AI search fallback:", aiErr);
       }
