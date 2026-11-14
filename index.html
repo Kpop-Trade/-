@@ -4645,55 +4645,236 @@ window.openAzukariApp = function() {
       loadedPhotoAlbums.add(albumId);
     }
         // ==========================================
-    // 🔍 トレカ画像認識（類似度判定エンジン）
+    // 🔍 トレカ画像認識（類似度判定エンジン・高精度版）
     // ==========================================
+    // 空間グリッド + 色ヒストグラム + aHash/dHash を組み合わせて判定
     const _cardFeatureCache = {};
+
+    function _rgbToHsv(r, g, b) {
+      r /= 255; g /= 255; b /= 255;
+      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      const d = max - min;
+      let h = 0;
+      if (d !== 0) {
+        if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+        else if (max === g) h = ((b - r) / d + 2) / 6;
+        else h = ((r - g) / d + 4) / 6;
+      }
+      const s = max === 0 ? 0 : d / max;
+      return [h, s, max];
+    }
+
+    function _cosineVec(a, b) {
+      if (!a || !b || a.length !== b.length) return 0;
+      let dot = 0, na = 0, nb = 0;
+      for (let i = 0; i < a.length; i++) {
+        dot += a[i] * b[i];
+        na += a[i] * a[i];
+        nb += b[i] * b[i];
+      }
+      if (na === 0 || nb === 0) return 0;
+      return dot / (Math.sqrt(na) * Math.sqrt(nb));
+    }
+
+    function _hammingSim(a, b) {
+      if (!a || !b || a.length !== b.length || !a.length) return 0;
+      let same = 0;
+      for (let i = 0; i < a.length; i++) if (a[i] === b[i]) same++;
+      return same / a.length;
+    }
+
+    /** 1枚のキャンバス画素から複合特徴を抽出 */
+    function _featuresFromImageData(data, w, h) {
+      // 輝度平均で正規化（明るさの差に強くする）
+      let sumL = 0, nPix = w * h;
+      const gray = new Float32Array(nPix);
+      for (let i = 0, p = 0; i < data.length; i += 4, p++) {
+        gray[p] = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+        sumL += gray[p];
+      }
+      const meanL = sumL / nPix || 1;
+      const scale = 128 / meanL;
+
+      // 1) 空間グリッド 8x8 の平均RGB（正規化後）
+      const gw = 8, gh = 8;
+      const spatial = [];
+      for (let by = 0; by < gh; by++) {
+        for (let bx = 0; bx < gw; bx++) {
+          const x0 = Math.floor(bx * w / gw), x1 = Math.floor((bx + 1) * w / gw);
+          const y0 = Math.floor(by * h / gh), y1 = Math.floor((by + 1) * h / gh);
+          let r = 0, g = 0, b = 0, c = 0;
+          for (let y = y0; y < y1; y++) {
+            for (let x = x0; x < x1; x++) {
+              const i = (y * w + x) * 4;
+              r += Math.min(255, data[i] * scale);
+              g += Math.min(255, data[i + 1] * scale);
+              b += Math.min(255, data[i + 2] * scale);
+              c++;
+            }
+          }
+          spatial.push((r / (c * 255)) || 0, (g / (c * 255)) || 0, (b / (c * 255)) || 0);
+        }
+      }
+
+      // 2) HSVヒストグラム（H16 x S4 x 簡易）
+      const hist = new Float32Array(16 * 4);
+      for (let i = 0; i < data.length; i += 4) {
+        const [hh, ss] = _rgbToHsv(
+          Math.min(255, data[i] * scale),
+          Math.min(255, data[i + 1] * scale),
+          Math.min(255, data[i + 2] * scale)
+        );
+        const hi = Math.min(15, Math.floor(hh * 16));
+        const si = Math.min(3, Math.floor(ss * 4));
+        hist[hi * 4 + si] += 1;
+      }
+      let hsum = 0;
+      for (let i = 0; i < hist.length; i++) hsum += hist[i];
+      if (hsum > 0) for (let i = 0; i < hist.length; i++) hist[i] /= hsum;
+
+      // 3) aHash 16x16
+      const aSize = 16;
+      // gray を aSize に縮小（最近傍）
+      let aHash = "";
+      const aGrays = [];
+      for (let y = 0; y < aSize; y++) {
+        for (let x = 0; x < aSize; x++) {
+          const sx = Math.min(w - 1, Math.floor(x * w / aSize));
+          const sy = Math.min(h - 1, Math.floor(y * h / aSize));
+          aGrays.push(gray[sy * w + sx] * scale);
+        }
+      }
+      const aAvg = aGrays.reduce((s, v) => s + v, 0) / aGrays.length;
+      for (const g of aGrays) aHash += g >= aAvg ? "1" : "0";
+
+      // 4) dHash（9x8勾配）
+      const dw = 9, dh = 8;
+      const dGrays = [];
+      for (let y = 0; y < dh; y++) {
+        for (let x = 0; x < dw; x++) {
+          const sx = Math.min(w - 1, Math.floor(x * w / dw));
+          const sy = Math.min(h - 1, Math.floor(y * h / dh));
+          dGrays.push(gray[sy * w + sx] * scale);
+        }
+      }
+      let dHash = "";
+      for (let y = 0; y < dh; y++) {
+        for (let x = 0; x < dw - 1; x++) {
+          const idx = y * dw + x;
+          dHash += dGrays[idx] >= dGrays[idx + 1] ? "1" : "0";
+        }
+      }
+
+      // 5) 簡易エッジ量（縦横差分）— 構図の硬さ
+      let edge = 0, edgeN = 0;
+      for (let y = 1; y < h - 1; y += 2) {
+        for (let x = 1; x < w - 1; x += 2) {
+          const i = y * w + x;
+          edge += Math.abs(gray[i] - gray[i - 1]) + Math.abs(gray[i] - gray[i - w]);
+          edgeN++;
+        }
+      }
+      const edgeScore = edgeN ? Math.min(1, (edge / edgeN) / 40) : 0;
+
+      return {
+        spatial,
+        hist: Array.from(hist),
+        aHash,
+        dHash,
+        edge: edgeScore,
+        version: 2
+      };
+    }
 
     function extractImageFeatures(imgSrc) {
       return new Promise((resolve) => {
+        if (!imgSrc || typeof imgSrc !== "string") {
+          resolve(null);
+          return;
+        }
         const img = new Image();
-        img.crossOrigin = "Anonymous";
+        if (!imgSrc.startsWith("data:")) {
+          try { img.crossOrigin = "anonymous"; } catch (_) {}
+        }
+        const timer = setTimeout(() => resolve(null), 12000);
         img.onload = () => {
+          clearTimeout(timer);
           try {
-            const size = 16;
+            // 解析解像度（大きすぎると重い）
+            const maxSide = 160;
+            const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+            const tw = Math.max(32, Math.round(img.width * scale));
+            const th = Math.max(32, Math.round(img.height * scale));
             const canvas = document.createElement("canvas");
-            canvas.width = size;
-            canvas.height = size;
-            const ctx = canvas.getContext("2d");
-            // 中央60%（トレカ本体部分）を切り出して比較し精度を上げる
-            const sx = img.width * 0.2;
-            const sy = img.height * 0.2;
-            const sw = img.width * 0.6;
-            const sh = img.height * 0.6;
-            ctx.drawImage(img, sx, sy, sw, sh, 0, 0, size, size);
-            const data = ctx.getImageData(0, 0, size, size).data;
+            canvas.width = tw;
+            canvas.height = th;
+            const ctx = canvas.getContext("2d", { willReadFrequently: true });
 
-            const features = [];
-            for (let i = 0; i < data.length; i += 4) {
-              features.push(data[i] / 255);
-              features.push(data[i + 1] / 255);
-              features.push(data[i + 2] / 255);
-            }
-            resolve(features);
+            // A: 全体
+            ctx.drawImage(img, 0, 0, tw, th);
+            const full = _featuresFromImageData(ctx.getImageData(0, 0, tw, th).data, tw, th);
+
+            // B: 中央 70%（余白・背景を避けてトレカ本体）
+            const cx = Math.round(tw * 0.15), cy = Math.round(th * 0.15);
+            const cw = Math.round(tw * 0.7), ch = Math.round(th * 0.7);
+            const off = document.createElement("canvas");
+            off.width = cw; off.height = ch;
+            const octx = off.getContext("2d", { willReadFrequently: true });
+            octx.drawImage(canvas, cx, cy, cw, ch, 0, 0, cw, ch);
+            const center = _featuresFromImageData(octx.getImageData(0, 0, cw, ch).data, cw, ch);
+
+            canvas.width = 0; canvas.height = 0;
+            off.width = 0; off.height = 0;
+
+            resolve({ full, center, version: 2 });
           } catch (e) {
+            console.warn("extractImageFeatures", e);
             resolve(null);
           }
         };
-        img.onerror = () => resolve(null);
+        img.onerror = () => { clearTimeout(timer); resolve(null); };
         img.src = imgSrc;
       });
     }
 
-    function calcCosineSimilarity(vecA, vecB) {
-      if (!vecA || !vecB || vecA.length !== vecB.length) return 0;
-      let dot = 0, normA = 0, normB = 0;
-      for (let i = 0; i < vecA.length; i++) {
-        dot += vecA[i] * vecB[i];
-        normA += vecA[i] * vecA[i];
-        normB += vecB[i] * vecB[i];
+    /** 2つの特徴セットの類似度 0–100 */
+    function calcFeatureSimilarity(fa, fb) {
+      if (!fa || !fb) return 0;
+      // 旧形式（配列）互換
+      if (Array.isArray(fa) && Array.isArray(fb)) {
+        return Math.round(_cosineVec(fa, fb) * 100);
       }
-      if (normA === 0 || normB === 0) return 0;
-      return Math.round((dot / (Math.sqrt(normA) * Math.sqrt(normB))) * 100);
+      if (Array.isArray(fa) || Array.isArray(fb)) return 0;
+      if (!fa.full || !fb.full) return 0;
+
+      const pairScore = (a, b) => {
+        const spatial = _cosineVec(a.spatial, b.spatial); // 0-1
+        const hist = _cosineVec(a.hist, b.hist);
+        const aH = _hammingSim(a.aHash, b.aHash);
+        const dH = _hammingSim(a.dHash, b.dHash);
+        const edgeDiff = 1 - Math.min(1, Math.abs((a.edge || 0) - (b.edge || 0)));
+        // 重み付け（空間とハッシュを重視）
+        return (
+          spatial * 0.38 +
+          hist * 0.18 +
+          aH * 0.22 +
+          dH * 0.18 +
+          edgeDiff * 0.04
+        );
+      };
+
+      // 全体同士・中央同士・交差の最大を採用（撮影の余白差に強くする）
+      const s1 = pairScore(fa.full, fb.full);
+      const s2 = pairScore(fa.center, fb.center);
+      const s3 = pairScore(fa.center, fb.full);
+      const s4 = pairScore(fa.full, fb.center);
+      const best = Math.max(s1, s2, s3, s4);
+      return Math.round(best * 100);
+    }
+
+    // 旧API互換
+    function calcCosineSimilarity(vecA, vecB) {
+      return calcFeatureSimilarity(vecA, vecB);
     }
 
     async function findSimilarCards(uploadedDataUrl) {
@@ -4717,20 +4898,24 @@ window.openAzukariApp = function() {
       }
 
       const results = [];
-      for (const card of allCards) {
+      for (let i = 0; i < allCards.length; i++) {
+        const card = allCards[i];
         const photoUrl = cardPhotoCache[card.id] || card.photoUrl;
         if (!photoUrl) continue;
 
-        if (!_cardFeatureCache[card.id]) {
+        // 旧キャッシュ（配列）は無効化して再計算
+        if (!_cardFeatureCache[card.id] || Array.isArray(_cardFeatureCache[card.id]) || _cardFeatureCache[card.id].version !== 2) {
           _cardFeatureCache[card.id] = await extractImageFeatures(photoUrl);
         }
         const cardVec = _cardFeatureCache[card.id];
         if (!cardVec) continue;
 
-        const score = calcCosineSimilarity(targetVec, cardVec);
-        if (score >= 70) {
+        const score = calcFeatureSimilarity(targetVec, cardVec);
+        // しきい値は複合スコア用（以前の70より低めでも構造一致を拾える）
+        if (score >= 58) {
           results.push({ card, photoUrl, score, vec: cardVec });
         }
+        if (i % 15 === 0) await new Promise(r => setTimeout(r, 0));
       }
 
       results.sort((a, b) => b.score - a.score);
@@ -4738,10 +4923,10 @@ window.openAzukariApp = function() {
       // 同じ写真が別IDで複数ある場合、候補から重複を除去
       const unique = [];
       for (const r of results) {
-        const dup = unique.some(u => calcCosineSimilarity(u.vec, r.vec) >= 98);
+        const dup = unique.some(u => calcFeatureSimilarity(u.vec, r.vec) >= 96);
         if (!dup) unique.push(r);
       }
-      return unique.slice(0, 5).map(({ card, photoUrl, score }) => ({ card, photoUrl, score }));
+      return unique.slice(0, 6).map(({ card, photoUrl, score }) => ({ card, photoUrl, score }));
     }
 
     window.runCardImageRecognition = async function(uploadedDataUrl) {
@@ -5176,111 +5361,171 @@ window.openAzukariApp = function() {
     };
 
     window.rerunSheetAutoDetect = function() {
-  const img = sheetCropState.img;
-  if (!img) return;
-  const threshold = Number(document.getElementById("sheet-crop-threshold")?.value || 22);
+      const img = sheetCropState.img;
+      if (!img) return;
+      const threshold = Number(document.getElementById("sheet-crop-threshold")?.value || 22);
 
-  // 1. 解析用に最大1600pxで読む（縮小しすぎない）
-  const maxScanW = 1600;
-  const scale = img.width > maxScanW ? maxScanW / img.width : 1;
-  const sw = Math.round(img.width * scale), sh = Math.round(img.height * scale);
-  const off = document.createElement("canvas");
-  off.width = sw; off.height = sh;
-  const ctx = off.getContext("2d", { willReadFrequently: true });
-  ctx.drawImage(img, 0, 0, sw, sh);
-  const { data } = ctx.getImageData(0, 0, sw, sh);
-  off.width = 0; off.height = 0;
+      // 解析用に最大幅 800px でスキャン（細かい余白や境界線を正確に捉えるため）
+      const maxScanW = 800;
+      const scale = img.width > maxScanW ? maxScanW / img.width : 1;
+      const sw = Math.round(img.width * scale);
+      const sh = Math.round(img.height * scale);
 
-  // 2. 背景色＝外周の最頻色
-  const cc = new Map(); let bestKey = 0xf8f8f8, bestCnt = -1;
-  const add = (x, y) => {
-    const i = (y * sw + x) * 4;
-    const k = ((data[i] & 0xf8) << 16) | ((data[i+1] & 0xf8) << 8) | (data[i+2] & 0xf8);
-    const n = (cc.get(k) || 0) + 1; cc.set(k, n);
-    if (n > bestCnt) { bestCnt = n; bestKey = k; }
-  };
-  for (let x = 0; x < sw; x += 2) for (let b = 0; b < Math.min(5, sh); b++) { add(x, b); add(x, sh - 1 - b); }
-  for (let y = 0; y < sh; y += 2) for (let b = 0; b < Math.min(5, sw); b++) { add(b, y); add(sw - 1 - b, y); }
-  const bgR = ((bestKey >> 16) & 0xff) + 4, bgG = ((bestKey >> 8) & 0xff) + 4, bgB = (bestKey & 0xff) + 4;
+      const off = document.createElement("canvas");
+      off.width = sw;
+      off.height = sh;
+      const ctx = off.getContext("2d", { willReadFrequently: true });
+      ctx.drawImage(img, 0, 0, sw, sh);
+      const { data } = ctx.getImageData(0, 0, sw, sh);
+      off.width = 0;
+      off.height = 0;
 
-  // 3. 前景マスク（膨張しない）
-  const mask = new Uint8Array(sw * sh);
-  const tol = threshold * 2.4;
-  for (let p = 0; p < sw * sh; p++) {
-    const i = p * 4;
-    const dr = Math.abs(data[i] - bgR), dg = Math.abs(data[i+1] - bgG), db = Math.abs(data[i+2] - bgB);
-    if (dr + dg + db > tol || Math.max(dr, dg, db) > threshold * 1.15) mask[p] = 1;
-  }
+      // 1. 画像の外周（上下左右のフチ5px）から背景色を推定（カード内部の白に引っ張られないようにする）
+      const colorCounts = new Map();
+      let bestKey = (255 << 16) | (255 << 8) | 255;
+      let bestCount = -1;
+      const addSample = (x, y) => {
+        const i = (y * sw + x) * 4;
+        const r = data[i] & 0xf8;
+        const g = data[i + 1] & 0xf8;
+        const b = data[i + 2] & 0xf8;
+        const key = (r << 16) | (g << 8) | b;
+        const cnt = (colorCounts.get(key) || 0) + 1;
+        colorCounts.set(key, cnt);
+        if (cnt > bestCount) { bestCount = cnt; bestKey = key; }
+      };
+      for (let x = 0; x < sw; x += 2) {
+        for (let b = 0; b < Math.min(5, sh); b++) {
+          addSample(x, b);
+          addSample(x, sh - 1 - b);
+        }
+      }
+      for (let y = 0; y < sh; y += 2) {
+        for (let b = 0; b < Math.min(5, sw); b++) {
+          addSample(b, y);
+          addSample(sw - 1 - b, y);
+        }
+      }
+      const bgR = ((bestKey >> 16) & 0xff) + 4;
+      const bgG = ((bestKey >> 8) & 0xff) + 4;
+      const bgB = (bestKey & 0xff) + 4;
 
-  const minW = Math.max(20, Math.round(sw * 0.04));
-  const minH = Math.max(40, Math.round(sh * 0.04));
+      // 2. 前景マスク作成（色差＋輝度差で薄い白フチも拾う）
+      const rawMask = new Uint8Array(sw * sh);
+      const tol = threshold * 2.4;
+      for (let p = 0; p < sw * sh; p++) {
+        const i = p * 4;
+        const dr = Math.abs(data[i] - bgR);
+        const dg = Math.abs(data[i + 1] - bgG);
+        const db = Math.abs(data[i + 2] - bgB);
+        if (dr + dg + db > tol || Math.max(dr, dg, db) > threshold * 1.15) {
+          rawMask[p] = 1;
+        }
+      }
 
-  // 4. 行の帯を探す（文字・見出しバーは高さが足りず除外される）
-  const rowCnt = new Int32Array(sh);
-  for (let y = 0; y < sh; y++) { let c = 0; for (let x = 0; x < sw; x++) c += mask[y * sw + x]; rowCnt[y] = c; }
-  let bands = [], y = 0;
-  while (y < sh) {
-    if (rowCnt[y] > sw * 0.01) {
-      const y0 = y; while (y < sh && rowCnt[y] > sw * 0.01) y++;
-      if (y - y0 >= minH) bands.push([y0, y - 1]);
-    } else y++;
-  }
-  if (!bands.length) { sheetCropState.boxes = []; drawSheetCropPreview(); return; }
-  // 高さが中央値から外れる帯（上部バナーなど）を除外
-  const hs = bands.map(b => b[1] - b[0] + 1).sort((a, b) => a - b);
-  const med = hs[Math.floor(hs.length / 2)];
-  bands = bands.filter(b => { const h = b[1] - b[0] + 1; return h >= med * 0.6 && h <= med * 1.7; });
+      // 3. 1px膨張（穴埋め処理）でカード内の白い服・肌による枠の分裂を防止
+      const mask = new Uint8Array(sw * sh);
+      for (let y = 1; y < sh - 1; y++) {
+        const row = y * sw;
+        for (let x = 1; x < sw - 1; x++) {
+          const idx = row + x;
+          if (
+            rawMask[idx] ||
+            rawMask[idx - 1] || rawMask[idx + 1] ||
+            rawMask[idx - sw] || rawMask[idx + sw]
+          ) {
+            mask[idx] = 1;
+          }
+        }
+      }
 
-  // 5. 各帯を縦の隙間で分割 → 端の文字・線をトリム
-  const rowDens = (yy, x0, x1) => { let c = 0; for (let x = x0; x <= x1; x++) c += mask[yy * sw + x]; return c; };
-  const colDens = (xx, y0, y1) => { let c = 0; for (let yy = y0; yy <= y1; yy++) c += mask[yy * sw + xx]; return c; };
-  const segs = [];
-  for (const [by0, by1] of bands) {
-    const bh = by1 - by0 + 1;
-    const colOn = new Uint8Array(sw);
-    for (let x = 0; x < sw; x++) colOn[x] = colDens(x, by0, by1) > bh * 0.12 ? 1 : 0;
-    let x = 0;
-    while (x < sw) {
-      if (!colOn[x]) { x++; continue; }
-      let x0 = x; while (x < sw && colOn[x]) x++;
-      let x1 = x - 1, y0 = by0, y1 = by1;
-      if (x1 - x0 + 1 < minW) continue;
-      let w = x1 - x0 + 1;
-      while (y1 > y0 && rowDens(y1, x0, x1) < w * 0.5) y1--;
-      while (y0 < y1 && rowDens(y0, x0, x1) < w * 0.5) y0++;
-      const h = y1 - y0 + 1;
-      while (x1 > x0 && colDens(x1, y0, y1) < h * 0.5) x1--;
-      while (x0 < x1 && colDens(x0, y0, y1) < h * 0.5) x0++;
-      segs.push({ x0, x1, y0, y1 });
-    }
-  }
+      // 4. 連結成分ラベリング（BFS）で四角形バウンディングボックス抽出
+      const visited = new Uint8Array(sw * sh);
+      const queue = new Int32Array(sw * sh);
+      let candidates = [];
+      const minW = Math.max(24, Math.round(sw * 0.055));
+      const minH = Math.max(36, Math.round(sh * 0.055));
+      const maxW = Math.round(sw * 0.42);
+      const maxH = Math.round(sh * 0.42);
 
-  // 6. くっついた複数カードは、カード幅の目安で等分割
-  const ratios = segs.map(s => (s.x1 - s.x0 + 1) / (s.y1 - s.y0 + 1)).filter(r => r > 0.5 && r < 0.8).sort((a, b) => a - b);
-  const aspect = ratios.length ? ratios[Math.floor(ratios.length / 2)] : 0.65;
-  const pad = 2, boxes = [];
-  for (const s of segs) {
-    const bw = s.x1 - s.x0 + 1, bh = s.y1 - s.y0 + 1;
-    let n = 1;
-    if (bw / bh > aspect * 1.3) n = Math.round(bw / (bh * aspect));
-    if (n < 1 || n > 8) n = 1;
-    for (let k = 0; k < n; k++) {
-      const cx0 = s.x0 + Math.round(bw * k / n), cx1 = s.x0 + Math.round(bw * (k + 1) / n) - 1;
-      const w = cx1 - cx0 + 1, r = bh / w;
-      if (w < minW || bh < minH || r < 1.2 || r > 1.95) continue;
-      const X = Math.max(0, cx0 - pad), Y = Math.max(0, s.y0 - pad);
-      boxes.push({
-        x: Math.round(X / scale), y: Math.round(Y / scale),
-        w: Math.round((Math.min(sw - 1, cx1 + pad) - X + 1) / scale),
-        h: Math.round((Math.min(sh - 1, s.y1 + pad) - Y + 1) / scale),
-        active: true, member: ""
+      for (let y = 0; y < sh; y++) {
+        for (let x = 0; x < sw; x++) {
+          const start = y * sw + x;
+          if (!mask[start] || visited[start]) continue;
+
+          let head = 0, tail = 0;
+          queue[tail++] = start;
+          visited[start] = 1;
+          let minX = x, maxX = x, minY = y, maxY = y, areaCount = 0;
+
+          while (head < tail) {
+            const cur = queue[head++];
+            const cx = cur % sw;
+            const cy = (cur - cx) / sw;
+            areaCount++;
+            if (cx < minX) minX = cx;
+            if (cx > maxX) maxX = cx;
+            if (cy < minY) minY = cy;
+            if (cy > maxY) maxY = cy;
+
+            if (cx > 0 && mask[cur - 1] && !visited[cur - 1]) { visited[cur - 1] = 1; queue[tail++] = cur - 1; }
+            if (cx + 1 < sw && mask[cur + 1] && !visited[cur + 1]) { visited[cur + 1] = 1; queue[tail++] = cur + 1; }
+            if (cy > 0 && mask[cur - sw] && !visited[cur - sw]) { visited[cur - sw] = 1; queue[tail++] = cur - sw; }
+            if (cy + 1 < sh && mask[cur + sw] && !visited[cur + sw]) { visited[cur + sw] = 1; queue[tail++] = cur + sw; }
+          }
+
+          const bw = maxX - minX + 1;
+          const bh = maxY - minY + 1;
+          const ratio = bh / bw;
+          const fillRatio = areaCount / (bw * bh);
+
+          // トレカ標準比率（55x85mm ≒ 1.54）に合わせて厳格化
+          if (
+            bw >= minW && bh >= minH &&
+            bw <= maxW && bh <= maxH &&
+            ratio >= 1.32 && ratio <= 1.78 &&
+            fillRatio >= 0.78
+          ) {
+            candidates.push({ minX, minY, maxX, maxY, bw, bh });
+          }
+        }
+      }
+
+      // 5. 別の枠の内側に入り込んだ重複・ゴミ枠を除外
+      candidates = candidates.filter((a, idxA) => {
+        return !candidates.some((b, idxB) => {
+          if (idxA === idxB) return false;
+          return a.minX >= b.minX - 2 && a.minY >= b.minY - 2 &&
+                 a.maxX <= b.maxX + 2 && a.maxY <= b.maxY + 2 &&
+                 (b.bw * b.bh) > (a.bw * a.bh);
+        });
       });
-    }
-  }
-  sheetCropState.boxes = boxes;
-  drawSheetCropPreview();
-};
 
+      // 6. 左上から右下へ綺麗に整列
+      candidates.sort((a, b) => {
+        if (Math.abs(a.minY - b.minY) > a.bh * 0.4) return a.minY - b.minY;
+        return a.minX - b.minX;
+      });
+
+      const rawBoxes = candidates.map(c => ({
+        x: Math.round(c.minX / scale),
+        y: Math.round(c.minY / scale),
+        w: Math.round(c.bw / scale),
+        h: Math.round(c.bh / scale),
+        active: true,
+        member: ""
+      }));
+
+
+      rawBoxes.sort((a, b) => {
+        const rowTol = Math.max(16, a.h * 0.4);
+        if (Math.abs(a.y - b.y) > rowTol) return a.y - b.y;
+        return a.x - b.x;
+      });
+
+      sheetCropState.boxes = rawBoxes;
+      drawSheetCropPreview();
+    };
 
 
     function drawSheetCropPreview() {
