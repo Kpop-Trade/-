@@ -2,6 +2,30 @@
 
 <html lang="ja">
 <head>
+  <script>
+  window.addEventListener("error", function (e) {
+    var box = document.getElementById("__err_box");
+    if (!box) {
+      box = document.createElement("div");
+      box.id = "__err_box";
+      box.style.cssText = "position:fixed;left:0;right:0;top:0;z-index:99999;background:#dc2626;color:#fff;font:12px/1.5 monospace;padding:10px;max-height:50vh;overflow:auto;white-space:pre-wrap;word-break:break-all;";
+      document.addEventListener("DOMContentLoaded", function () { document.body.appendChild(box); });
+      if (document.body) document.body.appendChild(box);
+    }
+    box.textContent += "【エラー】" + e.message + "\n  行: " + e.lineno + " 列: " + e.colno + "\n  " + (e.filename || "") + "\n\n";
+  });
+  window.addEventListener("unhandledrejection", function (e) {
+    var box = document.getElementById("__err_box");
+    if (!box) {
+      box = document.createElement("div");
+      box.id = "__err_box";
+      box.style.cssText = "position:fixed;left:0;right:0;top:0;z-index:99999;background:#dc2626;color:#fff;font:12px/1.5 monospace;padding:10px;max-height:50vh;overflow:auto;white-space:pre-wrap;word-break:break-all;";
+      if (document.body) document.body.appendChild(box);
+    }
+    box.textContent += "【Promiseエラー】" + (e.reason && e.reason.message ? e.reason.message : e.reason) + "\n\n";
+  });
+</script>
+
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ILLIT Trade (ILLIT交換・買取・共同購入)</title>
