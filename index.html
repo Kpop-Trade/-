@@ -2885,16 +2885,73 @@ const ILLIT_CARD_ALBUMS = [
 
       const perm = await Notification.requestPermission();
       if (perm !== "granted") {
+        markPushPromptAsked();
         return alert("通知権限が拒否されています。ブラウザの設定から通知を許可してください。");
       }
 
       try { 
         await saveToken(); 
+        markPushPromptAsked();
         updatePushUI(); 
         renderSellTab(); showToast("通知をオンにしました！", "success");
       } catch(e){ 
         console.error("プッシュ通知設定エラー:", e);
         alert("設定失敗: " + (e.message || e)); 
+      }
+    };
+
+    // ===== 初回のみ通知オン確認 =====
+    const PUSH_PROMPT_KEY = "illit_push_prompt_asked_v1";
+    function hasAskedPushPrompt() {
+      try { return localStorage.getItem(PUSH_PROMPT_KEY) === "1"; } catch (e) { return true; }
+    }
+    function markPushPromptAsked() {
+      try { localStorage.setItem(PUSH_PROMPT_KEY, "1"); } catch (e) {}
+    }
+    window.dismissPushPrompt = function() {
+      markPushPromptAsked();
+      const m = document.getElementById("push-prompt-modal");
+      if (m) m.classList.add("hidden");
+    };
+    window.openPushPromptModal = function() {
+      const m = document.getElementById("push-prompt-modal");
+      if (m) m.classList.remove("hidden");
+    };
+    window.enablePushFromPrompt = async function() {
+      markPushPromptAsked();
+      const m = document.getElementById("push-prompt-modal");
+      if (m) m.classList.add("hidden");
+      await enablePush();
+    };
+    window.maybeShowPushPrompt = function() {
+      try {
+        if (hasAskedPushPrompt()) return;
+        if (!currentUser) return;
+        if (!hasAgreedLocally()) return;
+        if (!("Notification" in window) || !("serviceWorker" in navigator)) {
+          markPushPromptAsked();
+          return;
+        }
+        // すでにオン
+        if (Notification.permission === "granted" && localStorage.getItem(pushStorageKey())) {
+          markPushPromptAsked();
+          return;
+        }
+        // 拒否済みは再表示しない
+        if (Notification.permission === "denied") {
+          markPushPromptAsked();
+          return;
+        }
+        // 利用規約・他モーダルと被らないよう少し遅らせる
+        setTimeout(() => {
+          if (hasAskedPushPrompt() || !currentUser) return;
+          if (!hasAgreedLocally()) return;
+          const terms = document.getElementById("terms-modal");
+          if (terms && !terms.classList.contains("hidden")) return;
+          openPushPromptModal();
+        }, 900);
+      } catch (e) {
+        console.warn("maybeShowPushPrompt", e);
       }
     };
 
@@ -2932,6 +2989,8 @@ const ILLIT_CARD_ALBUMS = [
         updateUserAvatar();
         subscribeUserData(); subscribeTrades(); subscribeSuspension();
         if ("Notification" in window && Notification.permission === "granted" && localStorage.getItem(pushStorageKey())) saveToken().catch(()=>{});
+        // ログイン済み・規約同意済みなら初回のみ通知オン確認
+        if (typeof maybeShowPushPrompt === "function") maybeShowPushPrompt();
       } else {
         loginBtn.classList.remove("hidden"); userProfile.classList.add("hidden");
         if (unsubTrades) unsubTrades(); if (unsubUser) unsubUser(); unsubTrades=null; unsubUser=null;
@@ -4414,6 +4473,8 @@ window.openAzukariApp = function() {
       if (currentUser) try { await saveUserData({ terms: { version: TERMS_VERSION, agreedAt: serverTimestamp() } }); } catch(e){}
       
       openPwaGuideModal();
+      // 規約同意後に、未確認なら通知オン案内（PWA案内のあと）
+      setTimeout(() => { if (typeof maybeShowPushPrompt === "function") maybeShowPushPrompt(); }, 1200);
     };
 
     function syncTermsRecord(d) {
@@ -7171,6 +7232,24 @@ window.openAzukariApp = function() {
     <div class="liquid-glass-heavy rounded-[2rem] max-w-sm w-full p-5 space-y-4 shadow-2xl border border-white relative">
       <button onclick="closeCardDetailModal()" class="absolute top-3.5 right-3.5 w-8 h-8 rounded-full bg-white/80 text-gray-600 flex items-center justify-center font-bold shadow-sm hover:bg-white">✕</button>
       <div id="card-detail-body"></div>
+    </div>
+  </div>
+
+  <!-- 初回のみ：プッシュ通知オン確認 -->
+  <div id="push-prompt-modal" class="hidden fixed inset-0 z-[95] modal-backdrop flex items-center justify-center p-4">
+    <div class="liquid-glass-heavy w-full max-w-sm rounded-[2rem] p-6 space-y-4 shadow-2xl border border-white text-center">
+      <div class="w-14 h-14 bg-purple-100 rounded-full flex items-center justify-center mx-auto text-2xl shadow-sm">🔔</div>
+      <h3 class="font-bold text-base text-gray-900">通知をオンにしますか？</h3>
+      <p class="text-xs text-gray-600 leading-relaxed text-left bg-white/60 p-3.5 rounded-2xl border border-white/80">
+        申し込み・メッセージ・出品の更新をすぐ受け取れます。<br>
+        この確認は<strong>1回だけ</strong>表示されます。あとからマイページの「プッシュ通知設定」でも変更できます。
+      </p>
+      <button type="button" onclick="enablePushFromPrompt()" class="w-full bg-gradient-to-r from-illit-purple to-illit-accent text-white font-bold py-3.5 rounded-full shadow-md border border-white/30 text-sm">
+        🔔 通知をオンにする
+      </button>
+      <button type="button" onclick="dismissPushPrompt()" class="w-full bg-white/70 text-gray-600 border border-white font-medium py-2.5 rounded-full text-sm hover:bg-white transition">
+        あとで
+      </button>
     </div>
   </div>
 </body>
