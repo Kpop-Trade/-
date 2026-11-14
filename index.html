@@ -3228,7 +3228,11 @@ const ILLIT_CARD_ALBUMS = [
 
     window.openSerialPostModal = async function(mode) {
       if (!currentUser) return alert("ログインが必要です。");
-      if (!(await checkDeviceLock())) return;
+      try {
+        if (typeof checkDeviceLock === "function" && !(await checkDeviceLock())) return;
+      } catch (lockErr) {
+        console.warn("checkDeviceLock skipped:", lockErr);
+      }
       postMode = mode;
       document.getElementById("serial-modal-title").innerText = mode === "buy" ? "💳 シリアルの買取" : (mode === "sell" ? "💰 シリアルを売る" : "🎫 シリアルでトレカを求める");
       document.getElementById("serial-label-give").innerText = mode === "buy" ? "【求】（買いたいシリアル）" : (mode === "sell" ? "【譲】売りたいシリアル" : "【譲】出せるシリアル");
