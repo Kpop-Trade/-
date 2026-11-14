@@ -3041,29 +3041,39 @@ const ILLIT_CARD_ALBUMS = [
       const isAlbum = mode.startsWith("album");
       const isDearlit = mode.startsWith("dearlit");
       const isSell = mode.endsWith("_sell") || mode === "buy";
-      let title = "🃏 トレカ交換の出品";
-      if (mode === "buy") title = "💳 トレカの買取（購入希望）";
+      let title = "🔄 トレカ交換の出品";
+      if (mode === "buy") title = "🤝 トレカの買取（購入希望）";
       else if (mode === "card_sell") title = "💰 トレカ売却";
       else if (mode === "album_sell") title = "💿 アルバム売却";
-      else if (mode === "dearlit_sell") title = "🎁 DEARLIT売却";
-      document.getElementById("post-modal-title").innerText = title;
-      document.getElementById("label-give").innerText = isBuy ? "【求】（買いたいもの）" : "【譲】（出すもの）";
-      document.getElementById("want-container").classList.toggle("hidden", isBuy || isSell);
-      document.getElementById("price-container").classList.toggle("hidden", !(isBuy || isSell));
-      document.getElementById("photo-req-label").innerText = (isBuy) ? "（任意・最大3枚）" : "（必須・最大3枚）";
-      document.getElementById("condition-container").classList.remove("hidden");
-      document.getElementById("input-give").value = "";
-      document.getElementById("input-want").value = "";
-      document.getElementById("input-price").value = "";
-      document.getElementById("input-desc").value = "";
-      document.getElementById("input-condition").value = "";
-      postPhotos = []; renderPostPhotoPreview();
+      else if (mode === "dearlit_sell") title = "❤️ DEARLiT売却";
+
+      const _byId = (id) => document.getElementById(id);
+      if (_byId("post-modal-title")) _byId("post-modal-title").innerText = title;
+      if (_byId("label-give")) _byId("label-give").innerText = isBuy ? "【求】（買いたいもの）" : "【譲】（出すもの）";
+      if (_byId("want-container")) _byId("want-container").classList.toggle("hidden", isBuy || isSell);
+      if (_byId("price-container")) _byId("price-container").classList.toggle("hidden", !(isBuy || isSell));
+      if (_byId("photo-req-label")) _byId("photo-req-label").innerText = (isBuy) ? "（任意・最大3枚）" : "（必須・最大3枚）";
+      if (_byId("condition-container")) _byId("condition-container").classList.remove("hidden");
+
+      ["input-give", "input-want", "input-price", "input-desc", "input-condition"].forEach(id => {
+        if (_byId(id)) _byId(id).value = "";
+      });
+      postPhotos = [];
+      if (typeof renderPostPhotoPreview === "function") renderPostPhotoPreview();
       selectedPostCard = null;
       postCardAlbum = "srm";
-            // 画像認識（写真から候補表示）用にカタログだけ読み込んでおく
-      Promise.all([ensureCatalogCardsLoaded(), ensureCardPhotosLoaded()]).catch(() => {});
 
-      const _pm = document.getElementById("post-modal"); if (_pm) { _pm.classList.remove("hidden"); _pm.style.display = ""; }
+      try {
+        Promise.all([ensureCatalogCardsLoaded(), ensureCardPhotosLoaded()]).catch(() => {});
+      } catch (_) {}
+
+      const _pm = _byId("post-modal");
+      if (_pm) {
+        _pm.classList.remove("hidden");
+        _pm.style.display = "";
+      } else {
+        alert("エラー: post-modal が見つかりません");
+      }
     };
     window.closePostModal = function() {
       document.getElementById("post-modal").classList.add("hidden");
