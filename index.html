@@ -5274,13 +5274,7 @@ function getAiCardVectors() {
         }
       });
     };
-    const updateStatus = (msg) => {
-      ["similar-cards-suggest", "mycards-image-search-result"].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) { el.classList.remove("hidden"); el.textContent = msg; }
-      });
-    };
-    updateStatus("🔄 AIライブラリを読み込んでいます...");
+  
     
     // タイムアウト監視付きの実行ラッパー
     const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("AI画像解析がタイムアウトしました（通信環境やメモリをご確認ください）")), 45000));
