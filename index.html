@@ -4815,7 +4815,7 @@ window.openAzukariApp = function() {
         <div class="flex gap-1.5 overflow-x-auto hide-scrollbar pb-1 mb-2" id="admin-card-member-tabs">${memberTabsHtml}</div>
         <div class="grid grid-cols-1 gap-2 mb-3">
           <button type="button" onclick="adminDeduplicateCatalogCards()" class="w-full bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold py-2.5 rounded-full hover:bg-amber-100 transition shadow-sm">
-            🧹 重複トレカを自動削除（画像が同じものを判定）
+            🧹 重複トレカを自動削除（画像が完全一致のみ・超厳格）
           </button>
           <button type="button" onclick="adminDeduplicateExactIds()" class="w-full bg-rose-50 border border-rose-200 text-rose-900 text-xs font-bold py-2.5 rounded-full hover:bg-rose-100 transition shadow-sm">
             🆔 全く同じIDの重複を削除
@@ -6043,27 +6043,51 @@ window.openAzukariApp = function() {
       }
     };
 
-    // 画像の簡易パーセプチュアルハッシュ（8x8 aHash）
+    // 画像のパーセプチュアルハッシュ（超厳格判定用: 16x16 aHash + 9x8 dHash）
     async function computeImageAHash(dataUrl) {
       return new Promise((resolve, reject) => {
         const img = new Image();
         img.onload = () => {
           try {
-            const size = 8;
-            const canvas = document.createElement("canvas");
-            canvas.width = size;
-            canvas.height = size;
-            const ctx = canvas.getContext("2d", { willReadFrequently: true });
-            ctx.drawImage(img, 0, 0, size, size);
-            const data = ctx.getImageData(0, 0, size, size).data;
-            const grays = [];
-            for (let i = 0; i < data.length; i += 4) {
-              grays.push(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+            // aHash: 16x16（細かい差も拾う）
+            const aSize = 16;
+            const aCanvas = document.createElement("canvas");
+            aCanvas.width = aSize;
+            aCanvas.height = aSize;
+            const aCtx = aCanvas.getContext("2d", { willReadFrequently: true });
+            aCtx.drawImage(img, 0, 0, aSize, aSize);
+            const aData = aCtx.getImageData(0, 0, aSize, aSize).data;
+            const aGrays = [];
+            for (let i = 0; i < aData.length; i += 4) {
+              aGrays.push(0.299 * aData[i] + 0.587 * aData[i + 1] + 0.114 * aData[i + 2]);
             }
-            const avg = grays.reduce((a, b) => a + b, 0) / grays.length;
-            let hash = "";
-            for (const g of grays) hash += g >= avg ? "1" : "0";
-            resolve(hash);
+            const aAvg = aGrays.reduce((a, b) => a + b, 0) / aGrays.length;
+            let aHash = "";
+            for (const g of aGrays) aHash += g >= aAvg ? "1" : "0";
+
+            // dHash: 横方向の勾配（9x8 → 64bit）
+            const dw = 9, dh = 8;
+            const dCanvas = document.createElement("canvas");
+            dCanvas.width = dw;
+            dCanvas.height = dh;
+            const dCtx = dCanvas.getContext("2d", { willReadFrequently: true });
+            dCtx.drawImage(img, 0, 0, dw, dh);
+            const dData = dCtx.getImageData(0, 0, dw, dh).data;
+            const dGrays = [];
+            for (let i = 0; i < dData.length; i += 4) {
+              dGrays.push(0.299 * dData[i] + 0.587 * dData[i + 1] + 0.114 * dData[i + 2]);
+            }
+            let dHash = "";
+            for (let y = 0; y < dh; y++) {
+              for (let x = 0; x < dw - 1; x++) {
+                const idx = y * dw + x;
+                dHash += dGrays[idx] >= dGrays[idx + 1] ? "1" : "0";
+              }
+            }
+
+            aCanvas.width = 0; aCanvas.height = 0;
+            dCanvas.width = 0; dCanvas.height = 0;
+            resolve({ aHash, dHash });
           } catch (e) { reject(e); }
         };
         img.onerror = () => reject(new Error("image load failed"));
@@ -6071,10 +6095,15 @@ window.openAzukariApp = function() {
       });
     }
     function hammingDistance(a, b) {
-      if (!a || !b || a.length !== b.length) return 64;
+      if (!a || !b || a.length !== b.length) return 999;
       let d = 0;
       for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) d++;
       return d;
+    }
+    /** 超厳格: aHash・dHash ともに完全一致のみ同一とみなす */
+    function isExactImageDuplicate(h1, h2) {
+      if (!h1 || !h2) return false;
+      return h1.aHash === h2.aHash && h1.dHash === h2.dHash;
     }
 
     window.adminDeduplicateCatalogCards = async function() {
@@ -6097,7 +6126,7 @@ window.openAzukariApp = function() {
       }
 
       if (!(await appConfirm(
-        "画像がほぼ同一のトレカだけを探して、重複分を削除します。\n（厳格モード: わずかに違うカードは残します）\n\n枚数が多いと少し時間がかかります。続行しますか？",
+        "画像が完全に同一のトレカだけを探して、重複分を削除します。\n（超厳格モード: aHash+dHash完全一致のみ。少しでも違うカードは残します）\n\n枚数が多いと少し時間がかかります。続行しますか？",
         "画像判定を開始",
         false
       ))) return;
@@ -6142,7 +6171,7 @@ window.openAzukariApp = function() {
         return;
       }
 
-      // ハッシュ計算
+      // ハッシュ計算（aHash + dHash）
       const hashed = [];
       for (let i = 0; i < withPhoto.length; i++) {
         const item = withPhoto[i];
@@ -6155,8 +6184,7 @@ window.openAzukariApp = function() {
         if (i % 10 === 0) await new Promise(r => setTimeout(r, 0));
       }
 
-      // 類似度でグループ化（ハミング距離 <= 5 を同一視）
-      const THRESH = 2; // 厳格: ほぼ同一画像のみ（誤削除を抑える）
+      // 超厳格: aHash・dHash ともに完全一致のみ同一とみなす
       const used = new Set();
       const groups = [];
       for (let i = 0; i < hashed.length; i++) {
@@ -6165,7 +6193,7 @@ window.openAzukariApp = function() {
         used.add(i);
         for (let j = i + 1; j < hashed.length; j++) {
           if (used.has(j)) continue;
-          if (hammingDistance(hashed[i].hash, hashed[j].hash) <= THRESH) {
+          if (isExactImageDuplicate(hashed[i].hash, hashed[j].hash)) {
             group.push(hashed[j]);
             used.add(j);
           }
@@ -6186,14 +6214,14 @@ window.openAzukariApp = function() {
       }
 
       if (!toDelete.length) {
-        alert("画像が重複しているトレカは見つかりませんでした。");
+        alert("完全に同一の画像重複は見つかりませんでした。\n（超厳格モードのため、わずかに違う画像は対象外です）");
         return;
       }
 
       const preview = toDelete.slice(0, 8).map(c => `・${c.name || c.id}（${c.member || "メンバーなし"}）`).join("\n");
       const more = toDelete.length > 8 ? `\n…他 ${toDelete.length - 8} 件` : "";
       if (!(await appConfirm(
-        `画像が同じ重複 ${toDelete.length} 件を削除しますか？\n（各グループで1枚だけ残します）\n\n${preview}${more}`,
+        `画像が完全一致の重複 ${toDelete.length} 件を削除しますか？\n（各グループで1枚だけ残します／超厳格モード）\n\n${preview}${more}`,
         "削除する",
         true
       ))) return;
