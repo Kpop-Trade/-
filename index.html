@@ -8114,6 +8114,26 @@ function getAiCardVectors() {
       </button>
     </div>
   </div>
+
+<script>
+window.addEventListener("error", function(event) {
+  console.error("Global Error:", event.error);
+  const container = document.getElementById("posts-container") || document.body;
+  const errDiv = document.createElement("div");
+  errDiv.className = "p-4 m-4 bg-red-100 text-red-700 text-xs rounded-xl border border-red-300";
+  errDiv.innerHTML = "<b>⚠️ 画面エラー発生:</b> " + (event.message || event.error) + "<br><span class="text-[10px]">" + (event.filename ? event.filename.split("/").pop() + ":" + event.lineno : "") + "</span>";
+  container.prepend(errDiv);
+});
+window.addEventListener("unhandledrejection", function(event) {
+  console.error("Unhandled Promise Rejection:", event.reason);
+  const container = document.getElementById("posts-container") || document.body;
+  const errDiv = document.createElement("div");
+  errDiv.className = "p-4 m-4 bg-orange-100 text-orange-700 text-xs rounded-xl border border-orange-300";
+  errDiv.innerHTML = "<b>⚠️ 非同期処理エラー:</b> " + (event.reason && event.reason.message ? event.reason.message : event.reason);
+  container.prepend(errDiv);
+});
+</script>
+
 </body>
 </html>
 
