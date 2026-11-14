@@ -1,33 +1,31 @@
-importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js');
-
-firebase.initializeApp({
-  apiKey: "AIzaSyBB1_QTcXpF0Ap72tDaf5_CCUtNBwSlXCs",
-  authDomain: "illit-7ecd4.firebaseapp.com",
-  projectId: "illit-7ecd4",
-  storageBucket: "illit-7ecd4.firebasestorage.app",
-  messagingSenderId: "1060277997826",
-  appId: "1:1060277997826:web:e47d21d9edc538bb86321b"
+self.addEventListener('install', () => {
+  self.skipWaiting();
 });
 
-const messaging = firebase.messaging();
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim());
+});
 
-messaging.onBackgroundMessage((payload) => {
-  // notification または data のどちらからでもタイトルと本文を確実に取得して表示する
+self.addEventListener('push', (event) => {
+  let payload = {};
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch (e) {
+    payload = { notification: { title: 'ILLIT Trade', body: event.data ? event.data.text() : '' } };
+  }
+
   const notification = payload.notification || {};
   const data = payload.data || {};
-  
   const title = notification.title || data.title || 'ILLIT Trade';
   const options = {
-    body: notification.body || data.body || '',
+    body: notification.body || data.body || '新しい通知があります',
     icon: './icon-192.png',
     data: { url: data.url || './' }
   };
 
-  return self.registration.showNotification(title, options);
+  event.waitUntil(self.registration.showNotification(title, options));
 });
 
-// 通知をタップしたときの挙動
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const url = (event.notification.data && event.notification.data.url) || './';
