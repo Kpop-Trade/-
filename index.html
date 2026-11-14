@@ -1434,15 +1434,35 @@ const ILLIT_CARD_ALBUMS = [
 
     function appConfirm(message, yesLabel = "はい", danger = false) {
       return new Promise((resolve) => {
-        const m = document.getElementById("app-confirm"), yes = document.getElementById("app-confirm-yes"), no = document.getElementById("app-confirm-no");
-        document.getElementById("app-confirm-msg").textContent = message;
-        yes.textContent = yesLabel;
-        yes.className = "flex-1 text-white font-medium py-3 rounded-full transition text-sm shadow-md " + (danger ? "bg-red-500 hover:bg-red-600" : "bg-gradient-to-r from-illit-purple to-illit-accent");
-        const done = (v) => { m.classList.add("hidden"); yes.onclick = null; no.onclick = null; resolve(v); };
-        yes.onclick = () => done(true); no.onclick = () => done(false);
-        m.classList.remove("hidden");
+        try {
+          const m = document.getElementById("app-confirm");
+          const yes = document.getElementById("app-confirm-yes");
+          const no = document.getElementById("app-confirm-no");
+          const msgEl = document.getElementById("app-confirm-msg");
+          if (!m || !yes || !no || !msgEl) {
+            resolve(window.confirm(String(message || "")));
+            return;
+          }
+          msgEl.textContent = message;
+          yes.textContent = yesLabel;
+          yes.className = "flex-1 text-white font-medium py-3 rounded-full transition text-sm shadow-md " + (danger ? "bg-red-500 hover:bg-red-600" : "bg-gradient-to-r from-illit-purple to-illit-accent");
+          const done = (v) => {
+            m.classList.add("hidden");
+            yes.onclick = null;
+            no.onclick = null;
+            resolve(v);
+          };
+          yes.onclick = () => done(true);
+          no.onclick = () => done(false);
+          m.classList.remove("hidden");
+          m.style.zIndex = "200";
+        } catch (e) {
+          console.error("appConfirm failed", e);
+          resolve(window.confirm(String(message || "")));
+        }
       });
     }
+    window.appConfirm = appConfirm;
 
     function showToast(message, type = "info") {
       const container = document.getElementById("toast-container");
@@ -5903,94 +5923,153 @@ window.openAzukariApp = function() {
     };
     /** 全く同じIDの重複を検出して削除（キャッシュ内の重複 + 静的パックとIDが衝突する管理者登録分） */
     window.adminDeduplicateExactIds = async function() {
-      if (typeof isAdmin === "function" && !isAdmin()) {
-        alert("管理者のみ実行できます。");
-        return;
-      }
-      if (!currentUser) {
-        alert("ログインが必要です。");
-        return;
-      }
       try {
-        await ensureCatalogCardsLoaded(true);
-      } catch (e) { console.warn(e); }
-
-      const list = (catalogCardsCache || []).slice();
-      if (!list.length) {
-        alert("カタログに登録されたカードがありません。");
-        return;
-      }
-
-      // 1) キャッシュ内で同じIDが複数ある場合
-      const seen = new Map(); // id -> first card
-      const cacheDupes = [];
-      for (const c of list) {
-        if (!c || !c.id) continue;
-        if (seen.has(c.id)) cacheDupes.push(c);
-        else seen.set(c.id, c);
-      }
-
-      // 2) 静的パック or 定義済みアルバムカードとIDが完全一致する管理者登録
-      const staticOrBaseIds = new Set();
-      staticPackCards.forEach(c => { if (c && c.id) staticOrBaseIds.add(c.id); });
-      ILLIT_CARD_ALBUMS.forEach(a => {
-        (a.cards || []).forEach(c => { if (c && c.id) staticOrBaseIds.add(c.id); });
-      });
-      const conflictWithStatic = list.filter(c => c && c.id && staticOrBaseIds.has(c.id));
-
-      // 削除対象: キャッシュ重複の「2件目以降」+ 静的と衝突する管理者登録
-      // （静的側は削除不可なので Firestore 側の管理者登録を消す）
-      const toDeleteMap = new Map();
-      cacheDupes.forEach(c => { if (c && c.id) toDeleteMap.set(c.id, c); });
-      conflictWithStatic.forEach(c => { if (c && c.id) toDeleteMap.set(c.id, c); });
-      const toDelete = Array.from(toDeleteMap.values());
-
-      if (!toDelete.length) {
-        alert("全く同じIDの重複は見つかりませんでした。\n（キャッシュ内の重複・静的パックとのID衝突はありません）");
-        return;
-      }
-
-      const preview = toDelete.slice(0, 10).map(c => `・${c.name || c.id}（${c.member || "—"} / ${c.id}）`).join("\n");
-      const more = toDelete.length > 10 ? `\n…他 ${toDelete.length - 10} 件` : "";
-      if (!(await appConfirm(
-        `同じIDの重複 ${toDelete.length} 件を削除しますか？\n（静的パックとIDが衝突している管理者登録、およびキャッシュ内の重複ID）\n\n${preview}${more}`,
-        "同じIDを削除する",
-        true
-      ))) return;
-
-      let ok = 0, fail = 0;
-      for (const c of toDelete) {
-        try {
-          await deleteDoc(doc(db, "cardCatalog", c.id));
-          try { await deleteDoc(doc(db, "cardPhotos", c.id)); } catch (_) {}
-          delete cardPhotoCache[c.id];
-          if (typeof idbDelete === "function") {
-            try { await idbDelete("photo_" + c.id); } catch (_) {}
-          }
-          ok++;
-        } catch (e) {
-          console.warn("exact-id delete failed", c.id, e);
-          fail++;
+        if (typeof isAdmin === "function" && !isAdmin()) {
+          alert("管理者のみ実行できます。");
+          return;
         }
-      }
+        if (!currentUser) {
+          alert("ログインが必要です。");
+          return;
+        }
 
-      // キャッシュからも除去（重複IDは1件だけ残す想定だが、静的衝突分は全て除去）
-      const deleteIds = new Set(toDelete.map(c => c.id));
-      catalogCardsCache = catalogCardsCache.filter(c => !deleteIds.has(c.id));
-      // 念のためIDユニーク化
-      const uniq = new Map();
-      catalogCardsCache.forEach(c => { if (c && c.id && !uniq.has(c.id)) uniq.set(c.id, c); });
-      catalogCardsCache = Array.from(uniq.values());
-      if (typeof idbDelete === "function") {
-        try { await idbDelete("catalog_cards"); } catch (_) {}
-      }
+        showToast("同一ID・同一内容の重複を検索中...", "info");
 
-      showToast(`同一ID削除: ${ok}件${fail ? `（失敗${fail}）` : ""}`, fail ? "error" : "success");
-      const el = document.getElementById("admin-content");
-      if (el && adminTab === "cards") renderAdminCardsPanel(el);
-      if (typeof isMyCardsPageOpen === "function" && isMyCardsPageOpen()) {
-        if (typeof renderMyCardsAlbumTabs === "function") renderMyCardsAlbumTabs();
-        if (typeof renderMyCardsList === "function") renderMyCardsList();
+        try {
+          await ensureCatalogCardsLoaded(true);
+        } catch (e) {
+          console.warn("ensureCatalogCardsLoaded", e);
+        }
+
+        // Firestoreから直接取り直す（キャッシュ欠落対策）
+        let list = (catalogCardsCache || []).slice();
+        try {
+          const snap = await getDocs(collection(db, "cardCatalog"));
+          list = snap.docs.map(d => {
+            const data = d.data() || {};
+            return {
+              id: d.id,
+              albumId: data.albumId || "other",
+              name: data.name || "",
+              member: data.member || "",
+              admin: true
+            };
+          });
+          catalogCardsCache = list.filter(c => c.name);
+          catalogCardsLoaded = true;
+        } catch (e) {
+          console.warn("cardCatalog refresh", e);
+          alert("カタログの取得に失敗しました。\n" + (e && (e.code || e.message) ? (e.code || e.message) : e));
+          return;
+        }
+
+        if (!list.length) {
+          alert("カタログに登録されたカードがありません。\n（管理者追加のカードが0件です）");
+          return;
+        }
+
+        const toDeleteMap = new Map(); // id -> card
+
+        // 1) キャッシュ／取得結果内で同じIDが複数（通常は起きないが保険）
+        const seenIds = new Map();
+        for (const c of list) {
+          if (!c || !c.id) continue;
+          if (seenIds.has(c.id)) toDeleteMap.set(c.id, c);
+          else seenIds.set(c.id, c);
+        }
+
+        // 2) 静的パック／定義カードとIDが完全一致する管理者登録
+        const staticOrBaseIds = new Set();
+        (staticPackCards || []).forEach(c => { if (c && c.id) staticOrBaseIds.add(String(c.id)); });
+        (ILLIT_CARD_ALBUMS || []).forEach(a => {
+          (a.cards || []).forEach(c => { if (c && c.id) staticOrBaseIds.add(String(c.id)); });
+        });
+        list.forEach(c => {
+          if (c && c.id && staticOrBaseIds.has(String(c.id))) toDeleteMap.set(c.id, c);
+        });
+
+        // 3) 同じ albumId + name + member の重複（IDは違うが実質同じ登録）
+        //    名前ありのものを優先して残し、残りを削除対象に
+        const keyGroups = new Map();
+        list.forEach(c => {
+          if (!c || !c.id) return;
+          const key = [String(c.albumId || ""), String(c.name || "").trim(), String(c.member || "").trim()].join("\t");
+          if (!String(c.name || "").trim()) return;
+          if (!keyGroups.has(key)) keyGroups.set(key, []);
+          keyGroups.get(key).push(c);
+        });
+        keyGroups.forEach(group => {
+          if (group.length < 2) return;
+          group.sort((a, b) => String(a.id).localeCompare(String(b.id)));
+          for (let i = 1; i < group.length; i++) {
+            toDeleteMap.set(group[i].id, group[i]);
+          }
+        });
+
+        const toDelete = Array.from(toDeleteMap.values());
+
+        if (!toDelete.length) {
+          alert(
+            "削除できる重複は見つかりませんでした。\n\n" +
+            "チェック内容:\n" +
+            "・同じドキュメントIDの重複\n" +
+            "・静的パック／定義カードとIDが同じ管理者登録\n" +
+            "・同じアルバム＋名前＋メンバーの重複登録\n\n" +
+            "（現在の管理者カタログ: " + list.length + " 件）"
+          );
+          return;
+        }
+
+        const preview = toDelete.slice(0, 12).map(c =>
+          "・" + (c.name || "(無題)") + "（" + (c.member || "—") + " / " + c.id + ")"
+        ).join("\n");
+        const more = toDelete.length > 12 ? "\n…他 " + (toDelete.length - 12) + " 件" : "";
+        const okConfirm = await appConfirm(
+          "重複 " + toDelete.length + " 件を削除しますか？\n" +
+          "（同一ID・静的パック衝突・同一名・メンバーの重複）\n\n" +
+          preview + more,
+          "削除する",
+          true
+        );
+        if (!okConfirm) return;
+
+        showToast("削除中... (" + toDelete.length + "件)", "info");
+        let ok = 0, fail = 0;
+        for (const c of toDelete) {
+          try {
+            await deleteDoc(doc(db, "cardCatalog", c.id));
+            try { await deleteDoc(doc(db, "cardPhotos", c.id)); } catch (_) {}
+            delete cardPhotoCache[c.id];
+            if (typeof idbDelete === "function") {
+              try { await idbDelete("photo_" + c.id); } catch (_) {}
+            }
+            ok++;
+          } catch (e) {
+            console.warn("exact-id delete failed", c.id, e);
+            fail++;
+          }
+        }
+
+        const deleteIds = new Set(toDelete.map(c => c.id));
+        catalogCardsCache = (catalogCardsCache || []).filter(c => !deleteIds.has(c.id));
+        const uniq = new Map();
+        catalogCardsCache.forEach(c => { if (c && c.id && !uniq.has(c.id)) uniq.set(c.id, c); });
+        catalogCardsCache = Array.from(uniq.values());
+        if (typeof idbDelete === "function") {
+          try { await idbDelete("catalog_cards"); } catch (_) {}
+        }
+
+        alert("削除完了: " + ok + "件" + (fail ? "（失敗 " + fail + "）" : ""));
+        showToast("重複削除: " + ok + "件" + (fail ? "（失敗" + fail + "）" : ""), fail ? "error" : "success");
+        const el = document.getElementById("admin-content");
+        if (el && adminTab === "cards") renderAdminCardsPanel(el);
+        if (typeof isMyCardsPageOpen === "function" && isMyCardsPageOpen()) {
+          if (typeof renderMyCardsAlbumTabs === "function") renderMyCardsAlbumTabs();
+          if (typeof renderMyCardsList === "function") renderMyCardsList();
+        }
+      } catch (e) {
+        console.error("adminDeduplicateExactIds", e);
+        alert("処理中にエラーが発生しました。\n" + (e && (e.message || e.code) ? (e.message || e.code) : e));
       }
     };
     window.adminRegisterNewCard = async function() {
@@ -6046,8 +6125,21 @@ window.openAzukariApp = function() {
     // 画像のパーセプチュアルハッシュ（超厳格判定用: 16x16 aHash + 9x8 dHash）
     async function computeImageAHash(dataUrl) {
       return new Promise((resolve, reject) => {
+        if (!dataUrl || typeof dataUrl !== "string") {
+          reject(new Error("empty image src"));
+          return;
+        }
         const img = new Image();
+        // dataURL以外はCORSを試す（失敗しても onerror へ）
+        if (!dataUrl.startsWith("data:")) {
+          try { img.crossOrigin = "anonymous"; } catch (_) {}
+        }
+        const timer = setTimeout(() => {
+          try { img.src = ""; } catch (_) {}
+          reject(new Error("image load timeout"));
+        }, 15000);
         img.onload = () => {
+          clearTimeout(timer);
           try {
             // aHash: 16x16（細かい差も拾う）
             const aSize = 16;
@@ -6090,7 +6182,10 @@ window.openAzukariApp = function() {
             resolve({ aHash, dHash });
           } catch (e) { reject(e); }
         };
-        img.onerror = () => reject(new Error("image load failed"));
+        img.onerror = () => {
+          clearTimeout(timer);
+          reject(new Error("image load failed"));
+        };
         img.src = dataUrl;
       });
     }
@@ -6107,154 +6202,206 @@ window.openAzukariApp = function() {
     }
 
     window.adminDeduplicateCatalogCards = async function() {
-      if (typeof isAdmin === "function" && !isAdmin()) {
-        alert("管理者のみ実行できます。");
-        return;
-      }
-      if (!currentUser) {
-        alert("ログインが必要です。");
-        return;
-      }
       try {
-        await ensureCatalogCardsLoaded();
-      } catch (e) { console.warn(e); }
-
-      const list = (catalogCardsCache || []).slice();
-      if (!list.length) {
-        alert("カタログに登録されたカードがありません。");
-        return;
-      }
-
-      if (!(await appConfirm(
-        "画像が完全に同一のトレカだけを探して、重複分を削除します。\n（超厳格モード: aHash+dHash完全一致のみ。少しでも違うカードは残します）\n\n枚数が多いと少し時間がかかります。続行しますか？",
-        "画像判定を開始",
-        false
-      ))) return;
-
-      const progToast = (msg) => {
-        if (typeof showToast === "function") showToast(msg, "info");
-      };
-      progToast("画像を読み込み・比較中...");
-
-      // 写真データを揃える
-      const withPhoto = [];
-      for (let i = 0; i < list.length; i++) {
-        const c = list[i];
-        let dataUrl = cardPhotoCache[c.id] || c.photoUrl || null;
-        if (!dataUrl) {
-          try {
-            const cached = typeof idbGet === "function" ? await idbGet("photo_" + c.id) : null;
-            if (cached) dataUrl = cached;
-          } catch (_) {}
+        if (typeof isAdmin === "function" && !isAdmin()) {
+          alert("管理者のみ実行できます。");
+          return;
         }
-        if (!dataUrl) {
-          try {
-            const snap = await getDoc(doc(db, "cardPhotos", c.id));
-            if (snap.exists()) {
-              const d = snap.data();
-              dataUrl = d.data || d.photo || null;
-              if (dataUrl) {
-                cardPhotoCache[c.id] = dataUrl;
-                if (typeof idbSet === "function") await idbSet("photo_" + c.id, dataUrl);
+        if (!currentUser) {
+          alert("ログインが必要です。");
+          return;
+        }
+
+        showToast("カタログを読み込み中...", "info");
+
+        try {
+          await ensureCatalogCardsLoaded(true);
+        } catch (e) { console.warn(e); }
+
+        // Firestoreから直接取り直し
+        let list = (catalogCardsCache || []).slice();
+        try {
+          const snap = await getDocs(collection(db, "cardCatalog"));
+          list = snap.docs.map(d => {
+            const data = d.data() || {};
+            return {
+              id: d.id,
+              albumId: data.albumId || "other",
+              name: data.name || "",
+              member: data.member || "",
+              admin: true
+            };
+          });
+          catalogCardsCache = list.filter(c => c.name);
+          catalogCardsLoaded = true;
+        } catch (e) {
+          console.warn("cardCatalog refresh", e);
+          alert("カタログの取得に失敗しました。\n" + (e && (e.code || e.message) ? (e.code || e.message) : e));
+          return;
+        }
+
+        if (!list.length) {
+          alert("カタログに登録されたカードがありません。\n（管理者追加のカードが0件です）");
+          return;
+        }
+
+        const okStart = await appConfirm(
+          "画像が完全に同一のトレカだけを探して、重複分を削除します。\n" +
+          "（超厳格モード: aHash+dHash完全一致のみ）\n\n" +
+          "対象: 管理者カタログ " + list.length + " 件\n" +
+          "枚数が多いと数分かかることがあります。続行しますか？",
+          "画像判定を開始",
+          false
+        );
+        if (!okStart) return;
+
+        showToast("写真を読み込み中... (0/" + list.length + ")", "info");
+
+        // 写真データを揃える（dataURL / http(s) / 相対パス いずれも可）
+        const withPhoto = [];
+        for (let i = 0; i < list.length; i++) {
+          const c = list[i];
+          let dataUrl = cardPhotoCache[c.id] || c.photoUrl || null;
+          if (!dataUrl) {
+            try {
+              const cached = typeof idbGet === "function" ? await idbGet("photo_" + c.id) : null;
+              if (cached) dataUrl = cached;
+            } catch (_) {}
+          }
+          if (!dataUrl) {
+            try {
+              const snap = await getDoc(doc(db, "cardPhotos", c.id));
+              if (snap.exists()) {
+                const d = snap.data();
+                dataUrl = d.data || d.photo || null;
+                if (dataUrl) {
+                  cardPhotoCache[c.id] = dataUrl;
+                  if (typeof idbSet === "function") await idbSet("photo_" + c.id, dataUrl);
+                }
               }
+            } catch (_) {}
+          }
+          if (dataUrl && typeof dataUrl === "string") {
+            withPhoto.push({ card: c, dataUrl });
+          }
+          if (i % 10 === 0) {
+            showToast("写真を読み込み中... (" + (i + 1) + "/" + list.length + ")", "info");
+            await new Promise(r => setTimeout(r, 0));
+          }
+        }
+
+        if (withPhoto.length < 2) {
+          alert(
+            "比較できる写真付きカードが足りません。\n" +
+            "カタログ: " + list.length + " 件 / 写真あり: " + withPhoto.length + " 件"
+          );
+          return;
+        }
+
+        showToast("ハッシュ計算中... (0/" + withPhoto.length + ")", "info");
+        const hashed = [];
+        for (let i = 0; i < withPhoto.length; i++) {
+          const item = withPhoto[i];
+          try {
+            const hash = await computeImageAHash(item.dataUrl);
+            if (hash && hash.aHash && hash.dHash) {
+              hashed.push({ card: item.card, hash });
             }
-          } catch (_) {}
-        }
-        if (dataUrl && typeof dataUrl === "string" && dataUrl.startsWith("data:")) {
-          withPhoto.push({ card: c, dataUrl });
-        }
-        if (i % 20 === 0) await new Promise(r => setTimeout(r, 0));
-      }
-
-      if (withPhoto.length < 2) {
-        alert("比較できる写真付きカードが足りません。");
-        return;
-      }
-
-      // ハッシュ計算（aHash + dHash）
-      const hashed = [];
-      for (let i = 0; i < withPhoto.length; i++) {
-        const item = withPhoto[i];
-        try {
-          const hash = await computeImageAHash(item.dataUrl);
-          hashed.push({ card: item.card, hash });
-        } catch (e) {
-          console.warn("hash fail", item.card.id, e);
-        }
-        if (i % 10 === 0) await new Promise(r => setTimeout(r, 0));
-      }
-
-      // 超厳格: aHash・dHash ともに完全一致のみ同一とみなす
-      const used = new Set();
-      const groups = [];
-      for (let i = 0; i < hashed.length; i++) {
-        if (used.has(i)) continue;
-        const group = [hashed[i]];
-        used.add(i);
-        for (let j = i + 1; j < hashed.length; j++) {
-          if (used.has(j)) continue;
-          if (isExactImageDuplicate(hashed[i].hash, hashed[j].hash)) {
-            group.push(hashed[j]);
-            used.add(j);
+          } catch (e) {
+            console.warn("hash fail", item.card.id, e);
+          }
+          if (i % 5 === 0) {
+            showToast("ハッシュ計算中... (" + (i + 1) + "/" + withPhoto.length + ")", "info");
+            await new Promise(r => setTimeout(r, 0));
           }
         }
-        if (group.length > 1) groups.push(group);
-      }
 
-      const toDelete = [];
-      for (const g of groups) {
-        // 名前が付いているものを優先して残す
-        g.sort((a, b) => {
-          const an = (a.card.name || "").trim() ? 1 : 0;
-          const bn = (b.card.name || "").trim() ? 1 : 0;
-          if (an !== bn) return bn - an;
-          return String(a.card.id).localeCompare(String(b.card.id));
-        });
-        for (let k = 1; k < g.length; k++) toDelete.push(g[k].card);
-      }
-
-      if (!toDelete.length) {
-        alert("完全に同一の画像重複は見つかりませんでした。\n（超厳格モードのため、わずかに違う画像は対象外です）");
-        return;
-      }
-
-      const preview = toDelete.slice(0, 8).map(c => `・${c.name || c.id}（${c.member || "メンバーなし"}）`).join("\n");
-      const more = toDelete.length > 8 ? `\n…他 ${toDelete.length - 8} 件` : "";
-      if (!(await appConfirm(
-        `画像が完全一致の重複 ${toDelete.length} 件を削除しますか？\n（各グループで1枚だけ残します／超厳格モード）\n\n${preview}${more}`,
-        "削除する",
-        true
-      ))) return;
-
-      let ok = 0, fail = 0;
-      for (const c of toDelete) {
-        try {
-          await deleteDoc(doc(db, "cardCatalog", c.id));
-          try { await deleteDoc(doc(db, "cardPhotos", c.id)); } catch (_) {}
-          delete cardPhotoCache[c.id];
-          if (typeof idbDelete === "function") {
-            try { await idbDelete("photo_" + c.id); } catch (_) {}
+        // 超厳格: aHash・dHash ともに完全一致のみ同一とみなす
+        const used = new Set();
+        const groups = [];
+        for (let i = 0; i < hashed.length; i++) {
+          if (used.has(i)) continue;
+          const group = [hashed[i]];
+          used.add(i);
+          for (let j = i + 1; j < hashed.length; j++) {
+            if (used.has(j)) continue;
+            if (isExactImageDuplicate(hashed[i].hash, hashed[j].hash)) {
+              group.push(hashed[j]);
+              used.add(j);
+            }
           }
-          ok++;
-        } catch (e) {
-          console.warn("dedupe delete failed", c.id, e);
-          fail++;
+          if (group.length > 1) groups.push(group);
         }
-      }
 
-      catalogCardsCache = catalogCardsCache.filter(c => !toDelete.some(d => d.id === c.id));
-      if (typeof idbDelete === "function") {
-        try { await idbDelete("catalog_cards"); } catch (_) {}
-      }
+        const toDelete = [];
+        for (const g of groups) {
+          g.sort((a, b) => {
+            const an = (a.card.name || "").trim() ? 1 : 0;
+            const bn = (b.card.name || "").trim() ? 1 : 0;
+            if (an !== bn) return bn - an;
+            return String(a.card.id).localeCompare(String(b.card.id));
+          });
+          for (let k = 1; k < g.length; k++) toDelete.push(g[k].card);
+        }
 
-      showToast(`画像重複削除: ${ok}件${fail ? `（失敗${fail}）` : ""}`, fail ? "error" : "success");
-      const el = document.getElementById("admin-content");
-      if (el && adminTab === "cards" && typeof renderAdminCardsPanel === "function") {
-        renderAdminCardsPanel(el);
-      }
-      if (typeof isMyCardsPageOpen === "function" && isMyCardsPageOpen()) {
-        if (typeof renderMyCardsAlbumTabs === "function") renderMyCardsAlbumTabs();
-        if (typeof renderMyCardsList === "function") renderMyCardsList();
+        if (!toDelete.length) {
+          alert(
+            "完全に同一の画像重複は見つかりませんでした。\n\n" +
+            "比較した写真: " + withPhoto.length + " 件\n" +
+            "ハッシュ成功: " + hashed.length + " 件\n" +
+            "（超厳格モードのため、1ピクセルでも違う画像は対象外です）"
+          );
+          return;
+        }
+
+        const preview = toDelete.slice(0, 8).map(c =>
+          "・" + (c.name || c.id) + "（" + (c.member || "メンバーなし") + "）"
+        ).join("\n");
+        const more = toDelete.length > 8 ? "\n…他 " + (toDelete.length - 8) + " 件" : "";
+        const okDel = await appConfirm(
+          "画像が完全一致の重複 " + toDelete.length + " 件を削除しますか？\n" +
+          "（各グループで1枚だけ残します／超厳格モード）\n\n" +
+          preview + more,
+          "削除する",
+          true
+        );
+        if (!okDel) return;
+
+        showToast("削除中... (" + toDelete.length + "件)", "info");
+        let ok = 0, fail = 0;
+        for (const c of toDelete) {
+          try {
+            await deleteDoc(doc(db, "cardCatalog", c.id));
+            try { await deleteDoc(doc(db, "cardPhotos", c.id)); } catch (_) {}
+            delete cardPhotoCache[c.id];
+            if (typeof idbDelete === "function") {
+              try { await idbDelete("photo_" + c.id); } catch (_) {}
+            }
+            ok++;
+          } catch (e) {
+            console.warn("dedupe delete failed", c.id, e);
+            fail++;
+          }
+        }
+
+        catalogCardsCache = (catalogCardsCache || []).filter(c => !toDelete.some(d => d.id === c.id));
+        if (typeof idbDelete === "function") {
+          try { await idbDelete("catalog_cards"); } catch (_) {}
+        }
+
+        alert("画像重複削除 完了: " + ok + "件" + (fail ? "（失敗 " + fail + "）" : ""));
+        showToast("画像重複削除: " + ok + "件" + (fail ? "（失敗" + fail + "）" : ""), fail ? "error" : "success");
+        const el = document.getElementById("admin-content");
+        if (el && adminTab === "cards" && typeof renderAdminCardsPanel === "function") {
+          renderAdminCardsPanel(el);
+        }
+        if (typeof isMyCardsPageOpen === "function" && isMyCardsPageOpen()) {
+          if (typeof renderMyCardsAlbumTabs === "function") renderMyCardsAlbumTabs();
+          if (typeof renderMyCardsList === "function") renderMyCardsList();
+        }
+      } catch (e) {
+        console.error("adminDeduplicateCatalogCards", e);
+        alert("処理中にエラーが発生しました。\n" + (e && (e.message || e.code) ? (e.message || e.code) : e));
       }
     };
 
