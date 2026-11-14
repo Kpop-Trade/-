@@ -1727,10 +1727,18 @@ const ILLIT_CARD_ALBUMS = [
         if (d.migrated === undefined && !migratingLocal) {
           migratingLocal = true;
           const read = (k, def) => { try { const v = JSON.parse(localStorage.getItem(k + currentUser.uid)); return v ?? def; } catch(e){ return def; } };
-          const p = Object.keys(d.profile || {}).length > 0 ? d.profile : read("illit_profile_", {});
+          const localProfile = read("illit_profile_", {});
+          const firestoreProfile = d.profile && typeof d.profile === "object" ? d.profile : {};
+          // Firestoreに既に中身がある場合は絶対に潰さない。空のときだけlocalStorageから補完
+          const p = Object.keys(firestoreProfile).length > 0
+            ? firestoreProfile
+            : (localProfile && Object.keys(localProfile).length > 0 ? localProfile : firestoreProfile);
           const b = (d.blocked && d.blocked.length > 0) ? d.blocked : read("illit_blocked_", []);
           const l = (d.likes && d.likes.length > 0) ? d.likes : read("illit_likes_", []);
-          setDoc(ref, { migrated: true, profile: p, blocked: b, likes: l }, { merge: true }).finally(() => migratingLocal = false);
+          const payload = { migrated: true, blocked: b, likes: l };
+          // profileは中身があるときだけ書く（空オブジェクトで上書きしない）
+          if (p && Object.keys(p).length > 0) payload.profile = p;
+          setDoc(ref, payload, { merge: true }).finally(() => migratingLocal = false);
         }
         userData = { profile: d.profile || {}, blocked: d.blocked || [], likes: d.likes || [], reads: d.reads || {}, notifications: d.notifications || [], cancelHistory: d.cancelHistory || [], myCards: d.myCards || {}, collectionPublic: !!d.collectionPublic, customCards: Array.isArray(d.customCards) ? d.customCards : [], cardWatch: d.cardWatch && typeof d.cardWatch === "object" ? d.cardWatch : {} };
         if (currentUser) {
@@ -2655,29 +2663,63 @@ const ILLIT_CARD_ALBUMS = [
 
     window.saveProfile = async function() {
       if (!currentUser) return;
-      const p = {
-        nickname: document.getElementById("profile-nickname").value.trim(),
-        paypay: (document.getElementById("profile-paypay") && document.getElementById("profile-paypay").value || "").trim(),
-        name: document.getElementById("profile-name").value.trim(),
-        zip: document.getElementById("profile-zip").value.trim(),
-        address1: document.getElementById("profile-address1").value.trim(),
-        address2: document.getElementById("profile-address2").value.trim(),
-        phone: document.getElementById("profile-phone").value.trim()
-      };
-      // 住所・配送先の保存時は、お名前・郵便番号・住所を必須にする
+      const prev = userData.profile || {};
+      let p = {};
+
+      // セクションごとに更新する項目を限定（他項目を空で上書きしない）
       if (profileSection === "address") {
+        p = {
+          name: document.getElementById("profile-name").value.trim(),
+          zip: document.getElementById("profile-zip").value.trim(),
+          address1: document.getElementById("profile-address1").value.trim(),
+          address2: document.getElementById("profile-address2").value.trim(),
+          phone: document.getElementById("profile-phone").value.trim()
+        };
         if (!p.name || !p.zip || !p.address1) return alert("お名前・郵便番号・住所は必須です。");
         if (!/^\d{3}-?\d{4}$/.test(p.zip)) return alert("郵便番号は7桁の数字で入力してください。（例: 123-4567）");
+      } else if (profileSection === "basic") {
+        p = {
+          nickname: document.getElementById("profile-nickname").value.trim()
+        };
+        if (pendingProfilePhoto !== null) {
+          p.photo = pendingProfilePhoto; // "" の場合は写真削除
+        }
+        // 写真を触っていないときは既存 photo を維持（上書きしない）
+      } else if (profileSection === "paypay") {
+        p = {
+          paypay: (document.getElementById("profile-paypay") && document.getElementById("profile-paypay").value || "").trim()
+        };
+      } else {
+        // 念のためのフォールバック（全項目マージだが空上書きは避ける）
+        const nick = document.getElementById("profile-nickname").value.trim();
+        const paypay = (document.getElementById("profile-paypay") && document.getElementById("profile-paypay").value || "").trim();
+        const name = document.getElementById("profile-name").value.trim();
+        const zip = document.getElementById("profile-zip").value.trim();
+        const address1 = document.getElementById("profile-address1").value.trim();
+        const address2 = document.getElementById("profile-address2").value.trim();
+        const phone = document.getElementById("profile-phone").value.trim();
+        if (nick) p.nickname = nick;
+        if (paypay || paypay === "") p.paypay = paypay;
+        if (name) p.name = name;
+        if (zip) p.zip = zip;
+        if (address1) p.address1 = address1;
+        if (address2 || address2 === "") p.address2 = address2;
+        if (phone || phone === "") p.phone = phone;
+        if (pendingProfilePhoto !== null) p.photo = pendingProfilePhoto;
       }
-      if (pendingProfilePhoto !== null) p.photo = pendingProfilePhoto;
-      else p.photo = userData.profile?.photo || "";
-      userData.profile = { ...(userData.profile || {}), ...p };
-      try { await saveUserData({ profile: userData.profile }); } catch (e) { return alert("失敗しました。"); }
+
+      userData.profile = { ...prev, ...p };
+      try {
+        await saveUserData({ profile: userData.profile });
+      } catch (e) {
+        console.error(e);
+        return alert("失敗しました。\n" + (e?.code || e?.message || ""));
+      }
       showToast("設定を保存しました！", "success");
       closeProfileModal();
       renderSellTab();
       if (currentUser) {
-        document.getElementById("user-name").innerText = p.nickname || currentUser.displayName || "匿名";
+        document.getElementById("user-name").innerText = getMyDisplayName();
         updateUserAvatar();
       }
       if (currentTrade) { renderRoomAddressBox(); renderRoomPayPayBox(); }
