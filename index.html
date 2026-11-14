@@ -1879,9 +1879,9 @@ const ILLIT_CARD_ALBUMS = [
     if (adminTab === "stats") {
           const d = new Date(); d.setDate(1); d.setHours(0,0,0,0);
           const [tradesSnap, usersSnap, postsSnap] = await Promise.all([
-            _safeAdminGetDocs(collection(db, "trades")),
-            _safeAdminGetDocs(collection(db, "users")),
-            _safeAdminGetDocs(collection(db, "posts"))
+            _safeAdminGetDocs(query(collection(db, "trades"), limit(200))),
+          _safeAdminGetDocs(query(collection(db, "users"), limit(200))),
+          _safeAdminGetDocs(query(collection(db, "posts"), limit(200)))
           ]);
           
           let platformTotal = 0; let thisMonthTotal = 0; let completedCount = 0;
