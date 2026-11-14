@@ -3590,7 +3590,8 @@ const ILLIT_CARD_ALBUMS = [
         }
         postsHasMore = snap.docs.length === POSTS_PAGE;
         const wrap = document.getElementById("load-more-wrap"); if (wrap) wrap.classList.toggle("hidden", !postsHasMore);
-        renderPosts();
+      loadingPosts = false;
+      renderPosts();
         scheduleHealSoldPosts();
         // 詳細モーダルを開いている間に並びが変わっても、投稿IDで追従して添字を更新する
         if (reset && currentDetailId && !document.getElementById("detail-modal").classList.contains("hidden")) {
