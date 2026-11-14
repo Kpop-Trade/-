@@ -5143,6 +5143,41 @@ function getAiCardVectors() {
     }
 
     window.runCardImageRecognition = async function(uploadedDataUrl) {
+    const updateStatus = (msg) => {
+      ["similar-cards-suggest", "mycards-image-search-result"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) { el.classList.remove("hidden"); el.textContent = msg; }
+      });
+    };
+    updateStatus("🔄 AIライブラリを読み込んでいます...");
+    
+    // タイムアウト監視付きの実行ラッパー
+    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("AI画像解析がタイムアウトしました（通信環境やメモリをご確認ください）")), 45000));
+    
+    try {
+      const runCore = async () => {
+        // 既存のAI特徴量抽出・類似度計算ロジックをラップして進捗を表示
+        updateStatus("🤖 AIモデルを準備中 (0%)...");
+        return await findSimilarCardsWithAI(uploadedDataUrl, (p) => {
+          if (p && typeof p.progress === "number") {
+            updateStatus(`🤖 AIモデル準備中... ${Math.round(p.progress)}%`);
+          } else if (p && p.status) {
+            updateStatus(`⚡ ${p.status}...`);
+          }
+        });
+      };
+      
+      const matches = await Promise.race([runCore(), timeoutPromise]);
+      return matches;
+    } catch (e) {
+      console.error("AI Recognition Error:", e);
+      updateStatus("⚠️ 解析エラー: " + (e.message || e));
+      throw e;
+    }
+  };
+  
+  // 元の処理を生かすためのプレースホルダー
+  window._runCardImageRecognition_orig = async function(uploadedDataUrl) {
       const container = document.getElementById("similar-cards-suggest");
       if (!container) return;
       container.innerHTML = `<div class="text-[11px] text-purple-600 font-bold py-2 px-2 bg-purple-50 rounded-xl text-center">🤖 AIがトレカを解析中...</div>`;
