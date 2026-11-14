@@ -3060,6 +3060,8 @@ const ILLIT_CARD_ALBUMS = [
         document.getElementById("user-name").innerText = getMyDisplayName();
         updateUserAvatar();
         subscribeUserData(); subscribeTrades(); subscribeSuspension();
+        if (typeof loadPosts === "function") { loadingPosts = false; loadPosts(true); }
+        setTimeout(() => { if (typeof updateUserAvatar === "function") updateUserAvatar(); }, 800);
         if ("Notification" in window && Notification.permission === "granted" && localStorage.getItem(pushStorageKey())) saveToken().catch(()=>{});
         // ログイン済み・規約同意済みなら初回のみ通知オン確認
         if (typeof maybeShowPushPrompt === "function") maybeShowPushPrompt();
@@ -3067,6 +3069,7 @@ const ILLIT_CARD_ALBUMS = [
         loginBtn.classList.remove("hidden"); userProfile.classList.add("hidden");
         if (unsubTrades) unsubTrades(); if (unsubUser) unsubUser(); unsubTrades=null; unsubUser=null;
         tradesLoaded = false;
+        if (typeof loadPosts === "function" && allPosts.length === 0) { loadingPosts = false; loadPosts(true); }
         if (unsubSusp) { unsubSusp(); unsubSusp = null; }
         document.getElementById("suspended-modal").classList.add("hidden");
         userData = { profile: {}, blocked: [], likes: [], reads: {}, notifications: [], cancelHistory: [], myCards: {}, collectionPublic: false, customCards: [], cardWatch: {} }; myTrades = []; updateBadge(); updateNotifBadge();
