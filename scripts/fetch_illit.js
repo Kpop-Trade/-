@@ -10,7 +10,7 @@ async function getAccessToken(sa) {
   const header = base64url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
   const claim = base64url(JSON.stringify({
     iss: sa.client_email,
-    scope: "https://www.googleapis.com/auth/cloud-platform",
+    scope: "https://www.googleapis.com/auth/cloud-platform https://www.googleapis.com/auth/datastore https://www.googleapis.com/auth/firebase.messaging",
     aud: "https://oauth2.googleapis.com/token",
     exp: now + 3600,
     iat: now
@@ -30,13 +30,131 @@ async function getAccessToken(sa) {
   return data.access_token;
 }
 
+function getJstDateStr(offsetDays = 0) {
+  const d = new Date(Date.now() + 9 * 3600 * 1000 + offsetDays * 86400 * 1000);
+  return d.toISOString().split("T")[0];
+}
+
+async function sendNotifications(projectId, token, events) {
+  const today = getJstDateStr(0);
+  const tomorrow = getJstDateStr(1);
+
+  const targets = events.filter(e => e.date === today || e.date === tomorrow);
+  if (targets.length === 0) {
+    console.log("通知対象の今日・明日の予定はありません。");
+    return;
+  }
+
+  // 1. 送信済み履歴をFirestoreから取得 (system/illit_notified)
+  const fsBase = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents`;
+  const histRes = await fetch(`${fsBase}/system/illit_notified`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  let sentKeys = [];
+  if (histRes.ok) {
+    const histData = await histRes.json();
+    sentKeys = (histData.fields?.keys?.arrayValue?.values || []).map(v => v.stringValue);
+  }
+
+  const newTargets = targets.filter(e => {
+    const label = e.date === today ? "today" : "tomorrow";
+    return !sentKeys.includes(`${label}:${e.date}:${e.title}`);
+  });
+  if (newTargets.length === 0) {
+    console.log("対象予定はすべて通知済みです。");
+    return;
+  }
+
+  // 2. 通知オンの全ユーザーのFCMトークンをcollectionGroup("tokens")で取得
+  const qRes = await fetch(`${fsBase}:runQuery`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      structuredQuery: {
+        from: [{ collectionId: "tokens", allDescendants: true }]
+      }
+    })
+  });
+  const qRows = await qRes.json();
+  const tokenDocs = (Array.isArray(qRows) ? qRows : [])
+    .filter(r => r.document && r.document.fields?.token?.stringValue)
+    .map(r => ({
+      name: r.document.name,
+      token: r.document.fields.token.stringValue
+    }));
+
+  if (tokenDocs.length === 0) {
+    console.log("登録済みFCMトークンが0件のため通知スキップ。");
+    return;
+  }
+
+  // 3. FCM HTTP v1 API でプッシュ通知送信
+  const fcmUrl = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`;
+  const newlySentKeys = [...sentKeys];
+
+  for (const ev of newTargets) {
+    const isToday = ev.date === today;
+    const prefix = isToday ? "【本日】" : "【明日】";
+    const timeStr = ev.time && ev.time !== "終日" ? ` (${ev.time})` : "";
+    const title = `${prefix}${ev.title}${timeStr}`;
+    const body = ev.detail || "ILLIT予定カレンダーで詳細を確認";
+
+    let okCount = 0;
+    for (const td of tokenDocs) {
+      const sendRes = await fetch(fcmUrl, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: {
+            token: td.token,
+            notification: { title, body },
+            webpush: {
+              fcmOptions: { link: "https://kpop-trade.github.io/" }
+            }
+          }
+        })
+      });
+      if (sendRes.ok) {
+        okCount++;
+      } else {
+        const errText = await sendRes.text();
+        if (errText.includes("UNREGISTERED") || errText.includes("INVALID_ARGUMENT")) {
+          await fetch(`https://firestore.googleapis.com/v1/${td.name}`, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${token}` }
+          });
+        }
+      }
+    }
+    const label = isToday ? "today" : "tomorrow";
+    newlySentKeys.push(`${label}:${ev.date}:${ev.title}`);
+    console.log(`通知送信完了: ${title} -> ${okCount}/${tokenDocs.length}端末`);
+  }
+
+  // 4. 送信済み履歴を保存（直近100件保持）
+  const trimmed = newlySentKeys.slice(-100);
+  await fetch(`${fsBase}/system/illit_notified`, {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      fields: {
+        keys: {
+          arrayValue: {
+            values: trimmed.map(k => ({ stringValue: k }))
+          }
+        }
+      }
+    })
+  });
+}
+
 async function main() {
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
   if (!raw) throw new Error("FIREBASE_SERVICE_ACCOUNT is not set");
   const sa = JSON.parse(raw);
   const token = await getAccessToken(sa);
 
-  const prompt = `現在の日付は ${new Date().toISOString().split("T")[0]} です。K-POPグループ「ILLIT（アイリット）」の日本および韓国の今後1〜2ヶ月間の公式スケジュールをGoogle検索で網羅的に調査し、以下のJSON配列形式のみを出力してください。マークダウンのコードブロックは不要です。
+  const prompt = `現在の日付は ${getJstDateStr(0)} です。K-POPグループ「ILLIT（アイリット）」の日本および韓国の今後1〜2ヶ月間の公式スケジュールをGoogle検索で網羅的に調査し、以下のJSON配列形式のみを出力してください。マークダウンのコードブロックは不要です。
 
 【必ず重点的に調査・抽出する項目】
 1. シリアルナンバー特典の応募受付開始日・最終受付締切日（オフラインイベント、サイン会、ヨントン、お見送り会など）
@@ -67,6 +185,8 @@ async function main() {
   const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
   fs.writeFileSync("illit_calendar.json", JSON.stringify(parsed, null, 2));
   console.log(`SUCCESS: ${parsed.length}件更新`);
+
+  await sendNotifications(sa.project_id, token, parsed);
 }
 
 main().catch(e => { console.error(e); process.exit(1); });
