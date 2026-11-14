@@ -4936,6 +4936,17 @@ window.openAzukariApp = function() {
       }
       return _aiClipExtractorPromise;
     }
+        window.ensureCatalogCardsLoaded = window.ensureCatalogCardsLoaded || (async function() {
+      if (typeof loadCatalogCards === "function") return await loadCatalogCards();
+      if (typeof ensureCatalogLoaded === "function") return await ensureCatalogLoaded();
+      if (typeof loadCatalog === "function") return await loadCatalog();
+      return true;
+    });
+    window.ensureCardPhotosLoaded = window.ensureCardPhotosLoaded || (async function() {
+      if (typeof loadCardPhotos === "function") return await loadCardPhotos();
+      return true;
+    });
+
     async function findSimilarCardsWithAI(dataUrl) {
       try {
         return await _findSimilarCardsWithAIRaw(dataUrl);
