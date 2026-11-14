@@ -3,6 +3,50 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+  // エラーを赤い文字で画面に大きく表示する
+  window.onerror = function(message, source, lineno, colno, error) {
+    const errorDiv = document.createElement('div');
+    errorDiv.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: #ff0000;
+      color: white;
+      padding: 16px;
+      font-size: 15px;
+      font-weight: bold;
+      z-index: 999999;
+      white-space: pre-wrap;
+      font-family: monospace;
+      line-height: 1.4;
+    `;
+    errorDiv.innerText = `【エラー発生】\n${message}\n\nファイル: ${source}\n行: ${lineno}  列: ${colno}`;
+    document.body.prepend(errorDiv);
+    return false;
+  };
+
+  window.addEventListener('unhandledrejection', function(event) {
+    const errorDiv = document.createElement('div');
+    errorDiv.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: #cc0000;
+      color: white;
+      padding: 16px;
+      font-size: 15px;
+      font-weight: bold;
+      z-index: 999999;
+      white-space: pre-wrap;
+      font-family: monospace;
+    `;
+    errorDiv.innerText = `【Promiseエラー】\n${event.reason}`;
+    document.body.prepend(errorDiv);
+  });
+</script>
   <title>ILLIT Trade</title>
   <meta name="description" content="ILLITファン同士のトレカ・シリアル・アルバム交換・買取・共同購入。手数料0円の非公式プラットフォーム">
   <meta name="theme-color" content="#c084fc">
