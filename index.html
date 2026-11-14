@@ -1187,13 +1187,72 @@ getRedirectResult(auth)
 
 
 // 👇 これを追加（アルバムIDはお好みに合わせて増減できます）
-const ILLIT_CARD_ALBUMS = [
-  { id: "srm", name: "SUPER REAL ME", year: "2024", cards: [] },
-  { id: "ily", name: "I'LL LIKE YOU", year: "2024", cards: [] },
-  { id: "bomb", name: "bomb", year: "2025", cards: [] },
-  { id: "jp1", name: "時よ止まれ", year: "2025", cards: [] },
-  { id: "other", name: "その他・特典", year: "", cards: [] }
+const ILLIT_ALBUMS = [
+  {
+    id: "super_real_me",
+    name: "1st Mini Album『SUPER REAL ME』",
+    shortName: "SUPER REAL ME",
+    release: "2024-03-25",
+    versions: ["SUPER ME Ver.", "REAL ME Ver.", "Weverse Albums Ver.", "特典・ラキドロ"]
+  },
+  {
+    id: "ill_like_you",
+    name: "2nd Mini Album『I'LL LIKE YOU』",
+    shortName: "I'LL LIKE YOU",
+    release: "2024-10-21",
+    versions: ["TO Ver.", "WITH Ver.", "BETWEEN Ver.", "GLLIT Ver.", "Weverse Albums Ver.", "特典・ラキドロ"]
+  },
+  {
+    id: "bomb",
+    name: "3rd Mini Album『bomb』",
+    shortName: "bomb",
+    release: "2025-06-16",
+    versions: ["MAGIC BOMB Ver.", "PINK BOMB Ver.", "STAR BOMB Ver.", "GLLIT Ver.", "Weverse Albums Ver.", "特典・ラキドロ"]
+  },
+  {
+    id: "toki_yo_tomare",
+    name: "JP 1st Single『時よ止まれ』",
+    shortName: "時よ止まれ",
+    release: "2025-09-03",
+    versions: ["初回限定盤", "通常盤", "キャラクターコラボ盤", "ユニット盤A", "ユニット盤B", "特典・ラキドロ"]
+  },
+  {
+    id: "not_cute_anymore",
+    name: "1st Single Album『NOT CUTE ANYMORE』",
+    shortName: "NOT CUTE ANYMORE",
+    release: "2025-11-24",
+    versions: ["一般盤", "Weverse Albums Ver.", "特典・ラキドロ"]
+  },
+  {
+    id: "mamihlapinatapai",
+    name: "4th Mini Album『MAMIHLAPINATAPAI』",
+    shortName: "MAMIHLAPINATAPAI",
+    release: "2026-04-30",
+    versions: ["GRWM Ver.", "IT'S ME Ver.", "FREE RIDER Ver.", "PAW PAW Ver.", "Gua Sha Ceramic Object Ver.", "Weverse Albums Ver.", "特典・ラキドロ"]
+  },
+  {
+    id: "i_got_your_back",
+    name: "JP 2nd Single『I Got Your Back』",
+    shortName: "I Got Your Back",
+    release: "2026-07-29",
+    versions: ["初回限定盤", "通常盤", "ILLIT×FRUiTS Special Edition", "特典・ラキドロ"]
+  },
+  {
+    id: "break_even",
+    name: "5th Mini Album『BREAK EVEN』",
+    shortName: "BREAK EVEN",
+    release: "2026-10-26",
+    versions: ["BURNING Ver.", "QUIET Ver.", "MAD Ver.", "GLLIT Ver.", "Photo Dump Ver.", "Little Mimi Ver.", "Weverse Albums Ver.", "特典・ラキドロ"]
+  },
+  {
+    id: "other_md",
+    name: "その他（ペンミ・ツアーMD・シーグリ・イベント等）",
+    shortName: "その他・MD",
+    release: "other",
+    versions: ["ツアーMD", "ファンミ・ペンコン", "シーズングリーティング", "コラボ・その他"]
+  }
 ];
+
 
 
     const CARD_STATUS = { owned: "所持", none: "未所持", want: "欲しい" };
