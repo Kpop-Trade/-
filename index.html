@@ -4997,39 +4997,30 @@ window.openAzukariApp = function() {
     };
 
 
-    async function ensureCatalogCardsLoaded(forceRefresh = false) {
-      await loadStaticCardPack();
-      if (catalogCardsLoaded && !forceRefresh) return;
-
-      // 1. 6時間以内に取得した追加カタログがIndexedDBにあればそれを使う（0回）
-      if (!forceRefresh) {
-        const cached = await idbGet("catalog_cards");
-        if (cached && Array.isArray(cached.items) && (Date.now() - cached.savedAt < CATALOG_CACHE_TTL)) {
-          catalogCardsCache = cached.items;
-          catalogCardsLoaded = true;
-          return;
-        }
-      }
-
-      // 2. Firestoreの追加カタログ（少数の追加分のみ）を取得
+    async function loadStaticCardPack(force = false) {
+      if (!force && staticPackLoaded && staticPackCards.length > 0) return;
       try {
-        const snap = await getDocs(collection(db, "cardCatalog"));
-        catalogCardsCache = snap.docs.map(d => {
-          const data = d.data() || {};
-          return {
-            id: d.id,
-            albumId: data.albumId || "other",
-            name: data.name || "",
-            member: data.member || "",
-            admin: true
-          };
-        }).filter(c => c.name);
-        catalogCardsLoaded = true;
-        await idbSet("catalog_cards", { items: catalogCardsCache, savedAt: Date.now() });
+        const res = await fetch("./catalog.json?t=" + Date.now(), { cache: "no-store" });
+        if (!res.ok) return;
+        const data = await res.json();
+        const items = Array.isArray(data) ? data : (Array.isArray(data.cards) ? data.cards : []);
+        staticPackCards = items.map(c => ({
+          id: String(c.id || ""),
+          albumId: String(c.albumId || "other"),
+          name: String(c.name || ""),
+          member: String(c.member || ""),
+          photoUrl: c.photo ? String(c.photo) : "",
+          staticPack: true
+        })).filter(c => c.id && c.name);
+        staticPackCards.forEach(c => {
+          if (c.photoUrl) cardPhotoCache[c.id] = c.photoUrl;
+        });
+        staticPackLoaded = true;
       } catch (e) {
-        console.warn("cardCatalog load:", e?.code || e);
+        console.warn("catalog.json load error:", e);
       }
     }
+
 
     let adminBulkFiles = [];
     let adminZipPackFiles = [];
