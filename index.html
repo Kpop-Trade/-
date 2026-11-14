@@ -3031,7 +3031,11 @@ const ILLIT_CARD_ALBUMS = [
 
     window.openPostModal = async function(mode) {
       if (!currentUser) return alert("ログインが必要です。");
-      if (!(await checkDeviceLock())) return;
+      try {
+        if (typeof checkDeviceLock === "function" && !(await checkDeviceLock())) return;
+      } catch (lockErr) {
+        console.warn("checkDeviceLock skipped:", lockErr);
+      }
       postMode = mode;
       const isBuy = mode === "buy";
       const isAlbum = mode.startsWith("album");
@@ -3059,7 +3063,7 @@ const ILLIT_CARD_ALBUMS = [
             // 画像認識（写真から候補表示）用にカタログだけ読み込んでおく
       Promise.all([ensureCatalogCardsLoaded(), ensureCardPhotosLoaded()]).catch(() => {});
 
-      document.getElementById("post-modal").classList.remove("hidden");
+      const _pm = document.getElementById("post-modal"); if (_pm) { _pm.classList.remove("hidden"); _pm.style.display = ""; }
     };
     window.closePostModal = function() {
       document.getElementById("post-modal").classList.add("hidden");
