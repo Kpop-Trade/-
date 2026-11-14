@@ -3517,7 +3517,17 @@ const ILLIT_CARD_ALBUMS = [
         const q = (!reset && postsCursor)
           ? query(...base, startAfter(postsCursor), limit(POSTS_PAGE))
           : query(...base, limit(POSTS_PAGE));
-        const snap = await getDocs(q);
+        let snap;
+        try {
+          snap = await getDocs(q);
+        } catch (loadErr) {
+          console.error("loadPosts query error:", loadErr);
+          const container = document.getElementById("posts-container");
+          if (container) {
+            container.innerHTML = `<div class="p-4 m-4 bg-red-50 text-red-600 text-xs rounded-xl border border-red-200 text-center">⚠️ データの読み込みに失敗しました: ${loadErr.message}</div>`;
+          }
+          return;
+        }
         const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         if (reset) {
           allPosts = list;
