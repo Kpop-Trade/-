@@ -6759,56 +6759,7 @@ window.openAzukariApp = function() {
           console.warn("ensureCatalogCardsLoaded", e);
         }
 
-        // Firestoreから直接取り直す（キャッシュ欠落対策）
-        let list = (catalogCardsCache || []).slice();
-        try {
-          const snap = await getDocs(collection(db, "cardCatalog"));
-          list = snap.docs.map(d => {
-            const data = d.data() || {};
-            return {
-              id: d.id,
-              albumId: data.albumId || "other",
-              name: data.name || "",
-              member: data.member || "",
-              admin: true
-            };
-          });
-          catalogCardsCache = list.filter(c => c.name);
-          catalogCardsLoaded = true;
-        } catch (e) {
-          console.warn("cardCatalog refresh", e);
-          alert("カタログの取得に失敗しました。\n" + (e && (e.code || e.message) ? (e.code || e.message) : e));
-          return;
-        }
-
-        if (!list.length) {
-          alert("カタログに登録されたカードがありません。\n（管理者追加のカードが0件です）");
-          return;
-        }
-
-        const toDeleteMap = new Map(); // id -> card
-
-        // 1) キャッシュ／取得結果内で同じIDが複数（通常は起きないが保険）
-        const seenIds = new Map();
-        for (const c of list) {
-          if (!c || !c.id) continue;
-          if (seenIds.has(c.id)) toDeleteMap.set(c.id, c);
-          else seenIds.set(c.id, c);
-        }
-
-        // 2) 静的パック／定義カードとIDが完全一致する管理者登録
-        const staticOrBaseIds = new Set();
-        (staticPackCards || []).forEach(c => { if (c && c.id) staticOrBaseIds.add(String(c.id)); });
-        (ILLIT_CARD_ALBUMS || []).forEach(a => {
-          (a.cards || []).forEach(c => { if (c && c.id) staticOrBaseIds.add(String(c.id)); });
-        });
-        list.forEach(c => {
-    const _safeAdminGetDocs2 = async (q) => {
-      try {
-        return await getDocs(q);
-      } catch (err) {
-        console.warn("Admin2 getDocs fallback:", err && err.message ? err.message : err);
-        return { docs: [], size: 0, empty: true, forEach: () => {} };
+        // GitHubパック(catalog.json)優先のためFirestore全件再取得は無効化;
       }
     };
     const _safeAdminGetDoc2 = async (r) => {
