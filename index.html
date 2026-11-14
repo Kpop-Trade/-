@@ -318,6 +318,14 @@
       </div>
             <div id="mycards-own-panel" class="space-y-3">
         <p class="text-[11px] text-gray-600 leading-relaxed bg-white/50 rounded-xl p-2.5 border border-white">アルバムごとに主要トレカを一覧表示します。タップで「所持 / 未所持 / 欲しい」を切り替え。🔔で出品通知も設定できます。</p>
+        <div class="flex gap-2 items-center">
+          <label class="flex-1 liquid-glass-input rounded-xl py-2.5 text-xs font-bold text-illit-darkPurple text-center cursor-pointer active:scale-[.99] transition">
+            📷 画像でMyトレカ検索
+            <input type="file" accept="image/*" class="hidden" onchange="runMyCardsImageSearch(this)">
+          </label>
+          <button type="button" id="mycards-image-search-clear" onclick="clearMyCardsImageSearch()" class="hidden shrink-0 px-3 py-2.5 text-xs font-bold text-gray-600 bg-white/70 rounded-xl border border-white">クリア</button>
+        </div>
+        <div id="mycards-image-search-result" class="hidden text-[11px] text-gray-600 bg-white/60 rounded-xl p-2 border border-white"></div>
         <div id="mycards-album-tabs" class="flex gap-1.5 overflow-x-auto hide-scrollbar pb-1"></div>
         <div id="mycards-member-tabs" class="flex gap-1.5 overflow-x-auto hide-scrollbar pb-1"></div>
         <div id="mycards-list" class="space-y-2"></div>
@@ -4555,9 +4563,13 @@ window.openAzukariApp = function() {
       if (!targetVec) return [];
 
       const allCards = [];
+      const seenIds = new Set();
       for (const a of ILLIT_CARD_ALBUMS) {
         getAlbumCards(a.id).forEach(c => {
-          if (!c.custom) allCards.push({ ...c, albumName: a.name });
+          if (c.custom) return;
+          if (seenIds.has(c.id)) return;
+          seenIds.add(c.id);
+          allCards.push({ ...c, albumName: a.name });
         });
       }
 
@@ -4574,11 +4586,19 @@ window.openAzukariApp = function() {
 
         const score = calcCosineSimilarity(targetVec, cardVec);
         if (score >= 70) {
-          results.push({ card, photoUrl, score });
+          results.push({ card, photoUrl, score, vec: cardVec });
         }
       }
 
-      return results.sort((a, b) => b.score - a.score).slice(0, 5);
+      results.sort((a, b) => b.score - a.score);
+
+      // 同じ写真が別IDで複数ある場合、候補から重複を除去
+      const unique = [];
+      for (const r of results) {
+        const dup = unique.some(u => calcCosineSimilarity(u.vec, r.vec) >= 98);
+        if (!dup) unique.push(r);
+      }
+      return unique.slice(0, 5).map(({ card, photoUrl, score }) => ({ card, photoUrl, score }));
     }
 
     window.runCardImageRecognition = async function(uploadedDataUrl) {
@@ -4731,7 +4751,7 @@ window.openAzukariApp = function() {
       el.innerHTML = `
         <div class="flex gap-1.5 overflow-x-auto hide-scrollbar pb-1 mb-2" id="admin-card-album-tabs">${albumTabsHtml}</div>
         <button type="button" onclick="adminDeduplicateCatalogCards()" class="w-full mb-3 bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold py-2.5 rounded-full hover:bg-amber-100 transition shadow-sm">
-          🧹 重複トレカを自動削除（同じアルバム・名前・メンバー）
+          🧹 重複トレカを自動削除（画像が同じものを判定）
         </button>
         <div class="liquid-glass rounded-2xl p-3 mb-3 space-y-2.5 border border-indigo-200/60 bg-gradient-to-br from-indigo-50/80 to-purple-50/80">
           <div class="flex items-center justify-between">
@@ -5769,6 +5789,40 @@ window.openAzukariApp = function() {
       }
     };
 
+    // 画像の簡易パーセプチュアルハッシュ（8x8 aHash）
+    async function computeImageAHash(dataUrl) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          try {
+            const size = 8;
+            const canvas = document.createElement("canvas");
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext("2d", { willReadFrequently: true });
+            ctx.drawImage(img, 0, 0, size, size);
+            const data = ctx.getImageData(0, 0, size, size).data;
+            const grays = [];
+            for (let i = 0; i < data.length; i += 4) {
+              grays.push(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+            }
+            const avg = grays.reduce((a, b) => a + b, 0) / grays.length;
+            let hash = "";
+            for (const g of grays) hash += g >= avg ? "1" : "0";
+            resolve(hash);
+          } catch (e) { reject(e); }
+        };
+        img.onerror = () => reject(new Error("image load failed"));
+        img.src = dataUrl;
+      });
+    }
+    function hammingDistance(a, b) {
+      if (!a || !b || a.length !== b.length) return 64;
+      let d = 0;
+      for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) d++;
+      return d;
+    }
+
     window.adminDeduplicateCatalogCards = async function() {
       if (typeof isAdmin === "function" && !isAdmin()) {
         alert("管理者のみ実行できます。");
@@ -5780,46 +5834,112 @@ window.openAzukariApp = function() {
       }
       try {
         await ensureCatalogCardsLoaded();
-      } catch (e) {
-        console.warn(e);
-      }
+      } catch (e) { console.warn(e); }
+
       const list = (catalogCardsCache || []).slice();
       if (!list.length) {
         alert("カタログに登録されたカードがありません。");
         return;
       }
 
-      // キー: albumId|member|正規化name
-      const norm = (s) => String(s || "").replace(/\s+/g, " ").trim().toLowerCase();
-      const groups = new Map();
-      for (const c of list) {
-        const key = [c.albumId || "", norm(c.member), norm(c.name)].join("|");
-        if (!groups.has(key)) groups.set(key, []);
-        groups.get(key).push(c);
+      if (!(await appConfirm(
+        "画像がほぼ同一のトレカだけを探して、重複分を削除します。\n（厳格モード: わずかに違うカードは残します）\n\n枚数が多いと少し時間がかかります。続行しますか？",
+        "画像判定を開始",
+        false
+      ))) return;
+
+      const progToast = (msg) => {
+        if (typeof showToast === "function") showToast(msg, "info");
+      };
+      progToast("画像を読み込み・比較中...");
+
+      // 写真データを揃える
+      const withPhoto = [];
+      for (let i = 0; i < list.length; i++) {
+        const c = list[i];
+        let dataUrl = cardPhotoCache[c.id] || c.photoUrl || null;
+        if (!dataUrl) {
+          try {
+            const cached = typeof idbGet === "function" ? await idbGet("photo_" + c.id) : null;
+            if (cached) dataUrl = cached;
+          } catch (_) {}
+        }
+        if (!dataUrl) {
+          try {
+            const snap = await getDoc(doc(db, "cardPhotos", c.id));
+            if (snap.exists()) {
+              const d = snap.data();
+              dataUrl = d.data || d.photo || null;
+              if (dataUrl) {
+                cardPhotoCache[c.id] = dataUrl;
+                if (typeof idbSet === "function") await idbSet("photo_" + c.id, dataUrl);
+              }
+            }
+          } catch (_) {}
+        }
+        if (dataUrl && typeof dataUrl === "string" && dataUrl.startsWith("data:")) {
+          withPhoto.push({ card: c, dataUrl });
+        }
+        if (i % 20 === 0) await new Promise(r => setTimeout(r, 0));
+      }
+
+      if (withPhoto.length < 2) {
+        alert("比較できる写真付きカードが足りません。");
+        return;
+      }
+
+      // ハッシュ計算
+      const hashed = [];
+      for (let i = 0; i < withPhoto.length; i++) {
+        const item = withPhoto[i];
+        try {
+          const hash = await computeImageAHash(item.dataUrl);
+          hashed.push({ card: item.card, hash });
+        } catch (e) {
+          console.warn("hash fail", item.card.id, e);
+        }
+        if (i % 10 === 0) await new Promise(r => setTimeout(r, 0));
+      }
+
+      // 類似度でグループ化（ハミング距離 <= 5 を同一視）
+      const THRESH = 2; // 厳格: ほぼ同一画像のみ（誤削除を抑える）
+      const used = new Set();
+      const groups = [];
+      for (let i = 0; i < hashed.length; i++) {
+        if (used.has(i)) continue;
+        const group = [hashed[i]];
+        used.add(i);
+        for (let j = i + 1; j < hashed.length; j++) {
+          if (used.has(j)) continue;
+          if (hammingDistance(hashed[i].hash, hashed[j].hash) <= THRESH) {
+            group.push(hashed[j]);
+            used.add(j);
+          }
+        }
+        if (group.length > 1) groups.push(group);
       }
 
       const toDelete = [];
-      for (const [, arr] of groups) {
-        if (arr.length < 2) continue;
-        // 写真があるものを優先して残す。なければ先頭を残す
-        arr.sort((a, b) => {
-          const ap = cardPhotoCache[a.id] || a.photoUrl ? 1 : 0;
-          const bp = cardPhotoCache[b.id] || b.photoUrl ? 1 : 0;
-          if (ap !== bp) return bp - ap;
-          return String(a.id).localeCompare(String(b.id));
+      for (const g of groups) {
+        // 名前が付いているものを優先して残す
+        g.sort((a, b) => {
+          const an = (a.card.name || "").trim() ? 1 : 0;
+          const bn = (b.card.name || "").trim() ? 1 : 0;
+          if (an !== bn) return bn - an;
+          return String(a.card.id).localeCompare(String(b.card.id));
         });
-        toDelete.push(...arr.slice(1));
+        for (let k = 1; k < g.length; k++) toDelete.push(g[k].card);
       }
 
       if (!toDelete.length) {
-        alert("重複は見つかりませんでした。\n（同じアルバム・名前・メンバーの組み合わせが複数あるものだけ対象です）");
+        alert("画像が重複しているトレカは見つかりませんでした。");
         return;
       }
 
       const preview = toDelete.slice(0, 8).map(c => `・${c.name || c.id}（${c.member || "メンバーなし"}）`).join("\n");
       const more = toDelete.length > 8 ? `\n…他 ${toDelete.length - 8} 件` : "";
       if (!(await appConfirm(
-        `重複 ${toDelete.length} 件を削除しますか？\n（各グループで1枚だけ残します）\n\n${preview}${more}`,
+        `画像が同じ重複 ${toDelete.length} 件を削除しますか？\n（各グループで1枚だけ残します）\n\n${preview}${more}`,
         "削除する",
         true
       ))) return;
@@ -5845,7 +5965,7 @@ window.openAzukariApp = function() {
         try { await idbDelete("catalog_cards"); } catch (_) {}
       }
 
-      showToast(`重複削除: ${ok}件${fail ? `（失敗${fail}）` : ""}`, fail ? "error" : "success");
+      showToast(`画像重複削除: ${ok}件${fail ? `（失敗${fail}）` : ""}`, fail ? "error" : "success");
       const el = document.getElementById("admin-content");
       if (el && adminTab === "cards" && typeof renderAdminCardsPanel === "function") {
         renderAdminCardsPanel(el);
@@ -5914,7 +6034,87 @@ window.openAzukariApp = function() {
       }
     };
 
-    function getCardStatus(cardId) {
+    let myCardsImageFilterIds = null; // Set<string> | null
+
+    function getMyListingCardIds() {
+      const ids = new Set();
+      if (!currentUser) return ids;
+      const posts = (typeof allPosts !== "undefined" && Array.isArray(allPosts)) ? allPosts : [];
+      posts.forEach(p => {
+        if (!p || p.userId !== currentUser.uid) return;
+        if (p.status && p.status !== "active") return;
+        if (!(p.isSell || p.kind === "card_sell" || p.kind === "album" || p.kind === "dearlit")) return;
+        if (p.catalogCardId) ids.add(p.catalogCardId);
+        // 名前一致のフォールバック
+        const give = String(p.give || "").trim();
+        if (give) {
+          for (const a of ILLIT_CARD_ALBUMS) {
+            getAlbumCards(a.id).forEach(c => {
+              if (c.name && (c.name === give || give.includes(c.name) || c.name.includes(give))) ids.add(c.id);
+            });
+          }
+        }
+      });
+      return ids;
+    }
+
+    window.runMyCardsImageSearch = async function(inputEl) {
+      const file = inputEl && inputEl.files && inputEl.files[0];
+      if (inputEl) inputEl.value = "";
+      if (!file) return;
+      const resultEl = document.getElementById("mycards-image-search-result");
+      const clearBtn = document.getElementById("mycards-image-search-clear");
+      if (resultEl) {
+        resultEl.classList.remove("hidden");
+        resultEl.textContent = "🔍 画像から検索中...";
+      }
+      try {
+        const dataUrl = await new Promise((resolve, reject) => {
+          const fr = new FileReader();
+          fr.onload = () => resolve(fr.result);
+          fr.onerror = reject;
+          fr.readAsDataURL(file);
+        });
+        const matches = await findSimilarCards(dataUrl);
+        if (!matches.length) {
+          myCardsImageFilterIds = new Set();
+          if (resultEl) resultEl.textContent = "一致するトレカが見つかりませんでした";
+          if (clearBtn) clearBtn.classList.remove("hidden");
+          renderMyCardsList();
+          return;
+        }
+        myCardsImageFilterIds = new Set(matches.map(m => m.card.id));
+        // 一番スコアが高いカードのアルバムへ移動
+        const top = matches[0].card;
+        if (top.albumId) {
+          myCardsAlbum = top.albumId;
+          myCardsMember = "ALL";
+          renderMyCardsAlbumTabs();
+          renderMyCardsMemberTabs();
+        }
+        if (resultEl) {
+          resultEl.innerHTML = `一致 ${matches.length}件（一致度 ${matches[0].score}%〜）・絞り込み中 <button type="button" class="underline text-illit-darkPurple font-bold" onclick="clearMyCardsImageSearch()">解除</button>`;
+        }
+        if (clearBtn) clearBtn.classList.remove("hidden");
+        renderMyCardsList();
+        showToast("画像検索の結果で絞り込みました", "success");
+      } catch (e) {
+        console.error(e);
+        if (resultEl) resultEl.textContent = "検索に失敗しました";
+        alert("画像検索に失敗しました");
+      }
+    };
+
+    window.clearMyCardsImageSearch = function() {
+      myCardsImageFilterIds = null;
+      const resultEl = document.getElementById("mycards-image-search-result");
+      const clearBtn = document.getElementById("mycards-image-search-clear");
+      if (resultEl) { resultEl.classList.add("hidden"); resultEl.textContent = ""; }
+      if (clearBtn) clearBtn.classList.add("hidden");
+      renderMyCardsList();
+    };
+
+        function getCardStatus(cardId) {
       const s = (userData.myCards || {})[cardId];
       return s === "owned" || s === "want" ? s : "none";
     }
@@ -6023,9 +6223,13 @@ window.openAzukariApp = function() {
       const el = document.getElementById("mycards-list");
       const allAlbumCards = getAlbumCards(myCardsAlbum);
       const norm = s => String(s || "").split(" ")[0];
-      const cards = myCardsMember === "ALL"
+      let cards = myCardsMember === "ALL"
         ? allAlbumCards
         : allAlbumCards.filter(c => norm(c.member) === myCardsMember);
+      if (myCardsImageFilterIds) {
+        cards = cards.filter(c => myCardsImageFilterIds.has(c.id));
+      }
+      const listingCardIds = getMyListingCardIds();
 
       const album = ILLIT_CARD_ALBUMS.find(a => a.id === myCardsAlbum);
       if (cards.length === 0) {
@@ -6065,12 +6269,22 @@ window.openAzukariApp = function() {
               badgeHtml = `<span class="absolute top-1 right-1 px-1.5 py-0.5 rounded-full bg-pink-500 text-white text-[9px] font-bold leading-none shadow">欲</span>`;
             }
 
+            const isListing = listingCardIds.has(c.id);
+            const listingRibbon = isListing
+              ? `<span class="absolute top-0 right-0 z-10 bg-rose-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-bl-lg shadow">出品中</span>`
+              : "";
+            // 出品中帯があるときは右上バッジを少し下げる
+            if (isListing) {
+              badgeHtml = badgeHtml.replace("top-1 right-1", "top-5 right-1");
+            }
+
             const borderClass = isOwned
               ? "border-emerald-400 ring-1 ring-emerald-400/50"
               : (isWant ? "border-pink-400 ring-1 ring-pink-400/50" : "border-white/70");
 
             return `<div onclick="openCardDetailModal('${escapeHtml(c.id)}')" class="relative aspect-[3/4] rounded-xl overflow-hidden cursor-pointer border ${borderClass} shadow-sm bg-white/60 active:scale-95 transition">
               ${imgHtml}
+              ${listingRibbon}
               ${watching ? `<span class="absolute top-1 left-1 w-4 h-4 rounded-full bg-amber-400 text-white text-[9px] flex items-center justify-center shadow">🔔</span>` : ""}
               ${badgeHtml}
               <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/45 to-transparent px-1 pt-3 pb-1">
