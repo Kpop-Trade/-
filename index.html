@@ -135,6 +135,26 @@
     body > nav { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
     body > nav button { transition: transform .25s cubic-bezier(.34,1.56,.64,1); }
     body > nav button.nav-pressed { transform: scale(1.22); }
+
+    /* PWA standalone: 上部が隠れる・引っ張ると戻る対策 */
+    html {
+      height: 100%;
+      overscroll-behavior-y: none;
+    }
+    body {
+      min-height: 100%;
+      overscroll-behavior-y: none;
+      -webkit-overflow-scrolling: touch;
+    }
+    /* ステータスバー分の余白（standaloneでも安全） */
+    header.liquid-glass.sticky {
+      padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
+    }
+    /* 下部ナビのセーフエリア */
+    body > nav {
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));
+    }
   </style>
 </head>
 <body class="bg-illit-bg min-h-screen text-gray-800 relative overflow-x-hidden">
@@ -6253,6 +6273,21 @@ window.openAzukariApp = function() {
       window.addEventListener("pointercancel", hide);
       nav.addEventListener("contextmenu", (e) => e.preventDefault());
     })();
+    // PWA standalone: 起動時・復帰時に上端へ強制（勝手に下へ行く対策）
+    (function fixStandaloneScroll() {
+      const isStandalone = window.navigator.standalone === true
+        || window.matchMedia('(display-mode: standalone)').matches;
+      if (!isStandalone) return;
+      const toTop = () => { try { window.scrollTo(0, 0); } catch (_) {} };
+      toTop();
+      setTimeout(toTop, 50);
+      setTimeout(toTop, 300);
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') setTimeout(toTop, 50);
+      });
+      window.addEventListener('pageshow', (e) => { if (e.persisted) setTimeout(toTop, 50); });
+    })();
+
     if (!hasAgreedLocally()) openTerms(false);
     renderFilters(); subscribePosts(); switchTab('home'); loadSiteAnnouncement();
 
