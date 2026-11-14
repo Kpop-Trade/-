@@ -1184,8 +1184,17 @@ getRedirectResult(auth)
     const MAX_POST_PHOTOS = 3;
     const MAX_NOTIFICATIONS = 50;
 
-    // ===== Myトレカ：主要アルバム別カード定義（公式アルバムPC中心） =====
-        const ILLIT_CARDS = [];
+const ILLIT_CARDS = [];
+
+// 👇 これを追加（アルバムIDはお好みに合わせて増減できます）
+const ILLIT_CARD_ALBUMS = [
+  { id: "srm", name: "SUPER REAL ME", year: "2024", cards: [] },
+  { id: "ily", name: "I'LL LIKE YOU", year: "2024", cards: [] },
+  { id: "bomb", name: "bomb", year: "2025", cards: [] },
+  { id: "jp1", name: "時よ止まれ", year: "2025", cards: [] },
+  { id: "other", name: "その他・特典", year: "", cards: [] }
+];
+
 
     const CARD_STATUS = { owned: "所持", none: "未所持", want: "欲しい" };
     const CARD_STATUS_CLASS = {
