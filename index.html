@@ -1,21 +1,28 @@
 <!DOCTYPE html>
-
 <html lang="ja">
 <head>
-  
-
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ILLIT Trade (ILLIT交換・買取・共同購入)</title>
-  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="manifest" href="/manifest.json">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>ILLIT Trade</title>
+  <meta name="description" content="ILLITファン同士のトレカ・シリアル・アルバム交換・買取・共同購入。手数料0円の非公式プラットフォーム">
   <meta name="theme-color" content="#c084fc">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="ILLIT Trade">
+  <meta name="application-name" content="ILLIT Trade">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="manifest" href="/manifest.json">
+  <!-- App Icons generated from official ILLIT Trade logo -->
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png">
   <link rel="apple-touch-icon" href="/icon-192.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/icon-180.png">
+  <link rel="apple-touch-icon" sizes="152x152" href="/icon-152.png">
+  <link rel="apple-touch-icon" sizes="120x120" href="/icon-120.png">
+  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
-  
   <script>
     tailwind.config = {
       theme: {
@@ -3405,7 +3412,7 @@ const ILLIT_CARD_ALBUMS = [
       // 売却のみ即購入（合意スキップ）。共同購入は応募→合意
       const isDirectPurchase = !!p.isSell;
       if (!currentUser) {
-        const loginLabel = isGroup ? "ログインして応募" : (isDirectPurchase ? "ログインして購入" : "ログインして申し込む");
+        const loginLabel = isGroup ? "ログインして応募" : (isDirectPurchase ? "ログインして購入を確定" : "ログインして申し込む");
         actions.innerHTML = `<button onclick="loginWithGoogle()" class="w-full bg-gradient-to-r from-illit-purple to-illit-accent text-white font-medium py-3 rounded-full shadow-md border border-white/30">${loginLabel}</button>`;
       } else if (p.userId === currentUser.uid) {
         actions.innerHTML = `${isGroup ? `<button onclick="toggleGroupClosed(${index})" class="w-full bg-teal-50 text-teal-700 border border-teal-200 font-medium py-3 rounded-full hover:bg-teal-100 transition shadow-sm mb-2">${closed ? '🔓 募集再開' : '🔒 募集締切'}</button>` : ''}<button onclick="openEditPost(${index})" class="w-full bg-white/80 border border-white text-illit-darkPurple font-medium py-3 rounded-full hover:bg-white transition shadow-sm">✏️ 編集</button><button onclick="deletePost(${index})" class="w-full bg-red-50 text-red-500 font-medium py-3 rounded-full border border-red-200 hover:bg-red-100 transition mt-2 shadow-sm">削除</button>`;
@@ -3422,9 +3429,10 @@ const ILLIT_CARD_ALBUMS = [
         } else if (isExpired(p)) {
           actions.innerHTML = `<p class="text-xs text-red-400 font-medium text-center bg-white/50 p-2 rounded-xl border border-white">期限切れです</p>`;
         } else {
-          const btnLabel = isGroup ? "応募する" : (p.isSell ? "購入する" : "申し込む");
+          const btnLabel = isGroup ? "応募する" : (p.isSell ? "購入を確定" : "申し込む");
           const btnGrad = isGroup ? "from-teal-400 to-teal-500" : "from-illit-purple to-illit-accent";
-          actions.innerHTML = `<button onclick="${isGroup ? `joinGroup(${index})` : `applyToPost(${index})`}" class="w-full bg-gradient-to-r ${btnGrad} text-white font-medium py-3 rounded-full shadow-md border border-white/30">${btnLabel}</button>`;
+          const onclick = isGroup ? `joinGroup(${index})` : (p.isSell ? `confirmPurchase(${index})` : `applyToPost(${index})`);
+          actions.innerHTML = `<button onclick="${onclick}" class="w-full bg-gradient-to-r ${btnGrad} text-white font-medium py-3 rounded-full shadow-md border border-white/30">${btnLabel}</button>`;
         }
       }
       actions.innerHTML += `<button onclick="shareCurrentPost()" class="w-full bg-black text-white font-medium py-3 rounded-full shadow-md border border-white/30 mt-2">𝕏 で写真付きシェア</button>`;
@@ -3609,6 +3617,18 @@ const ILLIT_CARD_ALBUMS = [
       if (p.kind === "serial" || p.kind === "group") data.deadline = document.getElementById("edit-deadline").value;
       if (p.kind === "group") { data.target = Number(document.getElementById("edit-target").value); data.bundle = document.getElementById("edit-bundle").value; data.bundleNote = data.bundle === "ng" ? "" : document.getElementById("edit-bundle-note").value.trim().slice(0, 100); }
       try { await updateDoc(doc(db, "posts", p.id), data); alert("更新しました！"); closeEditModal(); loadPosts(true); } catch(e) { alert("更新失敗"); }
+    };
+
+    // 売却出品の「購入を確定」確認ステップ
+    window.confirmPurchase = async function(index) {
+      const p = allPosts[index];
+      if (!currentUser || !p || !p.isSell) return applyToPost(index);
+      const price = Number(p.price || 0);
+      const priceText = price > 0 ? `¥${price.toLocaleString()}` : "価格未設定";
+      const msg = `【購入を確定しますか？】\n\n商品：${p.give || "（内容なし）"}\n金額：${priceText}\n\n確定すると取引ルームが作成され、出品者との取引が始まります。\n（アズカリ決済が原則です）`;
+      const ok = await appConfirm(msg, "購入を確定", false);
+      if (!ok) return;
+      return applyToPost(index);
     };
 
     window.applyToPost = async function(index) {
@@ -5521,13 +5541,17 @@ window.openAzukariApp = function() {
         if (typeof idbDelete === "function") await idbDelete("catalog_cards");
         adminCardsAlbum = albumId || adminCardsAlbum;
 
+        // 登録完了 → リストをクリアして続けて登録できるようにする
+        if (typeof clearAdminZipPack === "function") clearAdminZipPack();
+
         if (prog) {
-          prog.textContent = "✅ " + successCount + "枚をFirestoreに登録（スキップ" + skipped + "枚）";
+          prog.classList.remove("hidden");
+          prog.textContent = "✅ 完了！ " + successCount + "枚を登録しました（スキップ" + skipped + "枚）。続けて別の画像も登録できます。";
         }
         if (typeof showToast === "function") {
-          showToast(successCount + "枚を登録しました。Myトレカに反映されます", "success");
+          showToast(successCount + "枚を登録しました。続けて登録できます", "success");
         } else {
-          alert(successCount + "枚を登録しました。");
+          alert(successCount + "枚を登録しました。\n続けて別の画像を登録できます。");
         }
         if (errors.length) console.warn("一部スキップ:", errors);
 
@@ -5546,7 +5570,10 @@ window.openAzukariApp = function() {
       } finally {
         if (btn) {
           btn.disabled = false;
-          btn.textContent = origText;
+          btn.textContent = "✅ 完了（続けて登録する）";
+          setTimeout(function() {
+            if (btn && btn.textContent.indexOf("完了") !== -1) btn.textContent = origText;
+          }, 4000);
         }
       }
     };
@@ -5640,7 +5667,7 @@ window.openAzukariApp = function() {
         await idbDelete("catalog_cards");
         clearAdminBulk();
         adminCardsAlbum = albumId;
-        showToast(`${successCount}枚をまとめて登録しました`, "success");
+        showToast(`${successCount}枚をまとめて登録しました。続けて登録できます`, "success");
         const el = document.getElementById("admin-content");
         if (el && adminTab === "cards") renderAdminCardsPanel(el);
         if (isMyCardsPageOpen()) {
@@ -5651,7 +5678,13 @@ window.openAzukariApp = function() {
         console.error(e);
         alert(`一括登録中にエラーが発生しました（${successCount}枚は登録済み）。\n` + (e?.code || e?.message || ""));
       } finally {
-        if (btn) { btn.disabled = false; btn.textContent = "まとめて登録"; }
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "✅ 完了（続けて登録する）";
+          setTimeout(function() {
+            if (btn && btn.textContent.indexOf("完了") !== -1) btn.textContent = "まとめて登録";
+          }, 4000);
+        }
       }
     };
 
@@ -6231,12 +6264,14 @@ window.openAzukariApp = function() {
       const isIOS = /iPhone|iPad|iPod/i.test(ua);
       const promptElement = document.getElementById('inAppBrowserPrompt');
       const messageElement = document.getElementById('promptMessage');
-      if (isIOS) {
-        messageElement.innerHTML = "X（Twitter）などのアプリ内ブラウザでは、Googleログインが制限されてしまいます。<br><br>お手数ですが、画面右下の<br><strong class='text-illit-darkPurple font-bold'>🧭コンパスアイコン（または共有アイコン）</strong><br>をタップして、<strong>「Safariで開く」</strong>を選択してください。";
-      } else {
-        messageElement.innerHTML = "アプリ内ブラウザでは、Googleログインが制限されてしまいます。<br><br>お手数ですが、画面右上の<br><strong class='text-illit-darkPurple font-bold'>︙（メニューアイコン）</strong><br>をタップして、<strong>「ブラウザで開く」</strong>を選択してください。";
+      if (promptElement && messageElement) {
+        if (isIOS) {
+          messageElement.innerHTML = "X（Twitter）などのアプリ内ブラウザでは、Googleログインが制限されてしまいます。<br><br>お手数ですが、画面右下の<br><strong class='text-illit-darkPurple font-bold'>🧭コンパスアイコン（または共有アイコン）</strong><br>をタップして、<strong>「Safariで開く」</strong>を選択してください。";
+        } else {
+          messageElement.innerHTML = "アプリ内ブラウザでは、Googleログインが制限されてしまいます。<br><br>お手数ですが、画面右上の<br><strong class='text-illit-darkPurple font-bold'>︙（メニューアイコン）</strong><br>をタップして、<strong>「ブラウザで開く」</strong>を選択してください。";
+        }
+        promptElement.classList.remove('hidden');
       }
-      promptElement.classList.remove('hidden');
     }
   </script>
 
