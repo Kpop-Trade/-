@@ -5254,40 +5254,34 @@ window.openAzukariApp = function() {
       updateAdminZipPackUI();
     };
 
-    function updateAdminZipPackUI() {
-      const area = document.getElementById("admin-zip-status-area");
-      const countEl = document.getElementById("admin-zip-count");
+        function updateAdminZipPackUI() {
       const listEl = document.getElementById("admin-zip-list");
-      if (!area || !countEl) return;
+      if (!listEl) return;
       if (!adminZipPackFiles.length) {
-        area.classList.add("hidden");
-        if (listEl) listEl.innerHTML = "";
+        listEl.innerHTML = "";
         return;
       }
-      area.classList.remove("hidden");
-      countEl.textContent = String(adminZipPackFiles.length);
 
-      if (listEl) {
-        const members = ["", "ウォニ", "ミンジュ", "イロハ", "モカ", "ユナ", "OT5"];
-        listEl.innerHTML = adminZipPackFiles.map((item, idx) => {
-          if (!item.previewUrl && item.file) {
-            item.previewUrl = URL.createObjectURL(item.file);
-          }
-          return `
-            <div class="bg-white/90 rounded-lg p-1.5 flex items-center gap-2 border border-indigo-100">
-              ${item.previewUrl ? `<img src="${item.previewUrl}" class="w-10 h-10 object-cover rounded shrink-0">` : ""}
-              <div class="flex-1 min-w-0 space-y-1">
-                <div class="text-[10px] text-gray-500 truncate">${escapeHtml(item.file?.name || `画像 ${idx + 1}`)}</div>
-                <select onchange="adminZipPackFiles[${idx}].member = this.value" class="w-full liquid-glass-input rounded px-2 py-1 text-xs font-bold text-gray-800">
-                  ${members.map(m => `<option value="${m}" ${m === item.member ? "selected" : ""}>${m || "（メンバー選択）"}</option>`).join("")}
-                </select>
-              </div>
-              <button onclick="removeAdminZipItem(${idx})" class="text-gray-400 hover:text-red-500 px-1.5 text-xs font-bold">✕</button>
+      const members = ["", "ウォニ", "ミンジュ", "イロハ", "モカ", "ユナ", "OT5"];
+      listEl.innerHTML = adminZipPackFiles.map((item, idx) => {
+        if (!item.previewUrl && item.file) {
+          item.previewUrl = URL.createObjectURL(item.file);
+        }
+        return `
+          <div class="bg-white/90 rounded-lg p-1.5 flex items-center gap-2 border border-indigo-100">
+            ${item.previewUrl ? `<img src="${item.previewUrl}" class="w-10 h-10 object-cover rounded shrink-0">` : ""}
+            <div class="flex-1 min-w-0 space-y-1">
+              <div class="text-[10px] text-gray-500 truncate">${escapeHtml(item.file?.name || `画像 ${idx + 1}`)}</div>
+              <select onchange="adminZipPackFiles[${idx}].member = this.value" class="w-full liquid-glass-input rounded px-2 py-1 text-xs font-bold text-gray-800">
+                ${members.map(m => `<option value="${m}" ${m === item.member ? "selected" : ""}>${m || "（メンバー選択）"}</option>`).join("")}
+              </select>
             </div>
-          `;
-        }).join("");
-      }
+            <button onclick="removeAdminZipItem(${idx})" class="text-gray-400 hover:text-red-500 px-1.5 text-xs font-bold">✕</button>
+          </div>
+        `;
+      }).join("");
     }
+
 
 
         window.buildAndDownloadCardPackZip = async function() {
