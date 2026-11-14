@@ -6778,6 +6778,30 @@ window.openAzukariApp = function() {
           (a.cards || []).forEach(c => { if (c && c.id) staticOrBaseIds.add(String(c.id)); });
         });
         list.forEach(c => {
+    const _safeAdminGetDocs2 = async (q) => {
+      try {
+        return await getDocs(q);
+      } catch (err) {
+        console.warn("Admin2 getDocs fallback:", err && err.message ? err.message : err);
+        return { docs: [], size: 0, empty: true, forEach: () => {} };
+      }
+    };
+    const _safeAdminGetDoc2 = async (r) => {
+      try {
+        return await getDoc(r);
+      } catch (err) {
+        console.warn("Admin2 getDoc fallback:", err && err.message ? err.message : err);
+        return { exists: () => false, data: () => ({}), id: r && r.id ? r.id : "" };
+      }
+    };
+    const _safeAdminGetCount2 = async (q) => {
+      try {
+        return await getCountFromServer(q);
+      } catch (err) {
+        console.warn("Admin2 getCount fallback:", err && err.message ? err.message : err);
+        return { data: () => ({ count: 0 }) };
+      }
+    };
           if (c && c.id && staticOrBaseIds.has(String(c.id))) toDeleteMap.set(c.id, c);
         });
 
@@ -7014,7 +7038,7 @@ window.openAzukariApp = function() {
         // Firestoreから直接取り直し
         let list = (catalogCardsCache || []).slice();
         try {
-          const snap = await getDocs(collection(db, "cardCatalog"));
+          const snap = await _safeAdminGetDocs2(collection(db, "cardCatalog"));
           list = snap.docs.map(d => {
             const data = d.data() || {};
             return {
@@ -7063,7 +7087,7 @@ window.openAzukariApp = function() {
           }
           if (!dataUrl) {
             try {
-              const snap = await getDoc(doc(db, "cardPhotos", c.id));
+              const snap = await _safeAdminGetDoc2(doc(db, "cardPhotos", c.id));
               if (snap.exists()) {
                 const d = snap.data();
                 dataUrl = d.data || d.photo || null;
