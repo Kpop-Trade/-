@@ -5041,6 +5041,7 @@ function getAiCardVectors() {
     async function getAiClipExtractor() {
     if (_aiClipExtractorPromise) return _aiClipExtractorPromise;
     _aiClipExtractorPromise = (async () => {
+    try {
       const updateStatus = (msg) => {
         ["similar-cards-suggest", "mycards-image-search-result"].forEach(id => {
           const el = document.getElementById(id);
@@ -5051,7 +5052,7 @@ function getAiCardVectors() {
       updateStatus("🔄 AIライブラリ(Transformers.js)を初期化中...");
       
       // タイムアウト監視付きインポート (20秒)
-      const importPromise = import("https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.4.1");
+      const importPromise = import("https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.1.2/dist/transformers.min.js");
       const timeoutP = new Promise((_, rej) => setTimeout(() => rej(new Error("AIライブラリの読み込みがタイムアウトしました。通信環境を確認してください。")), 20000));
       
       const { pipeline, env } = await Promise.race([importPromise, timeoutP]);
@@ -5059,6 +5060,9 @@ function getAiCardVectors() {
       // ブラウザ環境でのキャッシュ設定最適化
       env.allowLocalModels = false;
       env.useBrowserCache = true;
+      if (env.backends && env.backends.onnx && env.backends.onnx.wasm) {
+        env.backends.onnx.wasm.numThreads = 1;
+      }
       
       updateStatus("🤖 AIモデル(CLIP)のダウンロード準備中...");
       
