@@ -820,11 +820,13 @@
           </select>
         </div>
         <div><label class="block font-medium text-gray-700 mb-1">説明文・備考（任意）</label><textarea id="input-desc" maxlength="200" rows="2" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></textarea></div>
-        <div>
+                <div>
           <label class="block font-medium text-gray-700 mb-1">📷 写真 <span id="photo-req-label" class="text-pink-600">（必須・最大3枚）</span></label>
           <input id="post-photo-input" type="file" accept="image/*" multiple class="hidden" onchange="addPostPhotos(this)">
           <div id="post-photo-preview" class="flex flex-wrap gap-2 mt-2"></div>
+          <div id="similar-cards-suggest" class="hidden mt-2 bg-pink-50/90 border border-pink-200 rounded-2xl p-2.5"></div>
         </div>
+
       </div>
       <div class="flex space-x-2 pt-2">
         <button onclick="closePostModal()" class="flex-1 bg-white/60 text-gray-700 border border-white font-medium py-3 rounded-full hover:bg-white transition shadow-sm">キャンセル</button>
@@ -2946,16 +2948,21 @@ const ILLIT_CARD_ALBUMS = [
       else if (postPhotos.length < MAX_POST_PHOTOS) html += `<button onclick="document.getElementById('post-photo-input').click()" class="w-20 h-20 rounded-xl border border-white bg-white/40 text-purple-600 text-xs font-medium flex flex-col items-center justify-center hover:bg-white/60 transition shadow-sm"><span class="text-2xl leading-none">＋</span>追加</button>`;
       if (el1) el1.innerHTML = html; if (el2) el2.innerHTML = html;
     }
-    window.addPostPhotos = async function(inputEl) {
+        window.addPostPhotos = async function(inputEl) {
       const files = Array.from(inputEl.files || []); inputEl.value = "";
       if (files.length === 0 || processingPhotos) return;
       const targets = files.filter(f => f.type.startsWith("image/")).slice(0, MAX_POST_PHOTOS - postPhotos.length);
       if (targets.length === 0) return;
+      const isFirstPhoto = postPhotos.length === 0;
       processingPhotos = true; renderPostPhotoPreview();
       try {
         for (const f of targets) { const img = await loadImageFromFile(f); postPhotos.push({ full: compressFromImage(img, PHOTO_FULL), thumb: compressFromImage(img, PHOTO_THUMB) }); }
+        if (isFirstPhoto && postPhotos[0] && typeof runCardImageRecognition === "function") {
+          runCardImageRecognition(postPhotos[0].full);
+        }
       } catch(e) {} finally { processingPhotos = false; renderPostPhotoPreview(); }
     };
+
     window.removePostPhoto = function(i) { postPhotos.splice(i, 1); renderPostPhotoPreview(); };
 
     window.submitPost = async function() {
@@ -3073,6 +3080,9 @@ const ILLIT_CARD_ALBUMS = [
       if (!(await checkDeviceLock())) return;
       document.getElementById("group-give").value = ""; document.getElementById("group-price").value = ""; document.getElementById("group-target").value = ""; document.getElementById("group-deadline").value = ""; document.getElementById("group-bundle").value = "ok"; document.getElementById("group-bundle-note").value = ""; document.getElementById("group-desc").value = "";
       postPhotos = []; renderPostPhotoPreview(); onGroupBundleChange();
+            const suggestEl = document.getElementById("similar-cards-suggest");
+      if (suggestEl) { suggestEl.classList.add("hidden"); suggestEl.innerHTML = ""; }
+
       document.getElementById("group-post-modal").classList.remove("hidden");
     };
     window.closeGroupPostModal = function() { document.getElementById("group-post-modal").classList.add("hidden"); };
@@ -4445,6 +4455,148 @@ window.openAzukariApp = function() {
 
       loadedPhotoAlbums.add(albumId);
     }
+        // ==========================================
+    // 🔍 トレカ画像認識（類似度判定エンジン）
+    // ==========================================
+    const _cardFeatureCache = {};
+
+    function extractImageFeatures(imgSrc) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.onload = () => {
+          try {
+            const size = 16;
+            const canvas = document.createElement("canvas");
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext("2d");
+            // 中央60%（トレカ本体部分）を切り出して比較し精度を上げる
+            const sx = img.width * 0.2;
+            const sy = img.height * 0.2;
+            const sw = img.width * 0.6;
+            const sh = img.height * 0.6;
+            ctx.drawImage(img, sx, sy, sw, sh, 0, 0, size, size);
+            const data = ctx.getImageData(0, 0, size, size).data;
+
+            const features = [];
+            for (let i = 0; i < data.length; i += 4) {
+              features.push(data[i] / 255);
+              features.push(data[i + 1] / 255);
+              features.push(data[i + 2] / 255);
+            }
+            resolve(features);
+          } catch (e) {
+            resolve(null);
+          }
+        };
+        img.onerror = () => resolve(null);
+        img.src = imgSrc;
+      });
+    }
+
+    function calcCosineSimilarity(vecA, vecB) {
+      if (!vecA || !vecB || vecA.length !== vecB.length) return 0;
+      let dot = 0, normA = 0, normB = 0;
+      for (let i = 0; i < vecA.length; i++) {
+        dot += vecA[i] * vecB[i];
+        normA += vecA[i] * vecA[i];
+        normB += vecB[i] * vecB[i];
+      }
+      if (normA === 0 || normB === 0) return 0;
+      return Math.round((dot / (Math.sqrt(normA) * Math.sqrt(normB))) * 100);
+    }
+
+    async function findSimilarCards(uploadedDataUrl) {
+      await ensureCatalogCardsLoaded();
+      for (const a of ILLIT_CARD_ALBUMS) {
+        await ensureCardPhotosLoaded(a.id);
+      }
+
+      const targetVec = await extractImageFeatures(uploadedDataUrl);
+      if (!targetVec) return [];
+
+      const allCards = [];
+      for (const a of ILLIT_CARD_ALBUMS) {
+        getAlbumCards(a.id).forEach(c => {
+          if (!c.custom) allCards.push({ ...c, albumName: a.name });
+        });
+      }
+
+      const results = [];
+      for (const card of allCards) {
+        const photoUrl = cardPhotoCache[card.id] || card.photoUrl;
+        if (!photoUrl) continue;
+
+        if (!_cardFeatureCache[card.id]) {
+          _cardFeatureCache[card.id] = await extractImageFeatures(photoUrl);
+        }
+        const cardVec = _cardFeatureCache[card.id];
+        if (!cardVec) continue;
+
+        const score = calcCosineSimilarity(targetVec, cardVec);
+        if (score >= 70) {
+          results.push({ card, photoUrl, score });
+        }
+      }
+
+      return results.sort((a, b) => b.score - a.score).slice(0, 5);
+    }
+
+    window.runCardImageRecognition = async function(uploadedDataUrl) {
+      const container = document.getElementById("similar-cards-suggest");
+      if (!container) return;
+
+      container.classList.remove("hidden");
+      container.innerHTML = `<div class="text-[11px] text-gray-600 py-1.5 text-center">🔍 画像から似ているトレカを検索中...</div>`;
+
+      const matches = await findSimilarCards(uploadedDataUrl);
+
+      if (matches.length === 0) {
+        container.innerHTML = `<div class="text-[11px] text-gray-500 py-1 text-center">一致するトレカ候補が見つかりませんでした（手動で入力できます）</div>`;
+        return;
+      }
+
+      container.innerHTML = `
+        <div class="text-[11px] font-bold text-pink-600 mb-1.5">
+          ✨ このトレカですか？（タップで自動入力）
+        </div>
+        <div class="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
+          ${matches.map(m => `
+            <div onclick="applyRecognizedCard('${escapeHtml(m.card.id)}')"
+                 class="flex-none w-24 border border-pink-200 rounded-xl p-1.5 bg-white cursor-pointer text-center shadow-sm active:scale-95 transition">
+              <img src="${m.photoUrl}" class="w-full h-24 object-cover rounded-lg">
+              <div class="text-[10px] font-bold text-pink-600 mt-1">一致度 ${m.score}%</div>
+              <div class="text-[11px] font-bold text-gray-800 truncate">${escapeHtml(m.card.member || "")}</div>
+              <div class="text-[10px] text-gray-500 truncate">${escapeHtml(m.card.name || "")}</div>
+            </div>
+          `).join("")}
+        </div>
+      `;
+    };
+
+    window.applyRecognizedCard = function(cardId) {
+      const found = findCardById(cardId);
+      if (!found) return;
+      const { card } = found;
+
+      // カタログ選択・メンバー・【譲】欄を自動セット
+      if (typeof selectPostCard === "function") {
+        selectPostCard(card.id);
+      }
+      const giveEl = document.getElementById("input-give");
+      if (giveEl) {
+        giveEl.value = card.name + (card.member ? " / " + card.member : "");
+      }
+
+      const container = document.getElementById("similar-cards-suggest");
+      if (container) {
+        container.innerHTML = `<div class="text-[11px] text-emerald-700 font-bold py-1.5 px-2 bg-emerald-50 rounded-xl text-center">
+          ✅ 「${escapeHtml(card.member || "")} / ${escapeHtml(card.name || "")}」をセットしました！
+        </div>`;
+      }
+    };
+
 
     async function ensureCatalogCardsLoaded(forceRefresh = false) {
       await loadStaticCardPack();
