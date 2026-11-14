@@ -4645,24 +4645,10 @@ window.openAzukariApp = function() {
       loadedPhotoAlbums.add(albumId);
     }
         // ==========================================
-    // 🔍 トレカ画像認識（類似度判定エンジン・高精度版）
+    // 🔍 トレカ画像認識（v3: pHash + パッチ相関 + 顔領域・厳格ゲート）
     // ==========================================
-    // 空間グリッド + 色ヒストグラム + aHash/dHash を組み合わせて判定
     const _cardFeatureCache = {};
-
-    function _rgbToHsv(r, g, b) {
-      r /= 255; g /= 255; b /= 255;
-      const max = Math.max(r, g, b), min = Math.min(r, g, b);
-      const d = max - min;
-      let h = 0;
-      if (d !== 0) {
-        if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
-        else if (max === g) h = ((b - r) / d + 2) / 6;
-        else h = ((r - g) / d + 4) / 6;
-      }
-      const s = max === 0 ? 0 : d / max;
-      return [h, s, max];
-    }
+    const CARD_FEAT_VERSION = 3;
 
     function _cosineVec(a, b) {
       if (!a || !b || a.length !== b.length) return 0;
@@ -4683,106 +4669,180 @@ window.openAzukariApp = function() {
       return same / a.length;
     }
 
-    /** 1枚のキャンバス画素から複合特徴を抽出 */
-    function _featuresFromImageData(data, w, h) {
-      // 輝度平均で正規化（明るさの差に強くする）
-      let sumL = 0, nPix = w * h;
-      const gray = new Float32Array(nPix);
-      for (let i = 0, p = 0; i < data.length; i += 4, p++) {
-        gray[p] = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-        sumL += gray[p];
+    /** 正規化相互相関（平均差し引き）0–1 */
+    function _ncc(a, b) {
+      if (!a || !b || a.length !== b.length || !a.length) return 0;
+      let ma = 0, mb = 0;
+      for (let i = 0; i < a.length; i++) { ma += a[i]; mb += b[i]; }
+      ma /= a.length; mb /= b.length;
+      let dot = 0, na = 0, nb = 0;
+      for (let i = 0; i < a.length; i++) {
+        const da = a[i] - ma, db = b[i] - mb;
+        dot += da * db; na += da * da; nb += db * db;
       }
-      const meanL = sumL / nPix || 1;
-      const scale = 128 / meanL;
+      if (na < 1e-8 || nb < 1e-8) return 0;
+      return Math.max(0, Math.min(1, dot / Math.sqrt(na * nb)));
+    }
 
-      // 1) 空間グリッド 8x8 の平均RGB（正規化後）
-      const gw = 8, gh = 8;
-      const spatial = [];
+    /** 簡易2D DCT（N x N） */
+    function _dct2d(block, N) {
+      const out = new Float64Array(N * N);
+      for (let u = 0; u < N; u++) {
+        for (let v = 0; v < N; v++) {
+          let sum = 0;
+          const cu = u === 0 ? 1 / Math.SQRT2 : 1;
+          const cv = v === 0 ? 1 / Math.SQRT2 : 1;
+          for (let x = 0; x < N; x++) {
+            for (let y = 0; y < N; y++) {
+              sum += block[y * N + x] *
+                Math.cos(((2 * x + 1) * u * Math.PI) / (2 * N)) *
+                Math.cos(((2 * y + 1) * v * Math.PI) / (2 * N));
+            }
+          }
+          out[u * N + v] = 0.25 * cu * cv * sum;
+        }
+      }
+      return out;
+    }
+
+    /** 白フチを大まかに除去した有効矩形を推定 */
+    function _detectContentRect(data, w, h) {
+      // 四隅の平均を背景色とみなす
+      const corners = [[0, 0], [w - 1, 0], [0, h - 1], [w - 1, h - 1]];
+      let br = 0, bg = 0, bb = 0;
+      corners.forEach(([x, y]) => {
+        const i = (y * w + x) * 4;
+        br += data[i]; bg += data[i + 1]; bb += data[i + 2];
+      });
+      br /= 4; bg /= 4; bb /= 4;
+      const thr = 28;
+      const isBg = (x, y) => {
+        const i = (y * w + x) * 4;
+        return Math.abs(data[i] - br) + Math.abs(data[i + 1] - bg) + Math.abs(data[i + 2] - bb) < thr * 3;
+      };
+      let minX = w, minY = h, maxX = 0, maxY = 0, found = false;
+      const step = Math.max(1, Math.floor(Math.min(w, h) / 80));
+      for (let y = 0; y < h; y += step) {
+        for (let x = 0; x < w; x += step) {
+          if (!isBg(x, y)) {
+            found = true;
+            if (x < minX) minX = x;
+            if (y < minY) minY = y;
+            if (x > maxX) maxX = x;
+            if (y > maxY) maxY = y;
+          }
+        }
+      }
+      if (!found || maxX - minX < w * 0.25 || maxY - minY < h * 0.25) {
+        return { x: 0, y: 0, w, h };
+      }
+      // 少し余白を残す
+      const padX = Math.round((maxX - minX) * 0.02);
+      const padY = Math.round((maxY - minY) * 0.02);
+      minX = Math.max(0, minX - padX);
+      minY = Math.max(0, minY - padY);
+      maxX = Math.min(w - 1, maxX + padX);
+      maxY = Math.min(h - 1, maxY + padY);
+      return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
+    }
+
+    function _sampleGrayRect(data, srcW, srcH, rect, outW, outH) {
+      const gray = new Float32Array(outW * outH);
+      for (let y = 0; y < outH; y++) {
+        for (let x = 0; x < outW; x++) {
+          const sx = Math.min(srcW - 1, rect.x + Math.floor((x + 0.5) * rect.w / outW));
+          const sy = Math.min(srcH - 1, rect.y + Math.floor((y + 0.5) * rect.h / outH));
+          const i = (sy * srcW + sx) * 4;
+          gray[y * outW + x] = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+        }
+      }
+      return gray;
+    }
+
+    function _sampleRgbGrid(data, srcW, srcH, rect, gw, gh) {
+      const vec = [];
       for (let by = 0; by < gh; by++) {
         for (let bx = 0; bx < gw; bx++) {
-          const x0 = Math.floor(bx * w / gw), x1 = Math.floor((bx + 1) * w / gw);
-          const y0 = Math.floor(by * h / gh), y1 = Math.floor((by + 1) * h / gh);
+          const x0 = rect.x + Math.floor(bx * rect.w / gw);
+          const x1 = rect.x + Math.floor((bx + 1) * rect.w / gw);
+          const y0 = rect.y + Math.floor(by * rect.h / gh);
+          const y1 = rect.y + Math.floor((by + 1) * rect.h / gh);
           let r = 0, g = 0, b = 0, c = 0;
           for (let y = y0; y < y1; y++) {
             for (let x = x0; x < x1; x++) {
-              const i = (y * w + x) * 4;
-              r += Math.min(255, data[i] * scale);
-              g += Math.min(255, data[i + 1] * scale);
-              b += Math.min(255, data[i + 2] * scale);
-              c++;
+              const i = (y * srcW + x) * 4;
+              r += data[i]; g += data[i + 1]; b += data[i + 2]; c++;
             }
           }
-          spatial.push((r / (c * 255)) || 0, (g / (c * 255)) || 0, (b / (c * 255)) || 0);
+          vec.push((r / (c * 255)) || 0, (g / (c * 255)) || 0, (b / (c * 255)) || 0);
         }
       }
+      return vec;
+    }
 
-      // 2) HSVヒストグラム（H16 x S4 x 簡易）
-      const hist = new Float32Array(16 * 4);
-      for (let i = 0; i < data.length; i += 4) {
-        const [hh, ss] = _rgbToHsv(
-          Math.min(255, data[i] * scale),
-          Math.min(255, data[i + 1] * scale),
-          Math.min(255, data[i + 2] * scale)
-        );
-        const hi = Math.min(15, Math.floor(hh * 16));
-        const si = Math.min(3, Math.floor(ss * 4));
-        hist[hi * 4 + si] += 1;
+    function _makePHash(gray32) {
+      // gray32: 32x32
+      const N = 32;
+      const dct = _dct2d(gray32, N);
+      // 低周波 8x8（DC除外）
+      const coeffs = [];
+      for (let u = 0; u < 8; u++) {
+        for (let v = 0; v < 8; v++) {
+          if (u === 0 && v === 0) continue;
+          coeffs.push(dct[u * N + v]);
+        }
       }
-      let hsum = 0;
-      for (let i = 0; i < hist.length; i++) hsum += hist[i];
-      if (hsum > 0) for (let i = 0; i < hist.length; i++) hist[i] /= hsum;
+      const sorted = coeffs.slice().sort((a, b) => a - b);
+      const med = sorted[Math.floor(sorted.length / 2)];
+      let hash = "";
+      for (const c of coeffs) hash += c > med ? "1" : "0";
+      return hash;
+    }
 
-      // 3) aHash 16x16
-      const aSize = 16;
-      // gray を aSize に縮小（最近傍）
-      let aHash = "";
-      const aGrays = [];
-      for (let y = 0; y < aSize; y++) {
-        for (let x = 0; x < aSize; x++) {
-          const sx = Math.min(w - 1, Math.floor(x * w / aSize));
-          const sy = Math.min(h - 1, Math.floor(y * h / aSize));
-          aGrays.push(gray[sy * w + sx] * scale);
-        }
-      }
-      const aAvg = aGrays.reduce((s, v) => s + v, 0) / aGrays.length;
-      for (const g of aGrays) aHash += g >= aAvg ? "1" : "0";
+    function _featuresFromCanvasData(data, w, h) {
+      const content = _detectContentRect(data, w, h);
 
-      // 4) dHash（9x8勾配）
-      const dw = 9, dh = 8;
-      const dGrays = [];
-      for (let y = 0; y < dh; y++) {
-        for (let x = 0; x < dw; x++) {
-          const sx = Math.min(w - 1, Math.floor(x * w / dw));
-          const sy = Math.min(h - 1, Math.floor(y * h / dh));
-          dGrays.push(gray[sy * w + sx] * scale);
-        }
-      }
-      let dHash = "";
-      for (let y = 0; y < dh; y++) {
-        for (let x = 0; x < dw - 1; x++) {
-          const idx = y * dw + x;
-          dHash += dGrays[idx] >= dGrays[idx + 1] ? "1" : "0";
-        }
-      }
+      // 全体パッチ 32x32
+      const patch = _sampleGrayRect(data, w, h, content, 32, 32);
+      // 顔寄り（上側中央）: 縦10–55%, 横15–85%
+      const faceRect = {
+        x: content.x + Math.round(content.w * 0.15),
+        y: content.y + Math.round(content.h * 0.08),
+        w: Math.round(content.w * 0.70),
+        h: Math.round(content.h * 0.48)
+      };
+      const face = _sampleGrayRect(data, w, h, faceRect, 24, 24);
+      // 下半分（衣装・背景）も補助
+      const lowerRect = {
+        x: content.x + Math.round(content.w * 0.1),
+        y: content.y + Math.round(content.h * 0.5),
+        w: Math.round(content.w * 0.8),
+        h: Math.round(content.h * 0.45)
+      };
+      const lower = _sampleGrayRect(data, w, h, lowerRect, 16, 16);
 
-      // 5) 簡易エッジ量（縦横差分）— 構図の硬さ
-      let edge = 0, edgeN = 0;
-      for (let y = 1; y < h - 1; y += 2) {
-        for (let x = 1; x < w - 1; x += 2) {
-          const i = y * w + x;
-          edge += Math.abs(gray[i] - gray[i - 1]) + Math.abs(gray[i] - gray[i - w]);
-          edgeN++;
-        }
-      }
-      const edgeScore = edgeN ? Math.min(1, (edge / edgeN) / 40) : 0;
+      const pHash = _makePHash(patch);
+      const colorGrid = _sampleRgbGrid(data, w, h, content, 6, 8); // 縦長トレカ向け
+      const faceColor = _sampleRgbGrid(data, w, h, faceRect, 4, 4);
+
+      // 平均輝度でパッチを正規化（照明差）
+      const norm = (arr) => {
+        let s = 0;
+        for (let i = 0; i < arr.length; i++) s += arr[i];
+        const m = s / arr.length || 1;
+        const out = new Float32Array(arr.length);
+        for (let i = 0; i < arr.length; i++) out[i] = arr[i] / m;
+        return out;
+      };
 
       return {
-        spatial,
-        hist: Array.from(hist),
-        aHash,
-        dHash,
-        edge: edgeScore,
-        version: 2
+        pHash,
+        patch: Array.from(norm(patch)),
+        face: Array.from(norm(face)),
+        lower: Array.from(norm(lower)),
+        colorGrid,
+        faceColor,
+        version: CARD_FEAT_VERSION
       };
     }
 
@@ -4796,37 +4856,23 @@ window.openAzukariApp = function() {
         if (!imgSrc.startsWith("data:")) {
           try { img.crossOrigin = "anonymous"; } catch (_) {}
         }
-        const timer = setTimeout(() => resolve(null), 12000);
+        const timer = setTimeout(() => resolve(null), 15000);
         img.onload = () => {
           clearTimeout(timer);
           try {
-            // 解析解像度（大きすぎると重い）
-            const maxSide = 160;
+            const maxSide = 240;
             const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
-            const tw = Math.max(32, Math.round(img.width * scale));
-            const th = Math.max(32, Math.round(img.height * scale));
+            const tw = Math.max(48, Math.round(img.width * scale));
+            const th = Math.max(48, Math.round(img.height * scale));
             const canvas = document.createElement("canvas");
             canvas.width = tw;
             canvas.height = th;
             const ctx = canvas.getContext("2d", { willReadFrequently: true });
-
-            // A: 全体
             ctx.drawImage(img, 0, 0, tw, th);
-            const full = _featuresFromImageData(ctx.getImageData(0, 0, tw, th).data, tw, th);
-
-            // B: 中央 70%（余白・背景を避けてトレカ本体）
-            const cx = Math.round(tw * 0.15), cy = Math.round(th * 0.15);
-            const cw = Math.round(tw * 0.7), ch = Math.round(th * 0.7);
-            const off = document.createElement("canvas");
-            off.width = cw; off.height = ch;
-            const octx = off.getContext("2d", { willReadFrequently: true });
-            octx.drawImage(canvas, cx, cy, cw, ch, 0, 0, cw, ch);
-            const center = _featuresFromImageData(octx.getImageData(0, 0, cw, ch).data, cw, ch);
-
+            const data = ctx.getImageData(0, 0, tw, th).data;
+            const feat = _featuresFromCanvasData(data, tw, th);
             canvas.width = 0; canvas.height = 0;
-            off.width = 0; off.height = 0;
-
-            resolve({ full, center, version: 2 });
+            resolve(feat);
           } catch (e) {
             console.warn("extractImageFeatures", e);
             resolve(null);
@@ -4837,42 +4883,42 @@ window.openAzukariApp = function() {
       });
     }
 
-    /** 2つの特徴セットの類似度 0–100 */
+    /**
+     * 類似度 0–100
+     * 構造（pHash・パッチ）が弱い場合は大きく減点して「全然違う」誤検知を抑える
+     */
     function calcFeatureSimilarity(fa, fb) {
       if (!fa || !fb) return 0;
-      // 旧形式（配列）互換
-      if (Array.isArray(fa) && Array.isArray(fb)) {
-        return Math.round(_cosineVec(fa, fb) * 100);
-      }
+      // 旧形式（配列 / v2）は不一致扱い → 再計算させる
       if (Array.isArray(fa) || Array.isArray(fb)) return 0;
-      if (!fa.full || !fb.full) return 0;
+      if (fa.version !== CARD_FEAT_VERSION || fb.version !== CARD_FEAT_VERSION) return 0;
+      if (!fa.pHash || !fb.pHash) return 0;
 
-      const pairScore = (a, b) => {
-        const spatial = _cosineVec(a.spatial, b.spatial); // 0-1
-        const hist = _cosineVec(a.hist, b.hist);
-        const aH = _hammingSim(a.aHash, b.aHash);
-        const dH = _hammingSim(a.dHash, b.dHash);
-        const edgeDiff = 1 - Math.min(1, Math.abs((a.edge || 0) - (b.edge || 0)));
-        // 重み付け（空間とハッシュを重視）
-        return (
-          spatial * 0.38 +
-          hist * 0.18 +
-          aH * 0.22 +
-          dH * 0.18 +
-          edgeDiff * 0.04
-        );
-      };
+      const pHash = _hammingSim(fa.pHash, fb.pHash);
+      const patch = _ncc(fa.patch, fb.patch);
+      const face = _ncc(fa.face, fb.face);
+      const lower = _ncc(fa.lower, fb.lower);
+      const color = _cosineVec(fa.colorGrid, fb.colorGrid);
+      const faceCol = _cosineVec(fa.faceColor, fb.faceColor);
 
-      // 全体同士・中央同士・交差の最大を採用（撮影の余白差に強くする）
-      const s1 = pairScore(fa.full, fb.full);
-      const s2 = pairScore(fa.center, fb.center);
-      const s3 = pairScore(fa.center, fb.full);
-      const s4 = pairScore(fa.full, fb.center);
-      const best = Math.max(s1, s2, s3, s4);
-      return Math.round(best * 100);
+      // 構造スコア（写真の形・模様）
+      const structure = pHash * 0.40 + patch * 0.35 + face * 0.25;
+      // 色スコア
+      const colorScore = color * 0.55 + faceCol * 0.30 + lower * 0.15;
+
+      let score = structure * 0.72 + colorScore * 0.28;
+
+      // 厳格ゲート: 構造が弱いのに色だけ似ている誤爆を落とす
+      if (pHash < 0.70) score *= 0.55;
+      if (pHash < 0.62) score *= 0.45;
+      if (patch < 0.55) score *= 0.60;
+      if (face < 0.50) score *= 0.75;
+      // 両方とも高いときだけボーナス
+      if (pHash >= 0.88 && patch >= 0.80 && face >= 0.72) score = Math.min(1, score * 1.08);
+
+      return Math.round(Math.max(0, Math.min(100, score * 100)));
     }
 
-    // 旧API互換
     function calcCosineSimilarity(vecA, vecB) {
       return calcFeatureSimilarity(vecA, vecB);
     }
@@ -4903,30 +4949,40 @@ window.openAzukariApp = function() {
         const photoUrl = cardPhotoCache[card.id] || card.photoUrl;
         if (!photoUrl) continue;
 
-        // 旧キャッシュ（配列）は無効化して再計算
-        if (!_cardFeatureCache[card.id] || Array.isArray(_cardFeatureCache[card.id]) || _cardFeatureCache[card.id].version !== 2) {
+        if (!_cardFeatureCache[card.id] ||
+            Array.isArray(_cardFeatureCache[card.id]) ||
+            _cardFeatureCache[card.id].version !== CARD_FEAT_VERSION) {
           _cardFeatureCache[card.id] = await extractImageFeatures(photoUrl);
         }
         const cardVec = _cardFeatureCache[card.id];
         if (!cardVec) continue;
 
         const score = calcFeatureSimilarity(targetVec, cardVec);
-        // しきい値は複合スコア用（以前の70より低めでも構造一致を拾える）
-        if (score >= 58) {
+        // 厳格: かなり似ているものだけ
+        if (score >= 72) {
           results.push({ card, photoUrl, score, vec: cardVec });
         }
-        if (i % 15 === 0) await new Promise(r => setTimeout(r, 0));
+        if (i % 10 === 0) await new Promise(r => setTimeout(r, 0));
       }
 
       results.sort((a, b) => b.score - a.score);
 
-      // 同じ写真が別IDで複数ある場合、候補から重複を除去
+      // 1位と差が大きい候補は落とす
+      if (results.length) {
+        const top = results[0].score;
+        for (let i = results.length - 1; i >= 1; i--) {
+          if (top - results[i].score >= 18 && results[i].score < 85) {
+            results.splice(i, 1);
+          }
+        }
+      }
+
       const unique = [];
       for (const r of results) {
-        const dup = unique.some(u => calcFeatureSimilarity(u.vec, r.vec) >= 96);
+        const dup = unique.some(u => calcFeatureSimilarity(u.vec, r.vec) >= 94);
         if (!dup) unique.push(r);
       }
-      return unique.slice(0, 6).map(({ card, photoUrl, score }) => ({ card, photoUrl, score }));
+      return unique.slice(0, 4).map(({ card, photoUrl, score }) => ({ card, photoUrl, score }));
     }
 
     window.runCardImageRecognition = async function(uploadedDataUrl) {
@@ -5239,7 +5295,10 @@ window.openAzukariApp = function() {
             <button id="admin-zip-firestore-btn" onclick="adminRegisterZipPackToFirestore()" class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-xs font-bold py-2.5 rounded-full shadow-md">
               🔥 Firestoreに登録してMyトレカへ反映
             </button>
-            <p class="text-[10px] text-gray-500 text-center leading-snug">上: GitHub用ZIP　／　下: その場でカタログ＆Myトレカに反映（読み取り・書き込み発生）</p>
+            <button id="admin-export-fs-catalog-btn" onclick="adminExportFirestoreToCatalogZip()" class="w-full bg-gradient-to-r from-fuchsia-500 to-pink-500 text-white text-xs font-bold py-2.5 rounded-full shadow-md">
+              ☁️→📦 Firebase写真をcatalog ZIPに一括出力
+            </button>
+            <p class="text-[10px] text-gray-500 text-center leading-snug">上2つ: 手元画像の登録　／　下: Firestoreの cardCatalog＋cardPhotos を GitHub用 catalog.json + cards/ に変換</p>
             <div id="admin-zip-progress" class="text-[11px] text-center text-indigo-800 font-medium hidden"></div>
           </div>
         </div>
@@ -5816,6 +5875,277 @@ window.openAzukariApp = function() {
     }
 
 
+
+    /** Firestoreの cardCatalog + cardPhotos を GitHub用 catalog.zip に一括出力 */
+    window.adminExportFirestoreToCatalogZip = async function() {
+      try {
+        if (typeof isAdmin === "function" && !isAdmin()) {
+          alert("管理者のみ実行できます。");
+          return;
+        }
+        if (!currentUser) {
+          alert("ログインが必要です。");
+          return;
+        }
+        if (typeof JSZip === "undefined") {
+          return alert("JSZipライブラリが読み込まれていません。ページを再読み込みしてください。");
+        }
+
+        const scopeAlbumOnly = await appConfirm(
+          "出力範囲を選んでください。\n\n「はい」= いま選んでいるアルバムのみ\n「戻る」= Firestoreの全カード",
+          "このアルバムのみ",
+          false
+        );
+        // appConfirm: はい=true, 戻る=false → false のとき全件
+        const albumFilter = scopeAlbumOnly ? adminCardsAlbum : null;
+        const memberFilter = scopeAlbumOnly ? adminCardsMember : "ALL";
+
+        const mergeExisting = !!document.getElementById("admin-zip-merge-existing")?.checked;
+        const ok = await appConfirm(
+          "Firebase（cardCatalog / cardPhotos）の写真を catalog.json + cards/ のZIPにします。\n\n" +
+          "範囲: " + (albumFilter ? ("アルバム " + albumFilter) : "全アルバム") +
+          (memberFilter && memberFilter !== "ALL" ? (" / メンバー " + (memberFilter === "__NONE__" ? "なし" : memberFilter)) : "") + "\n" +
+          "既存catalog.jsonへ追記: " + (mergeExisting ? "する" : "しない（新規のみ）") + "\n\n" +
+          "枚数が多いと時間がかかります。続行しますか？",
+          "ZIPを作る",
+          false
+        );
+        if (!ok) return;
+
+        const btn = document.getElementById("admin-export-fs-catalog-btn");
+        const prog = document.getElementById("admin-zip-progress");
+        if (btn) btn.disabled = true;
+        if (prog) { prog.classList.remove("hidden"); prog.textContent = "Firestoreからカタログ取得中..."; }
+
+        // カタログ一覧
+        let list = [];
+        try {
+          const snap = await getDocs(collection(db, "cardCatalog"));
+          list = snap.docs.map(d => {
+            const data = d.data() || {};
+            return {
+              id: d.id,
+              albumId: data.albumId || "other",
+              name: data.name || "",
+              member: data.member || ""
+            };
+          });
+          catalogCardsCache = list.filter(c => c.name).map(c => ({ ...c, admin: true }));
+          catalogCardsLoaded = true;
+        } catch (e) {
+          alert("cardCatalog の取得に失敗しました。\n" + (e && (e.code || e.message) ? (e.code || e.message) : e));
+          if (btn) btn.disabled = false;
+          return;
+        }
+
+        // 絞り込み
+        const normMember = (s) => String(s || "").split(" ")[0];
+        if (albumFilter) {
+          list = list.filter(c => c.albumId === albumFilter);
+        }
+        if (memberFilter && memberFilter === "__NONE__") {
+          list = list.filter(c => !normMember(c.member));
+        } else if (memberFilter && memberFilter !== "ALL") {
+          list = list.filter(c => normMember(c.member) === memberFilter);
+        }
+
+        if (!list.length) {
+          alert("出力対象のカードがありません。");
+          if (btn) btn.disabled = false;
+          if (prog) prog.textContent = "";
+          return;
+        }
+
+        // 既存静的パック
+        try { await loadStaticCardPack(); } catch (_) {}
+        const existingIds = new Set((staticPackCards || []).map(c => c.id));
+        const catalogList = mergeExisting
+          ? (staticPackCards || []).map(c => ({
+              id: c.id,
+              albumId: c.albumId,
+              name: c.name,
+              member: c.member || "",
+              photo: c.photoUrl || ("./cards/" + c.id + ".jpg")
+            }))
+          : [];
+
+        // 既存ZIP内の cards/ は再同梱できない（URL参照のみ）ので、
+        // merge時は catalog.json のエントリだけ継承し、今回のFirestore分の画像ファイルを追加する
+        const zip = new JSZip();
+        const cardsFolder = zip.folder("cards");
+
+        // merge時に既存の相対パス写真を可能な範囲で同梱（同一オリジンの ./cards/ のみ）
+        if (mergeExisting && staticPackCards && staticPackCards.length) {
+          if (prog) prog.textContent = "既存パックの画像を取得中...";
+          let emb = 0;
+          for (let i = 0; i < staticPackCards.length; i++) {
+            const c = staticPackCards[i];
+            if (!c || !c.id) continue;
+            let src = c.photoUrl || cardPhotoCache[c.id] || "";
+            if (!src) continue;
+            try {
+              let dataUrl = null;
+              if (typeof src === "string" && src.startsWith("data:image")) {
+                dataUrl = src;
+              } else if (typeof src === "string" && (src.startsWith("./") || src.startsWith("cards/") || src.startsWith("/"))) {
+                const res = await fetch(src);
+                if (res.ok) {
+                  const blob = await res.blob();
+                  dataUrl = await new Promise((resolve, reject) => {
+                    const fr = new FileReader();
+                    fr.onload = () => resolve(fr.result);
+                    fr.onerror = reject;
+                    fr.readAsDataURL(blob);
+                  });
+                }
+              }
+              if (dataUrl && typeof dataUrl === "string" && /^data:image\/jpeg;base64,/i.test(dataUrl)) {
+                const b64 = dataUrl.split(",")[1];
+                const fname = String(c.id).replace(/[^\w.-]/g, "_") + ".jpg";
+                cardsFolder.file(fname, b64, { base64: true });
+                // catalog の photo パスを統一
+                const hit = catalogList.find(x => x.id === c.id);
+                if (hit) hit.photo = "./cards/" + fname;
+                emb++;
+              }
+            } catch (_) {}
+            if (i % 8 === 0) await new Promise(r => setTimeout(r, 0));
+          }
+          if (prog) prog.textContent = "既存画像 " + emb + " 枚を同梱しました。Firestore分を取得中...";
+        }
+
+        let processed = 0, skipped = 0, skippedNoPhoto = 0;
+        for (let i = 0; i < list.length; i++) {
+          const c = list[i];
+          if (prog) prog.textContent = "Firestore写真... (" + (i + 1) + "/" + list.length + ") 追加" + processed + " / スキップ" + skipped;
+          await new Promise(r => setTimeout(r, 0));
+
+          // すでに静的パックに同じIDがある場合はスキップ（merge時）
+          if (mergeExisting && existingIds.has(c.id)) {
+            skipped++;
+            continue;
+          }
+
+          let dataUrl = cardPhotoCache[c.id] || null;
+          if (!dataUrl) {
+            try {
+              const cached = typeof idbGet === "function" ? await idbGet("photo_" + c.id) : null;
+              if (cached) dataUrl = cached;
+            } catch (_) {}
+          }
+          if (!dataUrl) {
+            try {
+              const snap = await getDoc(doc(db, "cardPhotos", c.id));
+              if (snap.exists()) {
+                const d = snap.data() || {};
+                dataUrl = d.data || d.photo || null;
+                if (dataUrl) {
+                  cardPhotoCache[c.id] = dataUrl;
+                  if (typeof idbSet === "function") await idbSet("photo_" + c.id, dataUrl);
+                }
+              }
+            } catch (_) {}
+          }
+
+          if (!dataUrl || typeof dataUrl !== "string") {
+            skippedNoPhoto++;
+            skipped++;
+            continue;
+          }
+
+          // JPEG dataURL でなければ再エンコードを試みる（サイズ上限は緩め）
+          const isJpegLoose = (s) => typeof s === "string" && /^data:image\/jpeg;base64,/i.test(s);
+          let jpegUrl = dataUrl;
+          if (!isJpegLoose(jpegUrl)) {
+            try {
+              const img = await new Promise((resolve, reject) => {
+                const im = new Image();
+                if (!dataUrl.startsWith("data:")) {
+                  try { im.crossOrigin = "anonymous"; } catch (_) {}
+                }
+                im.onload = () => resolve(im);
+                im.onerror = reject;
+                im.src = dataUrl;
+              });
+              const maxSide = PHOTO_THUMB.maxSide || 260;
+              const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+              const canvas = document.createElement("canvas");
+              canvas.width = Math.max(1, Math.round(img.width * scale));
+              canvas.height = Math.max(1, Math.round(img.height * scale));
+              const ctx = canvas.getContext("2d");
+              ctx.fillStyle = "#fff";
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+              ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+              jpegUrl = canvas.toDataURL("image/jpeg", PHOTO_THUMB.quality || 0.6);
+              canvas.width = 0; canvas.height = 0;
+            } catch (e) {
+              skipped++;
+              continue;
+            }
+          }
+          if (!isJpegLoose(jpegUrl)) {
+            skipped++;
+            continue;
+          }
+
+          const safeId = String(c.id).replace(/[^\w.-]/g, "_") || ("card_" + i);
+          const fileName = safeId + ".jpg";
+          const b64 = jpegUrl.split(",")[1];
+          cardsFolder.file(fileName, b64, { base64: true });
+
+          catalogList.push({
+            id: c.id,
+            albumId: c.albumId || "other",
+            name: c.name || safeId,
+            member: c.member || "",
+            photo: "./cards/" + fileName
+          });
+          processed++;
+        }
+
+        if (processed === 0 && !catalogList.length) {
+          throw new Error("出力できる画像が1枚もありませんでした（写真なし: " + skippedNoPhoto + "）");
+        }
+
+        // ID重複をcatalogList内で除去（後ろ優先）
+        const byId = new Map();
+        catalogList.forEach(c => { if (c && c.id) byId.set(c.id, c); });
+        const finalList = Array.from(byId.values());
+
+        if (prog) prog.textContent = "ZIP生成中...（" + finalList.length + "件）";
+        await new Promise(r => setTimeout(r, 20));
+        zip.file("catalog.json", JSON.stringify({
+          updatedAt: new Date().toISOString(),
+          source: "firestore-export",
+          cards: finalList
+        }, null, 2));
+
+        const blob = await zip.generateAsync({ type: "blob", compression: "STORE" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        const ts = Date.now().toString(36);
+        a.download = "illit-firestore-catalog-" + ts + ".zip";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 15000);
+
+        const msg = "✅ 完了！Firestoreから " + processed + " 枚追加 / スキップ " + skipped +
+          "（写真なし " + skippedNoPhoto + "）/ catalog合計 " + finalList.length + " 件";
+        if (prog) prog.textContent = msg;
+        showToast("catalog ZIPをダウンロードしました", "success");
+        alert(msg + "\n\nZIP内の catalog.json と cards/ をGitHubの公開先に配置してください。");
+      } catch (e) {
+        console.error(e);
+        const prog = document.getElementById("admin-zip-progress");
+        if (prog) prog.textContent = "❌ エラー: " + (e && e.message ? e.message : e);
+        alert("出力中にエラーが発生しました。\n" + (e && (e.message || e.code) ? (e.message || e.code) : e));
+      } finally {
+        const btn = document.getElementById("admin-export-fs-catalog-btn");
+        if (btn) btn.disabled = false;
+      }
+    };
 
         window.buildAndDownloadCardPackZip = async function() {
       if (!adminZipPackFiles.length) return;
