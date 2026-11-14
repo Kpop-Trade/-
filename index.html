@@ -4805,7 +4805,9 @@ window.openAzukariApp = function() {
       if (!album) { el.innerHTML = "<p class='text-xs text-gray-500'>アルバムがありません</p>"; return; }
       // メンバー絞り込み
       const normMember = (s) => String(s || "").split(" ")[0];
-      if (adminCardsMember && adminCardsMember !== "ALL") {
+      if (adminCardsMember && adminCardsMember === "__NONE__") {
+        cards = cards.filter(c => !normMember(c.member));
+      } else if (adminCardsMember && adminCardsMember !== "ALL") {
         cards = cards.filter(c => normMember(c.member) === adminCardsMember);
       }
       const memberOpts = ["", "ウォニ", "ミンジュ", "イロハ", "モカ", "ユナ", "OT5"].map(m =>
@@ -4816,41 +4818,72 @@ window.openAzukariApp = function() {
       const albumTabsHtml = ILLIT_CARD_ALBUMS.map(a =>
         `<button type="button" onclick="setAdminCardsAlbum('${a.id}')" class="${a.id === adminCardsAlbum ? activeChip : normalChip}">${a.name}</button>`
       ).join("");
-      // メンバーフィルターチップ
+      // メンバーフィルターチップ（常に全メンバーを表示）
       const memberOrder = ["ALL", "ウォニ", "ミンジュ", "イロハ", "モカ", "ユナ", "OT5"];
       const existingMembers = new Set(getAlbumCards(adminCardsAlbum).map(c => normMember(c.member)).filter(Boolean));
-      const memberTabs = memberOrder.filter(m => m === "ALL" || existingMembers.has(m));
+      const memberTabs = memberOrder.slice();
       existingMembers.forEach(m => { if (!memberTabs.includes(m)) memberTabs.push(m); });
+      // メンバーなしカード用
+      if (!memberTabs.includes("__NONE__")) {
+        const hasNone = getAlbumCards(adminCardsAlbum).some(c => !normMember(c.member));
+        if (hasNone) memberTabs.push("__NONE__");
+      }
       const memActive = "filter-chip bg-gradient-to-r from-illit-purple to-illit-accent text-white shadow-md text-[11px]";
       const memNormal = "filter-chip bg-white/70 text-gray-700 hover:bg-white text-[11px]";
+      const memberLabel = (m) => m === "ALL" ? "全員" : (m === "__NONE__" ? "メンバーなし" : m);
       const memberTabsHtml = memberTabs.map(m =>
-        `<button type="button" onclick="setAdminCardsMember('${m}')" class="${m === adminCardsMember ? memActive : memNormal}">${m === "ALL" ? "全員" : escapeHtml(m)}</button>`
+        `<button type="button" onclick="setAdminCardsMember('${m}')" class="${m === adminCardsMember ? memActive : memNormal}">${escapeHtml(memberLabel(m))}</button>`
       ).join("");
       const selectedCount = adminSelectedCardIds.size;
-      // 表示中の削除可能カードID
+      // 表示中の削除可能カードID（管理者登録のみ・静的パックは除外）
       const deletableVisibleIds = cards.filter(c => (!!c.admin || isAdminCatalogCard(c.id)) && !c.staticPack).map(c => c.id);
+      const filterAlbumName = album.name || adminCardsAlbum;
+      const filterMemberName = memberLabel(adminCardsMember || "ALL");
 
       el.innerHTML = `
-        <div class="flex gap-1.5 overflow-x-auto hide-scrollbar pb-1 mb-2" id="admin-card-album-tabs">${albumTabsHtml}</div>
-        <div class="flex gap-1.5 overflow-x-auto hide-scrollbar pb-1 mb-2" id="admin-card-member-tabs">${memberTabsHtml}</div>
+        <div class="liquid-glass rounded-2xl p-3 mb-3 space-y-2.5 border border-pink-200/70 bg-gradient-to-br from-pink-50/80 to-purple-50/70">
+          <div class="text-xs font-bold text-pink-900 flex items-center gap-1.5">
+            <span>🗑 削除用の絞り込み</span>
+            <span class="font-normal text-[10px] text-gray-500">アルバム → メンバーの順で絞ってから削除</span>
+          </div>
+          <div>
+            <div class="text-[10px] font-bold text-gray-500 mb-1 px-0.5">アルバム</div>
+            <div class="flex gap-1.5 overflow-x-auto hide-scrollbar pb-0.5" id="admin-card-album-tabs">${albumTabsHtml}</div>
+          </div>
+          <div>
+            <div class="text-[10px] font-bold text-gray-500 mb-1 px-0.5">メンバー</div>
+            <div class="flex gap-1.5 overflow-x-auto hide-scrollbar pb-0.5" id="admin-card-member-tabs">${memberTabsHtml}</div>
+          </div>
+          <div class="bg-white/80 rounded-xl px-3 py-2 text-[11px] text-gray-700 border border-white flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span>表示中: <b class="text-illit-darkPurple">${escapeHtml(filterAlbumName)}</b> / <b class="text-illit-darkPurple">${escapeHtml(filterMemberName)}</b></span>
+            <span class="text-gray-400">·</span>
+            <span>全 <b>${cards.length}</b> 件</span>
+            <span class="text-gray-400">·</span>
+            <span>削除可能 <b class="text-red-600">${deletableVisibleIds.length}</b> 件</span>
+            <span class="text-gray-400">·</span>
+            <span>選択中 <b class="text-illit-darkPurple">${selectedCount}</b> 件</span>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <label class="flex items-center gap-1.5 text-xs font-bold text-gray-700 cursor-pointer select-none bg-white/70 border border-white px-3 py-2 rounded-full">
+              <input type="checkbox" id="admin-select-all-visible" onchange="adminToggleSelectAllVisible(this.checked)" class="w-4 h-4 rounded border-gray-300 text-illit-accent" ${deletableVisibleIds.length && deletableVisibleIds.every(id => adminSelectedCardIds.has(id)) ? "checked" : ""}>
+              表示中を全選択
+            </label>
+            <button type="button" onclick="adminClearCardSelection()" class="text-[11px] font-bold text-gray-500 underline px-2 ${selectedCount ? "" : "hidden"}">選択解除</button>
+            <button type="button" onclick="adminDeleteSelectedCards()" class="flex-1 min-w-[120px] bg-red-500 text-white text-xs font-bold px-4 py-2.5 rounded-full shadow-sm ${selectedCount ? "" : "opacity-40 pointer-events-none"}">
+              🗑 選択を削除 (${selectedCount})
+            </button>
+            <button type="button" onclick="adminDeleteAllVisibleFiltered()" class="flex-1 min-w-[140px] bg-rose-600 text-white text-xs font-bold px-4 py-2.5 rounded-full shadow-sm ${deletableVisibleIds.length ? "" : "opacity-40 pointer-events-none"}">
+              表示中の削除可能をすべて削除 (${deletableVisibleIds.length})
+            </button>
+          </div>
+          <p class="text-[10px] text-gray-500 leading-snug">※ GitHub静的パックのカードはここから削除できません。管理者登録分のみ対象です。</p>
+        </div>
         <div class="grid grid-cols-1 gap-2 mb-3">
           <button type="button" onclick="adminDeduplicateCatalogCards()" class="w-full bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold py-2.5 rounded-full hover:bg-amber-100 transition shadow-sm">
             🧹 重複トレカを自動削除（画像が完全一致のみ・超厳格）
           </button>
           <button type="button" onclick="adminDeduplicateExactIds()" class="w-full bg-rose-50 border border-rose-200 text-rose-900 text-xs font-bold py-2.5 rounded-full hover:bg-rose-100 transition shadow-sm">
             🆔 全く同じIDの重複を削除
-          </button>
-        </div>
-        <div id="admin-bulk-bar" class="liquid-glass rounded-2xl p-3 mb-3 flex flex-wrap items-center gap-2 border border-purple-200/60 ${selectedCount ? "" : ""}">
-          <label class="flex items-center gap-1.5 text-xs font-bold text-gray-700 cursor-pointer select-none">
-            <input type="checkbox" id="admin-select-all-visible" onchange="adminToggleSelectAllVisible(this.checked)" class="w-4 h-4 rounded border-gray-300 text-illit-accent" ${deletableVisibleIds.length && deletableVisibleIds.every(id => adminSelectedCardIds.has(id)) ? "checked" : ""}>
-            表示中を全選択
-          </label>
-          <span class="text-[11px] text-gray-500">選択中 <b id="admin-selected-count" class="text-illit-darkPurple">${selectedCount}</b> 件</span>
-          <div class="flex-1"></div>
-          <button type="button" onclick="adminClearCardSelection()" class="text-[11px] font-bold text-gray-500 underline ${selectedCount ? "" : "hidden"}" id="admin-clear-sel-btn">選択解除</button>
-          <button type="button" onclick="adminDeleteSelectedCards()" class="bg-red-500 text-white text-xs font-bold px-4 py-2 rounded-full shadow-sm ${selectedCount ? "" : "opacity-40 pointer-events-none"}" id="admin-bulk-delete-btn">
-            🗑 選択を削除 (${selectedCount})
           </button>
         </div>
         <div class="liquid-glass rounded-2xl p-3 mb-3 space-y-2.5 border border-indigo-200/60 bg-gradient-to-br from-indigo-50/80 to-purple-50/80">
@@ -5850,6 +5883,21 @@ window.openAzukariApp = function() {
       const el = document.getElementById("admin-content");
       if (el && adminTab === "cards") renderAdminCardsPanel(el);
     };
+    function getAdminFilteredCards() {
+      const normMember = (s) => String(s || "").split(" ")[0];
+      let cards = getAlbumCards(adminCardsAlbum);
+      if (adminCardsMember && adminCardsMember === "__NONE__") {
+        cards = cards.filter(c => !normMember(c.member));
+      } else if (adminCardsMember && adminCardsMember !== "ALL") {
+        cards = cards.filter(c => normMember(c.member) === adminCardsMember);
+      }
+      return cards;
+    }
+    function getAdminDeletableVisibleIds() {
+      return getAdminFilteredCards()
+        .filter(c => (!!c.admin || isAdminCatalogCard(c.id)) && !c.staticPack)
+        .map(c => c.id);
+    }
     window.toggleAdminCardSelect = function(cardId, checked) {
       if (checked) adminSelectedCardIds.add(cardId);
       else adminSelectedCardIds.delete(cardId);
@@ -5857,11 +5905,7 @@ window.openAzukariApp = function() {
       if (el && adminTab === "cards") renderAdminCardsPanel(el);
     };
     window.adminToggleSelectAllVisible = function(checked) {
-      const normMember = (s) => String(s || "").split(" ")[0];
-      let cards = getAlbumCards(adminCardsAlbum);
-      if (adminCardsMember && adminCardsMember !== "ALL") {
-        cards = cards.filter(c => normMember(c.member) === adminCardsMember);
-      }
+      const cards = getAdminFilteredCards();
       cards.forEach(c => {
         const isAdminCard = !!c.admin || isAdminCatalogCard(c.id);
         if (isAdminCard && !c.staticPack) {
@@ -5876,6 +5920,64 @@ window.openAzukariApp = function() {
       adminSelectedCardIds = new Set();
       const el = document.getElementById("admin-content");
       if (el && adminTab === "cards") renderAdminCardsPanel(el);
+    };
+    /** 絞り込み表示中の削除可能カードをすべて削除 */
+    window.adminDeleteAllVisibleFiltered = async function() {
+      try {
+        if (typeof isAdmin === "function" && !isAdmin()) {
+          alert("管理者のみ実行できます。");
+          return;
+        }
+        const ids = getAdminDeletableVisibleIds();
+        if (!ids.length) {
+          alert("この絞り込み条件で削除できるカードがありません。\n（静的パックは削除不可です）");
+          return;
+        }
+        const album = (ILLIT_CARD_ALBUMS.find(a => a.id === adminCardsAlbum) || {}).name || adminCardsAlbum;
+        const mem = adminCardsMember === "ALL" ? "全員"
+          : (adminCardsMember === "__NONE__" ? "メンバーなし" : adminCardsMember);
+        const ok = await appConfirm(
+          "【" + album + " / " + mem + "】\n" +
+          "表示中の削除可能カード " + ids.length + " 件をすべて削除しますか？\n" +
+          "（写真も一緒に削除されます）",
+          "すべて削除する",
+          true
+        );
+        if (!ok) return;
+
+        showToast("削除中... (" + ids.length + "件)", "info");
+        let success = 0, fail = 0;
+        for (const cardId of ids) {
+          try {
+            await deleteDoc(doc(db, "cardCatalog", cardId));
+            try { await deleteDoc(doc(db, "cardPhotos", cardId)); } catch (_) {}
+            delete cardPhotoCache[cardId];
+            if (typeof idbDelete === "function") {
+              try { await idbDelete("photo_" + cardId); } catch (_) {}
+            }
+            success++;
+          } catch (e) {
+            console.warn("filtered bulk delete failed", cardId, e);
+            fail++;
+          }
+        }
+        catalogCardsCache = (catalogCardsCache || []).filter(c => !ids.includes(c.id));
+        if (typeof idbDelete === "function") {
+          try { await idbDelete("catalog_cards"); } catch (_) {}
+        }
+        adminSelectedCardIds = new Set();
+        alert("削除完了: " + success + "件" + (fail ? "（失敗 " + fail + "）" : ""));
+        showToast("絞り込み削除: " + success + "件" + (fail ? "（失敗" + fail + "）" : ""), fail ? "error" : "success");
+        const el = document.getElementById("admin-content");
+        if (el && adminTab === "cards") renderAdminCardsPanel(el);
+        if (typeof isMyCardsPageOpen === "function" && isMyCardsPageOpen()) {
+          if (typeof renderMyCardsAlbumTabs === "function") renderMyCardsAlbumTabs();
+          if (typeof renderMyCardsList === "function") renderMyCardsList();
+        }
+      } catch (e) {
+        console.error(e);
+        alert("削除中にエラーが発生しました。\n" + (e && (e.message || e.code) ? (e.message || e.code) : e));
+      }
     };
     window.adminDeleteSelectedCards = async function() {
       if (typeof isAdmin === "function" && !isAdmin()) {
