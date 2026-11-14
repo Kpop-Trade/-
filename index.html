@@ -4577,8 +4577,8 @@ window.openAzukariApp = function() {
     let staticPackCards = [];
     let staticPackLoaded = false;
 
-        async function loadStaticCardPack() {
-      if (staticPackLoaded && staticPackCards.length > 0) return;
+        async function loadStaticCardPack(force = false) {
+      if (!force && staticPackLoaded && staticPackCards.length > 0) return;
       try {
         const res = await fetch("./catalog.json?t=" + Date.now(), { cache: "no-store" });
         if (!res.ok) return;
