@@ -1124,8 +1124,9 @@
           <p class="font-bold text-gray-800 mb-1">6. 合意後のキャンセルとペナルティ</p>
           <p>合意後（発送段階）にキャンセルを申請する場合は、相手の同意が必要です。<b>申請した側にペナルティが付きます。</b></p>
           <ul class="list-disc pl-4 space-y-1 mt-1">
-            <li>1ヶ月以内に3回以上申請した場合：警告通知</li>
-            <li>1ヶ月以内に8回を超えた場合：一時的なアカウント停止</li>
+            <li>取引成立後の自己都合キャンセルは相手方への重大な迷惑行為となります。</li>
+                        <li><b>直近7日間以内に取引を2回キャンセルした場合、自動的に24時間のアカウントロック（新規投稿・購入確定・交換申し込み・共同購入への参加制限）が適用されます。</b></li>
+            <li>悪質なキャンセルや無断放置が繰り返される場合、運営の判断により永久利用停止とする場合があります。</li>
           </ul>
         </div>
         <div><p class="font-bold text-gray-800 mb-1">7. 個人情報の取り扱い</p><p>住所・電話番号などは取引に必要な範囲でのみ相手に共有されます。</p></div>
@@ -3162,6 +3163,7 @@ const ILLIT_CARD_ALBUMS = [
     window.removePostPhoto = function(i) { postPhotos.splice(i, 1); renderPostPhotoPreview(); };
 
     window.submitPost = async function() {
+      if (typeof checkCancelAccountLock === "function" && checkCancelAccountLock()) return;
       if (submittingPost || processingPhotos || !(await checkDeviceLock())) return;
       const isBuy = postMode === "buy";
       const isAlbum = postMode.startsWith("album");
@@ -3854,6 +3856,7 @@ const ILLIT_CARD_ALBUMS = [
 
     // 売却出品の「購入を確定」確認ステップ
     window.confirmPurchase = async function(index) {
+      if (typeof checkCancelAccountLock === "function" && checkCancelAccountLock()) return;
       const p = allPosts[index];
       if (!currentUser || !p || !p.isSell) return applyToPost(index);
       const price = Number(p.price || 0);
@@ -3865,6 +3868,7 @@ const ILLIT_CARD_ALBUMS = [
     };
 
     window.applyToPost = async function(index) {
+      if (typeof checkCancelAccountLock === "function" && checkCancelAccountLock()) return;
       const p = allPosts[index]; if (!currentUser || !p || !p.userId) return;
       if (!requireShippingInfo()) return;
       if (p.kind === "group") return joinGroup(index);
@@ -3951,6 +3955,7 @@ const ILLIT_CARD_ALBUMS = [
       }
     };
     window.joinGroup = async function(index) {
+      if (typeof checkCancelAccountLock === "function" && checkCancelAccountLock()) return;
       const p = allPosts[index]; if (!currentUser || !p || !p.userId || p.kind !== "group" || !(await checkDeviceLock())) return;
       if (!requireShippingInfo()) return;
       if (p.status === "closed" || isExpired(p)) return alert("募集終了。");
@@ -4484,6 +4489,37 @@ window.openAzukariApp = function() {
     window.tradeAction = async function(field) {
       if (!currentTrade) return; try { const updateData = {}; updateData[`${field}.${currentUser.uid}`] = true; updateData.updatedAt = serverTimestamp(); await updateDoc(doc(db, "trades", currentTrade.id), updateData); } catch(e) { alert("失敗しました。"); }
     };
+    window.checkCancelAccountLock = function() {
+      if (!currentUser || !userData) return false;
+      const lockedUntil = Number(userData.cancelLockedUntil || 0);
+      if (lockedUntil > Date.now()) {
+        const d = new Date(lockedUntil);
+        const mm = String(d.getMonth() + 1).padStart(2, "0");
+        const dd = String(d.getDate()).padStart(2, "0");
+        const hh = String(d.getHours()).padStart(2, "0");
+        const mi = String(d.getMinutes()).padStart(2, "0");
+        alert(`直近で2回取引をキャンセルしたため、24時間のアカウントロック（利用制限）中です。\n\n解除予定： ${mm}/${dd} ${hh}:${mi}\n※ロック期間中は新規出品・購入確定・取引申し込みができません。`);
+        return true;
+      }
+      return false;
+    };
+    async function recordUserCancelAndMaybeLock() {
+      if (!currentUser) return false;
+      const now = Date.now();
+      const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+      const prevList = Array.isArray(userData && userData.cancelTimestamps) ? userData.cancelTimestamps : [];
+      const recent = prevList.map(Number).filter(ts => ts > 0 && (now - ts) < sevenDaysMs);
+      recent.push(now);
+      const patch = { cancelTimestamps: recent };
+      let locked = false;
+      if (recent.length >= 2) {
+        patch.cancelLockedUntil = now + 24 * 60 * 60 * 1000;
+        locked = true;
+      }
+      userData = Object.assign({}, userData || {}, patch);
+      try { await setDoc(doc(db, "users", currentUser.uid), patch, { merge: true }); } catch(_) {}
+      return locked;
+    }
     window.cancelTrade = async function() {
       const t = currentTrade; if (!t || cancellingTrade) return;
       if (!(await appConfirm("この取引をキャンセルしますか？\n相手にもキャンセルされたと表示されます。", "キャンセルする", true))) return;
@@ -4492,7 +4528,12 @@ window.openAzukariApp = function() {
         await updateDoc(doc(db, "trades", t.id), { status: "cancelled", cancelledBy: currentUser.uid, updatedAt: serverTimestamp() });
         // 投稿を active（出品中）に戻す
         await restorePostToActive(t.postId, t.kind, t.applicantId);
-        showToast("取引をキャンセルしました。", "info");
+        const isNowLocked = await recordUserCancelAndMaybeLock();
+                if (isNowLocked) {
+                  alert("⚠️ 直近で2回キャンセルが行われたため、利用規約に基づき24時間のアカウントロックが適用されました。\n（ロック中は新規出品・購入確定・取引申し込みが制限されます）");
+                } else {
+                  showToast("取引をキャンセルしました。（直近2回で24時間ロックとなります）", "info");
+                }
         closeRoom();
       } catch(e) {
         console.error("cancelTrade error:", e);
