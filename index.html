@@ -5007,6 +5007,74 @@ function getAiCardVectors() {
       return _aiCardVectorsPromise;
     }
     async function getAiClipExtractor() {
+    if (_aiClipExtractorPromise) return _aiClipExtractorPromise;
+    _aiClipExtractorPromise = (async () => {
+      const updateStatus = (msg) => {
+        ["similar-cards-suggest", "mycards-image-search-result"].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) { el.classList.remove("hidden"); el.textContent = msg; }
+        });
+      };
+      
+      updateStatus("🔄 AIライブラリ(Transformers.js)を初期化中...");
+      
+      // タイムアウト監視付きインポート (20秒)
+      const importPromise = import("https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.4.1");
+      const timeoutP = new Promise((_, rej) => setTimeout(() => rej(new Error("AIライブラリの読み込みがタイムアウトしました。通信環境を確認してください。")), 20000));
+      
+      const { pipeline, env } = await Promise.race([importPromise, timeoutP]);
+      
+      // ブラウザ環境でのキャッシュ設定最適化
+      env.allowLocalModels = false;
+      env.useBrowserCache = true;
+      
+      updateStatus("🤖 AIモデル(CLIP)のダウンロード準備中...");
+      
+      let lastProgressTime = Date.now();
+      
+      // モデルロード処理自体に35秒タイムアウトを設定
+      const modelPromise = pipeline("image-feature-extraction", "Xenova/clip-vit-base-patch32", {
+        dtype: "q8",
+        progress_callback: (p) => {
+          lastProgressTime = Date.now();
+          if (p && typeof p.progress === "number") {
+            updateStatus(`🤖 AIモデル準備中... ${Math.round(p.progress)}% (${p.file || ""})`);
+          } else if (p && p.status) {
+            updateStatus(`⚡ ${p.status}...`);
+          }
+        }
+      });
+      
+      // 進行状況が35秒間一切更新されない場合の強制ガード
+      const modelTimeoutP = new Promise((_, rej) => {
+        const timer = setInterval(() => {
+          if (Date.now() - lastProgressTime > 35000) {
+            clearInterval(timer);
+            rej(new Error("AIモデルのダウンロードがネットワークまたはブラウザの制限により停止しました。"));
+          }
+        }, 1000);
+      });
+      
+      const extractor = await Promise.race([modelPromise, modelTimeoutP]);
+      updateStatus("✅ AIモデルの準備が完了しました！");
+      return extractor;
+    })().catch(e => {
+      _aiClipExtractorPromise = null;
+      console.error("AI Clip Extractor Error:", e);
+      const errMsg = "⚠️ " + (e.message || e);
+      ["similar-cards-suggest", "mycards-image-search-result"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) { el.classList.remove("hidden"); el.innerHTML = `${errMsg} <br><button onclick="window.clearMyCardsImageSearch && window.clearMyCardsImageSearch()" class="mt-1 text-[10px] underline text-purple-600 font-bold">閉じる・手動選択へ</button>`; }
+      });
+      throw e;
+    });
+    return _aiClipExtractorPromise;
+  }
+  
+  // 元の関数名との互換性維持
+  window.getAiClipExtractor = getAiClipExtractor;
+  
+  async function _dummy_old_clip() {
       if (!_aiClipExtractorPromise) {
         _aiClipExtractorPromise = import("https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.4.1")
           .then(({ pipeline, env }) => {
