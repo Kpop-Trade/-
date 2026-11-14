@@ -1187,19 +1187,13 @@ getRedirectResult(auth)
 
 
 // 👇 これを追加（アルバムIDはお好みに合わせて増減できます）
-const DEFAULT_ALBUMS = [
-  { id: 'super-real-me', name: 'SUPER REAL ME', icon: '💿', sort: 1 },
-  { id: 'ill-like-you', name: "I'LL LIKE YOU", icon: '💝', sort: 2 },
-  { id: 'bomb', name: 'bomb', icon: '💣', sort: 3 },
-  { id: 'toki-yo-tomare', name: '時よ止まれ', icon: '⏰', sort: 4 },
-  { id: 'not-cute-anymore', name: 'NOT CUTE ANYMORE', icon: '🖤', sort: 5 },
-  { id: 'mamihlapinatapai', name: 'MAMIHLAPINATAPAI', icon: '✨', sort: 6 },
-  { id: 'i-got-your-back', name: 'I Got Your Back', icon: '🎀', sort: 7 },
-  { id: 'break-even', name: 'BREAK EVEN', icon: '🎲', sort: 8 },
-  { id: 'benefit-luckydraw', name: '店舗特典・ラキドロ', icon: '🎁', sort: 9 },
-  { id: 'goods-event', name: 'グッズ・シーグリ・ライブ', icon: '🎤', sort: 10 },
+const ILLIT_CARD_ALBUMS = [
+  { id: "srm", name: "SUPER REAL ME", year: "2024", cards: [] },
+  { id: "ily", name: "I'LL LIKE YOU", year: "2024", cards: [] },
+  { id: "bomb", name: "bomb", year: "2025", cards: [] },
+  { id: "jp1", name: "時よ止まれ", year: "2025", cards: [] },
+  { id: "other", name: "その他・特典", year: "", cards: [] }
 ];
-
 
 
     const CARD_STATUS = { owned: "所持", none: "未所持", want: "欲しい" };
