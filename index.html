@@ -1868,12 +1868,20 @@ const ILLIT_CARD_ALBUMS = [
       el.innerHTML = '<div class="flex justify-center items-center h-full"><p class="text-gray-500 font-medium">⏳ データ読み込み中...</p></div>';
       
       try {
-        if (adminTab === "stats") {
+        const _safeAdminGetDocs = async (q) => {
+      try {
+        return await getDocs(q);
+      } catch (err) {
+        console.warn("Admin query fallback:", err && err.message ? err.message : err);
+        return { docs: [], size: 0, empty: true, forEach: () => {} };
+      }
+    };
+    if (adminTab === "stats") {
           const d = new Date(); d.setDate(1); d.setHours(0,0,0,0);
           const [tradesSnap, usersSnap, postsSnap] = await Promise.all([
-            getDocs(collection(db, "trades")),
-            getDocs(collection(db, "users")),
-            getDocs(collection(db, "posts"))
+            _safeAdminGetDocs(collection(db, "trades")),
+            _safeAdminGetDocs(collection(db, "users")),
+            _safeAdminGetDocs(collection(db, "posts"))
           ]);
           
           let platformTotal = 0; let thisMonthTotal = 0; let completedCount = 0;
@@ -1939,8 +1947,8 @@ const ILLIT_CARD_ALBUMS = [
         }
 
         if (adminTab === "users") {
-          const snap = await getDocs(collection(db, "users")); 
-          const suspSnap = await getDocs(collection(db, "suspensions"));
+          const snap = await _safeAdminGetDocs(collection(db, "users")); 
+          const suspSnap = await _safeAdminGetDocs(collection(db, "suspensions"));
           const suspSet = new Set(suspSnap.docs.map(x => x.id));
           
           let users = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -1981,7 +1989,7 @@ const ILLIT_CARD_ALBUMS = [
         }
 
         if (adminTab === "posts") {
-          const snap = await getDocs(query(collection(db, "posts"), orderBy("createdAt", "desc")));
+          const snap = await _safeAdminGetDocs(query(collection(db, "posts"), orderBy("createdAt", "desc")));
           let posts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
           
           if (adminSearchQuery) {
@@ -2015,7 +2023,7 @@ const ILLIT_CARD_ALBUMS = [
         }
 
         if (adminTab === "trades") {
-          const snap = await getDocs(query(collection(db, "trades"), orderBy("createdAt", "desc")));
+          const snap = await _safeAdminGetDocs(query(collection(db, "trades"), orderBy("createdAt", "desc")));
           let trades = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
           if (adminSearchQuery) {
@@ -2052,7 +2060,7 @@ const ILLIT_CARD_ALBUMS = [
         }
 
         if (adminTab === "reports") {
-          const snap = await getDocs(query(collection(db, "reports"), orderBy("createdAt", "desc")));
+          const snap = await _safeAdminGetDocs(query(collection(db, "reports"), orderBy("createdAt", "desc")));
           if (snap.empty) { el.innerHTML = '<p class="text-gray-500 text-center py-6 font-medium">通報はありません。</p>'; return; }
           el.innerHTML = snap.docs.map(d => {
             const data = d.data();
@@ -2081,7 +2089,7 @@ const ILLIT_CARD_ALBUMS = [
           }).join("");
         }
         else if (adminTab === "inquiries") {
-          const snap = await getDocs(query(collection(db, "inquiries"), orderBy("createdAt", "desc")));
+          const snap = await _safeAdminGetDocs(query(collection(db, "inquiries"), orderBy("createdAt", "desc")));
           if (snap.empty) { el.innerHTML = '<p class="text-gray-500 text-center py-6 font-medium">問い合わせはありません。</p>'; return; }
           el.innerHTML = snap.docs.map(d => {
             const data = d.data();
@@ -2140,7 +2148,7 @@ const ILLIT_CARD_ALBUMS = [
           }).catch(() => {});
         }
         else if (adminTab === "logs") {
-          const snap = await getDocs(query(collection(db, "adminLogs"), orderBy("createdAt", "desc")));
+          const snap = await _safeAdminGetDocs(query(collection(db, "adminLogs"), orderBy("createdAt", "desc")));
           const docs = snap.docs.slice(0, 80);
           if (!docs.length) { el.innerHTML = '<p class="text-gray-500 text-center py-6">操作ログはまだありません。</p>'; return; }
           el.innerHTML = `<div class="text-[11px] text-gray-500 mb-2">最新 ${docs.length} 件</div>` + docs.map(d => {
