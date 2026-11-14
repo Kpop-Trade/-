@@ -373,6 +373,7 @@
     <section id="mycards-section" class="hidden space-y-3 pb-8">
       <div class="flex items-center justify-between px-1">
         <h2 class="font-bold text-lg text-gray-900">🃏 Myトレカ</h2>
+      <button type="button" onclick="openIllitCalendar()" class="px-3 py-1.5 rounded-full bg-indigo-600 text-white text-xs font-bold shadow-sm active:scale-95 transition flex items-center gap-1"><span>📅</span><span>ILLIT予定</span></button>
       </div>
       <div class="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
         <button id="mycards-tab-own" onclick="setMyCardsTab('own')" class="filter-chip bg-gradient-to-r from-illit-purple to-illit-accent text-white border-white/50 shadow-md">所持リスト</button>
@@ -8187,6 +8188,44 @@ window.addEventListener("unhandledrejection", function(event) {
 });
 </script>
 
+
+<div id="illit-calendar-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl w-full max-w-md max-h-[80vh] flex flex-col shadow-2xl overflow-hidden">
+    <div class="p-4 border-b bg-gradient-to-r from-indigo-50 to-pink-50 flex items-center justify-between">
+      <div>
+        <h3 class="font-bold text-base text-gray-900">📅 ILLIT 公式スケジュール</h3>
+        <p class="text-[11px] text-gray-500">AIが最新情報を毎日自動アップデート</p>
+      </div>
+      <button type="button" onclick="closeIllitCalendar()" class="w-8 h-8 rounded-full bg-white/80 text-gray-600 font-bold shadow-sm">✕</button>
+    </div>
+    <div id="illit-calendar-list" class="p-4 overflow-y-auto space-y-3 flex-1"></div>
+  </div>
+</div>
+<script>
+window.openIllitCalendar = async function() {
+  const modal = document.getElementById("illit-calendar-modal");
+  const list = document.getElementById("illit-calendar-list");
+  if (!modal || !list) return;
+  modal.classList.remove("hidden");
+  list.innerHTML = '<p class="text-center text-xs text-gray-500 py-8">スケジュールを読み込み中...</p>';
+  try {
+    const res = await fetch("./illit_calendar.json?t=" + Date.now());
+    if (!res.ok) throw new Error("Not found");
+    const items = await res.json();
+    if (!items.length) {
+      list.innerHTML = '<p class="text-center text-xs text-gray-500 py-8">予定はまだありません</p>';
+      return;
+    }
+    list.innerHTML = items.map(item => '<div class="p-3 rounded-xl border border-gray-200 bg-gray-50/50 space-y-1"><div class="flex items-center justify-between gap-2"><span class="text-xs font-bold text-indigo-700">' + item.date + ' ' + (item.time || '') + '</span><span class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-indigo-100 text-indigo-700">' + (item.category || 'info') + '</span></div><div class="text-sm font-bold text-gray-900">' + item.title + '</div><div class="text-xs text-gray-600">' + (item.detail || '') + '</div></div>').join("");
+  } catch (e) {
+    list.innerHTML = '<p class="text-center text-xs text-red-500 py-8">スケジュールを読み込めませんでした</p>';
+  }
+};
+window.closeIllitCalendar = function() {
+  const modal = document.getElementById("illit-calendar-modal");
+  if (modal) modal.classList.add("hidden");
+};
+</script>
 </body>
 </html>
 

@@ -1,0 +1,9 @@
+[
+  {
+    "date": "2026-11-15",
+    "time": "終日",
+    "title": "ILLIT カレンダー機能テスト",
+    "category": "info",
+    "detail": "GitHub ActionsでGEMINI_API_KEYを設定すると毎日自動で最新予定に更新されます"
+  }
+]
