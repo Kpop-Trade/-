@@ -4730,6 +4730,9 @@ window.openAzukariApp = function() {
 
       el.innerHTML = `
         <div class="flex gap-1.5 overflow-x-auto hide-scrollbar pb-1 mb-2" id="admin-card-album-tabs">${albumTabsHtml}</div>
+        <button type="button" onclick="adminDeduplicateCatalogCards()" class="w-full mb-3 bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold py-2.5 rounded-full hover:bg-amber-100 transition shadow-sm">
+          🧹 重複トレカを自動削除（同じアルバム・名前・メンバー）
+        </button>
         <div class="liquid-glass rounded-2xl p-3 mb-3 space-y-2.5 border border-indigo-200/60 bg-gradient-to-br from-indigo-50/80 to-purple-50/80">
           <div class="flex items-center justify-between">
             <div class="text-xs font-bold text-indigo-900">🚀 2400枚大量パック生成（Firestore消費0回）</div>
@@ -5765,6 +5768,94 @@ window.openAzukariApp = function() {
         alert("登録に失敗しました。\n" + (e?.code || e?.message || ""));
       }
     };
+
+    window.adminDeduplicateCatalogCards = async function() {
+      if (typeof isAdmin === "function" && !isAdmin()) {
+        alert("管理者のみ実行できます。");
+        return;
+      }
+      if (!currentUser) {
+        alert("ログインが必要です。");
+        return;
+      }
+      try {
+        await ensureCatalogCardsLoaded();
+      } catch (e) {
+        console.warn(e);
+      }
+      const list = (catalogCardsCache || []).slice();
+      if (!list.length) {
+        alert("カタログに登録されたカードがありません。");
+        return;
+      }
+
+      // キー: albumId|member|正規化name
+      const norm = (s) => String(s || "").replace(/\s+/g, " ").trim().toLowerCase();
+      const groups = new Map();
+      for (const c of list) {
+        const key = [c.albumId || "", norm(c.member), norm(c.name)].join("|");
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(c);
+      }
+
+      const toDelete = [];
+      for (const [, arr] of groups) {
+        if (arr.length < 2) continue;
+        // 写真があるものを優先して残す。なければ先頭を残す
+        arr.sort((a, b) => {
+          const ap = cardPhotoCache[a.id] || a.photoUrl ? 1 : 0;
+          const bp = cardPhotoCache[b.id] || b.photoUrl ? 1 : 0;
+          if (ap !== bp) return bp - ap;
+          return String(a.id).localeCompare(String(b.id));
+        });
+        toDelete.push(...arr.slice(1));
+      }
+
+      if (!toDelete.length) {
+        alert("重複は見つかりませんでした。\n（同じアルバム・名前・メンバーの組み合わせが複数あるものだけ対象です）");
+        return;
+      }
+
+      const preview = toDelete.slice(0, 8).map(c => `・${c.name || c.id}（${c.member || "メンバーなし"}）`).join("\n");
+      const more = toDelete.length > 8 ? `\n…他 ${toDelete.length - 8} 件` : "";
+      if (!(await appConfirm(
+        `重複 ${toDelete.length} 件を削除しますか？\n（各グループで1枚だけ残します）\n\n${preview}${more}`,
+        "削除する",
+        true
+      ))) return;
+
+      let ok = 0, fail = 0;
+      for (const c of toDelete) {
+        try {
+          await deleteDoc(doc(db, "cardCatalog", c.id));
+          try { await deleteDoc(doc(db, "cardPhotos", c.id)); } catch (_) {}
+          delete cardPhotoCache[c.id];
+          if (typeof idbDelete === "function") {
+            try { await idbDelete("photo_" + c.id); } catch (_) {}
+          }
+          ok++;
+        } catch (e) {
+          console.warn("dedupe delete failed", c.id, e);
+          fail++;
+        }
+      }
+
+      catalogCardsCache = catalogCardsCache.filter(c => !toDelete.some(d => d.id === c.id));
+      if (typeof idbDelete === "function") {
+        try { await idbDelete("catalog_cards"); } catch (_) {}
+      }
+
+      showToast(`重複削除: ${ok}件${fail ? `（失敗${fail}）` : ""}`, fail ? "error" : "success");
+      const el = document.getElementById("admin-content");
+      if (el && adminTab === "cards" && typeof renderAdminCardsPanel === "function") {
+        renderAdminCardsPanel(el);
+      }
+      if (typeof isMyCardsPageOpen === "function" && isMyCardsPageOpen()) {
+        if (typeof renderMyCardsAlbumTabs === "function") renderMyCardsAlbumTabs();
+        if (typeof renderMyCardsList === "function") renderMyCardsList();
+      }
+    };
+
     window.adminDeleteCatalogCard = async function(cardId) {
       if (!isAdmin()) return;
       if (!(await appConfirm("このトレカをカタログから削除しますか？\n（写真も一緒に削除されます）", "削除する", true))) return;
