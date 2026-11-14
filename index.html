@@ -3544,7 +3544,7 @@ const ILLIT_CARD_ALBUMS = [
         `;
       });
       container.innerHTML = cards.length === 0
-          ? (loadingPosts && allPosts.length === 0 ? '<p class="text-xs text-indigo-600 col-span-full text-center py-8 font-bold bg-white/50 rounded-xl animate-pulse">募集を読み込み中...</p>' : '<p class="text-xs text-gray-500 col-span-full text-center py-8 font-medium bg-white/50 rounded-xl">条件に合う募集はありません。</p>')
+          ? (loadingPosts && allPosts.length === 0 ? '<div class="col-span-full text-center py-8 bg-white/50 rounded-xl"><p class="text-xs text-indigo-600 font-bold animate-pulse mb-2">募集を読み込み中...</p><button type="button" onclick="window._retriedInitialPosts=false; loadPosts(true);" class="text-[11px] text-gray-500 underline">切り替わらない場合はタップして再試行</button></div>' : '<p class="text-xs text-gray-500 col-span-full text-center py-8 font-medium bg-white/50 rounded-xl">条件に合う募集はありません。</p>')
         : cards.join("");
       renderSellTab();
     }
@@ -3564,11 +3564,15 @@ const ILLIT_CARD_ALBUMS = [
           : query(...base, limit(POSTS_PAGE));
         let snap;
         try {
-          snap = await getDocs(q);
+          const fetchWithTimeout = () => Promise.race([
+        getDocs(q),
+        new Promise((_, rej) => setTimeout(() => rej(new Error("通信がタイムアウトしました")), 8000))
+      ]);
+      snap = await fetchWithTimeout();
       if (reset && snap.empty && !window._retriedInitialPosts) {
         window._retriedInitialPosts = true;
-        await new Promise(r => setTimeout(r, 1200));
-        snap = await getDocs(q);
+        await new Promise(r => setTimeout(r, 1000));
+        snap = await fetchWithTimeout();
       }
         } catch (loadErr) {
           console.error("loadPosts query error:", loadErr);
@@ -3609,7 +3613,7 @@ const ILLIT_CARD_ALBUMS = [
       } catch (err) {
         console.error("posts load error:", err);
         showToast("投稿の読み込みに失敗しました。🔄で再読み込みしてください。", "error");
-      } finally { loadingPosts = false; }
+      } finally { if (loadingPosts) { loadingPosts = false; renderPosts(); } }
     }
     function subscribePosts() { loadPosts(true); }
     window.loadMorePosts = function() { loadPosts(false); };
