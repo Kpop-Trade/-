@@ -3547,7 +3547,7 @@ const ILLIT_CARD_ALBUMS = [
         `;
       });
       container.innerHTML = cards.length === 0
-          ? (loadingPosts && allPosts.length === 0 ? '<div class="col-span-full text-center py-8 bg-white/50 rounded-xl"><p class="text-xs text-indigo-600 font-bold animate-pulse mb-2">募集を読み込み中...</p><button type="button" onclick="window._retriedInitialPosts=false; loadPosts(true);" class="text-[11px] text-gray-500 underline">切り替わらない場合はタップして再試行</button></div>' : '<p class="text-xs text-gray-500 col-span-full text-center py-8 font-medium bg-white/50 rounded-xl">条件に合う募集はありません。</p>')
+          ? (loadingPosts && allPosts.length === 0 ? '<div class="col-span-full text-center py-8 bg-white/50 rounded-xl"><p class="text-xs text-indigo-600 font-bold animate-pulse mb-2">募集を読み込み中...</p><button type="button" onclick="window._retriedInitialPosts=false; if(window.loadPosts) window.loadPosts(true);" class="text-[11px] text-gray-500 underline">切り替わらない場合はタップして再試行</button></div>' : '<p class="text-xs text-gray-500 col-span-full text-center py-8 font-medium bg-white/50 rounded-xl">条件に合う募集はありません。</p>')
         : cards.join("");
       renderSellTab();
     }
@@ -3618,6 +3618,8 @@ const ILLIT_CARD_ALBUMS = [
         showToast("投稿の読み込みに失敗しました。🔄で再読み込みしてください。", "error");
       } finally { if (loadingPosts) { loadingPosts = false; renderPosts(); } }
     }
+    window.loadPosts = loadPosts;
+    window.renderPosts = renderPosts;
     function subscribePosts() { loadPosts(true); }
     window.loadMorePosts = function() { loadPosts(false); };
     window.refreshPosts = async function() { await loadPosts(true); showToast("最新の情報に更新しました。", "info"); };
