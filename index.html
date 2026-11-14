@@ -4886,7 +4886,67 @@ window.openAzukariApp = function() {
       return calcFeatureSimilarity(vecA, vecB);
     }
 
+    
+    // AI画像検索 (Transformers.js CLIP-ViT-B-32 + card_vectors.json)
+    let _aiCardVectorsPromise = null;
+    let _aiClipExtractorPromise = null;
+    function getAiCardVectors() {
+      if (!_aiCardVectorsPromise) {
+        _aiCardVectorsPromise = fetch("./card_vectors.json?v=" + Date.now())
+          .then(r => r.ok ? r.json() : null)
+          .then(d => (d && d.vectors) ? d.vectors : null)
+          .catch(() => null);
+      }
+      return _aiCardVectorsPromise;
+    }
+    async function getAiClipExtractor() {
+      if (!_aiClipExtractorPromise) {
+        _aiClipExtractorPromise = import("https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.4.1")
+          .then(({ pipeline, env }) => {
+            env.allowLocalModels = false;
+            return pipeline("image-feature-extraction", "Xenova/clip-vit-base-patch32", { dtype: "q8" });
+          })
+          .catch(e => { _aiClipExtractorPromise = null; throw e; });
+      }
+      return _aiClipExtractorPromise;
+    }
+    async function findSimilarCardsWithAI(dataUrl) {
+      const vecMap = await getAiCardVectors();
+      if (!vecMap || !Object.keys(vecMap).length) return null;
+      const resEl = document.getElementById("mycards-image-search-result");
+      if (resEl) resEl.textContent = "🤖 AIモデル準備＆解析中（初回のみ数秒）...";
+      const extractor = await getAiClipExtractor();
+      const out = await extractor(dataUrl, { pooling: "mean", normalize: true });
+      const qVec = out.data;
+
+      const allCards = [];
+      const seen = new Set();
+      ILLIT_CARD_ALBUMS.forEach(a => {
+        getAlbumCards(a.id).forEach(c => {
+          if (c && c.id && !seen.has(c.id)) { seen.add(c.id); allCards.push(c); }
+        });
+      });
+
+      const scored = [];
+      for (const c of allCards) {
+        const v = vecMap[c.id];
+        if (!v || v.length !== qVec.length) continue;
+        let dot = 0;
+        for (let i = 0; i < qVec.length; i++) dot += qVec[i] * v[i];
+        const pct = Math.max(0, Math.min(100, Math.round(((dot - 0.50) / 0.45) * 100)));
+        if (dot >= 0.62) scored.push({ card: c, score: pct, raw: dot });
+      }
+      scored.sort((a, b) => b.raw - a.raw);
+      return scored.slice(0, 24);
+    }
+
     async function findSimilarCards(uploadedDataUrl) {
+      try {
+        const aiHits = await findSimilarCardsWithAI(dataUrl);
+        if (Array.isArray(aiHits) && aiHits.length > 0) return aiHits;
+      } catch (aiErr) {
+        console.warn("AI search fallback:", aiErr);
+      }
       await ensureCatalogCardsLoaded();
       for (const a of ILLIT_CARD_ALBUMS) {
         await ensureCardPhotosLoaded(a.id);
@@ -5045,69 +5105,6 @@ window.openAzukariApp = function() {
 
     function renderAdminCardsPanel(el) {
       if (!el) return;
-      // 静的パック (catalog.json 3,699枚) 一括振り分け用ステート
-      window._spBulkAlbum = window._spBulkAlbum || "ALL";
-      window._spBulkMember = window._spBulkMember || "ALL";
-      window._spBulkSelected = window._spBulkSelected || new Set();
-      window._spBulkLimit = window._spBulkLimit || 120;
-      window.renderStaticPackBulkManager = function() {
-        const box = document.getElementById("adminStaticPackBulkBox");
-        if (!box) return;
-        const all = Array.isArray(staticPackCards) ? staticPackCards : [];
-        const filtered = all.filter(c => {
-          if (window._spBulkAlbum !== "ALL" && c.albumId !== window._spBulkAlbum) return false;
-          if (window._spBulkMember !== "ALL" && (c.member || "") !== window._spBulkMember) return false;
-          return true;
-        });
-        const shown = filtered.slice(0, window._spBulkLimit);
-        const selCount = window._spBulkSelected.size;
-        const albumOpts = ILLIT_CARD_ALBUMS.map(a => `<option value="${a.id}">${escapeHtml(a.name)}</option>`).join("");
-        const memOpts = ["ウォニ","ミンジュ","イロハ","モカ","ユナ","OT5"].map(m => `<option value="${m}">${m}</option>`).join("");
-        box.innerHTML = `
-          <div class="bg-white border border-purple-200 rounded-2xl p-3 mb-4 shadow-sm space-y-2.5">
-            <div class="flex items-center justify-between">
-              <div class="text-xs font-bold text-purple-900">📦 catalog.json 一括振り分け（全${all.length}枚 / 該当${filtered.length}枚）</div>
-              <button type="button" onclick="downloadUpdatedCatalogJson()" class="bg-emerald-600 text-white text-[11px] font-bold px-3 py-1.5 rounded-full shadow">⬇ 更新済みcatalog.json保存</button>
-            </div>
-            <div class="grid grid-cols-2 gap-2">
-              <select onchange="window._spBulkAlbum=this.value;window._spBulkLimit=120;renderStaticPackBulkManager()" class="text-xs border rounded-lg p-1.5 bg-gray-50">
-                <option value="ALL" ${window._spBulkAlbum==="ALL"?"selected":""}>全アルバム (${all.length})</option>
-                ${ILLIT_CARD_ALBUMS.map(a => `<option value="${a.id}" ${window._spBulkAlbum===a.id?"selected":""}>${escapeHtml(a.name)} (${all.filter(x=>x.albumId===a.id).length})</option>`).join("")}
-              </select>
-              <select onchange="window._spBulkMember=this.value;window._spBulkLimit=120;renderStaticPackBulkManager()" class="text-xs border rounded-lg p-1.5 bg-gray-50">
-                <option value="ALL" ${window._spBulkMember==="ALL"?"selected":""}>全メンバー</option>
-                ${["OT5","ウォニ","ミンジュ","イロハ","モカ","ユナ",""].map(m => `<option value="${m}" ${window._spBulkMember===m?"selected":""}>${m||"未設定"} (${all.filter(x=>(x.member||"")===m).length})</option>`).join("")}
-              </select>
-            </div>
-            <div class="flex flex-wrap items-center gap-1.5 bg-purple-50/70 p-2 rounded-xl">
-              <button type="button" onclick="filteredSelectSp(true)" class="text-[11px] bg-white border border-purple-200 px-2.5 py-1 rounded-full font-bold text-purple-800">表示中を全選択</button>
-              <button type="button" onclick="window._spBulkSelected.clear();renderStaticPackBulkManager()" class="text-[11px] bg-white border border-gray-200 px-2.5 py-1 rounded-full text-gray-600">解除</button>
-              <span class="text-[11px] font-bold text-purple-900 ml-auto">選択中: ${selCount}枚</span>
-            </div>
-            <div class="grid grid-cols-2 gap-1.5">
-              <div class="flex gap-1">
-                <select id="spBulkTargetMember" class="flex-1 text-xs border rounded-lg p-1.5">${memOpts}</select>
-                <button type="button" onclick="applySpBulkMember()" class="bg-purple-600 text-white text-[11px] font-bold px-2.5 rounded-lg">メンバー変更</button>
-              </div>
-              <div class="flex gap-1">
-                <select id="spBulkTargetAlbum" class="flex-1 text-xs border rounded-lg p-1.5">${albumOpts}</select>
-                <button type="button" onclick="applySpBulkAlbum()" class="bg-indigo-600 text-white text-[11px] font-bold px-2.5 rounded-lg">アルバム変更</button>
-              </div>
-            </div>
-            <div class="grid grid-cols-5 sm:grid-cols-6 gap-1.5 max-h-80 overflow-y-auto p-1 bg-gray-50 rounded-xl">
-              ${shown.map(c => {
-                const checked = window._spBulkSelected.has(c.id);
-                const src = c.photoUrl || c.photo || "";
-                return `<div onclick="toggleSpCardSelect('${c.id}')" class="relative rounded-lg overflow-hidden border-2 ${checked ? 'border-purple-600 ring-2 ring-purple-300' : 'border-transparent'} bg-white cursor-pointer">
-                  <img src="${escapeHtml(src)}" loading="lazy" class="w-full aspect-[3/4] object-cover">
-                  <div class="absolute top-0.5 right-0.5 w-4 h-4 rounded-full text-[10px] flex items-center justify-center font-bold ${checked ? 'bg-purple-600 text-white' : 'bg-black/40 text-white'}">${checked ? '✓' : ''}</div>
-                  <div class="text-[9px] leading-tight px-1 py-0.5 truncate bg-white/95 font-bold text-gray-700">${escapeHtml(c.member||"-")} / ${escapeHtml(c.albumId||"")}</div>
-                </div>`;
-              }).join("")}
-            </div>
-            ${filtered.length > shown.length ? `<button type="button" onclick="window._spBulkLimit+=180;renderStaticPackBulkManager()" class="w-full py-1.5 text-xs font-bold text-purple-700 bg-purple-50 rounded-lg">さらに表示（残り ${filtered.length - shown.length} 枚）</button>` : ""}
-          </div>`;
-      };
       window.toggleSpCardSelect = function(id) {
         if (window._spBulkSelected.has(id)) window._spBulkSelected.delete(id);
         else window._spBulkSelected.add(id);
@@ -5206,7 +5203,7 @@ window.openAzukariApp = function() {
       const filterAlbumName = album.name || adminCardsAlbum;
       const filterMemberName = memberLabel(adminCardsMember || "ALL");
 
-      el.innerHTML = `<div id="adminStaticPackBulkBox"></div>` + `
+      el.innerHTML = `
         <div class="liquid-glass rounded-2xl p-3 mb-3 space-y-2.5 border border-pink-200/70 bg-gradient-to-br from-pink-50/80 to-purple-50/70">
           <div class="text-xs font-bold text-pink-900 flex items-center gap-1.5">
             <span>🗑 削除用の絞り込み</span>
@@ -5427,7 +5424,6 @@ window.openAzukariApp = function() {
       }
       renderAdminBulkList();
       updateAdminZipPackUI();
-      setTimeout(() => { try { renderStaticPackBulkManager(); } catch (_) {} }, 0);
     }
 
    // ===== まとめ画像からのトレカ枠自動検出ロジック =====
