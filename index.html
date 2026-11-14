@@ -4937,6 +4937,14 @@ window.openAzukariApp = function() {
       return _aiClipExtractorPromise;
     }
     async function findSimilarCardsWithAI(dataUrl) {
+      try {
+        return await _findSimilarCardsWithAIRaw(dataUrl);
+      } catch (aiErr) {
+        console.warn("CLIP AI fallback to standard image search:", aiErr);
+        return null;
+      }
+    }
+    async function _findSimilarCardsWithAIRaw(dataUrl) {
       const vecMap = await getAiCardVectors();
       if (!vecMap || !Object.keys(vecMap).length) return null;
       const resEl = document.getElementById("mycards-image-search-result");
@@ -7354,7 +7362,7 @@ window.openAzukariApp = function() {
       } catch (e) {
         console.error(e);
         if (resultEl) resultEl.textContent = "検索に失敗しました";
-        alert("画像検索に失敗しました");
+        alert("画像検索に失敗しました: " + (e && e.message ? e.message : e));
       }
     };
 
