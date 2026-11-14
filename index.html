@@ -6761,25 +6761,7 @@ window.openAzukariApp = function() {
 
         // Firestoreから直接取り直す（キャッシュ欠落対策）
         let list = (catalogCardsCache || []).slice();
-        try {
-          const snap = await getDocs(collection(db, "cardCatalog"));
-          list = snap.docs.map(d => {
-            const data = d.data() || {};
-            return {
-              id: d.id,
-              albumId: data.albumId || "other",
-              name: data.name || "",
-              member: data.member || "",
-              admin: true
-            };
-          });
-          catalogCardsCache = list.filter(c => c.name);
-          catalogCardsLoaded = true;
-        } catch (e) {
-          console.warn("cardCatalog refresh", e);
-          alert("カタログの取得に失敗しました。\n" + (e && (e.code || e.message) ? (e.code || e.message) : e));
-          return;
-        }
+    // GitHubパック優先のためFirestore全件再取得をスキップ
 
         if (!list.length) {
           alert("カタログに登録されたカードがありません。\n（管理者追加のカードが0件です）");
