@@ -1186,7 +1186,8 @@ getRedirectResult(auth)
     const MAX_POST_PHOTOS = 3;
     const MAX_NOTIFICATIONS = 50;
 
-const ILLIT_CARDS = [];
+    const ILLIT_MEMBERS = ["ユナ", "ミンジュ", "モカ", "ウォニ", "イロハ", "OT5"];
+
 
 // 👇 これを追加（アルバムIDはお好みに合わせて増減できます）
 const ILLIT_CARD_ALBUMS = [
@@ -5768,8 +5769,9 @@ window.openAzukariApp = function() {
       document.getElementById("mycards-tab-share").className = tab === "share" ? active : normal;
       if (tab === "share") renderMyCardsShareStats();
     };
-    function renderMyCardsAlbumTabs() {
+        function renderMyCardsAlbumTabs() {
       const el = document.getElementById("mycards-album-tabs");
+      if (!el) return;
       const activeChip = "filter-chip bg-teal-500 text-white shadow-md text-[11px]";
       const normalChip = "filter-chip bg-white/70 text-teal-800 hover:bg-white text-[11px]";
       el.innerHTML = ILLIT_CARD_ALBUMS.map(a =>
@@ -5780,10 +5782,10 @@ window.openAzukariApp = function() {
       const el = document.getElementById("mycards-member-tabs");
       if (!el) return;
       const cards = getAlbumCards(myCardsAlbum);
-      // そのアルバムに存在するメンバーを抽出（順番を揃える）
+      // 登録データ有無に関わらず基本メンバーは常に選べるようにしつつ、その他メンバーがあれば後ろに追加
       const order = ["ウォニ", "ミンジュ", "イロハ", "モカ", "ユナ", "OT5"];
       const existing = new Set(cards.map(c => c.member).filter(Boolean));
-      const sorted = order.filter(m => existing.has(m));
+      const sorted = [...order];
       existing.forEach(m => { if (!sorted.includes(m)) sorted.push(m); });
 
       const tabs = [{ key: "ALL", label: "全員" }, ...sorted.map(m => ({ key: m, label: m }))];
@@ -5800,6 +5802,7 @@ window.openAzukariApp = function() {
       renderMyCardsMemberTabs();
       const el = document.getElementById("mycards-list");
       if (el) el.innerHTML = `<p class="text-xs text-gray-500 text-center py-8">読み込み中...</p>`;
+      await ensureCatalogCardsLoaded();
       await ensureCardPhotosLoaded(id);
       renderMyCardsMemberTabs();
       renderMyCardsList();
@@ -5809,6 +5812,7 @@ window.openAzukariApp = function() {
       renderMyCardsMemberTabs();
       renderMyCardsList();
     };
+
 
     function renderMyCardsList() {
       const el = document.getElementById("mycards-list");
