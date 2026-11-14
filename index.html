@@ -4599,6 +4599,13 @@ window.openAzukariApp = function() {
         console.warn("catalog.json load error:", e);
       }
     }
+    // 起動時に catalog.json (3,699枚) を自動読み込みし、開いている画面を再描画
+    const _bootStaticPackPromise = loadStaticCardPack().then(() => {
+      try { if (typeof renderMyCardsAlbumTabs === "function") renderMyCardsAlbumTabs(); } catch (_) {}
+      try { if (typeof renderMyCardsMemberTabs === "function") renderMyCardsMemberTabs(); } catch (_) {}
+      try { if (typeof renderMyCardsList === "function") renderMyCardsList(); } catch (_) {}
+      try { if (typeof renderMyCardsShareStats === "function") renderMyCardsShareStats(); } catch (_) {}
+    });
 
         // ==========================================
     // 🔍 トレカ画像認識（v3: pHash + パッチ相関 + 顔領域・厳格ゲート）
