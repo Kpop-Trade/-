@@ -2,29 +2,7 @@
 
 <html lang="ja">
 <head>
-  <script>
-  window.addEventListener("error", function (e) {
-    var box = document.getElementById("__err_box");
-    if (!box) {
-      box = document.createElement("div");
-      box.id = "__err_box";
-      box.style.cssText = "position:fixed;left:0;right:0;top:0;z-index:99999;background:#dc2626;color:#fff;font:12px/1.5 monospace;padding:10px;max-height:50vh;overflow:auto;white-space:pre-wrap;word-break:break-all;";
-      document.addEventListener("DOMContentLoaded", function () { document.body.appendChild(box); });
-      if (document.body) document.body.appendChild(box);
-    }
-    box.textContent += "【エラー】" + e.message + "\n  行: " + e.lineno + " 列: " + e.colno + "\n  " + (e.filename || "") + "\n\n";
-  });
-  window.addEventListener("unhandledrejection", function (e) {
-    var box = document.getElementById("__err_box");
-    if (!box) {
-      box = document.createElement("div");
-      box.id = "__err_box";
-      box.style.cssText = "position:fixed;left:0;right:0;top:0;z-index:99999;background:#dc2626;color:#fff;font:12px/1.5 monospace;padding:10px;max-height:50vh;overflow:auto;white-space:pre-wrap;word-break:break-all;";
-      if (document.body) document.body.appendChild(box);
-    }
-    box.textContent += "【Promiseエラー】" + (e.reason && e.reason.message ? e.reason.message : e.reason) + "\n\n";
-  });
-</script>
+  
 
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -5802,17 +5780,7 @@ window.openAzukariApp = function() {
         `<button onclick="setMyCardsAlbum('${a.id}')" class="${a.id === myCardsAlbum ? activeChip : normalChip}">${a.name}</button>`
       ).join("");
     }
-    function renderMyCardsMemberTabs() {
-      const el = document.getElementById("mycards-member-tabs");
-      if (!el) return;
-      const names = ["ウォニ", "ミンジュ", "イロハ", "モカ", "ユナ", "OT5"];
-      const tabs = [{ key: "ALL", label: "全員" }, ...names.map(m => ({ key: m, label: m }))];
-      const on = "filter-chip bg-gradient-to-r from-illit-purple to-illit-accent text-white shadow-md text-[11px] shrink-0 whitespace-nowrap";
-      const off = "filter-chip bg-white/70 text-gray-700 hover:bg-white text-[11px] shrink-0 whitespace-nowrap";
-      el.innerHTML = tabs.map(t =>
-        `<button onclick="setMyCardsMember('${t.key}')" class="${t.key === myCardsMember ? on : off}">${t.label}</button>`
-      ).join("");
-    }
+    
 
 
     function renderMyCardsMemberTabs() {
