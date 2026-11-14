@@ -1258,6 +1258,8 @@ const ILLIT_CARD_ALBUMS = [
     let cardPhotoCache = {}; // cardId -> jpeg dataURL
 
     let adminCardsAlbum = "srm";
+    let adminCardsMember = "ALL"; // 管理画面のメンバー絞り込み
+    let adminSelectedCardIds = new Set(); // 管理画面の複数選択削除用
     
     let catalogCardsCache = []; // 管理者が登録したカード {id, albumId, name, member}
     let catalogCardsLoaded = false;
@@ -4779,8 +4781,13 @@ window.openAzukariApp = function() {
         return;
       }
       const album = ILLIT_CARD_ALBUMS.find(a => a.id === adminCardsAlbum);
-      const cards = getAlbumCards(adminCardsAlbum);
+      let cards = getAlbumCards(adminCardsAlbum);
       if (!album) { el.innerHTML = "<p class='text-xs text-gray-500'>アルバムがありません</p>"; return; }
+      // メンバー絞り込み
+      const normMember = (s) => String(s || "").split(" ")[0];
+      if (adminCardsMember && adminCardsMember !== "ALL") {
+        cards = cards.filter(c => normMember(c.member) === adminCardsMember);
+      }
       const memberOpts = ["", "ウォニ", "ミンジュ", "イロハ", "モカ", "ユナ", "OT5"].map(m =>
         `<option value="${m}">${m || "（メンバーなし）"}</option>`
       ).join("");
@@ -4789,12 +4796,43 @@ window.openAzukariApp = function() {
       const albumTabsHtml = ILLIT_CARD_ALBUMS.map(a =>
         `<button type="button" onclick="setAdminCardsAlbum('${a.id}')" class="${a.id === adminCardsAlbum ? activeChip : normalChip}">${a.name}</button>`
       ).join("");
+      // メンバーフィルターチップ
+      const memberOrder = ["ALL", "ウォニ", "ミンジュ", "イロハ", "モカ", "ユナ", "OT5"];
+      const existingMembers = new Set(getAlbumCards(adminCardsAlbum).map(c => normMember(c.member)).filter(Boolean));
+      const memberTabs = memberOrder.filter(m => m === "ALL" || existingMembers.has(m));
+      existingMembers.forEach(m => { if (!memberTabs.includes(m)) memberTabs.push(m); });
+      const memActive = "filter-chip bg-gradient-to-r from-illit-purple to-illit-accent text-white shadow-md text-[11px]";
+      const memNormal = "filter-chip bg-white/70 text-gray-700 hover:bg-white text-[11px]";
+      const memberTabsHtml = memberTabs.map(m =>
+        `<button type="button" onclick="setAdminCardsMember('${m}')" class="${m === adminCardsMember ? memActive : memNormal}">${m === "ALL" ? "全員" : escapeHtml(m)}</button>`
+      ).join("");
+      const selectedCount = adminSelectedCardIds.size;
+      // 表示中の削除可能カードID
+      const deletableVisibleIds = cards.filter(c => (!!c.admin || isAdminCatalogCard(c.id)) && !c.staticPack).map(c => c.id);
 
       el.innerHTML = `
         <div class="flex gap-1.5 overflow-x-auto hide-scrollbar pb-1 mb-2" id="admin-card-album-tabs">${albumTabsHtml}</div>
-        <button type="button" onclick="adminDeduplicateCatalogCards()" class="w-full mb-3 bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold py-2.5 rounded-full hover:bg-amber-100 transition shadow-sm">
-          🧹 重複トレカを自動削除（画像が同じものを判定）
-        </button>
+        <div class="flex gap-1.5 overflow-x-auto hide-scrollbar pb-1 mb-2" id="admin-card-member-tabs">${memberTabsHtml}</div>
+        <div class="grid grid-cols-1 gap-2 mb-3">
+          <button type="button" onclick="adminDeduplicateCatalogCards()" class="w-full bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold py-2.5 rounded-full hover:bg-amber-100 transition shadow-sm">
+            🧹 重複トレカを自動削除（画像が同じものを判定）
+          </button>
+          <button type="button" onclick="adminDeduplicateExactIds()" class="w-full bg-rose-50 border border-rose-200 text-rose-900 text-xs font-bold py-2.5 rounded-full hover:bg-rose-100 transition shadow-sm">
+            🆔 全く同じIDの重複を削除
+          </button>
+        </div>
+        <div id="admin-bulk-bar" class="liquid-glass rounded-2xl p-3 mb-3 flex flex-wrap items-center gap-2 border border-purple-200/60 ${selectedCount ? "" : ""}">
+          <label class="flex items-center gap-1.5 text-xs font-bold text-gray-700 cursor-pointer select-none">
+            <input type="checkbox" id="admin-select-all-visible" onchange="adminToggleSelectAllVisible(this.checked)" class="w-4 h-4 rounded border-gray-300 text-illit-accent" ${deletableVisibleIds.length && deletableVisibleIds.every(id => adminSelectedCardIds.has(id)) ? "checked" : ""}>
+            表示中を全選択
+          </label>
+          <span class="text-[11px] text-gray-500">選択中 <b id="admin-selected-count" class="text-illit-darkPurple">${selectedCount}</b> 件</span>
+          <div class="flex-1"></div>
+          <button type="button" onclick="adminClearCardSelection()" class="text-[11px] font-bold text-gray-500 underline ${selectedCount ? "" : "hidden"}" id="admin-clear-sel-btn">選択解除</button>
+          <button type="button" onclick="adminDeleteSelectedCards()" class="bg-red-500 text-white text-xs font-bold px-4 py-2 rounded-full shadow-sm ${selectedCount ? "" : "opacity-40 pointer-events-none"}" id="admin-bulk-delete-btn">
+            🗑 選択を削除 (${selectedCount})
+          </button>
+        </div>
         <div class="liquid-glass rounded-2xl p-3 mb-3 space-y-2.5 border border-indigo-200/60 bg-gradient-to-br from-indigo-50/80 to-purple-50/80">
           <div class="flex items-center justify-between">
             <div class="text-xs font-bold text-indigo-900">🚀 2400枚大量パック生成（Firestore消費0回）</div>
@@ -4925,20 +4963,23 @@ window.openAzukariApp = function() {
           </div>
         </details>
 
-        <div class="text-xs font-bold text-gray-700 mb-2">${escapeHtml(album.name)}${album.year ? " · " + album.year : ""} · ${cards.length}種</div>
+        <div class="text-xs font-bold text-gray-700 mb-2">${escapeHtml(album.name)}${album.year ? " · " + album.year : ""}${adminCardsMember !== "ALL" ? " / " + escapeHtml(adminCardsMember) : ""} · ${cards.length}種</div>
         <div class="space-y-2">
           ${cards.map(c => {
             const photo = getCardPhoto(c.id);
             const isStatic = !!c.staticPack;
             const isAdminCard = !!c.admin || isAdminCatalogCard(c.id);
+            const canSelect = isAdminCard && !isStatic;
+            const isSelected = adminSelectedCardIds.has(c.id);
             const thumb = photo
               ? `<img src="${photo}" class="w-14 h-14 object-cover rounded-lg border border-white shadow-sm">`
               : `<div class="w-14 h-14 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-400 text-lg">🃏</div>`;
-            return `<div class="liquid-glass-input rounded-xl p-2.5 flex items-center gap-2.5">
+            return `<div class="liquid-glass-input rounded-xl p-2.5 flex items-center gap-2.5 ${isSelected ? "ring-2 ring-pink-400 bg-pink-50/40" : ""}">
+              ${canSelect ? `<input type="checkbox" class="w-4 h-4 rounded border-gray-300 text-illit-accent shrink-0" ${isSelected ? "checked" : ""} onchange="toggleAdminCardSelect('${escapeHtml(c.id)}', this.checked)">` : `<span class="w-4 shrink-0"></span>`}
               ${thumb}
               <div class="flex-1 min-w-0">
                 <div class="text-xs font-medium text-gray-900 truncate">${escapeHtml(c.name)}${isStatic ? ' <span class="text-[9px] text-indigo-600 font-bold">GitHubパック</span>' : (isAdminCard ? ' <span class="text-[9px] text-teal-600">管理者追加</span>' : "")}</div>
-                <div class="text-[10px] text-gray-500">${c.member ? escapeHtml(c.member) : "—"} · <span class="${photo ? "text-green-600" : "text-pink-600"}">${photo ? "写真あり" : "写真なし"}</span></div>
+                <div class="text-[10px] text-gray-500">${c.member ? escapeHtml(c.member) : "—"} · <span class="text-gray-400">ID:</span> <span class="font-mono text-[9px]">${escapeHtml(c.id)}</span> · <span class="${photo ? "text-green-600" : "text-pink-600"}">${photo ? "写真あり" : "写真なし"}</span></div>
               </div>
               <div class="flex flex-col gap-1 shrink-0">
                 ${isStatic ? `<span class="text-[9px] text-gray-400">静的配信中</span>` : `
@@ -5774,11 +5815,182 @@ window.openAzukariApp = function() {
 
     window.setAdminCardsAlbum = async function(id) {
       adminCardsAlbum = id;
+      adminCardsMember = "ALL";
+      adminSelectedCardIds = new Set();
       const el = document.getElementById("admin-content");
       if (el && adminTab === "cards") {
         el.innerHTML = `<p class="text-xs text-gray-500 text-center py-8">読み込み中...</p>`;
         await ensureCardPhotosLoaded(id);
         renderAdminCardsPanel(el);
+      }
+    };
+    window.setAdminCardsMember = function(member) {
+      adminCardsMember = member || "ALL";
+      adminSelectedCardIds = new Set();
+      const el = document.getElementById("admin-content");
+      if (el && adminTab === "cards") renderAdminCardsPanel(el);
+    };
+    window.toggleAdminCardSelect = function(cardId, checked) {
+      if (checked) adminSelectedCardIds.add(cardId);
+      else adminSelectedCardIds.delete(cardId);
+      const el = document.getElementById("admin-content");
+      if (el && adminTab === "cards") renderAdminCardsPanel(el);
+    };
+    window.adminToggleSelectAllVisible = function(checked) {
+      const normMember = (s) => String(s || "").split(" ")[0];
+      let cards = getAlbumCards(adminCardsAlbum);
+      if (adminCardsMember && adminCardsMember !== "ALL") {
+        cards = cards.filter(c => normMember(c.member) === adminCardsMember);
+      }
+      cards.forEach(c => {
+        const isAdminCard = !!c.admin || isAdminCatalogCard(c.id);
+        if (isAdminCard && !c.staticPack) {
+          if (checked) adminSelectedCardIds.add(c.id);
+          else adminSelectedCardIds.delete(c.id);
+        }
+      });
+      const el = document.getElementById("admin-content");
+      if (el && adminTab === "cards") renderAdminCardsPanel(el);
+    };
+    window.adminClearCardSelection = function() {
+      adminSelectedCardIds = new Set();
+      const el = document.getElementById("admin-content");
+      if (el && adminTab === "cards") renderAdminCardsPanel(el);
+    };
+    window.adminDeleteSelectedCards = async function() {
+      if (typeof isAdmin === "function" && !isAdmin()) {
+        alert("管理者のみ実行できます。");
+        return;
+      }
+      const ids = Array.from(adminSelectedCardIds);
+      if (!ids.length) {
+        alert("削除するカードを選択してください。");
+        return;
+      }
+      if (!(await appConfirm(
+        `選択した ${ids.length} 件のトレカをカタログから削除しますか？\n（写真も一緒に削除されます）`,
+        "まとめて削除する",
+        true
+      ))) return;
+
+      let ok = 0, fail = 0;
+      for (const cardId of ids) {
+        try {
+          await deleteDoc(doc(db, "cardCatalog", cardId));
+          try { await deleteDoc(doc(db, "cardPhotos", cardId)); } catch (_) {}
+          delete cardPhotoCache[cardId];
+          if (typeof idbDelete === "function") {
+            try { await idbDelete("photo_" + cardId); } catch (_) {}
+          }
+          ok++;
+        } catch (e) {
+          console.warn("bulk delete failed", cardId, e);
+          fail++;
+        }
+      }
+      catalogCardsCache = catalogCardsCache.filter(c => !ids.includes(c.id));
+      if (typeof idbDelete === "function") {
+        try { await idbDelete("catalog_cards"); } catch (_) {}
+      }
+      adminSelectedCardIds = new Set();
+      showToast(`まとめて削除: ${ok}件${fail ? `（失敗${fail}）` : ""}`, fail ? "error" : "success");
+      const el = document.getElementById("admin-content");
+      if (el && adminTab === "cards") renderAdminCardsPanel(el);
+      if (typeof isMyCardsPageOpen === "function" && isMyCardsPageOpen()) {
+        if (typeof renderMyCardsAlbumTabs === "function") renderMyCardsAlbumTabs();
+        if (typeof renderMyCardsList === "function") renderMyCardsList();
+      }
+    };
+    /** 全く同じIDの重複を検出して削除（キャッシュ内の重複 + 静的パックとIDが衝突する管理者登録分） */
+    window.adminDeduplicateExactIds = async function() {
+      if (typeof isAdmin === "function" && !isAdmin()) {
+        alert("管理者のみ実行できます。");
+        return;
+      }
+      if (!currentUser) {
+        alert("ログインが必要です。");
+        return;
+      }
+      try {
+        await ensureCatalogCardsLoaded(true);
+      } catch (e) { console.warn(e); }
+
+      const list = (catalogCardsCache || []).slice();
+      if (!list.length) {
+        alert("カタログに登録されたカードがありません。");
+        return;
+      }
+
+      // 1) キャッシュ内で同じIDが複数ある場合
+      const seen = new Map(); // id -> first card
+      const cacheDupes = [];
+      for (const c of list) {
+        if (!c || !c.id) continue;
+        if (seen.has(c.id)) cacheDupes.push(c);
+        else seen.set(c.id, c);
+      }
+
+      // 2) 静的パック or 定義済みアルバムカードとIDが完全一致する管理者登録
+      const staticOrBaseIds = new Set();
+      staticPackCards.forEach(c => { if (c && c.id) staticOrBaseIds.add(c.id); });
+      ILLIT_CARD_ALBUMS.forEach(a => {
+        (a.cards || []).forEach(c => { if (c && c.id) staticOrBaseIds.add(c.id); });
+      });
+      const conflictWithStatic = list.filter(c => c && c.id && staticOrBaseIds.has(c.id));
+
+      // 削除対象: キャッシュ重複の「2件目以降」+ 静的と衝突する管理者登録
+      // （静的側は削除不可なので Firestore 側の管理者登録を消す）
+      const toDeleteMap = new Map();
+      cacheDupes.forEach(c => { if (c && c.id) toDeleteMap.set(c.id, c); });
+      conflictWithStatic.forEach(c => { if (c && c.id) toDeleteMap.set(c.id, c); });
+      const toDelete = Array.from(toDeleteMap.values());
+
+      if (!toDelete.length) {
+        alert("全く同じIDの重複は見つかりませんでした。\n（キャッシュ内の重複・静的パックとのID衝突はありません）");
+        return;
+      }
+
+      const preview = toDelete.slice(0, 10).map(c => `・${c.name || c.id}（${c.member || "—"} / ${c.id}）`).join("\n");
+      const more = toDelete.length > 10 ? `\n…他 ${toDelete.length - 10} 件` : "";
+      if (!(await appConfirm(
+        `同じIDの重複 ${toDelete.length} 件を削除しますか？\n（静的パックとIDが衝突している管理者登録、およびキャッシュ内の重複ID）\n\n${preview}${more}`,
+        "同じIDを削除する",
+        true
+      ))) return;
+
+      let ok = 0, fail = 0;
+      for (const c of toDelete) {
+        try {
+          await deleteDoc(doc(db, "cardCatalog", c.id));
+          try { await deleteDoc(doc(db, "cardPhotos", c.id)); } catch (_) {}
+          delete cardPhotoCache[c.id];
+          if (typeof idbDelete === "function") {
+            try { await idbDelete("photo_" + c.id); } catch (_) {}
+          }
+          ok++;
+        } catch (e) {
+          console.warn("exact-id delete failed", c.id, e);
+          fail++;
+        }
+      }
+
+      // キャッシュからも除去（重複IDは1件だけ残す想定だが、静的衝突分は全て除去）
+      const deleteIds = new Set(toDelete.map(c => c.id));
+      catalogCardsCache = catalogCardsCache.filter(c => !deleteIds.has(c.id));
+      // 念のためIDユニーク化
+      const uniq = new Map();
+      catalogCardsCache.forEach(c => { if (c && c.id && !uniq.has(c.id)) uniq.set(c.id, c); });
+      catalogCardsCache = Array.from(uniq.values());
+      if (typeof idbDelete === "function") {
+        try { await idbDelete("catalog_cards"); } catch (_) {}
+      }
+
+      showToast(`同一ID削除: ${ok}件${fail ? `（失敗${fail}）` : ""}`, fail ? "error" : "success");
+      const el = document.getElementById("admin-content");
+      if (el && adminTab === "cards") renderAdminCardsPanel(el);
+      if (typeof isMyCardsPageOpen === "function" && isMyCardsPageOpen()) {
+        if (typeof renderMyCardsAlbumTabs === "function") renderMyCardsAlbumTabs();
+        if (typeof renderMyCardsList === "function") renderMyCardsList();
       }
     };
     window.adminRegisterNewCard = async function() {
@@ -6026,6 +6238,7 @@ window.openAzukariApp = function() {
         try { await deleteDoc(doc(db, "cardPhotos", cardId)); } catch (_) {}
         catalogCardsCache = catalogCardsCache.filter(c => c.id !== cardId);
         delete cardPhotoCache[cardId];
+        adminSelectedCardIds.delete(cardId);
         await idbDelete("photo_" + cardId);
         await idbDelete("catalog_cards");
         showToast("トレカを削除しました", "info");
@@ -6167,7 +6380,13 @@ window.openAzukariApp = function() {
       const statics = staticPackCards.filter(c => c.albumId === albumId);
       const adminCards = catalogCardsCache.filter(c => c.albumId === albumId);
       const customs = (userData.customCards || []).filter(c => c.albumId === albumId);
-      return base.concat(statics).concat(adminCards).concat(customs);
+      // 同じIDは1件だけ（優先: 定義 → 静的パック → 管理者登録 → カスタム）
+      const byId = new Map();
+      base.concat(statics).concat(adminCards).concat(customs).forEach(c => {
+        if (!c || !c.id) return;
+        if (!byId.has(c.id)) byId.set(c.id, c);
+      });
+      return Array.from(byId.values());
     }
     function findCardById(cardId) {
       for (const a of ILLIT_CARD_ALBUMS) {
