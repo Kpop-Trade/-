@@ -1226,7 +1226,7 @@ getRedirectResult(auth)
     const CONDITION_CLASS = { s: "bg-emerald-100 text-emerald-800 border-emerald-200", a: "bg-blue-100 text-blue-800 border-blue-200", b: "bg-amber-100 text-amber-800 border-amber-200", c: "bg-gray-100 text-gray-700 border-gray-200" };
     const INQUIRY_SUBJECT_LABEL = { bug: "不具合・バグ報告", account: "アカウント関連", report: "悪質ユーザー報告", other: "その他" };
     const CANCEL_REASON_LABEL = { no_contact: "相手から連絡がない", condition: "商品の状態が説明と違う", personal: "都合が悪くなった", other: "その他" };
-    const SORT_OPTIONS = [{ key: "new", label: "新着順" }, { key: "popular", label: "人気順" }];
+    const SORT_OPTIONS = [{ key: "random", label: "ランダム順" }, { key: "new", label: "新着順" }, { key: "popular", label: "人気順" }];
 
     const PHOTO_FULL = { maxSide: 900, quality: 0.72, maxChars: 380000 };
     const PHOTO_THUMB = { maxSide: 260, quality: 0.6, maxChars: 40000 };
@@ -1260,7 +1260,7 @@ const ILLIT_CARD_ALBUMS = [
       want: "bg-pink-100 text-pink-700 border-pink-200"
     };
 
-    let currentUser = null, allPosts = [], unsubPosts = null, selectedMember = "すべて", kindFilter = "all", sortFilter = "new", bundleFilter = "all", searchText = "", activeOnly = false, currentDetailIndex = -1;
+    let currentUser = null, allPosts = [], unsubPosts = null, selectedMember = "すべて", kindFilter = "all", sortFilter = "random", bundleFilter = "all", searchText = "", activeOnly = false, currentDetailIndex = -1;
     let pendingPostId = new URLSearchParams(location.search).get("post");
     let postMode = "exchange", postPhotos = [], processingPhotos = false, submittingPost = false, submittingGroup = false, detailPhotos = [], roomPhotos = [], roomPhotosFor = null;
     let myTrades = [], unsubTrades = null, groupJoins = {}, unsubJoins = null, currentTrade = null, roomMessages = [], unsubRoom = null, unsubMsgs = null;
@@ -3345,13 +3345,13 @@ const ILLIT_CARD_ALBUMS = [
 
     window.cycleSort = function() {
       const idx = SORT_OPTIONS.findIndex(s => s.key === sortFilter);
-      sortFilter = SORT_OPTIONS[(idx + 1) % SORT_OPTIONS.length].key;
+      sortFilter = SORT_OPTIONS[(idx + 1) % SORT_OPTIONS.length].key; if (sortFilter === "random") window._randOrderMap = {};
       renderFilters(); renderPosts();
     };
     window.openFilterModal = function() { renderFilters(); document.getElementById("filter-modal").classList.remove("hidden"); };
     window.closeFilterModal = function() { document.getElementById("filter-modal").classList.add("hidden"); renderPosts(); };
     window.resetFilters = function() {
-      selectedMember = "すべて"; kindFilter = "all"; sortFilter = "new"; bundleFilter = "all"; searchText = ""; activeOnly = false;
+      selectedMember = "すべて"; kindFilter = "all"; sortFilter = "random"; bundleFilter = "all"; searchText = ""; activeOnly = false;
       document.getElementById("search-input").value = "";
       document.getElementById("active-only-check").checked = false;
       renderFilters(); renderPosts();
@@ -3419,7 +3419,15 @@ const ILLIT_CARD_ALBUMS = [
         if (!okKind || !okMember || !okText || !okBundle) return;
         filtered.push({ p, index });
       });
-      if (sortFilter === "popular") {
+      if (sortFilter === "random") {
+        window._randOrderMap = window._randOrderMap || {};
+        filtered.forEach(({ p }) => {
+          if (p && p.id && window._randOrderMap[p.id] === undefined) {
+            window._randOrderMap[p.id] = Math.random();
+          }
+        });
+        filtered.sort((a, b) => (window._randOrderMap[a.p.id] || 0) - (window._randOrderMap[b.p.id] || 0));
+      } else if (sortFilter === "popular") {
         filtered.sort((a, b) => {
           const likeDiff = (Number(b.p.likesCount) || 0) - (Number(a.p.likesCount) || 0);
           if (likeDiff !== 0) return likeDiff;
