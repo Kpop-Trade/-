@@ -232,6 +232,33 @@
     z-index: 10;
     touch-action: manipulation;
   }
+
+  /* #post-type-sheet iOS Safari タッチ貫通・z-[95]負けの根本修正 */
+  #post-type-sheet {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 2147483647 !important;
+    pointer-events: auto !important;
+    background: rgba(15, 23, 42, 0.55) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+  #post-type-sheet > div {
+    position: relative !important;
+    z-index: 2 !important;
+    pointer-events: auto !important;
+    background: #ffffff !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    -webkit-transform: none !important;
+    transform: none !important;
+  }
+  #post-type-sheet button {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    position: relative !important;
+    z-index: 3 !important;
+  }
 </style>
 </head>
 <body class="bg-illit-bg min-h-screen text-gray-800 relative overflow-x-hidden">
