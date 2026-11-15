@@ -9,7 +9,6 @@ async function sendNotifications(projectId, token, events) {
   const today = getJstDateStr(0);
   const tomorrow = getJstDateStr(1);
 
-  // 今日・明日の予定、または入金・シリアル締切
   const targets = events.filter(e => {
     const isTodayOrTomorrow = e.date === today || e.date === tomorrow;
     const isDeadline = e.category === "deadline" || e.category === "ticket";
@@ -134,10 +133,7 @@ async function main() {
   const currentMonth = getJstDateStr(0).slice(0, 7);
   const queries = [
     `ILLIT 公式 スケジュール ${currentMonth}`,
-    `ILLIT ライブ コンサート 2026`,
-    `ILLIT チケット 応募 締切 2026`,
-    `ILLIT シリアル 特典 応募 2026`,
-    `ILLIT アルバム 発売日 2026`
+    `ILLIT ライブ コンサート 2026`
   ];
 
   let allResults = [];
@@ -148,15 +144,15 @@ async function main() {
       body: JSON.stringify({
         api_key: tavilyKey,
         query: query,
-        search_depth: "advanced",
+        search_depth: "basic",
         include_answer: true,
-        max_results: 5
+        max_results: 3
       })
     });
     const searchData = await searchRes.json();
     if (searchData.results) allResults.push(...searchData.results);
   }
-  const searchContext = JSON.stringify(allResults);
+  const searchContext = allResults.map(r => (r.content || "").slice(0, 400)).join("\n---\n");
 
   const groqKey = process.env.GROQ_API_KEY;
   const prompt = `以下の検索結果から、K-POPグループ「ILLIT（アイリット）」の公式スケジュールのみを抽出してください。現在の日付は ${getJstDateStr(0)} です。
@@ -168,14 +164,10 @@ ${searchContext}
 - 公式情報のみを使用
 - ${getJstDateStr(0)} 以降の予定のみを抽出
 - 過去の予定は含めない
-- 非公式情報、推測は含めない
 - 不明な場合は空配列 [] を返す
-- 入金締切、シリアル応募締切も必ず含める
 
 【出力形式】
-[{"date":"YYYY-MM-DD","time":"HH:MM（不明なら終日）","title":"イベント名","category":"deadline | ticket | release | event | media | birthday","detail":"補足情報","link":"公式ページのURL（あれば、なければ空文字）"}]
-
-※${getJstDateStr(0)} より前の日付の予定は含めないでください。`;
+[{"date":"YYYY-MM-DD","time":"HH:MM（不明なら終日）","title":"イベント名","category":"deadline | ticket | release | event | media | birthday","detail":"補足情報","link":"公式ページのURL（あれば、なければ空文字）"}]`;
 
   const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
