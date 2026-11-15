@@ -45,7 +45,6 @@ async function sendNotifications(projectId, token, events) {
     return;
   }
 
-  // 1. 送信済み履歴をFirestoreから取得 (system/illit_notified)
   const fsBase = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents`;
   const histRes = await fetch(`${fsBase}/system/illit_notified`, {
     headers: { Authorization: `Bearer ${token}` }
@@ -65,7 +64,6 @@ async function sendNotifications(projectId, token, events) {
     return;
   }
 
-  // 2. 通知オンの全ユーザーのFCMトークンをcollectionGroup("tokens")で取得
   const qRes = await fetch(`${fsBase}:runQuery`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -88,7 +86,6 @@ async function sendNotifications(projectId, token, events) {
     return;
   }
 
-  // 3. FCM HTTP v1 API でプッシュ通知送信
   const fcmUrl = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`;
   const newlySentKeys = [...sentKeys];
 
@@ -131,7 +128,6 @@ async function sendNotifications(projectId, token, events) {
     console.log(`通知送信完了: ${title} -> ${okCount}/${tokenDocs.length}端末`);
   }
 
-  // 4. 送信済み履歴を保存（直近100件保持）
   const trimmed = newlySentKeys.slice(-100);
   await fetch(`${fsBase}/system/illit_notified`, {
     method: "PATCH",
@@ -167,7 +163,7 @@ async function main() {
 [{"date":"YYYY-MM-DD","time":"HH:MM（締切時刻があれば23:59など記載、不明なら終日）","title":"イベント名（例：【締切】〇〇シリアル応募最終日 / 【入金期限】〇〇FC先行など）","category":"deadline | ticket | release | event | media | birthday","detail":"対象形態・プレイガイド（ローチケ等）・時間・会場などの補足情報"}]
 ※同一イベントでも「応募締切日」「当落発表日」「入金最終日」は必ず別々の項目として日付ごとに分けて出力してください。`;
 
-  models/gemini-2.0-flash:generateContent
+  const url = `https://us-central1-aiplatform.googleapis.com/v1/projects/${sa.project_id}/locations/us-central1/publishers/google/models/gemini-2.0-flash:generateContent`;
   const res = await fetch(url, {
     method: "POST",
     headers: {
