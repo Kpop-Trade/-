@@ -7664,14 +7664,34 @@ window.buildAndDownloadCardPackZip = async function() {
     }, null, 2));
 
     const blob = await zip.generateAsync({ type: "blob", compression: "STORE" });
+    const zipFileName = "illit-cards-pack-" + batchTs + ".zip";
     const url = URL.createObjectURL(blob);
+    const sizeMb = (blob.size / (1024 * 1024)).toFixed(1);
+
+    // 1. まず自動ダウンロードを試行
     const a = document.createElement("a");
     a.href = url;
-    a.download = "illit-cards-pack-" + batchTs + ".zip";
+    a.download = zipFileName;
     document.body.appendChild(a);
     a.click();
     a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 10000);
+
+    // 2. iOS Safariで自動ダウンロードがブロックされた場合に備え、タップで確実に保存できるボタンを表示
+    let dlBox = document.getElementById("batch-zip-manual-dl-box");
+    if (!dlBox) {
+      dlBox = document.createElement("div");
+      dlBox.id = "batch-zip-manual-dl-box";
+      dlBox.className = "mt-3 p-3 rounded-2xl bg-emerald-50 border-2 border-emerald-400 text-center shadow-sm";
+      const runBtn = document.getElementById("batch-sheets-run-btn");
+      if (runBtn && runBtn.parentNode) {
+        runBtn.parentNode.insertBefore(dlBox, runBtn.nextSibling);
+      } else {
+        document.body.appendChild(dlBox);
+      }
+    }
+    dlBox.innerHTML =
+      '<div class="text-xs font-extrabold text-emerald-800 mb-1.5">✅ ZIP生成完了（' + processed + '枚 / ' + sizeMb + 'MB）</div>' +
+      '<a href="' + url + '" download="' + zipFileName + '" class="inline-block w-full py-3 px-4 rounded-xl bg-emerald-600 text-white font-extrabold text-sm shadow active:scale-95">📦 ここをタップしてZIPを保存</a>';
 
     if (prog) prog.textContent = "完了！" + processed + "枚をZIPに保存しました";
     showToast("ZIPをダウンロードしました", "success");
