@@ -1,50 +1,122 @@
 [
   {
+    "date": "2026-11-16",
+    "time": "10:59",
+    "title": "BREAK EVEN シリアル応募 3回目締切",
+    "category": "deadline",
+    "detail": "応募期間：11/9 11:00～11/16 10:59",
+    "link": "https://cdefgah.net/application/illit-5th"
+  },
+  {
+    "date": "2026-11-19",
+    "time": "17:00",
+    "title": "BREAK EVEN シリアル 3回目当落発表",
+    "category": "deadline",
+    "detail": "メールまたはchordマイページで確認",
+    "link": "https://cdefgah.net/"
+  },
+  {
+    "date": "2026-11-20",
+    "time": "18:00",
+    "title": "2026 MAMA AWARDS",
+    "category": "event",
+    "detail": "京セラドーム大阪",
+    "link": "https://kpop-concert.jp/artists/illit"
+  },
+  {
     "date": "2026-11-28",
     "time": "終日",
-    "title": "ベストアーティスト2026 放送出演",
+    "title": "BREAK EVEN ミニトークショー＆サイン会（タワレコ渋谷）",
+    "category": "event",
+    "detail": "タワーレコード渋谷店 B1F CUTUP STUDIO",
+    "link": "https://illit-official.jp/"
+  },
+  {
+    "date": "2026-11-28",
+    "time": "終日",
+    "title": "NTV『Best Artist 2026』出演",
     "category": "media",
-    "detail": "日本テレビ系『ベストアーティスト2026』に11月28日(土)出演決定。",
+    "detail": "日本テレビ",
     "link": ""
+  },
+  {
+    "date": "2026-11-29",
+    "time": "15:00",
+    "title": "BREAK EVEN シリアル特典 オフラインイベント",
+    "category": "event",
+    "detail": "関東某所（2ショット撮影会・サイン会）",
+    "link": "https://cdefgah.net/application/illit-5th"
+  },
+  {
+    "date": "2026-11-30",
+    "time": "終日",
+    "title": "BREAK EVEN ミニトークショー＆サイン会（HMV）",
+    "category": "event",
+    "detail": "東京都内某所",
+    "link": "https://illit-official.jp/"
   },
   {
     "date": "2026-12-02",
     "time": "終日",
-    "title": "FNS歌謡祭 第1夜 出演",
+    "title": "FNS歌謡祭 2026 出演",
     "category": "media",
-    "detail": "フジテレビ系列『2026 FNS 歌謡祭 第1夜』に12月2日(水)出演決定。",
+    "detail": "フジテレビ",
     "link": ""
+  },
+  {
+    "date": "2026-12-06",
+    "time": "19:30",
+    "title": "BREAK EVEN シリアル特典 オンラインイベント",
+    "category": "event",
+    "detail": "メンバー個別お話し会・リレーサイン会",
+    "link": "https://cdefgah.net/application/illit-5th"
+  },
+  {
+    "date": "2026-12-20",
+    "time": "終日",
+    "title": "BREAK EVEN ミニトークショー＆サイン会（Amazon）",
+    "category": "event",
+    "detail": "東京都内某所",
+    "link": "https://illit-official.jp/"
   },
   {
     "date": "2026-12-23",
-    "time": "17:00",
-    "title": "ILLIT LIVE 'PRESS START' ENCORE in JAPAN 公演",
+    "time": "18:30",
+    "title": "ILLIT LIVE 'PRESS START❤' ENCORE in JAPAN",
     "category": "event",
-    "detail": "LaLa arena TOKYO‑BAY（千葉県船橋市）で開催、開場 17:00、開演 18:30。",
-    "link": ""
+    "detail": "LaLa arena TOKYO-BAY 開場17:00",
+    "link": "https://www.hybejapan.events/illit/press_start_encore"
   },
   {
     "date": "2026-12-24",
-    "time": "17:00",
-    "title": "ILLIT LIVE 'PRESS START' ENCORE in JAPAN 公演",
+    "time": "18:30",
+    "title": "ILLIT LIVE 'PRESS START❤' ENCORE in JAPAN",
     "category": "event",
-    "detail": "LaLa arena TOKYO‑BAY（千葉県船橋市）で開催、開場 17:00、開演 18:30。",
-    "link": ""
+    "detail": "LaLa arena TOKYO-BAY 開場17:00",
+    "link": "https://www.hybejapan.events/illit/press_start_encore"
   },
   {
     "date": "2026-12-26",
-    "time": "15:30",
-    "title": "ILLIT LIVE 'PRESS START' ENCORE in JAPAN 公演",
+    "time": "17:00",
+    "title": "ILLIT LIVE 'PRESS START❤' ENCORE in JAPAN",
     "category": "event",
-    "detail": "LaLa arena TOKYO‑BAY（千葉県船橋市）で開催、開場 15:30、開演 17:00。",
-    "link": ""
+    "detail": "LaLa arena TOKYO-BAY 開場15:30",
+    "link": "https://www.hybejapan.events/illit/press_start_encore"
   },
   {
     "date": "2026-12-27",
-    "time": "終日",
-    "title": "ILLIT LIVE 'PRESS START' ENCORE in JAPAN 公演",
+    "time": "17:00",
+    "title": "ILLIT LIVE 'PRESS START❤' ENCORE in JAPAN",
     "category": "event",
-    "detail": "LaLa arena TOKYO‑BAY（千葉県船橋市）で開催。",
+    "detail": "LaLa arena TOKYO-BAY 開場15:30",
+    "link": "https://www.hybejapan.events/illit/press_start_encore"
+  },
+  {
+    "date": "2026-12-31",
+    "time": "19:20",
+    "title": "第77回NHK紅白歌合戦",
+    "category": "media",
+    "detail": "NHK総合（K-POP唯一の出演）",
     "link": ""
   }
 ]
