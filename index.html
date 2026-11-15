@@ -9232,8 +9232,7 @@ window.buildAndDownloadCardPackZip = async function() {
     
     // ===== 全体＆アルバム別コンプ率ドーナツ円グラフ =====
     window.renderMyCardsPieCharts = function() {
-      if (typeof ILLIT_CARD_ALBUMS === "undefined" || !Array.isArray(ILLIT_CARD_ALBUMS)) return;
-      if (typeof getAlbumCards !== "function" || typeof getCardStatus !== "function") return;
+      if (!Array.isArray(ILLIT_CARD_ALBUMS)) return;
 
       const anchorEl =
         document.getElementById("mycards-share-stats") ||
@@ -9518,6 +9517,7 @@ window.buildAndDownloadCardPackZip = async function() {
     }, 800);
 
     function renderMyCardsShareStats() {
+      try { if (typeof window.renderMyCardsPieCharts === "function") window.renderMyCardsPieCharts(); } catch (e) { console.error(e); }
       const el = document.getElementById("mycards-share-stats");
       if (!el) return;
       const map = userData.myCards || {};
