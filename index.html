@@ -286,6 +286,36 @@
     position: relative !important;
     z-index: 3 !important;
   }
+
+  /* 出品フォーム系モーダル全体のiOS Safari最前面化＆操作ロック解除 */
+  #post-modal,
+  #serial-post-modal,
+  #group-post-modal {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 2147483647 !important;
+    pointer-events: auto !important;
+    background: rgba(15, 23, 42, 0.55) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+  #post-modal > div,
+  #serial-post-modal > div,
+  #group-post-modal > div {
+    position: relative !important;
+    z-index: 2 !important;
+    pointer-events: auto !important;
+    background: #ffffff !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    -webkit-transform: none !important;
+    transform: none !important;
+  }
+  #post-modal button, #post-modal input, #post-modal select, #post-modal textarea,
+  #serial-post-modal button, #serial-post-modal input, #serial-post-modal select, #serial-post-modal textarea,
+  #group-post-modal button, #group-post-modal input, #group-post-modal select, #group-post-modal textarea {
+    pointer-events: auto !important;
+  }
 </style>
 </head>
 <body class="bg-illit-bg min-h-screen text-gray-800 relative overflow-x-hidden">
@@ -8090,6 +8120,31 @@ window.closeIllitCalendar = function() {
     if (typeof origClose === "function") origClose.apply(this, arguments);
     document.body.style.overflow = "";
   };
+})();
+</script>
+<script>
+(function() {
+  ["post-modal", "serial-post-modal", "group-post-modal"].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el && el.parentElement !== document.body) {
+      document.body.appendChild(el);
+    }
+  });
+  ["openPostModal", "openSerialPostModal", "openGroupPostModal"].forEach(function(fnName) {
+    var orig = window[fnName];
+    if (typeof orig === "function") {
+      window[fnName] = function() {
+        ["post-modal", "serial-post-modal", "group-post-modal"].forEach(function(id) {
+          var el = document.getElementById(id);
+          if (el && el.parentElement !== document.body) {
+            document.body.appendChild(el);
+          }
+        });
+        document.body.style.overflow = "";
+        return orig.apply(this, arguments);
+      };
+    }
+  });
 })();
 </script>
 </body>
