@@ -6954,7 +6954,17 @@ window.buildAndDownloadCardPackZip = async function() {
         adminCardsAlbum = albumId;
         showToast(`${successCount}枚をまとめて登録しました。続けて登録できます`, "success");
         const el = document.getElementById("admin-content");
-        if (el && adminTab === "cards") renderAdminCardsPanel(el);
+        if (el && adminTab === "cards") {
+    el.innerHTML = "<div class=\"p-4 text-xs text-purple-800 font-bold\">トレカ写真パネルを読み込み中...</div>";
+    setTimeout(() => {
+      try {
+        renderAdminCardsPanel(el);
+      } catch (err) {
+        console.error("AdminCardsPanel Error:", err);
+        el.innerHTML = "<div class=\"p-4 bg-red-50 text-red-700 rounded-xl text-xs\">エラー検出: " + (err.message || err) + "</div>";
+      }
+    }, 50);
+  }
         if (isMyCardsPageOpen()) {
           renderMyCardsAlbumTabs();
           renderMyCardsList();
@@ -6980,7 +6990,17 @@ window.buildAndDownloadCardPackZip = async function() {
       adminSelectedCardIds = new Set();
       const el = document.getElementById("admin-content");
       // 絞り込みUIは残したまま即再描画（読み込みでボタンが消えない）
-      if (el && adminTab === "cards") renderAdminCardsPanel(el);
+      if (el && adminTab === "cards") {
+    el.innerHTML = "<div class=\"p-4 text-xs text-purple-800 font-bold\">トレカ写真パネルを読み込み中...</div>";
+    setTimeout(() => {
+      try {
+        renderAdminCardsPanel(el);
+      } catch (err) {
+        console.error("AdminCardsPanel Error:", err);
+        el.innerHTML = "<div class=\"p-4 bg-red-50 text-red-700 rounded-xl text-xs\">エラー検出: " + (err.message || err) + "</div>";
+      }
+    }, 50);
+  }
       try {
         await ensureCardPhotosLoaded(id);
       } catch (e) {
@@ -6994,7 +7014,17 @@ window.buildAndDownloadCardPackZip = async function() {
       adminCardsMember = member || "ALL";
       adminSelectedCardIds = new Set();
       const el = document.getElementById("admin-content");
-      if (el && adminTab === "cards") renderAdminCardsPanel(el);
+      if (el && adminTab === "cards") {
+    el.innerHTML = "<div class=\"p-4 text-xs text-purple-800 font-bold\">トレカ写真パネルを読み込み中...</div>";
+    setTimeout(() => {
+      try {
+        renderAdminCardsPanel(el);
+      } catch (err) {
+        console.error("AdminCardsPanel Error:", err);
+        el.innerHTML = "<div class=\"p-4 bg-red-50 text-red-700 rounded-xl text-xs\">エラー検出: " + (err.message || err) + "</div>";
+      }
+    }, 50);
+  }
     };
 
     // 管理画面のアルバム／メンバー絞り込み（イベント委譲・タッチ対応）
@@ -7037,7 +7067,17 @@ window.buildAndDownloadCardPackZip = async function() {
       if (checked) adminSelectedCardIds.add(cardId);
       else adminSelectedCardIds.delete(cardId);
       const el = document.getElementById("admin-content");
-      if (el && adminTab === "cards") renderAdminCardsPanel(el);
+      if (el && adminTab === "cards") {
+    el.innerHTML = "<div class=\"p-4 text-xs text-purple-800 font-bold\">トレカ写真パネルを読み込み中...</div>";
+    setTimeout(() => {
+      try {
+        renderAdminCardsPanel(el);
+      } catch (err) {
+        console.error("AdminCardsPanel Error:", err);
+        el.innerHTML = "<div class=\"p-4 bg-red-50 text-red-700 rounded-xl text-xs\">エラー検出: " + (err.message || err) + "</div>";
+      }
+    }, 50);
+  }
     };
     window.adminToggleSelectAllVisible = function(checked) {
       const cards = getAdminFilteredCards();
@@ -7049,12 +7089,32 @@ window.buildAndDownloadCardPackZip = async function() {
         }
       });
       const el = document.getElementById("admin-content");
-      if (el && adminTab === "cards") renderAdminCardsPanel(el);
+      if (el && adminTab === "cards") {
+    el.innerHTML = "<div class=\"p-4 text-xs text-purple-800 font-bold\">トレカ写真パネルを読み込み中...</div>";
+    setTimeout(() => {
+      try {
+        renderAdminCardsPanel(el);
+      } catch (err) {
+        console.error("AdminCardsPanel Error:", err);
+        el.innerHTML = "<div class=\"p-4 bg-red-50 text-red-700 rounded-xl text-xs\">エラー検出: " + (err.message || err) + "</div>";
+      }
+    }, 50);
+  }
     };
     window.adminClearCardSelection = function() {
       adminSelectedCardIds = new Set();
       const el = document.getElementById("admin-content");
-      if (el && adminTab === "cards") renderAdminCardsPanel(el);
+      if (el && adminTab === "cards") {
+    el.innerHTML = "<div class=\"p-4 text-xs text-purple-800 font-bold\">トレカ写真パネルを読み込み中...</div>";
+    setTimeout(() => {
+      try {
+        renderAdminCardsPanel(el);
+      } catch (err) {
+        console.error("AdminCardsPanel Error:", err);
+        el.innerHTML = "<div class=\"p-4 bg-red-50 text-red-700 rounded-xl text-xs\">エラー検出: " + (err.message || err) + "</div>";
+      }
+    }, 50);
+  }
     };
     /** 絞り込み表示中の削除可能カードをすべて削除 */
     window.adminDeleteAllVisibleFiltered = async function() {
@@ -7104,7 +7164,17 @@ window.buildAndDownloadCardPackZip = async function() {
         alert("削除完了: " + success + "件" + (fail ? "（失敗 " + fail + "）" : ""));
         showToast("絞り込み削除: " + success + "件" + (fail ? "（失敗" + fail + "）" : ""), fail ? "error" : "success");
         const el = document.getElementById("admin-content");
-        if (el && adminTab === "cards") renderAdminCardsPanel(el);
+        if (el && adminTab === "cards") {
+    el.innerHTML = "<div class=\"p-4 text-xs text-purple-800 font-bold\">トレカ写真パネルを読み込み中...</div>";
+    setTimeout(() => {
+      try {
+        renderAdminCardsPanel(el);
+      } catch (err) {
+        console.error("AdminCardsPanel Error:", err);
+        el.innerHTML = "<div class=\"p-4 bg-red-50 text-red-700 rounded-xl text-xs\">エラー検出: " + (err.message || err) + "</div>";
+      }
+    }, 50);
+  }
         if (typeof isMyCardsPageOpen === "function" && isMyCardsPageOpen()) {
           if (typeof renderMyCardsAlbumTabs === "function") renderMyCardsAlbumTabs();
           if (typeof renderMyCardsList === "function") renderMyCardsList();
@@ -7152,7 +7222,17 @@ window.buildAndDownloadCardPackZip = async function() {
       adminSelectedCardIds = new Set();
       showToast(`まとめて削除: ${ok}件${fail ? `（失敗${fail}）` : ""}`, fail ? "error" : "success");
       const el = document.getElementById("admin-content");
-      if (el && adminTab === "cards") renderAdminCardsPanel(el);
+      if (el && adminTab === "cards") {
+    el.innerHTML = "<div class=\"p-4 text-xs text-purple-800 font-bold\">トレカ写真パネルを読み込み中...</div>";
+    setTimeout(() => {
+      try {
+        renderAdminCardsPanel(el);
+      } catch (err) {
+        console.error("AdminCardsPanel Error:", err);
+        el.innerHTML = "<div class=\"p-4 bg-red-50 text-red-700 rounded-xl text-xs\">エラー検出: " + (err.message || err) + "</div>";
+      }
+    }, 50);
+  }
       if (typeof isMyCardsPageOpen === "function" && isMyCardsPageOpen()) {
         if (typeof renderMyCardsAlbumTabs === "function") renderMyCardsAlbumTabs();
         if (typeof renderMyCardsList === "function") renderMyCardsList();
@@ -7305,7 +7385,17 @@ window.buildAndDownloadCardPackZip = async function() {
         alert("削除完了: " + ok + "件" + (fail ? "（失敗 " + fail + "）" : ""));
         showToast("重複削除: " + ok + "件" + (fail ? "（失敗" + fail + "）" : ""), fail ? "error" : "success");
         const el = document.getElementById("admin-content");
-        if (el && adminTab === "cards") renderAdminCardsPanel(el);
+        if (el && adminTab === "cards") {
+    el.innerHTML = "<div class=\"p-4 text-xs text-purple-800 font-bold\">トレカ写真パネルを読み込み中...</div>";
+    setTimeout(() => {
+      try {
+        renderAdminCardsPanel(el);
+      } catch (err) {
+        console.error("AdminCardsPanel Error:", err);
+        el.innerHTML = "<div class=\"p-4 bg-red-50 text-red-700 rounded-xl text-xs\">エラー検出: " + (err.message || err) + "</div>";
+      }
+    }, 50);
+  }
         if (typeof isMyCardsPageOpen === "function" && isMyCardsPageOpen()) {
           if (typeof renderMyCardsAlbumTabs === "function") renderMyCardsAlbumTabs();
           if (typeof renderMyCardsList === "function") renderMyCardsList();
@@ -7354,7 +7444,17 @@ window.buildAndDownloadCardPackZip = async function() {
         adminCardsAlbum = albumId;
         showToast("トレカを登録しました", "success");
         const el = document.getElementById("admin-content");
-        if (el && adminTab === "cards") renderAdminCardsPanel(el);
+        if (el && adminTab === "cards") {
+    el.innerHTML = "<div class=\"p-4 text-xs text-purple-800 font-bold\">トレカ写真パネルを読み込み中...</div>";
+    setTimeout(() => {
+      try {
+        renderAdminCardsPanel(el);
+      } catch (err) {
+        console.error("AdminCardsPanel Error:", err);
+        el.innerHTML = "<div class=\"p-4 bg-red-50 text-red-700 rounded-xl text-xs\">エラー検出: " + (err.message || err) + "</div>";
+      }
+    }, 50);
+  }
         if (isMyCardsPageOpen()) {
           renderMyCardsAlbumTabs();
           renderMyCardsList();
@@ -7661,7 +7761,17 @@ window.buildAndDownloadCardPackZip = async function() {
         await idbDelete("catalog_cards");
         showToast("トレカを削除しました", "info");
         const el = document.getElementById("admin-content");
-        if (el && adminTab === "cards") renderAdminCardsPanel(el);
+        if (el && adminTab === "cards") {
+    el.innerHTML = "<div class=\"p-4 text-xs text-purple-800 font-bold\">トレカ写真パネルを読み込み中...</div>";
+    setTimeout(() => {
+      try {
+        renderAdminCardsPanel(el);
+      } catch (err) {
+        console.error("AdminCardsPanel Error:", err);
+        el.innerHTML = "<div class=\"p-4 bg-red-50 text-red-700 rounded-xl text-xs\">エラー検出: " + (err.message || err) + "</div>";
+      }
+    }, 50);
+  }
         if (isMyCardsPageOpen()) renderMyCardsList();
       } catch (e) {
         alert("削除に失敗しました。");
@@ -7684,7 +7794,17 @@ window.buildAndDownloadCardPackZip = async function() {
         await idbSet("photo_" + cardId, dataUrl);
         showToast("写真を登録しました", "success");
         const el = document.getElementById("admin-content");
-        if (el && adminTab === "cards") renderAdminCardsPanel(el);
+        if (el && adminTab === "cards") {
+    el.innerHTML = "<div class=\"p-4 text-xs text-purple-800 font-bold\">トレカ写真パネルを読み込み中...</div>";
+    setTimeout(() => {
+      try {
+        renderAdminCardsPanel(el);
+      } catch (err) {
+        console.error("AdminCardsPanel Error:", err);
+        el.innerHTML = "<div class=\"p-4 bg-red-50 text-red-700 rounded-xl text-xs\">エラー検出: " + (err.message || err) + "</div>";
+      }
+    }, 50);
+  }
         if (isMyCardsPageOpen()) renderMyCardsList();
       } catch (e) {
         console.error(e);
@@ -7700,7 +7820,17 @@ window.buildAndDownloadCardPackZip = async function() {
         await idbDelete("photo_" + cardId);
         showToast("写真を削除しました", "info");
         const el = document.getElementById("admin-content");
-        if (el && adminTab === "cards") renderAdminCardsPanel(el);
+        if (el && adminTab === "cards") {
+    el.innerHTML = "<div class=\"p-4 text-xs text-purple-800 font-bold\">トレカ写真パネルを読み込み中...</div>";
+    setTimeout(() => {
+      try {
+        renderAdminCardsPanel(el);
+      } catch (err) {
+        console.error("AdminCardsPanel Error:", err);
+        el.innerHTML = "<div class=\"p-4 bg-red-50 text-red-700 rounded-xl text-xs\">エラー検出: " + (err.message || err) + "</div>";
+      }
+    }, 50);
+  }
         if (isMyCardsPageOpen()) renderMyCardsList();
       } catch (e) {
         alert("削除に失敗しました。");
