@@ -13,7 +13,7 @@ async function sendNotifications(projectId, token, events) {
     const isTodayOrTomorrow = e.date === today || e.date === tomorrow;
     const isDeadline = e.category === "deadline" || e.category === "ticket";
     const title = (e.title || "").toLowerCase();
-    const isImportant = title.includes("入金") || title.includes("シリアル") || title.includes("締切") || title.includes("グッズ") || title.includes("販売");
+    const isImportant = title.includes("入金") || title.includes("シリアル") || title.includes("締切") || title.includes("当落") || title.includes("グッズ") || title.includes("販売");
     return isTodayOrTomorrow || (isDeadline && isImportant);
   });
 
@@ -132,10 +132,11 @@ async function main() {
 
   const queries = [
     `ILLIT スケジュール 2026`,
-    `ILLIT ライブ 2026`,
-    `ILLIT 公式 予定 2026`,
-    `ILLIT コンサート チケット`,
-    `ILLIT グッズ 販売`
+    `ILLIT シリアル 応募 締切 2026`,
+    `ILLIT 当落発表 2026`,
+    `ILLIT ライブ コンサート 2026`,
+    `site:illit-official.jp シリアル`,
+    `site:cdefgah.net ILLIT`
   ];
 
   let allResults = [];
@@ -148,21 +149,21 @@ async function main() {
         query: query,
         search_depth: "basic",
         include_answer: false,
-        max_results: 5
+        max_results: 4
       })
     });
     const searchData = await searchRes.json();
     if (searchData.results) {
       allResults.push(...searchData.results.map(r => ({
         title: r.title,
-        content: (r.content || "").slice(0, 300)
+        content: (r.content || "").slice(0, 250)
       })));
     }
   }
   const searchContext = JSON.stringify(allResults);
 
   const groqKey = process.env.GROQ_API_KEY;
-  const prompt = `以下の検索結果から、K-POPグループ「ILLIT（アイリット）」のスケジュールをできるだけ多く抽出してください。現在の日付は ${getJstDateStr(0)} です。
+  const prompt = `以下の検索結果から、K-POPグループ「ILLIT（アイリット）」のスケジュールを抽出してください。現在の日付は ${getJstDateStr(0)} です。
 
 【検索結果】
 ${searchContext}
@@ -170,7 +171,8 @@ ${searchContext}
 【厳守事項】
 - 公式情報を優先
 - ${getJstDateStr(0)} 以降の予定を抽出
-- できるだけ多くの予定を含める（ライブ、グッズ、締切、出演など）
+- シリアル応募締切、当落発表、入金期限も必ず含める
+- ライブ、グッズ、出演もできるだけ含める
 - タイトルと詳細は日本語で出力
 - 不明な場合は空配列 [] を返す
 
