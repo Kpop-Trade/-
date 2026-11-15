@@ -2257,7 +2257,8 @@ const ILLIT_CARD_ALBUMS = [
         await updateDoc(userRef, { notifications: list });
         alert("返信を送信しました。相手の通知一覧に届きます。");
       } catch (e) {
-        console.error(e);
+        console.error("buildAndDownloadCardPackZip error:", e);
+        alert("ZIP生成エラー: " + (e && e.stack ? e.stack : (e.message || e)));
         alert("返信の送信に失敗しました。\n" + (e?.message || e));
       }
     };
@@ -5854,7 +5855,7 @@ function getAiCardVectors() {
         </div>
         <div id="batch-sheets-list" class="space-y-2 max-h-72 overflow-y-auto"></div>
         <button type="button" id="batch-sheets-run-btn" onclick="runBatchSheetsToZip()" class="hidden w-full bg-gradient-to-r from-fuchsia-600 to-indigo-600 text-white font-bold text-xs py-2.5 rounded-full shadow-md">
-          ⚡ 全シートを一括切り抜きして一気にZIPダウンロード
+          ⚡ 全シートを一括切り抜きして一気にZIPダウンロード (v72)
         </button>
       </div>
       <label class="flex items-center gap-2 text-[11px] text-gray-700 px-1">
