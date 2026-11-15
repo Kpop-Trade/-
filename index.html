@@ -3569,7 +3569,7 @@ const ILLIT_CARD_ALBUMS = [
         try {
           const fetchWithTimeout = () => Promise.race([
         getDocs(q),
-        new Promise((_, rej) => setTimeout(() => rej(new Error("通信がタイムアウトしました")), 8000))
+        new Promise((_, rej) => setTimeout(() => rej(new Error("通信がタイムアウトしました")), 20000))
       ]);
       snap = await fetchWithTimeout();
       if (reset && snap.empty && !window._retriedInitialPosts) {
@@ -3581,7 +3581,7 @@ const ILLIT_CARD_ALBUMS = [
           console.error("loadPosts query error:", loadErr);
           const container = document.getElementById("posts-container");
           if (container) {
-            container.innerHTML = `<div class="p-4 m-4 bg-red-50 text-red-600 text-xs rounded-xl border border-red-200 text-center">⚠️ データの読み込みに失敗しました: ${loadErr.message}</div>`;
+            container.innerHTML = `<div class="p-4 m-4 bg-red-100 text-red-700 text-sm rounded-xl border border-red-300 text-center font-bold">⚠️ データの読み込みに失敗しました<br><span class="text-xs font-normal">${loadErr.message}</span><br><button onclick="window.loadPosts && window.loadPosts(true)" class="mt-2 text-xs underline text-red-600">再試行</button></div>`;
           }
           return;
         }
@@ -5066,7 +5066,10 @@ window.openAzukariApp = function() {
     // AI画像検索 (Transformers.js CLIP-ViT-B-32 + card_vectors.json)
     let _aiCardVectorsPromise = null;
     let _aiClipExtractorPromise = null;
-    setTimeout(() => { try { getAiCardVectors(); } catch(_) {} }, 3000);
+    // AIベクトルの先読みはエラーを無視して非同期で（ページ読み込みを邪魔しない）
+    setTimeout(() => { 
+      try { getAiCardVectors().catch(() => {}); } catch(_) {} 
+    }, 5000);
 function getAiCardVectors() {
       if (!_aiCardVectorsPromise) {
         _aiCardVectorsPromise = fetch("./card_vectors.json")
@@ -8260,7 +8263,11 @@ function getAiCardVectors() {
     })();
 
     if (!hasAgreedLocally()) openTerms(false);
+    try {
     renderFilters(); subscribePosts(); switchTab('home'); loadSiteAnnouncement();
+  } catch (e) {
+    console.error("Init error:", e);
+  }
 
     // 👇 ここから追加・修正（Xなどのアプリ内ブラウザを自然に案内） 👇
     const ua = navigator.userAgent;
@@ -8387,3 +8394,4 @@ window.closeIllitCalendar = function() {
 
 
           
+    
