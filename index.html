@@ -7317,7 +7317,22 @@ window.openAzukariApp = function() {
           fr.onerror = reject;
           fr.readAsDataURL(file);
         });
-        const matches = await findSimilarCards(dataUrl);
+        let matches = [];
+      try {
+        matches = await findSimilarCardsWithAI(dataUrl, (p) => {
+          if (resultEl && p) {
+            resultEl.classList.remove("hidden");
+            resultEl.textContent = typeof p.progress === "number"
+              ? `🤖 AIモデル準備中... ${Math.round(p.progress)}%`
+              : `⚡ ${p.status || "AI解析中"}...`;
+          }
+        });
+      } catch (aiErr) {
+        console.warn("MyCards AI fallback:", aiErr);
+        if (typeof findSimilarCards === "function") {
+          matches = await findSimilarCards(dataUrl);
+        }
+      }
         if (!matches.length) {
           myCardsImageFilterIds = new Set();
           if (resultEl) resultEl.textContent = "一致するトレカが見つかりませんでした";
