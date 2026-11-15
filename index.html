@@ -8386,7 +8386,10 @@ window.openIllitCalendar = async function() {
       list.innerHTML = '<p class="text-center text-xs text-gray-500 py-8">予定はまだありません</p>';
       return;
     }
-    list.innerHTML = items.map(item => '<div class="p-3 rounded-xl border border-gray-200 bg-gray-50/50 space-y-1"><div class="flex items-center justify-between gap-2"><span class="text-xs font-bold text-indigo-700">' + item.date + ' ' + (item.time || '') + '</span><span class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-indigo-100 text-indigo-700">' + (item.category || 'info') + '</span></div><div class="text-sm font-bold text-gray-900">' + item.title + '</div><div class="text-xs text-gray-600">' + (item.detail || '') + '</div></div>').join("");
+    list.innerHTML = items.map(item => {
+      const linkHtml = item.link ? ' onclick="window.open(\'' + item.link + '\', \'_blank\')" style="cursor:pointer"' : '';
+      return '<div class="p-3 rounded-xl border border-gray-200 bg-gray-50/50 space-y-1 hover:bg-gray-100 transition"' + linkHtml + '><div class="flex items-center justify-between gap-2"><span class="text-xs font-bold text-indigo-700">' + item.date + ' ' + (item.time || '') + '</span><span class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-indigo-100 text-indigo-700">' + (item.category || 'info') + '</span></div><div class="text-sm font-bold text-gray-900">' + item.title + '</div><div class="text-xs text-gray-600">' + (item.detail || '') + '</div></div>';
+    }).join("");
   } catch (e) {
     list.innerHTML = '<p class="text-center text-xs text-red-500 py-8">スケジュールを読み込めませんでした</p>';
   }
