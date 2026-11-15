@@ -6371,6 +6371,11 @@ function getAiCardVectors() {
         alert("まとめ画像を1枚以上追加してください。");
         return;
       }
+      if (typeof JSZip === "undefined") {
+        alert("ZIPライブラリ(JSZip)が読み込まれていません。ページを再読み込みしてください。");
+        return;
+      }
+
       const btn = document.getElementById("batch-sheets-run-btn");
       const origText = btn ? btn.textContent : "✂️ 全シートを一括切り抜きして一気にZIPダウンロード";
       if (btn) {
@@ -6383,7 +6388,7 @@ function getAiCardVectors() {
       const origMainAlbum = mainAlbumEl ? mainAlbumEl.value : "";
 
       try {
-        if (!Array.isArray(window.adminZipPackFiles)) window.adminZipPackFiles = [];
+        const croppedList = [];
 
         for (let i = 0; i < items.length; i++) {
           const it = items[i];
@@ -6422,8 +6427,6 @@ function getAiCardVectors() {
           }
 
           const albumId = it.albumId || origMainAlbum || "srm";
-          const baseName = (it.file && it.file.name ? it.file.name : (it.fileName || "sheet")).replace(/\.[^.]+$/, "");
-
           const cropCanvas = document.createElement("canvas");
           const cctx = cropCanvas.getContext("2d");
 
@@ -6435,23 +6438,49 @@ function getAiCardVectors() {
             const sh = Math.min(img.height - sy, Math.round(b.h));
             if (sw < 10 || sh < 10) continue;
 
+            // 1. クリーン画像（判定用：元解像度・透かしなし）
             cropCanvas.width = sw;
             cropCanvas.height = sh;
             cctx.clearRect(0, 0, sw, sh);
             cctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+            const cleanBlob = await new Promise(res => cropCanvas.toBlob(res, "image/jpeg", 0.92));
 
-            const blob = await new Promise(res => cropCanvas.toBlob(res, "image/jpeg", 0.92));
-            if (!blob) continue;
+            // 2. 公開用画像（解像度落とし・透かしあり）
+            const maxW = 360;
+            const scale = sw > maxW ? (maxW / sw) : 1;
+            const dw = Math.max(1, Math.round(sw * scale));
+            const dh = Math.max(1, Math.round(sh * scale));
+            cropCanvas.width = dw;
+            cropCanvas.height = dh;
+            cctx.clearRect(0, 0, dw, dh);
+            cctx.drawImage(img, sx, sy, sw, sh, 0, 0, dw, dh);
 
-            const memberVal = (b.member || it.member || "").trim();
-            const cardFile = new File([blob], baseName + "_" + String(bi + 1).padStart(2, "0") + ".jpg", { type: "image/jpeg" });
-            window.adminZipPackFiles.push({
-              file: cardFile,
-              cleanFile: cardFile,
-              albumId: albumId,
-              member: memberVal,
-              name: baseName + "_" + (bi + 1)
-            });
+            // 透かし（ウォーターマーク）描画
+            cctx.save();
+            cctx.globalAlpha = 0.28;
+            cctx.fillStyle = "#ffffff";
+            cctx.strokeStyle = "rgba(0,0,0,0.45)";
+            cctx.lineWidth = 2;
+            const fontSize = Math.max(14, Math.round(dw * 0.085));
+            cctx.font = "bold " + fontSize + "px sans-serif";
+            cctx.textAlign = "center";
+            cctx.textBaseline = "middle";
+            cctx.translate(dw / 2, dh / 2);
+            cctx.rotate(-Math.PI / 6);
+            cctx.strokeText("ILLIT TRADE SAMPLE", 0, 0);
+            cctx.fillText("ILLIT TRADE SAMPLE", 0, 0);
+            cctx.restore();
+
+            const wmBlob = await new Promise(res => cropCanvas.toBlob(res, "image/jpeg", 0.78));
+
+            if (cleanBlob && wmBlob) {
+              croppedList.push({
+                cleanBlob,
+                wmBlob,
+                albumId,
+                member: (b.member || it.member || "").trim()
+              });
+            }
 
             if (bi % 5 === 4) {
               if (btn) btn.textContent = "切り抜き中 (" + (i + 1) + "/" + items.length + "シート: " + (bi + 1) + "/" + boxes.length + "枚)...";
@@ -6464,16 +6493,64 @@ function getAiCardVectors() {
           if (needRevoke && objUrl) URL.revokeObjectURL(objUrl);
         }
 
-        if (!Array.isArray(window.adminZipPackFiles) || window.adminZipPackFiles.length === 0) {
+        if (croppedList.length === 0) {
           alert("切り抜かれたトレカが0枚でした。各シートの「絞り(感度)」スライダーを調整してください。");
           return;
         }
 
-        if (btn) btn.textContent = "📦 透かし圧縮＆ZIP生成中 (" + window.adminZipPackFiles.length + "枚)...";
-        await new Promise(r => setTimeout(r, 30));
-        if (typeof buildAndDownloadCardPackZip === "function") {
-          await buildAndDownloadCardPackZip();
+        if (btn) btn.textContent = "📦 ZIPパッケージ作成中 (" + croppedList.length + "枚)...";
+        await new Promise(r => setTimeout(r, 20));
+
+        const zip = new JSZip();
+        const cardsFolder = zip.folder("cards");
+        const cleanFolder = zip.folder("clean");
+        const batchTs = Date.now().toString(36);
+        const catalogList = [];
+
+        for (let idx = 0; idx < croppedList.length; idx++) {
+          const item = croppedList[idx];
+          const cardId = "pk_" + batchTs + "_" + String(idx + 1).padStart(4, "0");
+          const fileName = cardId + ".jpg";
+
+          cardsFolder.file(fileName, item.wmBlob);
+          cleanFolder.file(fileName, item.cleanBlob);
+
+          catalogList.push({
+            id: cardId,
+            albumId: item.albumId,
+            member: item.member,
+            image: "cards/" + fileName
+          });
         }
+
+        zip.file("catalog.json", JSON.stringify({
+          updatedAt: new Date().toISOString(),
+          cards: catalogList
+        }, null, 2));
+
+        const zipBlob = await zip.generateAsync({ type: "blob", compression: "STORE" });
+        const zipFileName = "illit-cards-pack-" + batchTs + ".zip";
+        const url = URL.createObjectURL(zipBlob);
+        const sizeMb = (zipBlob.size / (1024 * 1024)).toFixed(1);
+
+        // 画面最前面に確実に見えるダウンロード完了バナーを表示
+        let modal = document.getElementById("batch-zip-ready-modal");
+        if (!modal) {
+          modal = document.createElement("div");
+          modal.id = "batch-zip-ready-modal";
+          modal.style.cssText = "position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.65);display:flex;align-items:center;justify-content:center;padding:16px;";
+          document.body.appendChild(modal);
+        }
+        modal.innerHTML =
+          '<div style="background:#fff;border-radius:20px;padding:22px;max-width:360px;width:100%;text-align:center;box-shadow:0 20px 40px rgba(0,0,0,0.3);">' +
+            '<div style="font-size:18px;font-weight:900;color:#065f46;margin-bottom:8px;">✅ 一括ZIP作成完了！</div>' +
+            '<div style="font-size:13px;color:#374151;margin-bottom:14px;line-height:1.5;">' +
+              '<b>' + croppedList.length + '枚</b>（' + sizeMb + 'MB）<br>' +
+              '同一IDで <b>cards/（透かし・低解像度）</b> と <b>clean/（判定用）</b> を同梱しました。' +
+            '</div>' +
+            '<a href="' + url + '" download="' + zipFileName + '" style="display:block;width:100%;padding:14px 16px;border-radius:14px;background:#059669;color:#fff;font-weight:900;font-size:15px;text-decoration:none;margin-bottom:10px;">📦 ZIPをダウンロード保存</a>' +
+            '<button type="button" onclick="document.getElementById(\'batch-zip-ready-modal\').remove()" style="width:100%;padding:10px;border-radius:12px;background:#f3f4f6;color:#4b5563;font-weight:700;font-size:13px;border:none;">閉じる</button>' +
+          '</div>';
       } catch (e) {
         console.error("runBatchSheetsToZip error:", e);
         alert("一括切り抜き中にエラーが発生しました: " + (e && e.message ? e.message : e));
