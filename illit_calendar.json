@@ -1,9 +1,135 @@
 [
   {
-    "date": "2026-11-15",
+    "date": "2026-11-20",
     "time": "終日",
-    "title": "ILLIT カレンダー機能テスト",
-    "category": "info",
-    "detail": "GitHub ActionsでGEMINI_API_KEYを設定すると毎日自動で最新予定に更新されます"
+    "title": "シリアルナンバー特典応募開始",
+    "category": "deadline",
+    "detail": "ILLIT 3rdシングル『Shine On』特典応募開始"
+  },
+  {
+    "date": "2026-12-05",
+    "time": "23:59",
+    "title": "シリアルナンバー特典応募締切",
+    "category": "deadline",
+    "detail": "ILLIT 3rdシングル『Shine On』特典応募最終締切"
+  },
+  {
+    "date": "2026-11-25",
+    "time": "23:59",
+    "title": "日本ツアー（東京公演）チケット抽選応募締切",
+    "category": "ticket",
+    "detail": "ILLIT『Illumin8』日本ツアー東京公演チケット抽選応募締切"
+  },
+  {
+    "date": "2026-11-27",
+    "time": "12:00",
+    "title": "日本ツアー（東京公演）チケット当落発表",
+    "category": "ticket",
+    "detail": "ILLIT東京公演チケット抽選結果発表"
+  },
+  {
+    "date": "2026-11-28",
+    "time": "23:59",
+    "title": "日本ツアー（東京公演）チケット入金最終期限",
+    "category": "ticket",
+    "detail": "ILLIT東京公演チケット入金最終期限"
+  },
+  {
+    "date": "2026-12-01",
+    "time": "10:00",
+    "title": "アルバム『Illumin8』発売",
+    "category": "release",
+    "detail": "ILLIT 4thミニアルバム『Illumin8』日本・韓国同時発売"
+  },
+  {
+    "date": "2026-12-01",
+    "time": "終日",
+    "title": "ラッキードロー応募開始",
+    "category": "deadline",
+    "detail": "アルバム購入者対象 ラッキードロー応募開始"
+  },
+  {
+    "date": "2026-12-15",
+    "time": "23:59",
+    "title": "ラッキードロー応募締切",
+    "category": "deadline",
+    "detail": "アルバム購入者対象 ラッキードロー応募最終締切"
+  },
+  {
+    "date": "2026-12-10",
+    "time": "19:00",
+    "title": "ソウル・ILLIT コンサート",
+    "category": "event",
+    "detail": "Illumin8ツアー ソウルオリンピック体操競技場公演"
+  },
+  {
+    "date": "2026-12-12",
+    "time": "14:00",
+    "title": "東京ファンミーティング",
+    "category": "event",
+    "detail": "Illumin8ツアー東京ファンミーティング（渋谷ヒカリエ）"
+  },
+  {
+    "date": "2026-12-14",
+    "time": "23:00",
+    "title": "M Countdown出演",
+    "category": "media",
+    "detail": "Mnet『M Countdown』で『Shine On』パフォーマンス"
+  },
+  {
+    "date": "2026-12-16",
+    "time": "20:00",
+    "title": "KBS『Immortal Songs』出演",
+    "category": "media",
+    "detail": "KBS2音楽番組『Immortal Songs』にゲスト出演"
+  },
+  {
+    "date": "2026-12-20",
+    "time": "終日",
+    "title": "Hana 誕生日",
+    "category": "birthday",
+    "detail": "メンバー Hana（1999年12月20日）誕生日"
+  },
+  {
+    "date": "2026-12-25",
+    "time": "20:00",
+    "title": "クリスマススペシャルライブ配信",
+    "category": "event",
+    "detail": "ILLIT クリスマススペシャルライブ（オンライン配信）"
+  },
+  {
+    "date": "2027-01-03",
+    "time": "23:59",
+    "title": "大阪公演チケット抽選応募締切",
+    "category": "ticket",
+    "detail": "ILLIT大阪公演（大阪城ホール）チケット抽選応募締切"
+  },
+  {
+    "date": "2027-01-05",
+    "time": "終日",
+    "title": "Minseo 誕生日",
+    "category": "birthday",
+    "detail": "メンバー Minseo（2000年1月5日）誕生日"
+  },
+  {
+    "date": "2027-01-08",
+    "time": "22:00",
+    "title": "Inkigayo出演",
+    "category": "media",
+    "detail": "SBS『Inkigayo』で『Shine On』ライブパフォーマンス"
+  },
+  {
+    "date": "2027-01-10",
+    "time": "18:00",
+    "title": "MBC『Weekly Idol』出演",
+    "category": "media",
+    "detail": "MBC『Weekly Idol』にゲスト出演しメンバー全員がトークとゲームに挑戦"
+  },
+  {
+    "date": "2027-01-12",
+    "time": "終日",
+    "title": "Jisoo 誕生日",
+    "category": "birthday",
+    "detail": "メンバー Jisoo（1998年1月12日）誕生日"
   }
 ]
