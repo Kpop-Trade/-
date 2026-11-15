@@ -5838,7 +5838,7 @@ function getAiCardVectors() {
             const canSelect = isAdminCard && !isStatic;
             const isSelected = adminSelectedCardIds.has(c.id);
             const thumb = photo
-              ? `<img src="${photo}" class="w-14 h-14 object-cover rounded-lg border border-white shadow-sm">`
+              ? `<img loading="lazy" decoding="async" src="${photo}" class="w-14 h-14 object-cover rounded-lg border border-white shadow-sm">`
               : `<div class="w-14 h-14 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-400 text-lg">🃏</div>`;
             return `<div class="liquid-glass-input rounded-xl p-2.5 flex items-center gap-2.5 ${isSelected ? "ring-2 ring-pink-400 bg-pink-50/40" : ""}">
               ${canSelect ? `<input type="checkbox" class="w-4 h-4 rounded border-gray-300 text-illit-accent shrink-0" ${isSelected ? "checked" : ""} onchange="toggleAdminCardSelect('${escapeHtml(c.id)}', this.checked)">` : `<span class="w-4 shrink-0"></span>`}
