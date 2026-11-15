@@ -5836,7 +5836,28 @@ function getAiCardVectors() {
             </div>
             <div id="admin-zip-list" class="space-y-1.5 max-h-56 overflow-y-auto pr-1"></div>
 
-            <label class="flex items-center gap-2 text-[11px] text-gray-700 px-1">
+            
+      <div class="bg-gradient-to-br from-fuchsia-50 to-indigo-50 border border-fuchsia-200 rounded-2xl p-3 space-y-2.5">
+        <div class="flex items-center justify-between">
+          <div class="text-xs font-bold text-fuchsia-900">📚 まとめ画像 一括切り抜き＆ZIP作成</div>
+          <span id="batch-sheets-count" class="text-[11px] font-bold text-fuchsia-700">0枚選択中</span>
+        </div>
+        <div class="text-[11px] text-gray-600 leading-relaxed">
+          まとめ画像を何枚も同時に追加し、シートごとにアルバムとメンバーを選んでボタン1つで一気にZIP化します。
+        </div>
+        <div class="flex gap-2">
+          <label class="flex-1 text-center bg-white border border-fuchsia-300 text-fuchsia-800 font-bold text-xs py-2 px-3 rounded-xl shadow-sm cursor-pointer active:scale-95 transition">
+            ➕ まとめ画像を複数追加
+            <input type="file" id="batch-sheets-input" accept="image/*" multiple class="hidden" onchange="handleBatchSheetsSelect(this)" />
+          </label>
+          <button type="button" onclick="clearBatchSheets()" class="bg-white border border-gray-200 text-gray-500 text-xs font-bold px-3 py-2 rounded-xl">クリア</button>
+        </div>
+        <div id="batch-sheets-list" class="space-y-2 max-h-72 overflow-y-auto"></div>
+        <button type="button" id="batch-sheets-run-btn" onclick="runBatchSheetsToZip()" class="hidden w-full bg-gradient-to-r from-fuchsia-600 to-indigo-600 text-white font-bold text-xs py-2.5 rounded-full shadow-md">
+          ⚡ 全シートを一括切り抜きして一気にZIPダウンロード
+        </button>
+      </div>
+      <label class="flex items-center gap-2 text-[11px] text-gray-700 px-1">
               <input type="checkbox" id="admin-zip-merge-existing" checked class="rounded">
               <span>すでに公開中の <code>catalog.json</code>（${staticPackCards.length}枚）に追記して合体する</span>
             </label>
@@ -5943,6 +5964,160 @@ function getAiCardVectors() {
     }
 
    // ===== まとめ画像からのトレカ枠自動検出ロジック =====
+    
+    // ===== 複数まとめ画像の一括シート切り抜き＆ZIP化ロジック =====
+    window.batchSheetItems = window.batchSheetItems || [];
+
+    window.handleBatchSheetsSelect = function(inputEl) {
+      const files = Array.from((inputEl && inputEl.files) || []);
+      if (inputEl) inputEl.value = "";
+      if (!files.length) return;
+      const defaultAlb = (document.getElementById("admin-zip-album") && document.getElementById("admin-zip-album").value) || (typeof adminCardsAlbum !== "undefined" ? adminCardsAlbum : "") || ((window.ILLIT_CARD_ALBUMS && window.ILLIT_CARD_ALBUMS[0] && window.ILLIT_CARD_ALBUMS[0].id) || "");
+      files.forEach(file => {
+        const url = URL.createObjectURL(file);
+        const guessed = (typeof guessMemberFromFileName === "function") ? guessMemberFromFileName(file.name) : "";
+        window.batchSheetItems.push({
+          id: "bs_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7),
+          file: file,
+          previewUrl: url,
+          albumId: defaultAlb,
+          member: guessed || ""
+        });
+      });
+      renderBatchSheetsList();
+    };
+
+    window.clearBatchSheets = function() {
+      (window.batchSheetItems || []).forEach(it => {
+        try { if (it.previewUrl) URL.revokeObjectURL(it.previewUrl); } catch (_) {}
+      });
+      window.batchSheetItems = [];
+      renderBatchSheetsList();
+    };
+
+    window.removeBatchSheetItem = function(idx) {
+      const item = window.batchSheetItems[idx];
+      if (item && item.previewUrl) {
+        try { URL.revokeObjectURL(item.previewUrl); } catch (_) {}
+      }
+      window.batchSheetItems.splice(idx, 1);
+      renderBatchSheetsList();
+    };
+
+    window.updateBatchSheetField = function(idx, key, val) {
+      if (window.batchSheetItems[idx]) {
+        window.batchSheetItems[idx][key] = val;
+      }
+    };
+
+    window.renderBatchSheetsList = function() {
+      const listEl = document.getElementById("batch-sheets-list");
+      const countEl = document.getElementById("batch-sheets-count");
+      const runBtn = document.getElementById("batch-sheets-run-btn");
+      const items = window.batchSheetItems || [];
+      if (countEl) countEl.textContent = items.length + "枚選択中";
+      if (runBtn) {
+        if (items.length > 0) runBtn.classList.remove("hidden");
+        else runBtn.classList.add("hidden");
+      }
+      if (!listEl) return;
+      if (!items.length) {
+        listEl.innerHTML = "";
+        return;
+      }
+      const albums = (window.ILLIT_CARD_ALBUMS || []);
+      const members = ["", "ウォニ", "ミンジュ", "イロハ", "モカ", "ユナ", "OT5"];
+      listEl.innerHTML = items.map((it, idx) => {
+        const albOpts = albums.map(a => "<option value=\"" + a.id + "\"" + (a.id === it.albumId ? " selected" : "") + ">" + a.name + "</option>").join("");
+        const memOpts = members.map(m => "<option value=\"" + m + "\"" + (m === it.member ? " selected" : "") + ">" + (m || "メンバー自動/なし") + "</option>").join("");
+        const safeName = String(it.file.name || "").replace(/</g, "&lt;");
+        return "<div class=\"bg-white border border-fuchsia-100 rounded-xl p-2 flex gap-2 items-center shadow-xs\">" +
+          "<img src=\"" + it.previewUrl + "\" class=\"w-12 h-14 object-cover rounded-lg border border-gray-200 shrink-0\" />" +
+          "<div class=\"flex-1 min-w-0 space-y-1\">" +
+            "<div class=\"flex items-center justify-between gap-1\">" +
+              "<div class=\"text-[11px] font-bold text-gray-800 truncate\">#" + (idx + 1) + " " + safeName + "</div>" +
+              "<button type=\"button\" onclick=\"removeBatchSheetItem(" + idx + ")\" class=\"text-gray-400 hover:text-red-500 text-xs px-1\">✕</button>" +
+            "</div>" +
+            "<select onchange=\"updateBatchSheetField(" + idx + ", 'albumId', this.value)\" class=\"w-full liquid-glass-input rounded-lg px-2 py-1 text-[11px]\">" + albOpts + "</select>" +
+            "<select onchange=\"updateBatchSheetField(" + idx + ", 'member', this.value)\" class=\"w-full liquid-glass-input rounded-lg px-2 py-1 text-[11px]\">" + memOpts + "</select>" +
+          "</div>" +
+        "</div>";
+      }).join("");
+    };
+
+    window.runBatchSheetsToZip = async function() {
+      const items = window.batchSheetItems || [];
+      if (!items.length) {
+        alert("まとめ画像を1枚以上追加してください。");
+        return;
+      }
+      const btn = document.getElementById("batch-sheets-run-btn");
+      const origText = btn ? btn.textContent : "⚡ 全シートを一括切り抜きして一気にZIPダウンロード";
+      if (btn) btn.disabled = true;
+
+      const mainAlbumEl = document.getElementById("admin-zip-album");
+      const origMainAlbum = mainAlbumEl ? mainAlbumEl.value : "";
+
+      try {
+        for (let i = 0; i < items.length; i++) {
+          const it = items[i];
+          if (btn) btn.textContent = "切り抜き中 (" + (i + 1) + "/" + items.length + "シート目)...";
+
+          const img = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+              const im = new Image();
+              im.onload = () => resolve(im);
+              im.onerror = reject;
+              im.src = reader.result;
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(it.file);
+          });
+
+          window.sheetCropState.img = img;
+          window.sheetCropState.fileName = it.file.name;
+          if (mainAlbumEl && it.albumId) mainAlbumEl.value = it.albumId;
+          const sheetAlbEl = document.getElementById("sheet-current-album");
+          if (sheetAlbEl && it.albumId) sheetAlbEl.value = it.albumId;
+          const sheetMemEl = document.getElementById("sheet-current-member");
+          if (sheetMemEl) sheetMemEl.value = it.member || "";
+
+          if (typeof rerunSheetAutoDetect === "function") {
+            rerunSheetAutoDetect();
+          }
+          if (it.member && Array.isArray(window.sheetCropState.boxes)) {
+            window.sheetCropState.boxes.forEach(b => { b.member = it.member; });
+          }
+          await new Promise(r => setTimeout(r, 80));
+
+          if (typeof commitSheetAutoCropToZip === "function") {
+            await commitSheetAutoCropToZip();
+          }
+        }
+
+        if (mainAlbumEl && origMainAlbum) mainAlbumEl.value = origMainAlbum;
+
+        if (!Array.isArray(adminZipPackFiles) || adminZipPackFiles.length === 0) {
+          alert("切り抜かれたトレカが0枚でした。画像の枠線を確認してください。");
+          return;
+        }
+
+        if (btn) btn.textContent = "📦 透かし圧縮＆ZIP生成中 (" + adminZipPackFiles.length + "枚)...";
+        if (typeof buildAndDownloadCardPackZip === "function") {
+          await buildAndDownloadCardPackZip();
+        }
+      } catch (e) {
+        console.error("runBatchSheetsToZip error:", e);
+        alert("一括切り抜き中にエラーが発生しました: " + (e && e.message ? e.message : e));
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = origText;
+        }
+      }
+    };
+
     window.handleSheetAutoCropSelect = function(inputEl) {
       const file = inputEl.files && inputEl.files[0];
       inputEl.value = "";
