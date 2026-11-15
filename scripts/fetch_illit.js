@@ -142,7 +142,7 @@ async function main() {
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      model: "llama-3.3-70b-versatile",
+      model: "openai/gpt-oss-120b",
       messages: [{ role: "user", content: prompt }],
       temperature: 0.1
     })
@@ -154,7 +154,6 @@ async function main() {
   fs.writeFileSync("illit_calendar.json", JSON.stringify(parsed, null, 2));
   console.log(`SUCCESS: ${parsed.length}件更新`);
 
-  // Firebase通知用のトークン取得（既存のロジックを維持）
   const crypto = require("crypto");
   function base64url(input) {
     return Buffer.from(input).toString("base64").replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
