@@ -473,8 +473,8 @@
   </button>
 
   <!-- 出品の種類を選ぶシート -->
-  <div id="post-type-sheet" class="fixed inset-0 modal-backdrop hidden z-50 flex items-end md:items-center justify-center" onclick="if(event.target===this)closePostTypeSheet()">
-    <div class="liquid-glass-heavy w-full max-w-md rounded-t-[2rem] md:rounded-[2rem] p-5 space-y-4 shadow-2xl max-h-[88vh] overflow-y-auto">
+  <div id="post-type-sheet" class="fixed inset-0 modal-backdrop hidden flex items-end md:items-center justify-center" style="z-index:9999;pointer-events:auto;" onclick="if(event.target===this)closePostTypeSheet()">
+    <div class="liquid-glass-heavy relative z-10 w-full max-w-md rounded-t-[2rem] md:rounded-[2rem] p-5 space-y-4 shadow-2xl max-h-[88vh] overflow-y-auto" style="pointer-events:auto;" onclick="event.stopPropagation()">
       <div class="flex justify-between items-center border-b border-purple-200/50 pb-3">
         <h3 class="font-bold text-base text-gray-800">何を出品しますか？</h3>
         <button onclick="closePostTypeSheet()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
@@ -3417,7 +3417,7 @@ const ILLIT_CARD_ALBUMS = [
       return "card_exchange";
     }
 
-    window.openPostTypeSheet = function() {
+    window.openPostTypeSheet = function() { const _pts = document.getElementById("post-type-sheet"); if (_pts && _pts.parentElement !== document.body) document.body.appendChild(_pts);
       if (!currentUser) return alert("ログインが必要です。");
       document.getElementById("post-type-sheet").classList.remove("hidden");
     };
