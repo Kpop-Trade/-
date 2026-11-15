@@ -8080,101 +8080,60 @@ window.closeIllitCalendar = function() {
 </script>
 <script>
 (function() {
-  function ensureBodyModals() {
-    ["post-type-sheet", "post-modal", "serial-post-modal", "group-post-modal"].forEach(function(id) {
-      var el = document.getElementById(id);
-      if (el && el.parentElement !== document.body) {
-        document.body.appendChild(el);
-      }
-    });
-  }
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", ensureBodyModals);
-  } else {
-    
-  }
-  window.openPostTypeSheet = function() {
-    if (typeof currentUser !== "undefined" && !currentUser) return alert("ログインが必要です。");
-    
-    var sheet = document.getElementById("post-type-sheet");
-    if (!sheet) return;
-    sheet.style.removeProperty("display");
-    sheet.classList.remove("hidden");
-  };
-  window.closePostTypeSheet = function() {
-    var sheet = document.getElementById("post-type-sheet");
-    if (!sheet) return;
-    sheet.classList.add("hidden");
-    sheet.style.removeProperty("display");
-  };
-})();
-</script>
-<script>
-(function() {
-  var oldBar = document.getElementById("debug-hit-bar");
-  if (oldBar) oldBar.remove();
+  var bar = document.getElementById("debug-hit-bar");
+  if (bar) bar.remove();
 
-  function bindSheetButtons() {
+  // シート内のボタンの元の onclick を退避（もし残っていれば）
+  function preserveHandlers() {
     var sheet = document.getElementById("post-type-sheet");
     if (!sheet) return;
     sheet.querySelectorAll("button").forEach(function(btn) {
-      if (btn.dataset.directBound) return;
-      btn.dataset.directBound = "1";
-      var code = btn.getAttribute("onclick");
-      if (!code) return;
-      btn.removeAttribute("onclick");
-      var lastRun = 0;
-      var run = function(e) {
-        var now = Date.now();
-        if (now - lastRun < 400) return;
-        lastRun = now;
-        e.preventDefault();
-        e.stopPropagation();
-        try {
-          (new Function(code)).call(btn);
-        } catch (err) {
-          alert("実行エラー: " + err.message);
-        }
-      };
-      btn.addEventListener("touchend", run, { passive: false });
-      btn.addEventListener("click", run, false);
+      var oc = btn.getAttribute("onclick");
+      if (oc) {
+        btn.setAttribute("data-act", oc);
+        btn.removeAttribute("onclick");
+      }
     });
   }
 
+  // 読み込みタイミングに関わらず document レベルで #post-type-sheet 内のタップを確実に捕捉
+  var lastTap = 0;
+  function handleSheetTap(e) {
+    var btn = e.target && e.target.closest ? e.target.closest("#post-type-sheet button") : null;
+    if (!btn) return;
+    var now = Date.now();
+    if (now - lastTap < 350) return;
+    lastTap = now;
+    e.preventDefault();
+    e.stopPropagation();
+
+    var code = btn.getAttribute("data-act") || btn.getAttribute("onclick") || "";
+    if (!code) {
+      // 万が一属性が消えていた場合のテキスト判定フォールバック
+      var txt = (btn.textContent || "").trim();
+      if (txt === "×" || txt === "✕" || txt === "") code = "closePostTypeSheet()";
+      else if (txt.includes("交換")) code = "closePostTypeSheet(); openPostModal('exchange')";
+      else if (txt.includes("買取")) code = "closePostTypeSheet(); openPostModal('buy')";
+      else if (txt.includes("アルバム")) code = "closePostTypeSheet(); openPostModal('album_sell')";
+      else if (txt.includes("DEARLIT")) code = "closePostTypeSheet(); openPostModal('dearlit_sell')";
+      else if (txt.includes("トレカ")) code = "closePostTypeSheet(); openSerialPostModal('exchange')";
+      else if (txt.includes("共同購入")) code = "closePostTypeSheet(); openGroupPostModal()";
+      else if (txt.includes("売却")) code = "closePostTypeSheet(); openPostModal('sell')";
+    }
+    try {
+      if (code) (new Function(code)).call(btn);
+    } catch (err) {
+      alert("エラー: " + err.message);
+    }
+  }
+
+  document.addEventListener("touchend", handleSheetTap, true);
+  document.addEventListener("click", handleSheetTap, true);
+
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", bindSheetButtons);
+    document.addEventListener("DOMContentLoaded", preserveHandlers);
   } else {
-    bindSheetButtons();
-  }
-})();
-</script>
-<script>
-(function() {
-  if (typeof window.checkDeviceLock === "function") {
-    var origLock = window.checkDeviceLock;
-    window.checkDeviceLock = function() {
-      return Promise.race([
-        origLock.apply(this, arguments),
-        new Promise(function(resolve) { setTimeout(function() { resolve(true); }, 1500); })
-      ]).catch(function() { return true; });
-    };
-  }
-  var origOpenModal = window.openPostModal;
-  if (typeof origOpenModal === "function") {
-    window.openPostModal = async function(mode) {
-      try {
-        await origOpenModal.apply(this, arguments);
-      } catch (e) {
-        alert("openPostModalエラー: " + e.message);
-      }
-      var pm = document.getElementById("post-modal");
-      if (pm) {
-        pm.classList.remove("hidden");
-        pm.style.removeProperty("display");
-        pm.style.zIndex = "2147483647";
-      }
-      document.body.style.overflow = "";
-    };
+    preserveHandlers();
   }
 })();
 </script>
