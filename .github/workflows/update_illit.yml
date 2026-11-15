@@ -13,9 +13,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Fetch ILLIT Schedule via Vertex AI
+      - name: Fetch ILLIT Schedule via Groq
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: node scripts/fetch_illit.js
       - name: Commit and Push
         run: |
