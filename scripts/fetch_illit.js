@@ -13,8 +13,8 @@ async function sendNotifications(projectId, token, events) {
     const isTodayOrTomorrow = e.date === today || e.date === tomorrow;
     const isDeadline = e.category === "deadline" || e.category === "ticket";
     const title = (e.title || "").toLowerCase();
-    const isPaymentOrSerial = title.includes("入金") || title.includes("シリアル") || title.includes("締切");
-    return isTodayOrTomorrow || (isDeadline && isPaymentOrSerial);
+    const isImportant = title.includes("入金") || title.includes("シリアル") || title.includes("締切") || title.includes("グッズ") || title.includes("販売");
+    return isTodayOrTomorrow || (isDeadline && isImportant);
   });
 
   if (targets.length === 0) {
@@ -133,7 +133,10 @@ async function main() {
   const currentMonth = getJstDateStr(0).slice(0, 7);
   const queries = [
     `ILLIT 公式 スケジュール ${currentMonth}`,
-    `ILLIT ライブ コンサート 2026`
+    `ILLIT ライブ コンサート 2026`,
+    `ILLIT シリアル 特典 応募 締切 2026`,
+    `ILLIT チケット 入金 期限 2026`,
+    `ILLIT グッズ 販売日 2026`
   ];
 
   let allResults = [];
@@ -146,13 +149,13 @@ async function main() {
         query: query,
         search_depth: "basic",
         include_answer: true,
-        max_results: 3
+        max_results: 2
       })
     });
     const searchData = await searchRes.json();
     if (searchData.results) allResults.push(...searchData.results);
   }
-  const searchContext = allResults.map(r => (r.content || "").slice(0, 400)).join("\n---\n");
+  const searchContext = allResults.map(r => (r.content || "").slice(0, 300)).join("\n---\n");
 
   const groqKey = process.env.GROQ_API_KEY;
   const prompt = `以下の検索結果から、K-POPグループ「ILLIT（アイリット）」の公式スケジュールのみを抽出してください。現在の日付は ${getJstDateStr(0)} です。
@@ -163,11 +166,13 @@ ${searchContext}
 【厳守事項】
 - 公式情報のみを使用
 - ${getJstDateStr(0)} 以降の予定のみを抽出
+- シリアル応募締切、入金期限、グッズ販売日も必ず含める
 - 過去の予定は含めない
 - 不明な場合は空配列 [] を返す
+- タイトルと詳細は必ず日本語で出力すること
 
 【出力形式】
-[{"date":"YYYY-MM-DD","time":"HH:MM（不明なら終日）","title":"イベント名","category":"deadline | ticket | release | event | media | birthday","detail":"補足情報","link":"公式ページのURL（あれば、なければ空文字）"}]`;
+[{"date":"YYYY-MM-DD","time":"HH:MM（不明なら終日）","title":"イベント名（日本語）","category":"deadline | ticket | release | event | media | birthday","detail":"補足情報（日本語）","link":"公式ページのURL（あれば、なければ空文字）"}]`;
 
   const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
