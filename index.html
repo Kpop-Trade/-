@@ -8147,6 +8147,55 @@ window.closeIllitCalendar = function() {
   });
 })();
 </script>
+<script>
+(function() {
+  function forceBindSheet() {
+    var sheet = document.getElementById("post-type-sheet");
+    if (!sheet) return;
+    if (sheet.parentElement !== document.body) document.body.appendChild(sheet);
+    sheet.style.cssText = "position:fixed!important;inset:0!important;z-index:2147483647!important;background:rgba(15,23,42,0.55)!important;pointer-events:auto!important;display:" + (sheet.classList.contains("hidden") ? "none" : "flex") + "!important;align-items:flex-end;justify-content:center;";
+    var box = sheet.firstElementChild;
+    if (box) {
+      box.style.cssText = "position:relative!important;z-index:2!important;background:#ffffff!important;pointer-events:auto!important;width:100%;max-width:28rem;border-radius:2rem 2rem 0 0;padding:1.25rem;max-height:88vh;overflow-y:auto;";
+    }
+    sheet.querySelectorAll("button").forEach(function(btn) {
+      btn.style.pointerEvents = "auto";
+      btn.style.position = "relative";
+      btn.style.zIndex = "10";
+      var raw = btn.getAttribute("onclick") || "";
+      btn.onclick = null;
+      btn.ontouchend = null;
+      btn.addEventListener("click", function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        try {
+          if (raw) (new Function(raw)).call(btn);
+        } catch (err) {
+          alert("ボタンエラー: " + err.message);
+        }
+      }, true);
+    });
+  }
+  window.openPostTypeSheet = function() {
+    if (typeof currentUser !== "undefined" && !currentUser) return alert("ログインが必要です。");
+    var sheet = document.getElementById("post-type-sheet");
+    if (!sheet) return alert("sheet not found");
+    sheet.classList.remove("hidden");
+    forceBindSheet();
+  };
+  window.closePostTypeSheet = function() {
+    var sheet = document.getElementById("post-type-sheet");
+    if (!sheet) return;
+    sheet.classList.add("hidden");
+    sheet.style.setProperty("display", "none", "important");
+  };
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", forceBindSheet);
+  } else {
+    forceBindSheet();
+  }
+})();
+</script>
 </body>
 </html>
 
