@@ -8048,6 +8048,50 @@ window.closeIllitCalendar = function() {
   if (modal) modal.classList.add("hidden");
 };
 </script>
+<script>
+(function() {
+  function wirePostTypeSheet() {
+    var sheet = document.getElementById("post-type-sheet");
+    if (!sheet) return;
+    if (sheet.parentElement !== document.body) {
+      document.body.appendChild(sheet);
+    }
+    // シート内の全ボタンに touchend と click の両方で確実に発火するフォールバックを設定
+    var btns = sheet.querySelectorAll("button");
+    btns.forEach(function(btn) {
+      if (btn.dataset.wiredTouch) return;
+      btn.dataset.wiredTouch = "1";
+      btn.addEventListener("touchend", function(e) {
+        e.stopPropagation();
+      }, { passive: true });
+    });
+    // シート自体へのタッチが背後の画面へ抜けるのを完全に遮断
+    sheet.addEventListener("touchmove", function(e) {
+      var inner = sheet.firstElementChild;
+      if (inner && !inner.contains(e.target)) {
+        e.preventDefault();
+      }
+      e.stopPropagation();
+    }, { passive: false });
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", wirePostTypeSheet);
+  } else {
+    wirePostTypeSheet();
+  }
+  var origOpen = window.openPostTypeSheet;
+  window.openPostTypeSheet = function() {
+    wirePostTypeSheet();
+    if (typeof origOpen === "function") origOpen.apply(this, arguments);
+    document.body.style.overflow = "hidden";
+  };
+  var origClose = window.closePostTypeSheet;
+  window.closePostTypeSheet = function() {
+    if (typeof origClose === "function") origClose.apply(this, arguments);
+    document.body.style.overflow = "";
+  };
+})();
+</script>
 </body>
 </html>
 
