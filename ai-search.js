@@ -1,4 +1,6 @@
-// AI画像検索モジュール (CLIP-ViT-B-32 + card_vectors.json)
+// AI画像検索モジュール (CLIP-ViT-B-32 + card_vectors.json) 修正版
+// 「AIモデルの準備が完了しました！」の後に結果が表示されない問題を修正
+
 let _aiCardVectorsPromise = null;
 let _aiClipExtractorPromise = null;
 
@@ -9,6 +11,7 @@ export async function getAiCardVectors() {
         if (!r.ok) throw new Error("card_vectors.json の読み込みに失敗しました");
         return r.json();
       })
+      .then(d => (d && d.vectors) ? d.vectors : d)
       .catch(err => {
         _aiCardVectorsPromise = null;
         throw err;
@@ -76,6 +79,7 @@ export async function findSimilarCardsWithAI(uploadedDataUrl, progressCb) {
   if (progressCb) progressCb({ status: "トレカ画像をAI解析中" });
   const out = await extractor(smallUrl, { pooling: "mean", normalize: true });
   const qVec = out.data;
+  if (!qVec || !qVec.length) return [];
 
   const allCards = [];
   const seen = new Set();
@@ -119,7 +123,7 @@ export async function runCardImageRecognition(uploadedDataUrl) {
       }
     });
   };
-  const esc = window.escapeHtml || ((s) => String(s || "").replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])));
+  const esc = window.escapeHtml || ((s) => String(s || "").replace(/[&<>"']/g, m => ({"&":"&","<":"<",">":">","\"":""","'":"&#39;"}[m])));
 
   const timeoutPromise = new Promise((_, reject) =>
     setTimeout(() => reject(new Error("AI画像解析がタイムアウトしました")), 120000)
@@ -171,6 +175,10 @@ export async function runCardImageRecognition(uploadedDataUrl) {
   } catch (e) {
     console.error("AI Recognition Error:", e);
     updateStatus("⚠️ 解析エラー: " + (e.message || e));
+    if (container) {
+      container.classList.remove("hidden");
+      container.innerHTML = `<div class="text-[11px] text-red-500 py-1.5 text-center">解析エラー: ${e.message || e}</div>`;
+    }
     return [];
   }
 }
