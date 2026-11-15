@@ -5965,8 +5965,8 @@ function getAiCardVectors() {
    // ===== まとめ画像からのトレカ枠自動検出ロジック =====
     
     // ===== 複数まとめ画像の一括シート切り抜き＆ZIP化ロジック =====
-    // ===== クラッシュ対策：iOS Safari完全対応 IndexedDB 即時保存＆復元 =====
-    const BATCH_SHEET_DB_NAME = "illit_batch_sheet_draft_db_v2";
+    // ===== クラッシュ対策：iOS Safari完全対応 IndexedDB 即時保存＆確実復元 =====
+    const BATCH_SHEET_DB_NAME = "illit_batch_sheet_draft_db_v3";
     const BATCH_SHEET_STORE_NAME = "drafts";
 
     function openBatchSheetDB() {
@@ -5983,8 +5983,7 @@ function getAiCardVectors() {
       });
     }
 
-    // メモリ節約＆SafariでFileが消える問題を完全に防ぐため、軽量JPEGのArrayBufferに変換
-    function compressSheetToBuffer(fileOrBlob, maxDim = 1500) {
+    function compressSheetToBuffer(fileOrBlob, maxDim = 1400) {
       return new Promise((resolve) => {
         if (!fileOrBlob) return resolve(null);
         const url = URL.createObjectURL(fileOrBlob);
@@ -6006,7 +6005,7 @@ function getAiCardVectors() {
               if (!blob) return resolve(null);
               const buf = await blob.arrayBuffer();
               resolve(buf);
-            }, "image/jpeg", 0.88);
+            }, "image/jpeg", 0.85);
           } catch (_) {
             URL.revokeObjectURL(url);
             resolve(null);
@@ -6021,7 +6020,6 @@ function getAiCardVectors() {
     }
 
     window.scheduleSaveBatchSheetsDraft = function() {
-      // iOS Safariでクラッシュする前に書き切るため、遅延なしで即実行
       window.saveBatchSheetsDraftNow();
     };
 
@@ -6054,7 +6052,7 @@ function getAiCardVectors() {
         const serialized = [];
         for (const it of items) {
           if (!it._cachedBuffer && it.file) {
-            it._cachedBuffer = await compressSheetToBuffer(it.file, 1500);
+            it._cachedBuffer = await compressSheetToBuffer(it.file, 1400);
           }
           serialized.push({
             id: it.id,
@@ -6112,7 +6110,9 @@ function getAiCardVectors() {
       } catch (_) {}
     };
 
+    window._batchDraftRestoredOnce = false;
     window.restoreBatchSheetsDraft = async function() {
+      if (window._batchDraftRestoredOnce) return;
       try {
         const db = await openBatchSheetDB();
         const data = await new Promise((resolve, reject) => {
@@ -6122,8 +6122,12 @@ function getAiCardVectors() {
           req.onerror = () => reject(req.error);
         });
         if (!data || !Array.isArray(data.items) || !data.items.length) return;
-        if (window.batchSheetItems && window.batchSheetItems.length > 0) return;
+        if (window.batchSheetItems && window.batchSheetItems.length > 0) {
+          window._batchDraftRestoredOnce = true;
+          return;
+        }
 
+        window._batchDraftRestoredOnce = true;
         window.batchSheetItems = data.items.map(raw => {
           const buf = raw.fileBuffer;
           const blob = buf ? new Blob([buf], { type: "image/jpeg" }) : null;
@@ -6167,13 +6171,9 @@ function getAiCardVectors() {
       }
     };
 
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", () => {
-        setTimeout(() => window.restoreBatchSheetsDraft(), 400);
-      });
-    } else {
-      setTimeout(() => window.restoreBatchSheetsDraft(), 400);
-    }
+    // 画面の初期化完了後＆まとめ切り抜き画面を開いた時にも確実に復元チェック
+    setTimeout(() => window.restoreBatchSheetsDraft(), 800);
+    setTimeout(() => window.restoreBatchSheetsDraft(), 2000);
 
     window.batchSheetItems = window.batchSheetItems || [];
     window.activeBatchPreviewIdx = -1;
@@ -6816,6 +6816,24 @@ function getAiCardVectors() {
       if (typeof syncActiveBatchSheetBoxes === "function") syncActiveBatchSheetBoxes();
     };
 
+    window._sheetBoxHistory = [];
+    window.pushSheetBoxHistory = function() {
+      if (!sheetCropState || !Array.isArray(sheetCropState.boxes)) return;
+      window._sheetBoxHistory.push(sheetCropState.boxes.map(b => ({ ...b })));
+      if (window._sheetBoxHistory.length > 30) window._sheetBoxHistory.shift();
+    };
+
+    window.undoLastSheetBoxAction = function() {
+      if (!sheetCropState || !Array.isArray(sheetCropState.boxes)) return;
+      if (window._sheetBoxHistory && window._sheetBoxHistory.length > 0) {
+        sheetCropState.boxes = window._sheetBoxHistory.pop();
+      } else if (sheetCropState.boxes.length > 0) {
+        sheetCropState.boxes.pop();
+      }
+      if (typeof drawSheetCropPreview === "function") drawSheetCropPreview();
+      if (typeof syncActiveBatchSheetBoxes === "function") syncActiveBatchSheetBoxes();
+    };
+
     window.handleSheetCanvasClick = function(ev) {
       if (window._sheetDragHandledClick) {
         window._sheetDragHandledClick = false;
@@ -6832,7 +6850,6 @@ function getAiCardVectors() {
       const clickX = ((ev.clientX - rect.left) / rect.width) * (canvas.width / scale);
       const clickY = ((ev.clientY - rect.top) / rect.height) * (canvas.height / scale);
 
-      // 既存枠の上をタップしても消さない（誤操作防止）
       for (let i = sheetCropState.boxes.length - 1; i >= 0; i--) {
         const b = sheetCropState.boxes[i];
         if (clickX >= b.x && clickX <= b.x + b.w && clickY >= b.y && clickY <= b.y + b.h) {
@@ -6840,7 +6857,6 @@ function getAiCardVectors() {
         }
       }
 
-      // 空き場所をタップした時だけ、標準サイズの赤枠を追加
       if (typeof pushSheetBoxHistory === "function") pushSheetBoxHistory();
 
       const existing = sheetCropState.boxes.filter(b => b && b.w > 10 && b.h > 10);
@@ -6982,6 +6998,7 @@ function getAiCardVectors() {
         }
 
         window._sheetDragHandledClick = true;
+        if (typeof pushSheetBoxHistory === "function") pushSheetBoxHistory();
         if (typeof pushSheetBoxHistory === "function") pushSheetBoxHistory();
         if (st.mode === "create" && st.draftBox && st.draftBox.w >= 16 && st.draftBox.h >= 16) {
           sheetCropState.boxes.push({
@@ -9212,6 +9229,150 @@ window.buildAndDownloadCardPackZip = async function() {
       renderMyCardsList();
       try { await saveUserData({ customCards: userData.customCards, myCards: map }); } catch (e) {}
     };
+    
+    // ===== 全体＆アルバム別コンプ率ドーナツ円グラフ =====
+    window.renderMyCardsPieCharts = function() {
+      if (typeof ILLIT_CARD_ALBUMS === "undefined" || !Array.isArray(ILLIT_CARD_ALBUMS)) return;
+      if (typeof getAlbumCards !== "function" || typeof getCardStatus !== "function") return;
+
+      const anchorEl =
+        document.getElementById("mycards-share-stats") ||
+        document.getElementById("mycards-member-tabs") ||
+        document.getElementById("mycards-list");
+      if (!anchorEl || !anchorEl.parentNode) return;
+
+      let container = document.getElementById("my-cards-pie-dashboard");
+      if (!container) {
+        container = document.createElement("div");
+        container.id = "my-cards-pie-dashboard";
+        container.className = "mb-3 space-y-2.5";
+        anchorEl.parentNode.insertBefore(container, anchorEl);
+      }
+
+      let totalAll = 0;
+      let totalOwned = 0;
+      let totalWant = 0;
+      const albumStats = [];
+
+      ILLIT_CARD_ALBUMS.forEach(alb => {
+        const cards = getAlbumCards(alb.id) || [];
+        const total = cards.length;
+        if (total === 0) return;
+        let owned = 0;
+        let want = 0;
+        cards.forEach(c => {
+          const st = getCardStatus(c.id);
+          if (st === "owned") owned++;
+          else if (st === "want") want++;
+        });
+        totalAll += total;
+        totalOwned += owned;
+        totalWant += want;
+        const pct = total > 0 ? Math.round((owned / total) * 100) : 0;
+        const wantPct = total > 0 ? Math.round((want / total) * 100) : 0;
+        albumStats.push({ id: alb.id, name: alb.name, total, owned, want, pct, wantPct });
+      });
+
+      if (totalAll === 0) {
+        container.innerHTML = "";
+        return;
+      }
+
+      const overallPct = Math.round((totalOwned / totalAll) * 100);
+      const overallWantPct = Math.round((totalWant / totalAll) * 100);
+      const ownedDeg = Math.round((totalOwned / totalAll) * 360);
+      const wantDeg = Math.min(360, ownedDeg + Math.round((totalWant / totalAll) * 360));
+      const remainTotal = Math.max(0, totalAll - totalOwned);
+
+      const overallRingStyle =
+        "background: conic-gradient(#ec4899 0deg " + ownedDeg + "deg, #60a5fa " + ownedDeg + "deg " + wantDeg + "deg, #e5e7eb " + wantDeg + "deg 360deg);";
+
+      const albumCardsHtml = albumStats.map(st => {
+        const aOwnedDeg = Math.round((st.owned / st.total) * 360);
+        const aWantDeg = Math.min(360, aOwnedDeg + Math.round((st.want / st.total) * 360));
+        const isComp = st.owned === st.total && st.total > 0;
+        const ringColor = isComp ? "#f59e0b" : "#ec4899";
+        const ringBg =
+          "background: conic-gradient(" + ringColor + " 0deg " + aOwnedDeg + "deg, #93c5fd " + aOwnedDeg + "deg " + aWantDeg + "deg, #f3f4f6 " + aWantDeg + "deg 360deg);";
+        const safeName = String(st.name || "").replace(/</g, "&lt;");
+        const safeId = String(st.id || "").replace(/"/g, "&quot;");
+        return (
+          '<button type="button" data-pie-album="' + safeId + '" onclick="selectAlbumFromPieChart(this.dataset.pieAlbum)" ' +
+          'class="text-left bg-white/95 hover:bg-white border ' + (isComp ? 'border-amber-300 ring-1 ring-amber-200' : 'border-pink-100') + ' rounded-2xl p-2 flex items-center gap-2 shadow-xs transition active:scale-95">' +
+            '<div class="relative w-11 h-11 rounded-full shrink-0 flex items-center justify-center" style="' + ringBg + '">' +
+              '<div class="w-7 h-7 rounded-full bg-white flex items-center justify-center text-[9px] font-extrabold ' + (isComp ? 'text-amber-600' : 'text-gray-800') + '">' +
+                st.pct + '%' +
+              '</div>' +
+            '</div>' +
+            '<div class="min-w-0 flex-1">' +
+              '<div class="text-[11px] font-bold text-gray-800 truncate">' + safeName + '</div>' +
+              '<div class="text-[10px] text-gray-500"><span class="font-bold text-pink-600">' + st.owned + '</span> / ' + st.total + '枚</div>' +
+              (isComp ? '<div class="text-[9px] font-extrabold text-amber-600">👑 COMPLETE!</div>' : '<div class="text-[9px] text-gray-400">あと' + (st.total - st.owned) + '枚</div>') +
+            '</div>' +
+          '</button>'
+        );
+      }).join("");
+
+      container.innerHTML =
+        '<div class="liquid-glass-card rounded-2xl p-3 border border-pink-200/80 shadow-sm space-y-2.5">' +
+          '<div class="flex items-center justify-between">' +
+            '<div class="text-xs font-extrabold text-pink-800">📊 コレクション達成率</div>' +
+            '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-pink-100 text-pink-700">' +
+              (remainTotal === 0 ? '👑 全種コンプリート！' : 'あと ' + remainTotal + ' 枚でコンプ') +
+            '</span>' +
+          '</div>' +
+          '<div class="flex items-center gap-3.5 bg-white/90 rounded-xl p-2.5 border border-pink-100">' +
+            '<div class="relative rounded-full shrink-0 flex items-center justify-center shadow-inner" style="' + overallRingStyle + '; width:72px; height:72px;">' +
+              '<div class="w-12 h-12 rounded-full bg-white flex flex-col items-center justify-center leading-tight">' +
+                '<span class="text-[8px] font-bold text-gray-400">TOTAL</span>' +
+                '<span class="text-sm font-black text-pink-600">' + overallPct + '%</span>' +
+              '</div>' +
+            '</div>' +
+            '<div class="flex-1 space-y-1 text-xs">' +
+              '<div class="flex items-center justify-between">' +
+                '<span class="flex items-center gap-1.5 text-gray-700 font-bold"><span class="w-2.5 h-2.5 rounded-full bg-pink-500 inline-block"></span>所持</span>' +
+                '<span class="font-extrabold text-gray-900">' + totalOwned + ' <span class="text-[10px] font-normal text-gray-500">/ ' + totalAll + '枚</span></span>' +
+              '</div>' +
+              '<div class="flex items-center justify-between">' +
+                '<span class="flex items-center gap-1.5 text-gray-700 font-bold"><span class="w-2.5 h-2.5 rounded-full bg-blue-400 inline-block"></span>求 (Want)</span>' +
+                '<span class="font-bold text-blue-600">' + totalWant + '枚 <span class="text-[10px] font-normal text-gray-400">(' + overallWantPct + '%)</span></span>' +
+              '</div>' +
+              '<div class="flex items-center justify-between">' +
+                '<span class="flex items-center gap-1.5 text-gray-500"><span class="w-2.5 h-2.5 rounded-full bg-gray-200 inline-block"></span>未所持</span>' +
+                '<span class="text-gray-600 font-semibold">' + Math.max(0, totalAll - totalOwned - totalWant) + '枚</span>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div>' +
+            '<div class="text-[10px] font-bold text-gray-600 mb-1">💿 アルバム別コンプ率（タップで表示）</div>' +
+            '<div class="grid grid-cols-2 gap-1.5">' + albumCardsHtml + '</div>' +
+          '</div>' +
+        '</div>';
+    };
+
+    window.selectAlbumFromPieChart = function(albumId) {
+      try {
+        if (typeof myCardsAlbum !== "undefined") {
+          myCardsAlbum = albumId;
+        }
+        const tabBtn = document.querySelector('#mycards-album-tabs [data-album-id="' + albumId + '"]') || document.querySelector('[data-album-id="' + albumId + '"]');
+        if (tabBtn) {
+          tabBtn.click();
+          return;
+        }
+        if (typeof renderMyCardsAlbumTabs === "function") renderMyCardsAlbumTabs();
+        if (typeof renderMyCardsMemberTabs === "function") renderMyCardsMemberTabs();
+        if (typeof renderMyCardsList === "function") renderMyCardsList();
+      } catch (_) {}
+    };
+
+    setInterval(() => {
+      if (typeof window.renderMyCardsPieCharts === "function") {
+        const d = document.getElementById("my-cards-pie-dashboard");
+        if (!d || !d.innerHTML) window.renderMyCardsPieCharts();
+      }
+    }, 800);
+
     
     // ===== 全体＆アルバム別コンプ率ドーナツ円グラフ =====
     window.renderMyCardsPieCharts = function() {
