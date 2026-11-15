@@ -115,32 +115,45 @@ async function sendNotifications(projectId, token, events) {
 }
 
 async function main() {
-  const groqKey = process.env.GROQ_API_KEY;
-  if (!groqKey) throw new Error("GROQ_API_KEY is not set");
+  const tavilyKey = process.env.TAVILY_API_KEY;
+  if (!tavilyKey) throw new Error("TAVILY_API_KEY is not set");
 
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
   if (!raw) throw new Error("FIREBASE_SERVICE_ACCOUNT is not set");
   const sa = JSON.parse(raw);
 
-  const prompt = `現在の日付は ${getJstDateStr(0)} です。K-POPグループ「ILLIT（アイリット）」の公式スケジュールのみを調査してください。
+  // Tavilyで検索
+  const searchQuery = "ILLIT アイリット 公式スケジュール 2026 ライブ コンサート 発売日";
+  const searchRes = await fetch("https://api.tavily.com/search", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      api_key: tavilyKey,
+      query: searchQuery,
+      search_depth: "advanced",
+      include_answer: true,
+      max_results: 10
+    })
+  });
+  const searchData = await searchRes.json();
+  if (!searchRes.ok) throw new Error("Tavily error: " + JSON.stringify(searchData));
+
+  const searchContext = searchData.answer || JSON.stringify(searchData.results);
+
+  // Groqで整形
+  const groqKey = process.env.GROQ_API_KEY;
+  const prompt = `以下の検索結果から、K-POPグループ「ILLIT（アイリット）」の公式スケジュールのみを抽出してください。現在の日付は ${getJstDateStr(0)} です。
+
+【検索結果】
+${searchContext}
 
 【厳守事項】
-- 公式サイト、公式SNS、公式発表の情報のみを使用
-- 非公式情報、推測、未確認情報は一切含めない
-- 情報が不明な場合は空配列 [] を返す
-- マークダウンのコードブロックは不要
-
-【抽出項目】
-1. 公式発表されたシリアル特典の応募締切日
-2. 公式発表されたチケット関連日程
-3. 公式発表されたアルバム発売日
-4. 公式発表されたライブ・コンサート日程
-5. 公式発表されたテレビ出演・誕生日
+- 公式情報のみを使用
+- 非公式情報、推測は含めない
+- 不明な場合は空配列 [] を返す
 
 【出力形式】
-[{"date":"YYYY-MM-DD","time":"HH:MM（不明なら終日）","title":"イベント名","category":"deadline | ticket | release | event | media | birthday","detail":"公式情報の補足"}]
-
-※公式発表されていない情報は含めないでください。不明な場合は [] を返してください。`;
+[{"date":"YYYY-MM-DD","time":"HH:MM（不明なら終日）","title":"イベント名","category":"deadline | ticket | release | event | media | birthday","detail":"補足情報"}]`;
 
   const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
