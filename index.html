@@ -8111,29 +8111,41 @@ window.closeIllitCalendar = function() {
 </script>
 <script>
 (function() {
-  var bar = document.createElement("div");
-  bar.id = "debug-hit-bar";
-  bar.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:2147483647;background:rgba(220,38,38,0.92);color:#fff;font-size:11px;padding:4px 8px;pointer-events:none;font-family:monospace;";
-  bar.textContent = "診断モード待機中: 白い画面のどこかをタップしてください";
-  document.addEventListener("DOMContentLoaded", function() {
-    document.body.appendChild(bar);
-  });
-  document.addEventListener("touchstart", function(e) {
-    var t = e.touches && e.touches[0];
-    if (!t) return;
-    var el = document.elementFromPoint(t.clientX, t.clientY);
-    if (!el) return;
-    var info = el.tagName + (el.id ? "#" + el.id : "") + "." + String(el.className || "").split(" ").slice(0,3).join(".");
-    bar.textContent = "タップ先: " + info;
-    // もし画面全体を覆う透明・背景レイヤーがボタンの上に被さっていたら即座に透かす
-    if (el.id !== "post-modal" && el.id !== "post-type-sheet" && !el.closest("#post-modal") && !el.closest("#post-type-sheet")) {
-      var st = getComputedStyle(el);
-      if (st.position === "fixed" && el.offsetWidth > window.innerWidth * 0.8 && el.offsetHeight > window.innerHeight * 0.8) {
-        el.style.pointerEvents = "none";
-        bar.textContent += " -> 邪魔レイヤーを自動解除しました！もう一度押してください";
-      }
-    }
-  }, true);
+  var oldBar = document.getElementById("debug-hit-bar");
+  if (oldBar) oldBar.remove();
+
+  function bindSheetButtons() {
+    var sheet = document.getElementById("post-type-sheet");
+    if (!sheet) return;
+    sheet.querySelectorAll("button").forEach(function(btn) {
+      if (btn.dataset.directBound) return;
+      btn.dataset.directBound = "1";
+      var code = btn.getAttribute("onclick");
+      if (!code) return;
+      btn.removeAttribute("onclick");
+      var lastRun = 0;
+      var run = function(e) {
+        var now = Date.now();
+        if (now - lastRun < 400) return;
+        lastRun = now;
+        e.preventDefault();
+        e.stopPropagation();
+        try {
+          (new Function(code)).call(btn);
+        } catch (err) {
+          alert("実行エラー: " + err.message);
+        }
+      };
+      btn.addEventListener("touchend", run, { passive: false });
+      btn.addEventListener("click", run, false);
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", bindSheetButtons);
+  } else {
+    bindSheetButtons();
+  }
 })();
 </script>
 </body>
