@@ -134,9 +134,11 @@ async function main() {
   const queries = [
     `ILLIT 公式 スケジュール ${currentMonth}`,
     `ILLIT ライブ コンサート 2026`,
-    `ILLIT シリアル 特典 応募 締切 2026`,
-    `ILLIT チケット 入金 期限 2026`,
-    `ILLIT グッズ 販売日 2026`
+    `ILLIT シリアル 特典 応募 締切`,
+    `ILLIT チケット 入金 期限`,
+    `ILLIT グッズ 販売日`,
+    `ILLIT ファンミーティング 2026`,
+    `ILLIT 音楽番組 出演 2026`
   ];
 
   let allResults = [];
@@ -148,14 +150,19 @@ async function main() {
         api_key: tavilyKey,
         query: query,
         search_depth: "basic",
-        include_answer: true,
-        max_results: 2
+        include_answer: false,
+        max_results: 3
       })
     });
     const searchData = await searchRes.json();
-    if (searchData.results) allResults.push(...searchData.results);
+    if (searchData.results) {
+      allResults.push(...searchData.results.map(r => ({
+        title: r.title,
+        content: (r.content || "").slice(0, 200)
+      })));
+    }
   }
-  const searchContext = allResults.map(r => (r.content || "").slice(0, 300)).join("\n---\n");
+  const searchContext = JSON.stringify(allResults);
 
   const groqKey = process.env.GROQ_API_KEY;
   const prompt = `以下の検索結果から、K-POPグループ「ILLIT（アイリット）」の公式スケジュールのみを抽出してください。現在の日付は ${getJstDateStr(0)} です。
@@ -166,7 +173,7 @@ ${searchContext}
 【厳守事項】
 - 公式情報のみを使用
 - ${getJstDateStr(0)} 以降の予定のみを抽出
-- シリアル応募締切、入金期限、グッズ販売日も必ず含める
+- シリアル応募締切、入金期限、グッズ販売日、ファンミーティング、音楽番組出演も必ず含める
 - 過去の予定は含めない
 - 不明な場合は空配列 [] を返す
 - タイトルと詳細は必ず日本語で出力すること
