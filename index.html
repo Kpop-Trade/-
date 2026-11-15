@@ -5967,22 +5967,74 @@ function getAiCardVectors() {
     
     // ===== 複数まとめ画像の一括シート切り抜き＆ZIP化ロジック =====
     window.batchSheetItems = window.batchSheetItems || [];
+    window.activeBatchPreviewIdx = -1;
+
+    function getAvailableAlbumOptionsList() {
+      const mainSel = document.getElementById("admin-zip-album");
+      if (mainSel && mainSel.options && mainSel.options.length > 0) {
+        return Array.from(mainSel.options).map(o => ({ id: o.value, name: o.textContent || o.value })).filter(a => a.id);
+      }
+      if (typeof ILLIT_CARD_ALBUMS !== "undefined" && Array.isArray(ILLIT_CARD_ALBUMS)) {
+        return ILLIT_CARD_ALBUMS.map(a => ({ id: a.id, name: a.name }));
+      }
+      if (Array.isArray(window.ILLIT_CARD_ALBUMS)) {
+        return window.ILLIT_CARD_ALBUMS.map(a => ({ id: a.id, name: a.name }));
+      }
+      return [];
+    }
+
+    function countDetectedBoxesForImage(img, thresholdVal) {
+      try {
+        const prevImg = window.sheetCropState.img;
+        const prevBoxes = window.sheetCropState.boxes;
+        const thrEl = document.getElementById("sheet-crop-threshold");
+        const prevThr = thrEl ? thrEl.value : "22";
+        if (thrEl) thrEl.value = String(thresholdVal || 22);
+        window.sheetCropState.img = img;
+        if (typeof rerunSheetAutoDetect === "function") {
+          rerunSheetAutoDetect();
+        }
+        const count = Array.isArray(window.sheetCropState.boxes) ? window.sheetCropState.boxes.filter(b => b.enabled !== false).length : 0;
+        if (thrEl) thrEl.value = prevThr;
+        window.sheetCropState.img = prevImg;
+        window.sheetCropState.boxes = prevBoxes;
+        return count;
+      } catch (_) {
+        return 0;
+      }
+    }
 
     window.handleBatchSheetsSelect = function(inputEl) {
       const files = Array.from((inputEl && inputEl.files) || []);
       if (inputEl) inputEl.value = "";
       if (!files.length) return;
-      const defaultAlb = (document.getElementById("admin-zip-album") && document.getElementById("admin-zip-album").value) || (typeof adminCardsAlbum !== "undefined" ? adminCardsAlbum : "") || ((window.ILLIT_CARD_ALBUMS && window.ILLIT_CARD_ALBUMS[0] && window.ILLIT_CARD_ALBUMS[0].id) || "");
+      const albums = getAvailableAlbumOptionsList();
+      const defaultAlb = (document.getElementById("admin-zip-album") && document.getElementById("admin-zip-album").value) || (typeof adminCardsAlbum !== "undefined" ? adminCardsAlbum : "") || (albums[0] ? albums[0].id : "");
+      const curThr = Number((document.getElementById("sheet-crop-threshold") && document.getElementById("sheet-crop-threshold").value) || 22);
+
       files.forEach(file => {
         const url = URL.createObjectURL(file);
         const guessed = (typeof guessMemberFromFileName === "function") ? guessMemberFromFileName(file.name) : "";
-        window.batchSheetItems.push({
+        const item = {
           id: "bs_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7),
           file: file,
           previewUrl: url,
+          imgObj: null,
           albumId: defaultAlb,
-          member: guessed || ""
-        });
+          member: guessed || "",
+          threshold: curThr,
+          detectedCount: null,
+          customBoxes: null
+        };
+        window.batchSheetItems.push(item);
+
+        const im = new Image();
+        im.onload = () => {
+          item.imgObj = im;
+          item.detectedCount = countDetectedBoxesForImage(im, item.threshold);
+          renderBatchSheetsList();
+        };
+        im.src = url;
       });
       renderBatchSheetsList();
     };
@@ -5992,6 +6044,7 @@ function getAiCardVectors() {
         try { if (it.previewUrl) URL.revokeObjectURL(it.previewUrl); } catch (_) {}
       });
       window.batchSheetItems = [];
+      window.activeBatchPreviewIdx = -1;
       renderBatchSheetsList();
     };
 
@@ -6001,13 +6054,48 @@ function getAiCardVectors() {
         try { URL.revokeObjectURL(item.previewUrl); } catch (_) {}
       }
       window.batchSheetItems.splice(idx, 1);
+      if (window.activeBatchPreviewIdx === idx) window.activeBatchPreviewIdx = -1;
       renderBatchSheetsList();
     };
 
     window.updateBatchSheetField = function(idx, key, val) {
-      if (window.batchSheetItems[idx]) {
-        window.batchSheetItems[idx][key] = val;
+      const it = window.batchSheetItems[idx];
+      if (!it) return;
+      if (key === "threshold") {
+        it.threshold = Number(val) || 22;
+        it.customBoxes = null;
+        if (it.imgObj) {
+          it.detectedCount = countDetectedBoxesForImage(it.imgObj, it.threshold);
+        }
+        const lbl = document.getElementById("bs-thr-val-" + idx);
+        if (lbl) lbl.textContent = String(it.threshold);
+        const cnt = document.getElementById("bs-cnt-" + idx);
+        if (cnt && it.detectedCount !== null) cnt.textContent = it.detectedCount + "枚検出";
+        if (window.activeBatchPreviewIdx === idx) {
+          previewBatchSheetItem(idx);
+        }
+      } else {
+        it[key] = val;
       }
+    };
+
+    window.previewBatchSheetItem = function(idx) {
+      const it = window.batchSheetItems[idx];
+      if (!it || !it.imgObj) return;
+      window.activeBatchPreviewIdx = idx;
+      window.sheetCropState.img = it.imgObj;
+      window.sheetCropState.fileName = it.file.name;
+      const area = document.getElementById("sheet-crop-area");
+      if (area) area.classList.remove("hidden");
+      const thrEl = document.getElementById("sheet-crop-threshold");
+      if (thrEl) thrEl.value = String(it.threshold || 22);
+      if (typeof rerunSheetAutoDetect === "function") {
+        rerunSheetAutoDetect();
+      }
+      it.detectedCount = Array.isArray(window.sheetCropState.boxes) ? window.sheetCropState.boxes.filter(b => b.enabled !== false).length : 0;
+      const cnt = document.getElementById("bs-cnt-" + idx);
+      if (cnt) cnt.textContent = it.detectedCount + "枚検出";
+      if (area) area.scrollIntoView({ behavior: "smooth", block: "nearest" });
     };
 
     window.renderBatchSheetsList = function() {
@@ -6025,21 +6113,35 @@ function getAiCardVectors() {
         listEl.innerHTML = "";
         return;
       }
-      const albums = (window.ILLIT_CARD_ALBUMS || []);
+      const albums = getAvailableAlbumOptionsList();
       const members = ["", "ウォニ", "ミンジュ", "イロハ", "モカ", "ユナ", "OT5"];
       listEl.innerHTML = items.map((it, idx) => {
-        const albOpts = albums.map(a => "<option value=\"" + a.id + "\"" + (a.id === it.albumId ? " selected" : "") + ">" + a.name + "</option>").join("");
+        const albOpts = albums.length
+          ? albums.map(a => "<option value=\"" + a.id + "\"" + (a.id === it.albumId ? " selected" : "") + ">" + a.name + "</option>").join("")
+          : "<option value=\"\">アルバム未取得</option>";
         const memOpts = members.map(m => "<option value=\"" + m + "\"" + (m === it.member ? " selected" : "") + ">" + (m || "メンバー自動/なし") + "</option>").join("");
         const safeName = String(it.file.name || "").replace(/</g, "&lt;");
-        return "<div class=\"bg-white border border-fuchsia-100 rounded-xl p-2 flex gap-2 items-center shadow-xs\">" +
-          "<img src=\"" + it.previewUrl + "\" class=\"w-12 h-14 object-cover rounded-lg border border-gray-200 shrink-0\" />" +
-          "<div class=\"flex-1 min-w-0 space-y-1\">" +
-            "<div class=\"flex items-center justify-between gap-1\">" +
-              "<div class=\"text-[11px] font-bold text-gray-800 truncate\">#" + (idx + 1) + " " + safeName + "</div>" +
-              "<button type=\"button\" onclick=\"removeBatchSheetItem(" + idx + ")\" class=\"text-gray-400 hover:text-red-500 text-xs px-1\">✕</button>" +
+        const thr = Number(it.threshold || 22);
+        const cntLabel = it.detectedCount !== null ? (it.detectedCount + "枚検出") : "解析中...";
+        return "<div class=\"bg-white border border-fuchsia-200 rounded-xl p-2.5 space-y-1.5 shadow-xs\">" +
+          "<div class=\"flex gap-2 items-center\">" +
+            "<img src=\"" + it.previewUrl + "\" class=\"w-12 h-14 object-cover rounded-lg border border-gray-200 shrink-0\" />" +
+            "<div class=\"flex-1 min-w-0 space-y-1\">" +
+              "<div class=\"flex items-center justify-between gap-1\">" +
+                "<div class=\"text-[11px] font-bold text-gray-800 truncate\">#" + (idx + 1) + " " + safeName + "</div>" +
+                "<div class=\"flex items-center gap-1 shrink-0\">" +
+                  "<button type=\"button\" onclick=\"previewBatchSheetItem(" + idx + ")\" class=\"bg-pink-50 border border-pink-200 text-pink-700 font-bold text-[10px] px-1.5 py-0.5 rounded\">🔍 枠確認</button>" +
+                  "<button type=\"button\" onclick=\"removeBatchSheetItem(" + idx + ")\" class=\"text-gray-400 hover:text-red-500 text-xs px-1\">✕</button>" +
+                "</div>" +
+              "</div>" +
+              "<select onchange=\"updateBatchSheetField(" + idx + ", 'albumId', this.value)\" class=\"w-full liquid-glass-input rounded-lg px-2 py-1 text-[11px]\">" + albOpts + "</select>" +
+              "<select onchange=\"updateBatchSheetField(" + idx + ", 'member', this.value)\" class=\"w-full liquid-glass-input rounded-lg px-2 py-1 text-[11px]\">" + memOpts + "</select>" +
             "</div>" +
-            "<select onchange=\"updateBatchSheetField(" + idx + ", 'albumId', this.value)\" class=\"w-full liquid-glass-input rounded-lg px-2 py-1 text-[11px]\">" + albOpts + "</select>" +
-            "<select onchange=\"updateBatchSheetField(" + idx + ", 'member', this.value)\" class=\"w-full liquid-glass-input rounded-lg px-2 py-1 text-[11px]\">" + memOpts + "</select>" +
+          "</div>" +
+          "<div class=\"flex items-center gap-2 bg-fuchsia-50/70 px-2 py-1 rounded-lg text-[10px]\">" +
+            "<span class=\"text-gray-700 shrink-0\">絞り(感度): <strong id=\"bs-thr-val-" + idx + "\" class=\"text-fuchsia-800\">" + thr + "</strong></span>" +
+            "<input type=\"range\" min=\"8\" max=\"60\" value=\"" + thr + "\" oninput=\"updateBatchSheetField(" + idx + ", 'threshold', this.value)\" class=\"flex-1 accent-fuchsia-600\" />" +
+            "<span id=\"bs-cnt-" + idx + "\" class=\"font-bold text-pink-700 shrink-0\">" + cntLabel + "</span>" +
           "</div>" +
         "</div>";
       }).join("");
@@ -6057,13 +6159,15 @@ function getAiCardVectors() {
 
       const mainAlbumEl = document.getElementById("admin-zip-album");
       const origMainAlbum = mainAlbumEl ? mainAlbumEl.value : "";
+      const thrEl = document.getElementById("sheet-crop-threshold");
+      const origThr = thrEl ? thrEl.value : "22";
 
       try {
         for (let i = 0; i < items.length; i++) {
           const it = items[i];
           if (btn) btn.textContent = "切り抜き中 (" + (i + 1) + "/" + items.length + "シート目)...";
 
-          const img = await new Promise((resolve, reject) => {
+          const img = it.imgObj || await new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = () => {
               const im = new Image();
@@ -6077,6 +6181,7 @@ function getAiCardVectors() {
 
           window.sheetCropState.img = img;
           window.sheetCropState.fileName = it.file.name;
+          if (thrEl) thrEl.value = String(it.threshold || 22);
           if (mainAlbumEl && it.albumId) mainAlbumEl.value = it.albumId;
           const sheetAlbEl = document.getElementById("sheet-current-album");
           if (sheetAlbEl && it.albumId) sheetAlbEl.value = it.albumId;
@@ -6097,9 +6202,10 @@ function getAiCardVectors() {
         }
 
         if (mainAlbumEl && origMainAlbum) mainAlbumEl.value = origMainAlbum;
+        if (thrEl) thrEl.value = origThr;
 
         if (!Array.isArray(adminZipPackFiles) || adminZipPackFiles.length === 0) {
-          alert("切り抜かれたトレカが0枚でした。画像の枠線を確認してください。");
+          alert("切り抜かれたトレカが0枚でした。各シートの「絞り(感度)」スライダーを調整してください。");
           return;
         }
 
