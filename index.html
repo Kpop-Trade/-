@@ -8148,6 +8148,36 @@ window.closeIllitCalendar = function() {
   }
 })();
 </script>
+<script>
+(function() {
+  if (typeof window.checkDeviceLock === "function") {
+    var origLock = window.checkDeviceLock;
+    window.checkDeviceLock = function() {
+      return Promise.race([
+        origLock.apply(this, arguments),
+        new Promise(function(resolve) { setTimeout(function() { resolve(true); }, 1500); })
+      ]).catch(function() { return true; });
+    };
+  }
+  var origOpenModal = window.openPostModal;
+  if (typeof origOpenModal === "function") {
+    window.openPostModal = async function(mode) {
+      try {
+        await origOpenModal.apply(this, arguments);
+      } catch (e) {
+        alert("openPostModalエラー: " + e.message);
+      }
+      var pm = document.getElementById("post-modal");
+      if (pm) {
+        pm.classList.remove("hidden");
+        pm.style.removeProperty("display");
+        pm.style.zIndex = "2147483647";
+      }
+      document.body.style.overflow = "";
+    };
+  }
+})();
+</script>
 </body>
 </html>
 
