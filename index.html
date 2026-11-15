@@ -5840,7 +5840,7 @@ function getAiCardVectors() {
       <div class="bg-gradient-to-br from-fuchsia-50 to-indigo-50 border border-fuchsia-200 rounded-2xl p-3 space-y-2.5">
         <div class="flex items-center justify-between">
           <div class="text-xs font-bold text-fuchsia-900">📚 まとめ画像 一括切り抜き＆ZIP作成</div>
-          <span id="batch-sheets-count" class="text-[11px] font-bold text-fuchsia-700">0枚選択中</span>
+          <div class="flex items-center gap-2"><span id="batch-sheets-autosave-status" class="text-[10px] font-bold text-emerald-700"></span><span id="batch-sheets-count" class="text-[11px] font-bold text-fuchsia-700">0枚選択中</span></div>
         </div>
         <div class="text-[11px] text-gray-600 leading-relaxed">
           まとめ画像を何枚も同時に追加し、シートごとにアルバムとメンバーを選んでボタン1つで一気にZIP化します。
@@ -5966,6 +5966,142 @@ function getAiCardVectors() {
    // ===== まとめ画像からのトレカ枠自動検出ロジック =====
     
     // ===== 複数まとめ画像の一括シート切り抜き＆ZIP化ロジック =====
+    // ===== クラッシュ対策：IndexedDB 自動保存＆復元 =====
+    const BATCH_SHEET_DB_NAME = "illit_batch_sheet_draft_db";
+    const BATCH_SHEET_STORE_NAME = "drafts";
+
+    function openBatchSheetDB() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open(BATCH_SHEET_DB_NAME, 1);
+        req.onupgradeneeded = () => {
+          const db = req.result;
+          if (!db.objectStoreNames.contains(BATCH_SHEET_STORE_NAME)) {
+            db.createObjectStore(BATCH_SHEET_STORE_NAME);
+          }
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    let saveBatchDraftTimer = null;
+    window.scheduleSaveBatchSheetsDraft = function() {
+      if (saveBatchDraftTimer) clearTimeout(saveBatchDraftTimer);
+      saveBatchDraftTimer = setTimeout(() => {
+        window.saveBatchSheetsDraftNow();
+      }, 250);
+    };
+
+    window.saveBatchSheetsDraftNow = async function() {
+      try {
+        const db = await openBatchSheetDB();
+        const items = window.batchSheetItems || [];
+        if (!items.length) {
+          const tx = db.transaction(BATCH_SHEET_STORE_NAME, "readwrite");
+          tx.objectStore(BATCH_SHEET_STORE_NAME).delete("latest_batch");
+          return;
+        }
+        const serialized = items.map(it => ({
+          id: it.id,
+          fileName: it.file ? it.file.name : (it.fileName || "sheet.jpg"),
+          fileType: it.file ? it.file.type : (it.fileType || "image/jpeg"),
+          fileBlob: it.file || null,
+          albumId: it.albumId || "",
+          member: it.member || "",
+          threshold: Number(it.threshold || 22),
+          detectedCount: it.detectedCount,
+          customBoxes: Array.isArray(it.customBoxes) ? it.customBoxes.map(b => ({ ...b })) : null
+        }));
+        const tx = db.transaction(BATCH_SHEET_STORE_NAME, "readwrite");
+        tx.objectStore(BATCH_SHEET_STORE_NAME).put({
+          savedAt: Date.now(),
+          items: serialized
+        }, "latest_batch");
+        const statusEl = document.getElementById("batch-sheets-autosave-status");
+        if (statusEl) {
+          const d = new Date();
+          const hh = String(d.getHours()).padStart(2, "0");
+          const mm = String(d.getMinutes()).padStart(2, "0");
+          const ss = String(d.getSeconds()).padStart(2, "0");
+          statusEl.textContent = "💾 自動保存済 (" + hh + ":" + mm + ":" + ss + ")";
+        }
+      } catch (e) {
+        console.warn("saveBatchSheetsDraftNow error:", e);
+      }
+    };
+
+    window.clearBatchSheetsDraftStorage = async function() {
+      try {
+        const db = await openBatchSheetDB();
+        const tx = db.transaction(BATCH_SHEET_STORE_NAME, "readwrite");
+        tx.objectStore(BATCH_SHEET_STORE_NAME).delete("latest_batch");
+        const statusEl = document.getElementById("batch-sheets-autosave-status");
+        if (statusEl) statusEl.textContent = "";
+      } catch (_) {}
+    };
+
+    window.restoreBatchSheetsDraft = async function() {
+      try {
+        const db = await openBatchSheetDB();
+        const data = await new Promise((resolve, reject) => {
+          const tx = db.transaction(BATCH_SHEET_STORE_NAME, "readonly");
+          const req = tx.objectStore(BATCH_SHEET_STORE_NAME).get("latest_batch");
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+        if (!data || !Array.isArray(data.items) || !data.items.length) return;
+        if (window.batchSheetItems && window.batchSheetItems.length > 0) return;
+
+        window.batchSheetItems = data.items.map(raw => {
+          const blob = raw.fileBlob;
+          const file = blob instanceof File ? blob : (blob ? new File([blob], raw.fileName || "sheet.jpg", { type: raw.fileType || "image/jpeg" }) : null);
+          const url = file ? URL.createObjectURL(file) : "";
+          const restoredItem = {
+            id: raw.id || ("bs_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7)),
+            file: file,
+            fileName: raw.fileName || "sheet.jpg",
+            fileType: raw.fileType || "image/jpeg",
+            previewUrl: url,
+            imgObj: null,
+            albumId: raw.albumId || "",
+            member: raw.member || "",
+            threshold: Number(raw.threshold || 22),
+            detectedCount: raw.detectedCount !== undefined ? raw.detectedCount : null,
+            customBoxes: Array.isArray(raw.customBoxes) ? raw.customBoxes : null
+          };
+          if (url) {
+            const im = new Image();
+            im.onload = () => {
+              restoredItem.imgObj = im;
+              if (restoredItem.detectedCount === null && typeof countDetectedBoxesForImage === "function") {
+                restoredItem.detectedCount = countDetectedBoxesForImage(im, restoredItem.threshold);
+              }
+              if (typeof renderBatchSheetsList === "function") renderBatchSheetsList();
+            };
+            im.src = url;
+          }
+          return restoredItem;
+        });
+
+        if (typeof renderBatchSheetsList === "function") renderBatchSheetsList();
+        const statusEl = document.getElementById("batch-sheets-autosave-status");
+        if (statusEl) {
+          statusEl.textContent = "♻️ 前回の作業データ (" + window.batchSheetItems.length + "シート) を自動復元しました";
+        }
+      } catch (e) {
+        console.warn("restoreBatchSheetsDraft error:", e);
+      }
+    };
+
+    window.addEventListener("DOMContentLoaded", () => {
+      setTimeout(() => {
+        if (typeof restoreBatchSheetsDraft === "function") restoreBatchSheetsDraft();
+      }, 600);
+    });
+    window.addEventListener("pagehide", () => {
+      if (typeof saveBatchSheetsDraftNow === "function") saveBatchSheetsDraftNow();
+    });
+
     window.batchSheetItems = window.batchSheetItems || [];
     window.activeBatchPreviewIdx = -1;
 
@@ -6037,6 +6173,7 @@ function getAiCardVectors() {
         im.src = url;
       });
       renderBatchSheetsList();
+      if (typeof scheduleSaveBatchSheetsDraft === "function") scheduleSaveBatchSheetsDraft();
     };
 
     window.clearBatchSheets = function() {
@@ -6046,6 +6183,7 @@ function getAiCardVectors() {
       window.batchSheetItems = [];
       window.activeBatchPreviewIdx = -1;
       renderBatchSheetsList();
+      if (typeof clearBatchSheetsDraftStorage === "function") clearBatchSheetsDraftStorage();
     };
 
     window.removeBatchSheetItem = function(idx) {
@@ -6056,6 +6194,7 @@ function getAiCardVectors() {
       window.batchSheetItems.splice(idx, 1);
       if (window.activeBatchPreviewIdx === idx) window.activeBatchPreviewIdx = -1;
       renderBatchSheetsList();
+      if (typeof scheduleSaveBatchSheetsDraft === "function") scheduleSaveBatchSheetsDraft();
     };
 
     window.updateBatchSheetField = function(idx, key, val) {
@@ -6077,6 +6216,7 @@ function getAiCardVectors() {
       } else {
         it[key] = val;
       }
+      if (typeof scheduleSaveBatchSheetsDraft === "function") scheduleSaveBatchSheetsDraft();
     };
 
     window.previewBatchSheetItem = function(idx) {
@@ -6581,6 +6721,7 @@ function getAiCardVectors() {
         it.detectedCount = it.customBoxes.filter(b => b.active !== false).length;
         const cnt = document.getElementById("bs-cnt-" + idx);
         if (cnt) cnt.textContent = it.detectedCount + "枚検出";
+        if (typeof scheduleSaveBatchSheetsDraft === "function") scheduleSaveBatchSheetsDraft();
       }
     };
 
