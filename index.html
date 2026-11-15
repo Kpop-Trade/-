@@ -2857,6 +2857,30 @@ const ILLIT_CARD_ALBUMS = [
       });
     }
 
+    async function compressCardClean(file, opt) {
+      const o = opt || PHOTO_THUMB;
+      const img = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const im = new Image();
+          im.onload = () => resolve(im);
+          im.onerror = reject;
+          im.src = reader.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const scale = Math.min(1, o.maxW / img.width, o.maxH / img.height);
+      const w = Math.max(1, Math.round(img.width * scale));
+      const h = Math.max(1, Math.round(img.height * scale));
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, w, h);
+      return canvas.toDataURL("image/jpeg", o.quality || 0.85);
+    }
+
     async function compressCardWithWatermark(file, opt) {
       const img = await loadImageFast(file);
       let maxSide = opt.maxSide, quality = opt.quality;
@@ -5079,10 +5103,53 @@ window.openAzukariApp = function() {
     }, 5000);
 function getAiCardVectors() {
       if (!_aiCardVectorsPromise) {
-        _aiCardVectorsPromise = fetch("./card_vectors.json")
-          .then(r => r.ok ? r.json() : null)
-          .then(d => (d && d.vectors) ? d.vectors : null)
-          .catch(() => null);
+        _aiCardVectorsPromise = (async () => {
+          const base = await fetch("./card_vectors.json")
+            .then(r => r.ok ? r.json() : null)
+            .then(d => (d && d.vectors) ? { ...d.vectors } : {})
+            .catch(() => ({}));
+          try {
+            if (typeof db !== "undefined" && typeof getDocs === "function" && typeof collection === "function") {
+              const vecSnap = await getDocs(collection(db, "cardVectors")).catch(() => null);
+              if (vecSnap) {
+                vecSnap.forEach(d => {
+                  const data = d.data();
+                  if (data && Array.isArray(data.vector) && data.vector.length > 0) {
+                    base[d.id] = data.vector;
+                  }
+                });
+              }
+              const cleanSnap = await getDocs(collection(db, "cardPhotosClean")).catch(() => null);
+              if (cleanSnap && !cleanSnap.empty) {
+                const pending = [];
+                cleanSnap.forEach(d => {
+                  const data = d.data();
+                  if (!base[d.id] && data && data.data && isJpegData(data.data)) {
+                    pending.push({ id: d.id, dataUrl: data.data });
+                  }
+                });
+                if (pending.length > 0) {
+                  const extractor = await getAiClipExtractor().catch(() => null);
+                  if (extractor) {
+                    for (const p of pending) {
+                      try {
+                        const out = await extractor(p.dataUrl, { pooling: "mean", normalize: true });
+                        const arr = Array.from(out.data);
+                        base[p.id] = arr;
+                        if (typeof setDoc === "function" && typeof doc === "function") {
+                          setDoc(doc(db, "cardVectors", p.id), { vector: arr, updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
+                        }
+                      } catch (_) {}
+                    }
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            console.warn("dynamic vectors merge error:", e);
+          }
+          return Object.keys(base).length > 0 ? base : null;
+        })();
       }
       return _aiCardVectorsPromise;
     }
@@ -6782,6 +6849,7 @@ window.buildAndDownloadCardPackZip = async function() {
 
           try {
             const dataUrl = await compressCardWithWatermark(item.file, PHOTO_THUMB);
+          const cleanDataUrl = await compressCardClean(item.file, PHOTO_THUMB).catch(() => null);
             if (!isJpegData(dataUrl)) {
               skipped++;
               errors.push((item.file && item.file.name ? item.file.name : "#" + (i + 1)) + " 画像処理失敗");
@@ -6803,10 +6871,23 @@ window.buildAndDownloadCardPackZip = async function() {
               createdBy: currentUser.uid
             });
             await setDoc(doc(db, "cardPhotos", cardId), {
-              data: dataUrl,
+            data: dataUrl,
+            hasCleanRef: Boolean(cleanDataUrl && isJpegData(cleanDataUrl)),
+            updatedAt: serverTimestamp(),
+            updatedBy: currentUser.uid
+          }, { merge: true });
+          if (cleanDataUrl && isJpegData(cleanDataUrl)) {
+            await setDoc(doc(db, "cardPhotosClean", cardId), {
+              data: cleanDataUrl,
+              cardId: cardId,
+              albumId: albumId || item.albumId || "",
+              name: cardName,
+              member: item.member || "",
               updatedAt: serverTimestamp(),
               updatedBy: currentUser.uid
             }, { merge: true });
+            _aiCardVectorsPromise = null;
+          }
 
             cardPhotoCache[cardId] = dataUrl;
             if (typeof idbSet === "function") await idbSet("photo_" + cardId, dataUrl);
