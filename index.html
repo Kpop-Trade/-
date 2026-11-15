@@ -6376,6 +6376,7 @@ function getAiCardVectors() {
         btn.disabled = true;
         btn.textContent = "⏳ 切り抜き準備中...";
       }
+      await new Promise(r => setTimeout(r, 20));
 
       const mainAlbumEl = document.getElementById("admin-zip-album");
       const origMainAlbum = mainAlbumEl ? mainAlbumEl.value : "";
@@ -6386,18 +6387,21 @@ function getAiCardVectors() {
         for (let i = 0; i < items.length; i++) {
           const it = items[i];
           if (btn) btn.textContent = "切り抜き中 (" + (i + 1) + "/" + items.length + "シート目)...";
+          await new Promise(r => setTimeout(r, 20));
 
+          let needRevoke = false;
+          let objUrl = "";
           const img = it.imgObj || await new Promise((resolve, reject) => {
             if (!it.file) return reject(new Error("画像データが見つかりません"));
-            const reader = new FileReader();
-            reader.onload = () => {
-              const im = new Image();
-              im.onload = () => resolve(im);
-              im.onerror = reject;
-              im.src = reader.result;
+            objUrl = URL.createObjectURL(it.file);
+            needRevoke = true;
+            const im = new Image();
+            im.onload = () => resolve(im);
+            im.onerror = (err) => {
+              URL.revokeObjectURL(objUrl);
+              reject(err);
             };
-            reader.onerror = reject;
-            reader.readAsDataURL(it.file);
+            im.src = objUrl;
           });
 
           let boxes = [];
@@ -6419,6 +6423,9 @@ function getAiCardVectors() {
           const albumId = it.albumId || origMainAlbum || "srm";
           const baseName = (it.file && it.file.name ? it.file.name : (it.fileName || "sheet")).replace(/\.[^.]+$/, "");
 
+          const cropCanvas = document.createElement("canvas");
+          const cctx = cropCanvas.getContext("2d");
+
           for (let bi = 0; bi < boxes.length; bi++) {
             const b = boxes[bi];
             const sx = Math.max(0, Math.round(b.x));
@@ -6427,24 +6434,16 @@ function getAiCardVectors() {
             const sh = Math.min(img.height - sy, Math.round(b.h));
             if (sw < 10 || sh < 10) continue;
 
-            const cropCanvas = document.createElement("canvas");
             cropCanvas.width = sw;
             cropCanvas.height = sh;
-            const cctx = cropCanvas.getContext("2d");
+            cctx.clearRect(0, 0, sw, sh);
             cctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
 
-            const dataUrl = cropCanvas.toDataURL("image/png");
-            cropCanvas.width = 0;
-            cropCanvas.height = 0;
-
-            const byteStr = atob(dataUrl.split(",")[1]);
-            const ab = new ArrayBuffer(byteStr.length);
-            const ia = new Uint8Array(ab);
-            for (let k = 0; k < byteStr.length; k++) ia[k] = byteStr.charCodeAt(k);
-            const blob = new Blob([ab], { type: "image/png" });
+            const blob = await new Promise(res => cropCanvas.toBlob(res, "image/jpeg", 0.92));
+            if (!blob) continue;
 
             const memberVal = (b.member || it.member || "").trim();
-            const cardFile = new File([blob], baseName + "_" + String(bi + 1).padStart(2, "0") + ".png", { type: "image/png" });
+            const cardFile = new File([blob], baseName + "_" + String(bi + 1).padStart(2, "0") + ".jpg", { type: "image/jpeg" });
             window.adminZipPackFiles.push({
               file: cardFile,
               cleanFile: cardFile,
@@ -6452,7 +6451,16 @@ function getAiCardVectors() {
               member: memberVal,
               name: baseName + "_" + (bi + 1)
             });
+
+            if (bi % 5 === 4) {
+              if (btn) btn.textContent = "切り抜き中 (" + (i + 1) + "/" + items.length + "シート: " + (bi + 1) + "/" + boxes.length + "枚)...";
+              await new Promise(r => setTimeout(r, 15));
+            }
           }
+
+          cropCanvas.width = 0;
+          cropCanvas.height = 0;
+          if (needRevoke && objUrl) URL.revokeObjectURL(objUrl);
         }
 
         if (!Array.isArray(window.adminZipPackFiles) || window.adminZipPackFiles.length === 0) {
@@ -6461,6 +6469,7 @@ function getAiCardVectors() {
         }
 
         if (btn) btn.textContent = "📦 透かし圧縮＆ZIP生成中 (" + window.adminZipPackFiles.length + "枚)...";
+        await new Promise(r => setTimeout(r, 30));
         if (typeof buildAndDownloadCardPackZip === "function") {
           await buildAndDownloadCardPackZip();
         }
