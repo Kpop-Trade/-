@@ -122,67 +122,15 @@ async function main() {
   if (!raw) throw new Error("FIREBASE_SERVICE_ACCOUNT is not set");
   const sa = JSON.parse(raw);
 
-  const prompt = `現在の日付は ${getJstDateStr(0)} です。K-POPグループ「ILLIT（アイリット）」の日本および韓国の今後1〜2ヶ月間の公式スケジュールを調査し、以下のJSON配列形式のみを出力してください。マークダウンのコードブロックは不要です。
+  const prompt = `現在の日付は ${getJstDateStr(0)} です。K-POPグループ「ILLIT（アイリット）」の公式スケジュールのみを調査してください。
 
-【必ず重点的に調査・抽出する項目】
-1. シリアルナンバー特典の応募受付開始日・最終受付締切日
-2. チケット関連の重要日程（申込締切日、当落発表日、入金最終期限）
-3. CD・アルバムの発売日およびラッキードロー開催・締切日
-4. ライブ・コンサート・フェス・ファンミーティング日程
-5. 音楽番組・テレビ出演・メンバー誕生日
+【厳守事項】
+- 公式サイト、公式SNS、公式発表の情報のみを使用
+- 非公式情報、推測、未確認情報は一切含めない
+- 情報が不明な場合は空配列 [] を返す
+- マークダウンのコードブロックは不要
 
-【出力形式】
-[{"date":"YYYY-MM-DD","time":"HH:MM（不明なら終日）","title":"イベント名","category":"deadline | ticket | release | event | media | birthday","detail":"補足情報"}]
-※同一イベントでも「応募締切日」「当落発表日」「入金最終日」は別々の項目として出力してください。`;
-
-  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${groqKey}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      model: "openai/gpt-oss-120b",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.1
-    })
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error("Groq API error: " + JSON.stringify(data));
-  const text = data?.choices?.[0]?.message?.content || "[]";
-  const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
-  fs.writeFileSync("illit_calendar.json", JSON.stringify(parsed, null, 2));
-  console.log(`SUCCESS: ${parsed.length}件更新`);
-
-  const crypto = require("crypto");
-  function base64url(input) {
-    return Buffer.from(input).toString("base64").replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
-  }
-  async function getAccessToken(sa) {
-    const now = Math.floor(Date.now() / 1000);
-    const header = base64url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
-    const claim = base64url(JSON.stringify({
-      iss: sa.client_email,
-      scope: "https://www.googleapis.com/auth/cloud-platform https://www.googleapis.com/auth/datastore https://www.googleapis.com/auth/firebase.messaging",
-      aud: "https://oauth2.googleapis.com/token",
-      exp: now + 3600,
-      iat: now
-    }));
-    const sign = crypto.createSign("RSA-SHA256");
-    sign.update(`${header}.${claim}`);
-    const signature = sign.sign(sa.private_key, "base64").replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
-    const jwt = `${header}.${claim}.${signature}`;
-    const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`
-    });
-    const tokenData = await tokenRes.json();
-    if (!tokenData.access_token) throw new Error("Token error: " + JSON.stringify(tokenData));
-    return tokenData.access_token;
-  }
-  const fbToken = await getAccessToken(sa);
-  await sendNotifications(sa.project_id, fbToken, parsed);
-}
-
-main().catch(e => { console.error(e); process.exit(1); });
+【抽出項目】
+1. 公式発表されたシリアル特典の応募締切日
+2. 公式発表されたチケット関連日程
+3. 公式発表
