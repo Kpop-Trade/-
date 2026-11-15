@@ -122,7 +122,6 @@ async function main() {
   if (!raw) throw new Error("FIREBASE_SERVICE_ACCOUNT is not set");
   const sa = JSON.parse(raw);
 
-  // Tavilyで検索
   const searchQuery = "ILLIT アイリット 公式スケジュール 2026 ライブ コンサート 発売日";
   const searchRes = await fetch("https://api.tavily.com/search", {
     method: "POST",
@@ -140,7 +139,6 @@ async function main() {
 
   const searchContext = searchData.answer || JSON.stringify(searchData.results);
 
-  // Groqで整形
   const groqKey = process.env.GROQ_API_KEY;
   const prompt = `以下の検索結果から、K-POPグループ「ILLIT（アイリット）」の公式スケジュールのみを抽出してください。現在の日付は ${getJstDateStr(0)} です。
 
@@ -153,7 +151,9 @@ ${searchContext}
 - 不明な場合は空配列 [] を返す
 
 【出力形式】
-[{"date":"YYYY-MM-DD","time":"HH:MM（不明なら終日）","title":"イベント名","category":"deadline | ticket | release | event | media | birthday","detail":"補足情報"}]`;
+[{"date":"YYYY-MM-DD","time":"HH:MM（不明なら終日）","title":"イベント名","category":"deadline | ticket | release | event | media | birthday","detail":"補足情報","link":"公式ページのURL（あれば、なければ空文字）"}]
+
+※linkは公式サイトや公式SNSのURLを入れてください。不明な場合は空文字 "" にしてください。`;
 
   const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
