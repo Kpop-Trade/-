@@ -217,7 +217,22 @@
       padding-bottom: env(safe-area-inset-bottom, 0px);
       bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));
     }
-  </style>
+  
+  /* 出品選択シートのタッチ貫通・Safari描画バグ強制修正 */
+  #post-type-sheet {
+    z-index: 99999 !important;
+    pointer-events: auto !important;
+    -webkit-transform: translate3d(0,0,0);
+    transform: translate3d(0,0,0);
+  }
+  #post-type-sheet > div,
+  #post-type-sheet button {
+    pointer-events: auto !important;
+    position: relative;
+    z-index: 10;
+    touch-action: manipulation;
+  }
+</style>
 </head>
 <body class="bg-illit-bg min-h-screen text-gray-800 relative overflow-x-hidden">
   <div class="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
