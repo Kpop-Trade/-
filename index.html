@@ -217,106 +217,7 @@
       padding-bottom: env(safe-area-inset-bottom, 0px);
       bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));
     }
-  
-  /* 出品選択シートのタッチ貫通・Safari描画バグ強制修正 */
-  #post-type-sheet {
-    z-index: 99999 !important;
-    pointer-events: auto !important;
-    -webkit-transform: translate3d(0,0,0);
-    transform: translate3d(0,0,0);
-  }
-  #post-type-sheet > div,
-  #post-type-sheet button {
-    pointer-events: auto !important;
-    position: relative;
-    z-index: 10;
-    touch-action: manipulation;
-  }
-
-  /* #post-type-sheet iOS Safari タッチ貫通・z-[95]負けの根本修正 */
-  #post-type-sheet {
-    position: fixed !important;
-    inset: 0 !important;
-    z-index: 2147483647 !important;
-    pointer-events: auto !important;
-    background: rgba(15, 23, 42, 0.55) !important;
-    -webkit-backdrop-filter: none !important;
-    backdrop-filter: none !important;
-  }
-  #post-type-sheet > div {
-    position: relative !important;
-    z-index: 2 !important;
-    pointer-events: auto !important;
-    background: #ffffff !important;
-    -webkit-backdrop-filter: none !important;
-    backdrop-filter: none !important;
-    -webkit-transform: none !important;
-    transform: none !important;
-  }
-  #post-type-sheet button {
-    pointer-events: auto !important;
-    cursor: pointer !important;
-    position: relative !important;
-    z-index: 3 !important;
-  }
-
-  /* #post-type-sheet iOS Safari タッチ貫通・z-[95]負けの根本修正 */
-  #post-type-sheet {
-    position: fixed !important;
-    inset: 0 !important;
-    z-index: 2147483647 !important;
-    pointer-events: auto !important;
-    background: rgba(15, 23, 42, 0.55) !important;
-    -webkit-backdrop-filter: none !important;
-    backdrop-filter: none !important;
-  }
-  #post-type-sheet > div {
-    position: relative !important;
-    z-index: 2 !important;
-    pointer-events: auto !important;
-    background: #ffffff !important;
-    -webkit-backdrop-filter: none !important;
-    backdrop-filter: none !important;
-    -webkit-transform: none !important;
-    transform: none !important;
-  }
-  #post-type-sheet button {
-    pointer-events: auto !important;
-    cursor: pointer !important;
-    position: relative !important;
-    z-index: 3 !important;
-  }
-
-  /* 出品フォーム系モーダル全体のiOS Safari最前面化＆操作ロック解除 */
-  #post-modal,
-  #serial-post-modal,
-  #group-post-modal {
-    position: fixed !important;
-    inset: 0 !important;
-    z-index: 2147483647 !important;
-    pointer-events: auto !important;
-    background: rgba(15, 23, 42, 0.55) !important;
-    -webkit-backdrop-filter: none !important;
-    backdrop-filter: none !important;
-  }
-  #post-modal > div,
-  #serial-post-modal > div,
-  #group-post-modal > div {
-    position: relative !important;
-    z-index: 2 !important;
-    pointer-events: auto !important;
-    background: #ffffff !important;
-    -webkit-backdrop-filter: none !important;
-    backdrop-filter: none !important;
-    -webkit-transform: none !important;
-    transform: none !important;
-  }
-  #post-modal button, #post-modal input, #post-modal select, #post-modal textarea,
-  #serial-post-modal button, #serial-post-modal input, #serial-post-modal select, #serial-post-modal textarea,
-  #group-post-modal button, #group-post-modal input, #group-post-modal select, #group-post-modal textarea {
-    pointer-events: auto !important;
-  }
-</style>
+  </style>
 </head>
 <body class="bg-illit-bg min-h-screen text-gray-800 relative overflow-x-hidden">
   <div class="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
@@ -572,43 +473,6 @@
   </button>
 
   <!-- 出品の種類を選ぶシート -->
-  <div id="post-type-sheet" class="fixed inset-0 modal-backdrop hidden flex items-end md:items-center justify-center" style="z-index:9999;pointer-events:auto;" onclick="if(event.target===this)closePostTypeSheet()">
-    <div class="liquid-glass-heavy relative z-10 w-full max-w-md rounded-t-[2rem] md:rounded-[2rem] p-5 space-y-4 shadow-2xl max-h-[88vh] overflow-y-auto" style="pointer-events:auto;" onclick="event.stopPropagation()">
-      <div class="flex justify-between items-center border-b border-purple-200/50 pb-3">
-        <h3 class="font-bold text-base text-gray-800">何を出品しますか？</h3>
-        <button onclick="closePostTypeSheet()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
-      </div>
-      <div class="space-y-2">
-        <div class="text-xs font-bold text-gray-500">トレカ</div>
-        <div class="grid grid-cols-3 gap-2">
-          <button onclick="closePostTypeSheet(); openPostModal('exchange')" class="bg-white/90 text-illit-darkPurple font-bold text-xs px-2 py-3 rounded-2xl shadow border border-white">🃏 交換</button>
-          <button onclick="closePostTypeSheet(); openPostModal('buy')" class="bg-pink-100/90 text-pink-700 font-bold text-xs px-2 py-3 rounded-2xl shadow border border-white">💳 買取</button>
-          <button onclick="closePostTypeSheet(); openPostModal('card_sell')" class="bg-purple-100/90 text-purple-800 font-bold text-xs px-2 py-3 rounded-2xl shadow border border-white">💰 売却</button>
-        </div>
-      </div>
-      <div class="space-y-2">
-        <div class="text-xs font-bold text-gray-500">アルバム・DEARLIT</div>
-        <div class="grid grid-cols-2 gap-2">
-          <button onclick="closePostTypeSheet(); openPostModal('album_sell')" class="bg-indigo-50/90 text-indigo-900 font-bold text-xs px-3 py-3 rounded-2xl shadow border border-white">💿 アルバム売却</button>
-          <button onclick="closePostTypeSheet(); openPostModal('dearlit_sell')" class="bg-rose-100/90 text-rose-800 font-bold text-xs px-3 py-3 rounded-2xl shadow border border-white">🎁 DEARLIT売却</button>
-        </div>
-      </div>
-      <div class="space-y-2">
-        <div class="text-xs font-bold text-gray-500">シリアル</div>
-        <div class="grid grid-cols-3 gap-2">
-          <button onclick="closePostTypeSheet(); openSerialPostModal('exchange')" class="bg-yellow-300/90 text-yellow-900 font-bold text-xs px-2 py-3 rounded-2xl shadow border border-white">🎫 ➡トレカ</button>
-          <button onclick="closePostTypeSheet(); openSerialPostModal('buy')" class="bg-yellow-100/90 text-yellow-900 font-bold text-xs px-2 py-3 rounded-2xl shadow border border-white">💳 買取</button>
-          <button onclick="closePostTypeSheet(); openSerialPostModal('sell')" class="bg-yellow-200/90 text-yellow-900 font-bold text-xs px-2 py-3 rounded-2xl shadow border border-white">💰 売却</button>
-        </div>
-      </div>
-      <div class="space-y-2">
-        <div class="text-xs font-bold text-gray-500">共同購入</div>
-        <button onclick="closePostTypeSheet(); openGroupPostModal()" class="w-full bg-teal-100/90 text-teal-800 font-bold text-xs px-3 py-3 rounded-2xl shadow border border-white">🛍 共同購入を主催する</button>
-      </div>
-      
-    </div>
-  </div>
-
   <nav class="liquid-glass-heavy fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-[380px] rounded-[2rem] z-40 flex justify-between items-center px-2 py-1.5 md:hidden">
     <button id="nav-home" onclick="switchTab('home')" class="flex flex-col items-center justify-center w-[60px] h-[52px] bg-white/70 shadow-sm text-illit-darkPurple rounded-[1.5rem] transition">
       <svg class="w-6 h-6 mb-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
@@ -8078,65 +7942,45 @@ window.closeIllitCalendar = function() {
   if (modal) modal.classList.add("hidden");
 };
 </script>
-<script>
-(function() {
-  var bar = document.getElementById("debug-hit-bar");
-  if (bar) bar.remove();
 
-  // シート内のボタンの元の onclick を退避（もし残っていれば）
-  function preserveHandlers() {
-    var sheet = document.getElementById("post-type-sheet");
-    if (!sheet) return;
-    sheet.querySelectorAll("button").forEach(function(btn) {
-      var oc = btn.getAttribute("onclick");
-      if (oc) {
-        btn.setAttribute("data-act", oc);
-        btn.removeAttribute("onclick");
-      }
-    });
-  }
+<div id="post-type-sheet" class="fixed inset-0  hidden flex items-end md:items-center justify-center z-[9999] bg-black/50" style="-webkit-backdrop-filter:none;backdrop-filter:none;" style="z-index:9999;pointer-events:auto;" onclick="if(event.target===this)closePostTypeSheet()">
+    <div class="bg-white relative z-10 w-full max-w-md rounded-t-[2rem] md:rounded-[2rem] p-5 space-y-4 shadow-2xl max-h-[88vh] overflow-y-auto" style="pointer-events:auto;" onclick="event.stopPropagation()">
+      <div class="flex justify-between items-center border-b border-purple-200/50 pb-3">
+        <h3 class="font-bold text-base text-gray-800">何を出品しますか？</h3>
+        <button onclick="closePostTypeSheet()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
+      </div>
+      <div class="space-y-2">
+        <div class="text-xs font-bold text-gray-500">トレカ</div>
+        <div class="grid grid-cols-3 gap-2">
+          <button onclick="closePostTypeSheet(); openPostModal('exchange')" class="bg-white/90 text-illit-darkPurple font-bold text-xs px-2 py-3 rounded-2xl shadow border border-white">🃏 交換</button>
+          <button onclick="closePostTypeSheet(); openPostModal('buy')" class="bg-pink-100/90 text-pink-700 font-bold text-xs px-2 py-3 rounded-2xl shadow border border-white">💳 買取</button>
+          <button onclick="closePostTypeSheet(); openPostModal('card_sell')" class="bg-purple-100/90 text-purple-800 font-bold text-xs px-2 py-3 rounded-2xl shadow border border-white">💰 売却</button>
+        </div>
+      </div>
+      <div class="space-y-2">
+        <div class="text-xs font-bold text-gray-500">アルバム・DEARLIT</div>
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="closePostTypeSheet(); openPostModal('album_sell')" class="bg-indigo-50/90 text-indigo-900 font-bold text-xs px-3 py-3 rounded-2xl shadow border border-white">💿 アルバム売却</button>
+          <button onclick="closePostTypeSheet(); openPostModal('dearlit_sell')" class="bg-rose-100/90 text-rose-800 font-bold text-xs px-3 py-3 rounded-2xl shadow border border-white">🎁 DEARLIT売却</button>
+        </div>
+      </div>
+      <div class="space-y-2">
+        <div class="text-xs font-bold text-gray-500">シリアル</div>
+        <div class="grid grid-cols-3 gap-2">
+          <button onclick="closePostTypeSheet(); openSerialPostModal('exchange')" class="bg-yellow-300/90 text-yellow-900 font-bold text-xs px-2 py-3 rounded-2xl shadow border border-white">🎫 ➡トレカ</button>
+          <button onclick="closePostTypeSheet(); openSerialPostModal('buy')" class="bg-yellow-100/90 text-yellow-900 font-bold text-xs px-2 py-3 rounded-2xl shadow border border-white">💳 買取</button>
+          <button onclick="closePostTypeSheet(); openSerialPostModal('sell')" class="bg-yellow-200/90 text-yellow-900 font-bold text-xs px-2 py-3 rounded-2xl shadow border border-white">💰 売却</button>
+        </div>
+      </div>
+      <div class="space-y-2">
+        <div class="text-xs font-bold text-gray-500">共同購入</div>
+        <button onclick="closePostTypeSheet(); openGroupPostModal()" class="w-full bg-teal-100/90 text-teal-800 font-bold text-xs px-3 py-3 rounded-2xl shadow border border-white">🛍 共同購入を主催する</button>
+      </div>
+      
+    </div>
+  </div>
 
-  // 読み込みタイミングに関わらず document レベルで #post-type-sheet 内のタップを確実に捕捉
-  var lastTap = 0;
-  function handleSheetTap(e) {
-    var btn = e.target && e.target.closest ? e.target.closest("#post-type-sheet button") : null;
-    if (!btn) return;
-    var now = Date.now();
-    if (now - lastTap < 350) return;
-    lastTap = now;
-    e.preventDefault();
-    e.stopPropagation();
-
-    var code = btn.getAttribute("data-act") || btn.getAttribute("onclick") || "";
-    if (!code) {
-      // 万が一属性が消えていた場合のテキスト判定フォールバック
-      var txt = (btn.textContent || "").trim();
-      if (txt === "×" || txt === "✕" || txt === "") code = "closePostTypeSheet()";
-      else if (txt.includes("交換")) code = "closePostTypeSheet(); openPostModal('exchange')";
-      else if (txt.includes("買取")) code = "closePostTypeSheet(); openPostModal('buy')";
-      else if (txt.includes("アルバム")) code = "closePostTypeSheet(); openPostModal('album_sell')";
-      else if (txt.includes("DEARLIT")) code = "closePostTypeSheet(); openPostModal('dearlit_sell')";
-      else if (txt.includes("トレカ")) code = "closePostTypeSheet(); openSerialPostModal('exchange')";
-      else if (txt.includes("共同購入")) code = "closePostTypeSheet(); openGroupPostModal()";
-      else if (txt.includes("売却")) code = "closePostTypeSheet(); openPostModal('sell')";
-    }
-    try {
-      if (code) (new Function(code)).call(btn);
-    } catch (err) {
-      alert("エラー: " + err.message);
-    }
-  }
-
-  document.addEventListener("touchend", handleSheetTap, true);
-  document.addEventListener("click", handleSheetTap, true);
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", preserveHandlers);
-  } else {
-    preserveHandlers();
-  }
-})();
-</script>
+  
 </body>
 </html>
 
