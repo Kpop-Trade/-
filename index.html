@@ -7979,6 +7979,20 @@ window.closeIllitCalendar = function() {
   if (modal) modal.classList.add("hidden");
 };
 </script>
+<div id="ios-diag" style="position:fixed;top:0;left:0;right:0;z-index:2147483647;background:#111;color:#0f0;font-size:11px;padding:6px 8px;font-family:monospace;pointer-events:none;">DIAG READY</div>
+<script>
+(function(){
+  var box = document.getElementById("ios-diag");
+  function log(msg){ if(box) box.textContent = msg; }
+  window.addEventListener("error", function(e){ log("JS ERR: " + (e.message || e.type) + " @" + (e.lineno||"?")); });
+  window.addEventListener("unhandledrejection", function(e){ log("PROMISE ERR: " + (e.reason && e.reason.message ? e.reason.message : e.reason)); });
+  document.addEventListener("touchstart", function(e){
+    var t = e.target;
+    var btn = t && t.closest ? t.closest("button") : null;
+    log("TOUCH: " + (btn ? ("BTN[" + btn.textContent.trim().slice(0,12) + "]") : (t.tagName + "#" + (t.id||""))));
+  }, true);
+})();
+</script>
 </body>
 </html>
 
