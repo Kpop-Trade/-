@@ -6447,6 +6447,7 @@ function getAiCardVectors() {
             const cardFile = new File([blob], baseName + "_" + String(bi + 1).padStart(2, "0") + ".png", { type: "image/png" });
             window.adminZipPackFiles.push({
               file: cardFile,
+              cleanFile: cardFile,
               albumId: albumId,
               member: memberVal,
               name: baseName + "_" + (bi + 1)
