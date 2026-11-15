@@ -1,10 +1,74 @@
 [
   {
-    "date": "2026-07-19",
-    "time": "終日",
-    "title": "ILLIT LIVE 'PRESS START❤' in JAPAN – Kobe",
+    "date": "2026-11-15",
+    "time": "06:20",
+    "title": "SBS 방송 출연",
+    "category": "media",
+    "detail": "SBS (South Korean broadcaster) appearance",
+    "link": ""
+  },
+  {
+    "date": "2026-11-15",
+    "time": "09:00",
+    "title": "고척 스카이돔 방문",
     "category": "event",
-    "detail": "Venue: GLION ARENA KOBE. Ticket sales start on 2026-07-17 at 18:00.",
+    "detail": "Appearance at Gocheok Sky Dome, Seoul",
+    "link": ""
+  },
+  {
+    "date": "2026-11-15",
+    "time": "終日",
+    "title": "Melon Music Awards (MMA 2026) Day 2",
+    "category": "event",
+    "detail": "Melon Music Awards 2026, Day 2",
+    "link": ""
+  },
+  {
+    "date": "2026-11-20",
+    "time": "終日",
+    "title": "MAMA AWARDS 2026",
+    "category": "event",
+    "detail": "Mnet Asian Music Awards 2026",
+    "link": ""
+  },
+  {
+    "date": "2026-11-21",
+    "time": "終日",
+    "title": "MAMA AWARDS 2026",
+    "category": "event",
+    "detail": "Mnet Asian Music Awards 2026 (second day)",
+    "link": ""
+  },
+  {
+    "date": "2026-12-23",
+    "time": "終日",
+    "title": "ILLIT LIVE ‘PRESS START❤’ ENCORE in JAPAN",
+    "category": "event",
+    "detail": "Concert in Chiba, Japan (LaLa arena TOKYO‑BAY, Funabashi)",
+    "link": ""
+  },
+  {
+    "date": "2026-12-24",
+    "time": "終日",
+    "title": "ILLIT LIVE ‘PRESS START❤’ ENCORE in JAPAN",
+    "category": "event",
+    "detail": "Concert in Chiba, Japan (LaLa arena TOKYO‑BAY, Funabashi)",
+    "link": ""
+  },
+  {
+    "date": "2026-12-26",
+    "time": "終日",
+    "title": "ILLIT LIVE ‘PRESS START❤’ ENCORE in JAPAN",
+    "category": "event",
+    "detail": "Concert in Chiba, Japan (LaLa arena TOKYO‑BAY, Funabashi)",
+    "link": ""
+  },
+  {
+    "date": "2026-12-27",
+    "time": "終日",
+    "title": "ILLIT LIVE ‘PRESS START❤’ ENCORE in JAPAN",
+    "category": "event",
+    "detail": "Concert in Chiba, Japan (LaLa arena TOKYO‑BAY, Funabashi)",
     "link": ""
   }
 ]
