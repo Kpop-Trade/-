@@ -5798,7 +5798,7 @@ function getAiCardVectors() {
               <button onclick="closeSheetCropArea()" class="text-xs text-gray-400 hover:text-gray-700 font-bold px-1">✕ 閉じる</button>
             </div>
             <p class="text-[10px] text-gray-600 leading-snug">
-              赤い枠が切り抜かれるトレカです。<strong>既存枠をタップでON/OFF、枠がない場所をタップで新しい赤枠を追加</strong>できます。
+              赤い枠が切り抜かれるトレカです。<strong>枠をタップでON/OFF・ドラッグで位置移動、空き場所はタップで標準枠追加・ドラッグで自由サイズ枠作成</strong>ができます。
             </p>
             <div class="flex items-center gap-2 text-[11px] bg-pink-50/70 px-2.5 py-1.5 rounded-lg">
               <span class="text-gray-700 shrink-0">検出感度:</span>
@@ -6726,6 +6726,11 @@ function getAiCardVectors() {
     };
 
     window.handleSheetCanvasClick = function(ev) {
+      // タッチ/マウスドラッグ統合ハンドラ側で処理済みのため二重発火を防止
+      if (window._sheetDragHandledClick) {
+        window._sheetDragHandledClick = false;
+        return;
+      }
       const canvas = document.getElementById("sheet-crop-canvas");
       const img = sheetCropState && sheetCropState.img;
       if (!canvas || !img) return;
@@ -6737,7 +6742,6 @@ function getAiCardVectors() {
       const clickX = ((ev.clientX - rect.left) / rect.width) * (canvas.width / scale);
       const clickY = ((ev.clientY - rect.top) / rect.height) * (canvas.height / scale);
 
-      // 1. 既存枠内をタップした場合はON/OFF切り替え
       for (let i = sheetCropState.boxes.length - 1; i >= 0; i--) {
         const b = sheetCropState.boxes[i];
         if (clickX >= b.x && clickX <= b.x + b.w && clickY >= b.y && clickY <= b.y + b.h) {
@@ -6748,7 +6752,6 @@ function getAiCardVectors() {
         }
       }
 
-      // 2. 空き場所をタップした場合は、他の枠と同じ標準サイズの新規赤枠を追加
       const existing = sheetCropState.boxes.filter(b => b && b.w > 10 && b.h > 10);
       let stdW, stdH;
       if (existing.length > 0) {
@@ -6763,25 +6766,13 @@ function getAiCardVectors() {
 
       let newX = Math.round(clickX - stdW / 2);
       let newY = Math.round(clickY - stdH / 2);
-
-      // 同じ横列にすでに枠があればY位置（高さライン）を自動スナップして綺麗に揃える
       const sameRowBox = existing.find(b => Math.abs((b.y + b.h / 2) - clickY) < stdH * 0.45);
-      if (sameRowBox) {
-        newY = sameRowBox.y;
-      }
+      if (sameRowBox) newY = sameRowBox.y;
 
       newX = Math.max(0, Math.min(img.width - stdW, newX));
       newY = Math.max(0, Math.min(img.height - stdH, newY));
 
-      sheetCropState.boxes.push({
-        x: newX,
-        y: newY,
-        w: stdW,
-        h: stdH,
-        active: true,
-        member: ""
-      });
-
+      sheetCropState.boxes.push({ x: newX, y: newY, w: stdW, h: stdH, active: true, member: "" });
       sheetCropState.boxes.sort((a, b) => {
         const rowTol = Math.max(12, stdH * 0.35);
         if (Math.abs(a.y - b.y) > rowTol) return a.y - b.y;
@@ -6791,6 +6782,158 @@ function getAiCardVectors() {
       drawSheetCropPreview();
       if (typeof syncActiveBatchSheetBoxes === "function") syncActiveBatchSheetBoxes();
     };
+
+    // ===== キャンバス上のドラッグ操作（既存枠の移動 ＆ 空き場所からの自由サイズ枠ドラッグ作成） =====
+    (function initSheetCanvasDragSupport() {
+      let dragState = null;
+
+      function getCanvasImgCoords(canvas, clientX, clientY) {
+        const rect = canvas.getBoundingClientRect();
+        const scale = sheetCropState && sheetCropState.scale > 0 ? sheetCropState.scale : 1;
+        const x = ((clientX - rect.left) / rect.width) * (canvas.width / scale);
+        const y = ((clientY - rect.top) / rect.height) * (canvas.height / scale);
+        return { x, y, scale };
+      }
+
+      function renderDragDraftBox(draft) {
+        if (typeof drawSheetCropPreview === "function") drawSheetCropPreview();
+        if (!draft) return;
+        const canvas = document.getElementById("sheet-crop-canvas");
+        if (!canvas) return;
+        const ctx = canvas.getContext("2d");
+        const scale = sheetCropState && sheetCropState.scale > 0 ? sheetCropState.scale : 1;
+        ctx.save();
+        ctx.strokeStyle = "#f43f5e";
+        ctx.fillStyle = "rgba(244, 63, 94, 0.22)";
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([6, 4]);
+        ctx.fillRect(draft.x * scale, draft.y * scale, draft.w * scale, draft.h * scale);
+        ctx.strokeRect(draft.x * scale, draft.y * scale, draft.w * scale, draft.h * scale);
+        ctx.restore();
+      }
+
+      function onPointerDown(clientX, clientY, target, ev) {
+        if (!target || target.id !== "sheet-crop-canvas") return;
+        const img = sheetCropState && sheetCropState.img;
+        if (!img) return;
+        if (!Array.isArray(sheetCropState.boxes)) sheetCropState.boxes = [];
+
+        const pt = getCanvasImgCoords(target, clientX, clientY);
+        let hitIdx = -1;
+        for (let i = sheetCropState.boxes.length - 1; i >= 0; i--) {
+          const b = sheetCropState.boxes[i];
+          if (pt.x >= b.x && pt.x <= b.x + b.w && pt.y >= b.y && pt.y <= b.y + b.h) {
+            hitIdx = i;
+            break;
+          }
+        }
+
+        dragState = {
+          canvas: target,
+          startClientX: clientX,
+          startClientY: clientY,
+          startImgX: pt.x,
+          startImgY: pt.y,
+          moved: false,
+          mode: hitIdx >= 0 ? "move" : "create",
+          boxIdx: hitIdx,
+          origBoxX: hitIdx >= 0 ? sheetCropState.boxes[hitIdx].x : 0,
+          origBoxY: hitIdx >= 0 ? sheetCropState.boxes[hitIdx].y : 0,
+          draftBox: null
+        };
+      }
+
+      function onPointerMove(clientX, clientY, ev) {
+        if (!dragState) return;
+        const img = sheetCropState && sheetCropState.img;
+        if (!img) return;
+
+        const dist = Math.hypot(clientX - dragState.startClientX, clientY - dragState.startClientY);
+        if (!dragState.moved && dist < 7) return;
+        dragState.moved = true;
+        if (ev && ev.cancelable) ev.preventDefault();
+
+        const pt = getCanvasImgCoords(dragState.canvas, clientX, clientY);
+        if (dragState.mode === "move" && dragState.boxIdx >= 0) {
+          const b = sheetCropState.boxes[dragState.boxIdx];
+          if (!b) return;
+          const dx = pt.x - dragState.startImgX;
+          const dy = pt.y - dragState.startImgY;
+          b.x = Math.max(0, Math.min(img.width - b.w, Math.round(dragState.origBoxX + dx)));
+          b.y = Math.max(0, Math.min(img.height - b.h, Math.round(dragState.origBoxY + dy)));
+          if (typeof drawSheetCropPreview === "function") drawSheetCropPreview();
+        } else if (dragState.mode === "create") {
+          const x0 = Math.max(0, Math.min(img.width, Math.min(dragState.startImgX, pt.x)));
+          const y0 = Math.max(0, Math.min(img.height, Math.min(dragState.startImgY, pt.y)));
+          const x1 = Math.max(0, Math.min(img.width, Math.max(dragState.startImgX, pt.x)));
+          const y1 = Math.max(0, Math.min(img.height, Math.max(dragState.startImgY, pt.y)));
+          dragState.draftBox = {
+            x: Math.round(x0),
+            y: Math.round(y0),
+            w: Math.max(12, Math.round(x1 - x0)),
+            h: Math.max(12, Math.round(y1 - y0))
+          };
+          renderDragDraftBox(dragState.draftBox);
+        }
+      }
+
+      function onPointerUp(clientX, clientY) {
+        if (!dragState) return;
+        const st = dragState;
+        dragState = null;
+
+        if (!st.moved) {
+          // 動かさずにタップした場合は、既存のクリック処理（ON/OFF または 標準サイズ枠追加）を実行
+          window._sheetDragHandledClick = false;
+          window.handleSheetCanvasClick({ clientX, clientY });
+          window._sheetDragHandledClick = true;
+          return;
+        }
+
+        window._sheetDragHandledClick = true;
+        if (st.mode === "create" && st.draftBox && st.draftBox.w >= 16 && st.draftBox.h >= 16) {
+          sheetCropState.boxes.push({
+            x: st.draftBox.x,
+            y: st.draftBox.y,
+            w: st.draftBox.w,
+            h: st.draftBox.h,
+            active: true,
+            member: ""
+          });
+        }
+        if (typeof drawSheetCropPreview === "function") drawSheetCropPreview();
+        if (typeof syncActiveBatchSheetBoxes === "function") syncActiveBatchSheetBoxes();
+      }
+
+      document.addEventListener("touchstart", (e) => {
+        if (e.touches && e.touches.length === 1) {
+          onPointerDown(e.touches[0].clientX, e.touches[0].clientY, e.target, e);
+        }
+      }, { passive: true });
+
+      document.addEventListener("touchmove", (e) => {
+        if (dragState && e.touches && e.touches.length === 1) {
+          onPointerMove(e.touches[0].clientX, e.touches[0].clientY, e);
+        }
+      }, { passive: false });
+
+      document.addEventListener("touchend", (e) => {
+        if (dragState) {
+          const t = (e.changedTouches && e.changedTouches[0]) || { clientX: dragState.startClientX, clientY: dragState.startClientY };
+          onPointerUp(t.clientX, t.clientY);
+        }
+      });
+
+      document.addEventListener("mousedown", (e) => {
+        if (e.button === 0) onPointerDown(e.clientX, e.clientY, e.target, e);
+      });
+      document.addEventListener("mousemove", (e) => {
+        if (dragState) onPointerMove(e.clientX, e.clientY, e);
+      });
+      document.addEventListener("mouseup", (e) => {
+        if (dragState) onPointerUp(e.clientX, e.clientY);
+      });
+    })();
 
     window.assignSheetRowMembers = function(mode) {
       const activeBoxes = sheetCropState.boxes.filter(b => b.active);
