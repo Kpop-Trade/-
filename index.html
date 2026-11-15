@@ -5603,6 +5603,7 @@ function getAiCardVectors() {
       if (!photosReady) {
         ensureCardPhotosLoaded(adminCardsAlbum).then(() => {
         loadedPhotoAlbums.add(adminCardsAlbum);
+        loadedPhotoAlbums.add(adminCardsAlbum);
           const again = document.getElementById("admin-content");
           if (again && adminTab === "cards") renderAdminCardsPanel(again);
         }).catch(() => {
