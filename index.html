@@ -5515,7 +5515,7 @@ function getAiCardVectors() {
     let detailCardId = null;
 
     // ===== まとめ画像からのトレカ自動検出＆切り抜き用ステート =====
-    let sheetCropState = {
+    window.sheetCropState = {
       img: null,
       scale: 1,
       boxes: [], // { x, y, w, h, active, member }
