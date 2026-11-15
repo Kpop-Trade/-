@@ -5966,8 +5966,8 @@ function getAiCardVectors() {
    // ===== まとめ画像からのトレカ枠自動検出ロジック =====
     
     // ===== 複数まとめ画像の一括シート切り抜き＆ZIP化ロジック =====
-    // ===== クラッシュ対策：IndexedDB 自動保存＆復元 =====
-    const BATCH_SHEET_DB_NAME = "illit_batch_sheet_draft_db";
+    // ===== クラッシュ対策：iOS Safari完全対応 IndexedDB 即時保存＆復元 =====
+    const BATCH_SHEET_DB_NAME = "illit_batch_sheet_draft_db_v2";
     const BATCH_SHEET_STORE_NAME = "drafts";
 
     function openBatchSheetDB() {
@@ -5984,57 +5984,130 @@ function getAiCardVectors() {
       });
     }
 
-    let saveBatchDraftTimer = null;
+    // メモリ節約＆SafariでFileが消える問題を完全に防ぐため、軽量JPEGのArrayBufferに変換
+    function compressSheetToBuffer(fileOrBlob, maxDim = 1500) {
+      return new Promise((resolve) => {
+        if (!fileOrBlob) return resolve(null);
+        const url = URL.createObjectURL(fileOrBlob);
+        const im = new Image();
+        im.onload = () => {
+          try {
+            const scale = Math.min(1, maxDim / Math.max(im.width, im.height));
+            const w = Math.max(10, Math.round(im.width * scale));
+            const h = Math.max(10, Math.round(im.height * scale));
+            const c = document.createElement("canvas");
+            c.width = w;
+            c.height = h;
+            const ctx = c.getContext("2d");
+            ctx.drawImage(im, 0, 0, w, h);
+            URL.revokeObjectURL(url);
+            c.toBlob(async (blob) => {
+              c.width = 0;
+              c.height = 0;
+              if (!blob) return resolve(null);
+              const buf = await blob.arrayBuffer();
+              resolve(buf);
+            }, "image/jpeg", 0.88);
+          } catch (_) {
+            URL.revokeObjectURL(url);
+            resolve(null);
+          }
+        };
+        im.onerror = () => {
+          URL.revokeObjectURL(url);
+          resolve(null);
+        };
+        im.src = url;
+      });
+    }
+
     window.scheduleSaveBatchSheetsDraft = function() {
-      if (saveBatchDraftTimer) clearTimeout(saveBatchDraftTimer);
-      saveBatchDraftTimer = setTimeout(() => {
-        window.saveBatchSheetsDraftNow();
-      }, 250);
+      // iOS Safariでクラッシュする前に書き切るため、遅延なしで即実行
+      window.saveBatchSheetsDraftNow();
     };
 
+    let isSavingBatchDraft = false;
+    let pendingSaveBatchDraft = false;
+
     window.saveBatchSheetsDraftNow = async function() {
+      if (isSavingBatchDraft) {
+        pendingSaveBatchDraft = true;
+        return;
+      }
+      isSavingBatchDraft = true;
       try {
+        const statusEl = document.getElementById("batch-sheets-autosave-status");
+        if (statusEl) statusEl.textContent = "⏳ 保存中...";
+
         const db = await openBatchSheetDB();
         const items = window.batchSheetItems || [];
         if (!items.length) {
-          const tx = db.transaction(BATCH_SHEET_STORE_NAME, "readwrite");
-          tx.objectStore(BATCH_SHEET_STORE_NAME).delete("latest_batch");
+          await new Promise((resolve) => {
+            const tx = db.transaction(BATCH_SHEET_STORE_NAME, "readwrite");
+            tx.objectStore(BATCH_SHEET_STORE_NAME).delete("latest_batch");
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => resolve();
+          });
+          if (statusEl) statusEl.textContent = "";
           return;
         }
-        const serialized = items.map(it => ({
-          id: it.id,
-          fileName: it.file ? it.file.name : (it.fileName || "sheet.jpg"),
-          fileType: it.file ? it.file.type : (it.fileType || "image/jpeg"),
-          fileBlob: it.file || null,
-          albumId: it.albumId || "",
-          member: it.member || "",
-          threshold: Number(it.threshold || 22),
-          detectedCount: it.detectedCount,
-          customBoxes: Array.isArray(it.customBoxes) ? it.customBoxes.map(b => ({ ...b })) : null
-        }));
-        const tx = db.transaction(BATCH_SHEET_STORE_NAME, "readwrite");
-        tx.objectStore(BATCH_SHEET_STORE_NAME).put({
-          savedAt: Date.now(),
-          items: serialized
-        }, "latest_batch");
-        const statusEl = document.getElementById("batch-sheets-autosave-status");
+
+        const serialized = [];
+        for (const it of items) {
+          if (!it._cachedBuffer && it.file) {
+            it._cachedBuffer = await compressSheetToBuffer(it.file, 1500);
+          }
+          serialized.push({
+            id: it.id,
+            fileName: it.file ? it.file.name : (it.fileName || "sheet.jpg"),
+            fileBuffer: it._cachedBuffer || null,
+            albumId: it.albumId || "",
+            member: it.member || "",
+            threshold: Number(it.threshold || 22),
+            detectedCount: it.detectedCount,
+            customBoxes: Array.isArray(it.customBoxes) ? it.customBoxes.map(b => ({ ...b })) : null
+          });
+        }
+
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction(BATCH_SHEET_STORE_NAME, "readwrite");
+          tx.objectStore(BATCH_SHEET_STORE_NAME).put({
+            savedAt: Date.now(),
+            items: serialized
+          }, "latest_batch");
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        });
+
         if (statusEl) {
           const d = new Date();
           const hh = String(d.getHours()).padStart(2, "0");
           const mm = String(d.getMinutes()).padStart(2, "0");
           const ss = String(d.getSeconds()).padStart(2, "0");
-          statusEl.textContent = "💾 自動保存済 (" + hh + ":" + mm + ":" + ss + ")";
+          statusEl.textContent = "💾 保存済 (" + hh + ":" + mm + ":" + ss + ")";
         }
       } catch (e) {
         console.warn("saveBatchSheetsDraftNow error:", e);
+        const statusEl = document.getElementById("batch-sheets-autosave-status");
+        if (statusEl) statusEl.textContent = "⚠️ 保存エラー";
+      } finally {
+        isSavingBatchDraft = false;
+        if (pendingSaveBatchDraft) {
+          pendingSaveBatchDraft = false;
+          window.saveBatchSheetsDraftNow();
+        }
       }
     };
 
     window.clearBatchSheetsDraftStorage = async function() {
       try {
         const db = await openBatchSheetDB();
-        const tx = db.transaction(BATCH_SHEET_STORE_NAME, "readwrite");
-        tx.objectStore(BATCH_SHEET_STORE_NAME).delete("latest_batch");
+        await new Promise((resolve) => {
+          const tx = db.transaction(BATCH_SHEET_STORE_NAME, "readwrite");
+          tx.objectStore(BATCH_SHEET_STORE_NAME).delete("latest_batch");
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => resolve();
+        });
         const statusEl = document.getElementById("batch-sheets-autosave-status");
         if (statusEl) statusEl.textContent = "";
       } catch (_) {}
@@ -6053,14 +6126,16 @@ function getAiCardVectors() {
         if (window.batchSheetItems && window.batchSheetItems.length > 0) return;
 
         window.batchSheetItems = data.items.map(raw => {
-          const blob = raw.fileBlob;
-          const file = blob instanceof File ? blob : (blob ? new File([blob], raw.fileName || "sheet.jpg", { type: raw.fileType || "image/jpeg" }) : null);
-          const url = file ? URL.createObjectURL(file) : "";
+          const buf = raw.fileBuffer;
+          const blob = buf ? new Blob([buf], { type: "image/jpeg" }) : null;
+          const file = blob ? new File([blob], (raw.fileName || "sheet").replace(/.[^.]+$/, "") + ".jpg", { type: "image/jpeg" }) : null;
+          const url = blob ? URL.createObjectURL(blob) : "";
           const restoredItem = {
             id: raw.id || ("bs_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7)),
             file: file,
+            _cachedBuffer: buf || null,
             fileName: raw.fileName || "sheet.jpg",
-            fileType: raw.fileType || "image/jpeg",
+            fileType: "image/jpeg",
             previewUrl: url,
             imgObj: null,
             albumId: raw.albumId || "",
@@ -6086,21 +6161,20 @@ function getAiCardVectors() {
         if (typeof renderBatchSheetsList === "function") renderBatchSheetsList();
         const statusEl = document.getElementById("batch-sheets-autosave-status");
         if (statusEl) {
-          statusEl.textContent = "♻️ 前回の作業データ (" + window.batchSheetItems.length + "シート) を自動復元しました";
+          statusEl.textContent = "♻️ クラッシュ前のデータ (" + window.batchSheetItems.length + "シート) を復元しました";
         }
       } catch (e) {
         console.warn("restoreBatchSheetsDraft error:", e);
       }
     };
 
-    window.addEventListener("DOMContentLoaded", () => {
-      setTimeout(() => {
-        if (typeof restoreBatchSheetsDraft === "function") restoreBatchSheetsDraft();
-      }, 600);
-    });
-    window.addEventListener("pagehide", () => {
-      if (typeof saveBatchSheetsDraftNow === "function") saveBatchSheetsDraftNow();
-    });
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", () => {
+        setTimeout(() => window.restoreBatchSheetsDraft(), 400);
+      });
+    } else {
+      setTimeout(() => window.restoreBatchSheetsDraft(), 400);
+    }
 
     window.batchSheetItems = window.batchSheetItems || [];
     window.activeBatchPreviewIdx = -1;
