@@ -1,8 +1,8 @@
-// AI画像検索モジュール (CLIP-ViT-B-32 + card_vectors.json) 修正版
-// 「AIモデルの準備が完了しました！」の後に結果が表示されない問題を修正
+// AI画像検索モジュール (DINOv2 + card_vectors.json)
+// CLIPからDINOv2に変更。card_vectors.jsonはDINOv2で再生成が必要
 
 let _aiCardVectorsPromise = null;
-let _aiClipExtractorPromise = null;
+let _aiExtractorPromise = null;
 
 export async function getAiCardVectors() {
   if (!_aiCardVectorsPromise) {
@@ -21,13 +21,13 @@ export async function getAiCardVectors() {
 }
 
 export async function getAiClipExtractor(progressCb) {
-  if (!_aiClipExtractorPromise) {
-    _aiClipExtractorPromise = (async () => {
-      const { pipeline, env } = await import("https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2");
+  if (!_aiExtractorPromise) {
+    _aiExtractorPromise = (async () => {
+      const { pipeline, env } = await import("https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.4.1");
       env.allowLocalModels = false;
       env.useBrowserCache = true;
       let lastProgressTime = Date.now();
-      const modelPromise = pipeline("image-feature-extraction", "Xenova/clip-vit-base-patch32", {
+      const modelPromise = pipeline("image-feature-extraction", "Xenova/dinov2-base", {
         dtype: "q8",
         progress_callback: (p) => {
           lastProgressTime = Date.now();
@@ -45,14 +45,14 @@ export async function getAiClipExtractor(progressCb) {
       });
       return await Promise.race([modelPromise, timeoutPromise]);
     })().catch(err => {
-      _aiClipExtractorPromise = null;
+      _aiExtractorPromise = null;
       throw err;
     });
   }
-  return _aiClipExtractorPromise;
+  return _aiExtractorPromise;
 }
 
-function shrinkForClip(dataUrl) {
+function shrinkForModel(dataUrl) {
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => {
@@ -71,7 +71,7 @@ export async function findSimilarCardsWithAI(uploadedDataUrl, progressCb) {
   if (typeof window.ensureCatalogCardsLoaded === "function") {
     await window.ensureCatalogCardsLoaded();
   }
-  const smallUrl = await shrinkForClip(uploadedDataUrl);
+  const smallUrl = await shrinkForModel(uploadedDataUrl);
   const vecMap = await getAiCardVectors();
   if (!vecMap || !Object.keys(vecMap).length) return [];
 
@@ -100,10 +100,11 @@ export async function findSimilarCardsWithAI(uploadedDataUrl, progressCb) {
     if (!v || v.length !== qVec.length) continue;
     let dot = 0;
     for (let i = 0; i < qVec.length; i++) dot += qVec[i] * v[i];
-    if (dot >= 0.25) {
+    // DINOv2向けに閾値を引き上げ（0.70以上のみ）
+    if (dot >= 0.70) {
       scored.push({
         card: c,
-        score: Math.max(10, Math.min(99, Math.round(((dot - 0.25) / 0.65) * 100))),
+        score: Math.max(10, Math.min(99, Math.round(((dot - 0.68) / 0.30) * 100))),
         raw: dot
       });
     }
@@ -123,18 +124,18 @@ export async function runCardImageRecognition(uploadedDataUrl) {
       }
     });
   };
-  const esc = window.escapeHtml || ((s) => String(s || "").replace(/[&<>"']/g, m => ({"&":"&","<":"<",">":">","\"":""","'":"&#39;"}[m])));
+  const esc = window.escapeHtml || ((s) => String(s || "").replace(/[&<>"']/g, m => ({"&":"&","<":"<",">":">","\"":""","'":"&#39;"}[m] || m)));
 
   const timeoutPromise = new Promise((_, reject) =>
     setTimeout(() => reject(new Error("AI画像解析がタイムアウトしました")), 120000)
   );
 
   try {
-    updateStatus("🤖 AIモデルを準備中...");
+    updateStatus("🤖 DINOv2モデルを準備中...");
     const matches = await Promise.race([
       findSimilarCardsWithAI(uploadedDataUrl, (p) => {
         if (p && typeof p.progress === "number") {
-          updateStatus(`🤖 AIモデル準備中... ${Math.round(p.progress)}%`);
+          updateStatus(`🤖 DINOv2準備中... ${Math.round(p.progress)}%`);
         } else if (p && p.status) {
           updateStatus(`⚡ ${p.status}...`);
         }
@@ -159,11 +160,11 @@ export async function runCardImageRecognition(uploadedDataUrl) {
       <div class="grid grid-cols-3 gap-1.5">
         ${top.map(m => {
           const c = m.card || {};
-          const img = (typeof window.getCardPhoto === "function" && window.getCardPhoto(c.id)) || c.img || "";
-          return `<button type="button" onclick="applyRecognizedCard('${esc(c.id)}')" class="bg-white border border-purple-200 hover:border-purple-500 rounded-xl p-1 text-left shadow-sm transition active:scale-95">
-            <div class="relative aspect-[3/4] bg-gray-100 rounded-lg overflow-hidden mb-1">
-              ${img ? `<img src="${esc(img)}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center text-[10px] text-gray-400">No Img</div>`}
-              <span class="absolute top-1 right-1 bg-purple-600 text-white text-[9px] font-bold px-1 rounded">${m.score}%</span>
+          const img = (typeof window.getCardPhoto === "function" && window.getCardPhoto(c.id)) || c.img || c.photoUrl || "";
+          return `<button type="button" onclick="applyRecognizedCard('${esc(c.id)}')" class="bg-white border-2 border-purple-300 hover:border-purple-600 rounded-xl p-1.5 text-left shadow-md transition active:scale-95">
+            <div class="relative aspect-[3/4] bg-gray-100 rounded-lg overflow-hidden mb-1.5 shadow-inner">
+              ${img ? `<img src="${esc(img)}" class="w-full h-full object-cover" loading="lazy">` : `<div class="w-full h-full flex items-center justify-center text-[10px] text-gray-400">No Img</div>`}
+              <span class="absolute top-1 right-1 bg-purple-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow">${m.score}%</span>
             </div>
             <div class="text-[10px] font-bold text-gray-800 truncate">${esc(c.member || "")}</div>
             <div class="text-[9px] text-gray-500 truncate">${esc(c.name || "")}</div>
