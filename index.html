@@ -5810,8 +5810,9 @@ function getAiCardVectors() {
               <button onclick="assignSheetRowMembers('wonhee_order')" class="px-2 py-1 rounded bg-teal-100 text-teal-800 font-bold">上から ウォニ→ミンジュ→モカ→ユナ→イロハ</button>
               <button onclick="assignSheetRowMembers('clear')" class="px-2 py-1 rounded bg-gray-100 text-gray-600">クリア</button>
             </div>
-            <div class="relative max-h-80 overflow-auto border border-gray-200 rounded-lg bg-gray-900 flex justify-center">
-              <div class="flex justify-end mb-1.5"><button type="button" onclick="undoLastSheetBoxAction()" class="px-3 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-800 border border-amber-300 text-xs font-extrabold shadow-xs active:scale-95">↶ ひとつ戻す</button></div><canvas id="sheet-crop-canvas" onclick="handleSheetCanvasClick(event)" class="max-w-full h-auto cursor-pointer"></canvas>
+            <div class="flex justify-end mb-1"><button type="button" onclick="undoLastSheetBoxAction()" class="px-3 py-1 rounded-lg bg-amber-100 text-amber-800 border border-amber-300 text-xs font-extrabold">↶ ひとつ戻す</button></div>
+<div class="relative max-h-80 overflow-auto border border-gray-200 rounded-lg bg-gray-900 flex justify-center">
+              <canvas id="sheet-crop-canvas" onclick="handleSheetCanvasClick(event)" class="max-w-full h-auto cursor-pointer"></canvas>
             </div>
             <div class="flex gap-2">
               <button onclick="closeSheetCropArea()" class="flex-1 bg-gray-100 text-gray-600 text-xs font-bold py-2 rounded-full">キャンセル</button>
