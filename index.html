@@ -365,7 +365,7 @@
         <p class="text-xs text-gray-500 col-span-full text-center py-4 font-bold">読み込み中...</p>
       </div>
       <div id="load-more-wrap" class="hidden text-center pt-2">
-        <button onclick="loadMorePosts()" class="liquid-glass-input text-xs font-medium text-illit-darkPurple px-6 py-2.5 rounded-full hover:bg-white/70 transition shadow-sm">もっと見る</button>
+        <button onclick="window.loadMorePosts && window.loadMorePosts()" class="liquid-glass-input text-xs font-medium text-illit-darkPurple px-6 py-2.5 rounded-full hover:bg-white/70 transition shadow-sm active:scale-95">もっと見る</button>
       </div>
     </section>
 
@@ -3547,7 +3547,7 @@ const ILLIT_CARD_ALBUMS = [
         `;
       });
       container.innerHTML = cards.length === 0
-          ? (loadingPosts && allPosts.length === 0 ? '<div class="col-span-full text-center py-8 bg-white/50 rounded-xl"><p class="text-xs text-indigo-600 font-bold animate-pulse mb-2">募集を読み込み中...</p><button type="button" onclick="window._retriedInitialPosts=false; if(window.loadPosts) window.loadPosts(true);" class="text-[11px] text-gray-500 underline">切り替わらない場合はタップして再試行</button></div>' : '<p class="text-xs text-gray-500 col-span-full text-center py-8 font-medium bg-white/50 rounded-xl">条件に合う募集はありません。</p>')
+          ? (loadingPosts && allPosts.length === 0 ? '<div class="col-span-full text-center py-8 bg-white/50 rounded-xl"><p class="text-xs text-indigo-600 font-bold animate-pulse mb-2">募集を読み込み中...</p><p class="text-[10px] text-gray-400 mb-2">しばらく待っても表示されない場合は下のボタンを押してください</p><button type="button" onclick="window._retriedInitialPosts=false; if(window.loadPosts) window.loadPosts(true);" class="text-[11px] text-indigo-600 underline font-bold">再試行する</button></div>' : '<p class="text-xs text-gray-500 col-span-full text-center py-8 font-medium bg-white/50 rounded-xl">条件に合う募集はありません。</p>')
         : cards.join("");
       renderSellTab();
     }
@@ -3558,7 +3558,8 @@ const ILLIT_CARD_ALBUMS = [
     const POSTS_PAGE = 50;
     let postsCursor = null, postsHasMore = false, loadingPosts = false;
     async function loadPosts(reset = true) {
-      if (loadingPosts) return;
+      console.log("loadPosts called, reset=", reset);
+      if (loadingPosts) { console.log("loadPosts skipped (already loading)"); return; }
       loadingPosts = true;
       try {
         const base = [collection(db, "posts"), orderBy("createdAt", "desc")];
@@ -3568,21 +3569,22 @@ const ILLIT_CARD_ALBUMS = [
         let snap;
         try {
           const fetchWithTimeout = () => Promise.race([
-        getDocs(q),
-        new Promise((_, rej) => setTimeout(() => rej(new Error("通信がタイムアウトしました")), 20000))
-      ]);
-      snap = await fetchWithTimeout();
-      if (reset && snap.empty && !window._retriedInitialPosts) {
-        window._retriedInitialPosts = true;
-        await new Promise(r => setTimeout(r, 1000));
-        snap = await fetchWithTimeout();
-      }
+            getDocs(q),
+            new Promise((_, rej) => setTimeout(() => rej(new Error("通信がタイムアウトしました")), 20000))
+          ]);
+          snap = await fetchWithTimeout();
+          if (reset && snap.empty && !window._retriedInitialPosts) {
+            window._retriedInitialPosts = true;
+            await new Promise(r => setTimeout(r, 1000));
+            snap = await fetchWithTimeout();
+          }
         } catch (loadErr) {
           console.error("loadPosts query error:", loadErr);
           const container = document.getElementById("posts-container");
           if (container) {
             container.innerHTML = `<div class="p-4 m-4 bg-red-100 text-red-700 text-sm rounded-xl border border-red-300 text-center font-bold">⚠️ データの読み込みに失敗しました<br><span class="text-xs font-normal">${loadErr.message}</span><br><button onclick="window.loadPosts && window.loadPosts(true)" class="mt-2 text-xs underline text-red-600">再試行</button></div>`;
           }
+          loadingPosts = false;
           return;
         }
         const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -3596,11 +3598,11 @@ const ILLIT_CARD_ALBUMS = [
           if (snap.docs.length) postsCursor = snap.docs[snap.docs.length - 1];
         }
         postsHasMore = snap.docs.length === POSTS_PAGE;
-        const wrap = document.getElementById("load-more-wrap"); if (wrap) wrap.classList.toggle("hidden", !postsHasMore);
-      loadingPosts = false;
-      renderPosts();
+        const wrap = document.getElementById("load-more-wrap");
+        if (wrap) wrap.classList.toggle("hidden", !postsHasMore);
+        loadingPosts = false;
+        renderPosts();
         scheduleHealSoldPosts();
-        // 詳細モーダルを開いている間に並びが変わっても、投稿IDで追従して添字を更新する
         if (reset && currentDetailId && !document.getElementById("detail-modal").classList.contains("hidden")) {
           const di = allPosts.findIndex(x => x.id === currentDetailId);
           if (di < 0) closeDetailModal(); else { currentDetailIndex = di; openDetailModal(di); }
@@ -3616,7 +3618,12 @@ const ILLIT_CARD_ALBUMS = [
       } catch (err) {
         console.error("posts load error:", err);
         showToast("投稿の読み込みに失敗しました。🔄で再読み込みしてください。", "error");
-      } finally { if (loadingPosts) { loadingPosts = false; renderPosts(); } }
+      } finally {
+        if (loadingPosts) {
+          loadingPosts = false;
+          renderPosts();
+        }
+      }
     }
     window.loadPosts = loadPosts;
     window.renderPosts = renderPosts;
@@ -8394,4 +8401,3 @@ window.closeIllitCalendar = function() {
 
 
           
-    
