@@ -231,6 +231,37 @@
     backdrop-filter: none;
   }
 </style>
+
+<style>
+  #post-type-sheet,
+  #post-modal,
+  #serial-post-modal,
+  #group-post-modal {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    z-index: 99999 !important;
+    -webkit-transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0);
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+  #post-type-sheet button,
+  #post-modal button,
+  #serial-post-modal button,
+  #group-post-modal button {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.08);
+    cursor: pointer;
+    position: relative;
+    z-index: 10;
+  }
+</style>
 </head>
 <body class="bg-illit-bg min-h-screen text-gray-800 relative overflow-x-hidden">
   <div class="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
@@ -3393,11 +3424,18 @@ const ILLIT_CARD_ALBUMS = [
       return "card_exchange";
     }
 
-    window.openPostTypeSheet = function() { const _pts = document.getElementById("post-type-sheet"); if (_pts && _pts.parentElement !== document.body) document.body.appendChild(_pts);
-      if (!currentUser) return alert("ログインが必要です。");
-      document.getElementById("post-type-sheet").classList.remove("hidden");
-    };
-    window.closePostTypeSheet = function() { document.getElementById("post-type-sheet").classList.add("hidden"); };
+    window.openPostTypeSheet = function() {
+    const _pts = document.getElementById("post-type-sheet");
+    if (_pts && _pts.parentElement !== document.body) document.body.appendChild(_pts);
+    if (!currentUser) return alert("ログインが必要です。");
+    document.querySelectorAll("nav, main").forEach(function(el) { el.style.pointerEvents = "none"; });
+    _pts.classList.remove("hidden");
+  };
+    window.closePostTypeSheet = function() {
+    const _pts = document.getElementById("post-type-sheet");
+    if (_pts) _pts.classList.add("hidden");
+    document.querySelectorAll("nav, main").forEach(function(el) { el.style.pointerEvents = ""; });
+  };
 
     function renderSellTab() {
       const sec = document.getElementById("post-menu-section");
