@@ -8032,18 +8032,63 @@ window.closeIllitCalendar = function() {
   
 <script>
 (function() {
+  // 古い Service Worker キャッシュが残っていれば自動解除して最新化
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function(regs) {
+      regs.forEach(function(r) { r.unregister(); });
+    }).catch(function() {});
+  }
+
+  // 3つの出品モーダルも body 直下へ移動して親の overflow/transform 干渉をゼロにする
+  ["post-type-sheet", "post-modal", "serial-post-modal", "group-post-modal"].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el && el.parentElement !== document.body) {
+      document.body.appendChild(el);
+    }
+  });
+
   var sheet = document.getElementById("post-type-sheet");
   if (!sheet) return;
-  var locked = false;
-  sheet.addEventListener("touchend", function(e) {
-    var btn = e.target && e.target.closest ? e.target.closest("button") : null;
-    if (!btn || locked) return;
-    locked = true;
-    setTimeout(function() { locked = false; }, 350);
-    e.preventDefault();
+
+  // シート内の各ボタンの onclick 文字列を data-code に保存し、touchstart / click どちらでも即座に Function() で直接実行
+  sheet.querySelectorAll("button").forEach(function(btn) {
+    var raw = btn.getAttribute("onclick");
+    if (raw) {
+      btn.setAttribute("data-code", raw);
+      btn.removeAttribute("onclick");
+    }
+  });
+
+  var busy = false;
+  function triggerBtn(e) {
+    var btn = e.target && e.target.closest ? e.target.closest("#post-type-sheet button") : null;
+    if (!btn) {
+      // 背景の暗い部分タップで閉じる
+      if (e.target === sheet) {
+        if (typeof window.closePostTypeSheet === "function") window.closePostTypeSheet();
+      }
+      return;
+    }
+    if (busy) return;
+    busy = true;
+    setTimeout(function() { busy = false; }, 350);
+    if (e.cancelable) e.preventDefault();
     e.stopPropagation();
-    btn.click();
-  }, { passive: false });
+
+    var code = btn.getAttribute("data-code") || "";
+    try {
+      if (code) {
+        (new Function(code)).call(btn);
+      } else if (typeof window.closePostTypeSheet === "function") {
+        window.closePostTypeSheet();
+      }
+    } catch (err) {
+      alert("ボタン実行エラー: " + err.message);
+    }
+  }
+
+  sheet.addEventListener("touchend", triggerBtn, { passive: false });
+  sheet.addEventListener("click", triggerBtn, false);
 })();
 </script>
 </body>
