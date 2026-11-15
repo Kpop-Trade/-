@@ -5098,12 +5098,12 @@ function getAiCardVectors() {
       env.allowLocalModels = false;
       env.useBrowserCache = true;
       
-      updateStatus("🤖 AIモデル(CLIP)のダウンロード準備中...");
+      updateStatus("🤖 AIモデル(DINOv2)のダウンロード準備中...");
       
       let lastProgressTime = Date.now();
       
       // モデルロード処理自体に35秒タイムアウトを設定
-      const modelPromise = pipeline("image-feature-extraction", "Xenova/clip-vit-base-patch32", {
+      const modelPromise = pipeline("image-feature-extraction", "Xenova/dinov2-base", {
         dtype: "q8",
         progress_callback: (p) => {
           lastProgressTime = Date.now();
@@ -5126,7 +5126,7 @@ function getAiCardVectors() {
       });
       
       const extractor = await Promise.race([modelPromise, modelTimeoutP]);
-      updateStatus("✅ AIモデルの準備が完了しました！");
+      updateStatus("✅ DINOv2モデルの準備が完了しました！");
       return extractor;
     })().catch(e => {
       _aiClipExtractorPromise = null;
@@ -5149,7 +5149,7 @@ function getAiCardVectors() {
         _aiClipExtractorPromise = import("https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.4.1")
           .then(({ pipeline, env }) => {
             env.allowLocalModels = false;
-            return pipeline("image-feature-extraction", "Xenova/clip-vit-base-patch32", {
+            return pipeline("image-feature-extraction", "Xenova/dinov2-base", {
           dtype: "q8",
           progress_callback: (p) => {
             const resEl = document.getElementById("mycards-image-search-result");
@@ -5178,7 +5178,7 @@ function getAiCardVectors() {
       try {
         return await _findSimilarCardsWithAIRaw(dataUrl);
       } catch (aiErr) {
-        console.warn("CLIP AI fallback to standard image search:", aiErr);
+        console.warn("DINOv2 AI fallback to standard image search:", aiErr);
         return null;
       }
     }
@@ -5205,8 +5205,8 @@ function getAiCardVectors() {
         if (!v || v.length !== qVec.length) continue;
         let dot = 0;
         for (let i = 0; i < qVec.length; i++) dot += qVec[i] * v[i];
-        const pct = Math.max(0, Math.min(100, Math.round(((dot - 0.50) / 0.45) * 100)));
-        if (dot >= 0.52) scored.push({ card: c, score: pct, raw: dot });
+        const pct = Math.max(0, Math.min(100, Math.round(((dot - 0.70) / 0.28) * 100)));
+        if (dot >= 0.72) scored.push({ card: c, score: pct, raw: dot });
       }
       scored.sort((a, b) => b.raw - a.raw);
       return scored.slice(0, 24);
@@ -5214,7 +5214,7 @@ function getAiCardVectors() {
 
     async function findSimilarCards(uploadedDataUrl) {
       try {
-        const aiHits = await findSimilarCardsWithAI(dataUrl);
+        const aiHits = await findSimilarCardsWithAI(uploadedDataUrl);
         if (Array.isArray(aiHits)) return aiHits;
       } catch (aiErr) {
         console.warn("AI search fallback:", aiErr);
@@ -5315,8 +5315,8 @@ function getAiCardVectors() {
         <div class="grid grid-cols-3 gap-1.5">
           ${top.map(m => {
             const c = m.card || {};
-            const img = (typeof getCardPhoto === "function" && getCardPhoto(c.id)) || c.img || m.photoUrl || "";
-            return `<button type="button" onclick="applyRecognizedCard('${esc(c.id)}')" class="bg-white border border-purple-200 hover:border-purple-500 rounded-xl p-1 text-left shadow-sm transition active:scale-95">
+            const img = (typeof getCardPhoto === "function" && getCardPhoto(c.id)) || c.img || c.photoUrl || m.photoUrl || "";
+            return `<button type="button" onclick="applyRecognizedCard('${esc(c.id)}')" class="bg-white border-2 border-purple-300 hover:border-purple-600 rounded-xl p-1.5 text-left shadow-md transition active:scale-95">
               <div class="relative aspect-[3/4] bg-gray-100 rounded-lg overflow-hidden mb-1">
                 ${img ? `<img src="${esc(img)}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center text-[10px] text-gray-400">No Img</div>`}
                 <span class="absolute top-1 right-1 bg-purple-600 text-white text-[9px] font-bold px-1 rounded">${m.score || 0}%</span>
@@ -5388,10 +5388,10 @@ function getAiCardVectors() {
                 if (!v || v.length !== qVec.length) continue;
                 let dot = 0;
                 for (let i = 0; i < qVec.length; i++) dot += qVec[i] * v[i];
-                if (dot >= 0.25) {
+                if (dot >= 0.70) {
                   scored.push({
                     card: c,
-                    score: Math.max(10, Math.min(99, Math.round(((dot - 0.25) / 0.65) * 100))),
+                    score: Math.max(10, Math.min(99, Math.round(((dot - 0.68) / 0.30) * 100))),
                     raw: dot
                   });
                 }
@@ -5402,7 +5402,7 @@ function getAiCardVectors() {
             overallTimeout
           ]);
         } catch (clipErr) {
-          console.warn("CLIP failed or timed out, falling back:", clipErr);
+          console.warn("DINOv2 failed or timed out, falling back:", clipErr);
           updateStatus("⚡ 軽量検索に切り替え中...");
           matches = null;
         }
@@ -7706,7 +7706,7 @@ function getAiCardVectors() {
       const clearBtn = document.getElementById("mycards-image-search-clear");
       if (resultEl) {
         resultEl.classList.remove("hidden");
-        resultEl.textContent = "🔍 画像から検索中...";
+        resultEl.innerHTML = '<div class="text-center py-2">🔍 画像から検索中...</div>';
       }
       try {
         const dataUrl = await new Promise((resolve, reject) => {
@@ -7716,9 +7716,9 @@ function getAiCardVectors() {
           fr.readAsDataURL(file);
         });
         const matches = await findSimilarCards(dataUrl);
-        if (!matches.length) {
+        if (!matches || !matches.length) {
           myCardsImageFilterIds = new Set();
-          if (resultEl) resultEl.textContent = "一致するトレカが見つかりませんでした";
+          if (resultEl) resultEl.innerHTML = '<div class="text-center py-2 text-gray-500">一致するトレカが見つかりませんでした</div>';
           if (clearBtn) clearBtn.classList.remove("hidden");
           renderMyCardsList();
           return;
@@ -7732,15 +7732,35 @@ function getAiCardVectors() {
           renderMyCardsAlbumTabs();
           renderMyCardsMemberTabs();
         }
+        // 候補を写真付きで表示
         if (resultEl) {
-          resultEl.innerHTML = `一致 ${matches.length}件（一致度 ${matches[0].score}%〜）・絞り込み中 <button type="button" class="underline text-illit-darkPurple font-bold" onclick="clearMyCardsImageSearch()">解除</button>`;
+          const esc = window.escapeHtml || ((s) => String(s || ""));
+          const top6 = matches.slice(0, 6);
+          resultEl.innerHTML = `
+            <div class="text-[11px] font-bold text-purple-700 mb-1.5">✨ AI候補 ${matches.length}件（タップで所持リストを絞り込み）</div>
+            <div class="grid grid-cols-3 gap-1.5 mb-2">
+              ${top6.map(m => {
+                const c = m.card || {};
+                const img = (typeof getCardPhoto === "function" && getCardPhoto(c.id)) || c.photoUrl || "";
+                return `<div class="bg-white border border-purple-200 rounded-lg p-1 text-center shadow-sm">
+                  <div class="relative aspect-[3/4] bg-gray-100 rounded overflow-hidden mb-1">
+                    ${img ? `<img src="${esc(img)}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center text-[9px] text-gray-400">No</div>`}
+                    <span class="absolute top-0.5 right-0.5 bg-purple-600 text-white text-[8px] font-bold px-1 rounded">${m.score || 0}%</span>
+                  </div>
+                  <div class="text-[9px] font-bold truncate">${esc(c.member || "")}</div>
+                  <div class="text-[8px] text-gray-500 truncate">${esc(c.name || "")}</div>
+                </div>`;
+              }).join("")}
+            </div>
+            <div class="text-center"><button type="button" class="underline text-illit-darkPurple font-bold text-[11px]" onclick="clearMyCardsImageSearch()">絞り込み解除</button></div>
+          `;
         }
         if (clearBtn) clearBtn.classList.remove("hidden");
         renderMyCardsList();
         showToast("画像検索の結果で絞り込みました", "success");
       } catch (e) {
         console.error(e);
-        if (resultEl) resultEl.textContent = "検索に失敗しました";
+        if (resultEl) resultEl.innerHTML = '<div class="text-center py-2 text-red-500">検索に失敗しました</div>';
         alert("画像検索に失敗しました: " + (e && e.message ? e.message : e));
       }
     };
