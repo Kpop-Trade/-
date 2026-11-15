@@ -5280,43 +5280,164 @@ function getAiCardVectors() {
       return unique.slice(0, 4).map(({ card, photoUrl, score }) => ({ card, photoUrl, score }));
     }
 
-    window.runCardImageRecognition = async function(uploadedDataUrl) {
-    const updateStatus = (msg) => {
-      ["similar-cards-suggest", "mycards-image-search-result"].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) {
-          el.classList.remove("hidden");
-          el.textContent = msg;
-        }
+    // CLIP用に画像を224x224に縮小
+    function shrinkForClip(dataUrl) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          const c = document.createElement("canvas");
+          c.width = 224;
+          c.height = 224;
+          const ctx = c.getContext("2d");
+          ctx.drawImage(img, 0, 0, 224, 224);
+          resolve(c.toDataURL("image/jpeg", 0.85));
+        };
+        img.onerror = () => resolve(dataUrl);
+        img.src = dataUrl;
       });
-    };
-  
-    
-    // タイムアウト監視付きの実行ラッパー
-    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("AI画像解析がタイムアウトしました（通信環境やメモリをご確認ください）")), 45000));
-    
-    try {
-      const runCore = async () => {
-        // 既存のAI特徴量抽出・類似度計算ロジックをラップして進捗を表示
-        updateStatus("🤖 AIモデルを準備中 (0%)...");
-        return await findSimilarCardsWithAI(uploadedDataUrl, (p) => {
-          if (p && typeof p.progress === "number") {
-            updateStatus(`🤖 AIモデル準備中... ${Math.round(p.progress)}%`);
-          } else if (p && p.status) {
-            updateStatus(`⚡ ${p.status}...`);
+    }
+
+    function renderAiCandidates(container, matches) {
+      if (!container) return;
+      const esc = window.escapeHtml || ((s) => String(s || "").replace(/[&<>"']/g, m => ({"&":"&","<":"<",">":">","\\"":""","'":"&#39;"}[m])));
+      if (!matches || matches.length === 0) {
+        container.classList.remove("hidden");
+        container.innerHTML = `<div class="text-[11px] text-gray-400 py-1.5 text-center">一致する候補が見つかりませんでした（手動で選択してください）</div>`;
+        return;
+      }
+      const top = matches.slice(0, 6);
+      container.classList.remove("hidden");
+      container.innerHTML = `
+        <div class="text-[11px] font-bold text-purple-700 mb-1.5 flex items-center justify-between">
+          <span>✨ AI候補（タップで自動入力）</span>
+          <span class="text-[10px] text-gray-400">${top.length}件</span>
+        </div>
+        <div class="grid grid-cols-3 gap-1.5">
+          ${top.map(m => {
+            const c = m.card || {};
+            const img = (typeof getCardPhoto === "function" && getCardPhoto(c.id)) || c.img || m.photoUrl || "";
+            return `<button type="button" onclick="applyRecognizedCard('${esc(c.id)}')" class="bg-white border border-purple-200 hover:border-purple-500 rounded-xl p-1 text-left shadow-sm transition active:scale-95">
+              <div class="relative aspect-[3/4] bg-gray-100 rounded-lg overflow-hidden mb-1">
+                ${img ? `<img src="${esc(img)}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center text-[10px] text-gray-400">No Img</div>`}
+                <span class="absolute top-1 right-1 bg-purple-600 text-white text-[9px] font-bold px-1 rounded">${m.score || 0}%</span>
+              </div>
+              <div class="text-[10px] font-bold text-gray-800 truncate">${esc(c.member || "")}</div>
+              <div class="text-[9px] text-gray-500 truncate">${esc(c.name || "")}</div>
+            </button>`;
+          }).join("")}
+        </div>
+      `;
+    }
+
+    window.runCardImageRecognition = async function(uploadedDataUrl) {
+      const container = document.getElementById("similar-cards-suggest");
+      const updateStatus = (msg) => {
+        ["similar-cards-suggest", "mycards-image-search-result"].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) {
+            el.classList.remove("hidden");
+            el.textContent = msg;
           }
         });
       };
-      
-      const matches = await Promise.race([runCore(), timeoutPromise]);
-      return matches;
-    } catch (e) {
-      console.error("AI Recognition Error:", e);
-      updateStatus("⚠️ 解析エラー: " + (e.message || e));
-      throw e;
-    }
-  };
-  
+
+      // 全体タイムアウト（モバイルでモデルDLが固まる対策）
+      const overallTimeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("AI準備がタイムアウトしました。軽量検索に切り替えます")), 25000)
+      );
+
+      try {
+        updateStatus("🤖 AIモデルを準備中...");
+
+        // カタログを先にロード
+        if (typeof ensureCatalogCardsLoaded === "function") {
+          await ensureCatalogCardsLoaded().catch(() => {});
+        }
+
+        let matches = null;
+
+        // 1. CLIPを試す（短時間で諦め）
+        try {
+          const smallUrl = await shrinkForClip(uploadedDataUrl);
+          matches = await Promise.race([
+            (async () => {
+              const extractor = await getAiClipExtractor();
+              updateStatus("⚡ トレカ画像を解析中...");
+              const vecMap = await getAiCardVectors();
+              if (!vecMap || !Object.keys(vecMap).length) return null;
+
+              const out = await extractor(smallUrl, { pooling: "mean", normalize: true });
+              const qVec = out.data;
+              if (!qVec || !qVec.length) return null;
+
+              const allCards = [];
+              const seen = new Set();
+              (window.ILLIT_CARD_ALBUMS || ILLIT_CARD_ALBUMS || []).forEach(a => {
+                const list = typeof getAlbumCards === "function" ? getAlbumCards(a.id) : [];
+                list.forEach(c => {
+                  if (c && c.id && !seen.has(c.id)) {
+                    seen.add(c.id);
+                    allCards.push(c);
+                  }
+                });
+              });
+
+              const scored = [];
+              for (const c of allCards) {
+                const v = vecMap[c.id];
+                if (!v || v.length !== qVec.length) continue;
+                let dot = 0;
+                for (let i = 0; i < qVec.length; i++) dot += qVec[i] * v[i];
+                if (dot >= 0.25) {
+                  scored.push({
+                    card: c,
+                    score: Math.max(10, Math.min(99, Math.round(((dot - 0.25) / 0.65) * 100))),
+                    raw: dot
+                  });
+                }
+              }
+              scored.sort((a, b) => b.raw - a.raw);
+              return scored.slice(0, 6);
+            })(),
+            overallTimeout
+          ]);
+        } catch (clipErr) {
+          console.warn("CLIP failed or timed out, falling back:", clipErr);
+          updateStatus("⚡ 軽量検索に切り替え中...");
+          matches = null;
+        }
+
+        // 2. CLIPがダメなら既存の軽い特徴量マッチにフォールバック
+        if (!matches || matches.length === 0) {
+          try {
+            if (typeof findSimilarCards === "function") {
+              updateStatus("🔍 画像から類似カードを検索中...");
+              const fallback = await Promise.race([
+                findSimilarCards(uploadedDataUrl),
+                new Promise((_, rej) => setTimeout(() => rej(new Error("軽量検索タイムアウト")), 20000))
+              ]);
+              if (Array.isArray(fallback) && fallback.length) {
+                matches = fallback;
+              }
+            }
+          } catch (fbErr) {
+            console.warn("Fallback search failed:", fbErr);
+          }
+        }
+
+        renderAiCandidates(container, matches || []);
+        return matches || [];
+      } catch (e) {
+        console.error("AI Recognition Error:", e);
+        updateStatus("⚠️ 解析エラー: " + (e.message || e));
+        if (container) {
+          container.classList.remove("hidden");
+          container.innerHTML = `<div class="text-[11px] text-red-500 py-1.5 text-center">解析エラー: ${e.message || e}</div>`;
+        }
+        return [];
+      }
+    };
+
   // 元の処理を生かすためのプレースホルダー
   window._runCardImageRecognition_orig = async function(uploadedDataUrl) {
       const container = document.getElementById("similar-cards-suggest");
