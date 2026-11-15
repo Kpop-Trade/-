@@ -1,10 +1,50 @@
 [
   {
-    "date": "2026-12-24",
-    "time": "18:30",
-    "title": "ILLIT ライブコンサート（LaLa arena TOKYO‑BAY）",
+    "date": "2026-11-28",
+    "time": "終日",
+    "title": "ベストアーティスト2026 放送出演",
+    "category": "media",
+    "detail": "日本テレビ系『ベストアーティスト2026』に11月28日(土)出演決定。",
+    "link": ""
+  },
+  {
+    "date": "2026-12-02",
+    "time": "終日",
+    "title": "FNS歌謡祭 第1夜 出演",
+    "category": "media",
+    "detail": "フジテレビ系列『2026 FNS 歌謡祭 第1夜』に12月2日(水)出演決定。",
+    "link": ""
+  },
+  {
+    "date": "2026-12-23",
+    "time": "17:00",
+    "title": "ILLIT LIVE 'PRESS START' ENCORE in JAPAN 公演",
     "category": "event",
-    "detail": "場所：千葉県 LaLa arena TOKYO‑BAY　開場 17:00　開演 18:30　チケットはイープラスにて2026/12/23に先行販売。",
+    "detail": "LaLa arena TOKYO‑BAY（千葉県船橋市）で開催、開場 17:00、開演 18:30。",
+    "link": ""
+  },
+  {
+    "date": "2026-12-24",
+    "time": "17:00",
+    "title": "ILLIT LIVE 'PRESS START' ENCORE in JAPAN 公演",
+    "category": "event",
+    "detail": "LaLa arena TOKYO‑BAY（千葉県船橋市）で開催、開場 17:00、開演 18:30。",
+    "link": ""
+  },
+  {
+    "date": "2026-12-26",
+    "time": "15:30",
+    "title": "ILLIT LIVE 'PRESS START' ENCORE in JAPAN 公演",
+    "category": "event",
+    "detail": "LaLa arena TOKYO‑BAY（千葉県船橋市）で開催、開場 15:30、開演 17:00。",
+    "link": ""
+  },
+  {
+    "date": "2026-12-27",
+    "time": "終日",
+    "title": "ILLIT LIVE 'PRESS START' ENCORE in JAPAN 公演",
+    "category": "event",
+    "detail": "LaLa arena TOKYO‑BAY（千葉県船橋市）で開催。",
     "link": ""
   }
 ]
