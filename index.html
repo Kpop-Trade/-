@@ -5064,11 +5064,11 @@ window.openAzukariApp = function() {
 
     
     // AI画像検索は ai-search.js に分離（必要時のみ動的ロード）
-  window.ensureCatalogCardsLoaded = ensureCatalogCardsLoaded;
-  window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
-  window.getAlbumCards = getAlbumCards;
+  window.ensureCatalogCardsLoaded = (...args) => typeof ensureCatalogCardsLoaded === "function" ? ensureCatalogCardsLoaded(...args) : Promise.resolve();
+  Object.defineProperty(window, "ILLIT_CARD_ALBUMS", { get: () => typeof ILLIT_CARD_ALBUMS !== "undefined" ? ILLIT_CARD_ALBUMS : [], configurable: true });
+  window.getAlbumCards = (...args) => typeof getAlbumCards === "function" ? getAlbumCards(...args) : [];
   window.getCardPhoto = typeof getCardPhoto === "function" ? getCardPhoto : null;
-  window.escapeHtml = escapeHtml;
+  window.escapeHtml = (...args) => typeof escapeHtml === "function" ? escapeHtml(...args) : String(args[0] || "");
 
   async function findSimilarCardsWithAI(uploadedDataUrl, progressCb) {
     const mod = await import("./ai-search.js?v=1");
