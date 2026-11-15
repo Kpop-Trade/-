@@ -8940,7 +8940,159 @@ window.buildAndDownloadCardPackZip = async function() {
     };
 
 
-      function renderMyCardsList() {
+      
+    // ===== 全体＆アルバム別コンプ率ドーナツ円グラフ =====
+    window.renderMyCardsPieCharts = function() {
+      if (typeof ILLIT_CARD_ALBUMS === "undefined" || !Array.isArray(ILLIT_CARD_ALBUMS)) return;
+      if (typeof getAlbumCards !== "function" || typeof getCardStatus !== "function") return;
+
+      const listEl = document.getElementById("my-cards-list");
+      if (!listEl) return;
+
+      let container = document.getElementById("my-cards-pie-dashboard");
+      if (!container) {
+        container = document.createElement("div");
+        container.id = "my-cards-pie-dashboard";
+        container.className = "mb-4 space-y-3 px-1";
+        listEl.parentNode.insertBefore(container, listEl);
+      }
+
+      let totalAll = 0;
+      let totalOwned = 0;
+      let totalWant = 0;
+      const albumStats = [];
+
+      ILLIT_CARD_ALBUMS.forEach(alb => {
+        const cards = getAlbumCards(alb.id) || [];
+        const total = cards.length;
+        if (total === 0) return;
+        let owned = 0;
+        let want = 0;
+        cards.forEach(c => {
+          const st = getCardStatus(c.id);
+          if (st === "owned") owned++;
+          else if (st === "want") want++;
+        });
+        totalAll += total;
+        totalOwned += owned;
+        totalWant += want;
+        const pct = total > 0 ? Math.round((owned / total) * 100) : 0;
+        const wantPct = total > 0 ? Math.round((want / total) * 100) : 0;
+        albumStats.push({
+          id: alb.id,
+          name: alb.name,
+          total,
+          owned,
+          want,
+          pct,
+          wantPct
+        });
+      });
+
+      if (totalAll === 0) {
+        container.innerHTML = "";
+        return;
+      }
+
+      const overallPct = Math.round((totalOwned / totalAll) * 100);
+      const overallWantPct = Math.round((totalWant / totalAll) * 100);
+      const ownedDeg = Math.round((totalOwned / totalAll) * 360);
+      const wantDeg = Math.min(360, ownedDeg + Math.round((totalWant / totalAll) * 360));
+      const remainTotal = Math.max(0, totalAll - totalOwned);
+
+      const overallRingStyle =
+        "background: conic-gradient(" +
+        "#ec4899 0deg " + ownedDeg + "deg, " +
+        "#60a5fa " + ownedDeg + "deg " + wantDeg + "deg, " +
+        "#e5e7eb " + wantDeg + "deg 360deg" +
+        ");";
+
+      const albumCardsHtml = albumStats.map(st => {
+        const aOwnedDeg = Math.round((st.owned / st.total) * 360);
+        const aWantDeg = Math.min(360, aOwnedDeg + Math.round((st.want / st.total) * 360));
+        const isComp = st.owned === st.total && st.total > 0;
+        const ringColor = isComp ? "#f59e0b" : "#ec4899";
+        const ringBg =
+          "background: conic-gradient(" +
+          ringColor + " 0deg " + aOwnedDeg + "deg, " +
+          "#93c5fd " + aOwnedDeg + "deg " + aWantDeg + "deg, " +
+          "#f3f4f6 " + aWantDeg + "deg 360deg" +
+          ");";
+        const safeName = String(st.name || "").replace(/</g, "&lt;");
+        return (
+          "<button type=\"button\" onclick=\"selectAlbumFromPieChart('" + st.id + "')\" " +
+          "class=\"text-left bg-white/95 hover:bg-white border " + (isComp ? "border-amber-300 ring-1 ring-amber-200" : "border-pink-100") + " rounded-2xl p-2.5 flex items-center gap-2.5 shadow-xs transition active:scale-95\">" +
+            "<div class=\"relative w-12 h-12 rounded-full shrink-0 flex items-center justify-center\" style=\"" + ringBg + "\">" +
+              "<div class=\"w-8 h-8 rounded-full bg-white flex items-center justify-center text-[10px] font-extrabold " + (isComp ? "text-amber-600" : "text-gray-800") + "\">" +
+                st.pct + "%" +
+              "</div>" +
+            "</div>" +
+            "<div class=\"min-w-0 flex-1\">" +
+              "<div class=\"text-[11px] font-bold text-gray-800 truncate\">" + safeName + "</div>" +
+              "<div class=\"text-[10px] text-gray-500 mt-0.5\">" +
+                "<span class=\"font-bold text-pink-600\">" + st.owned + "</span> / " + st.total + "枚" +
+              "</div>" +
+              (isComp
+                ? "<div class=\"text-[9px] font-extrabold text-amber-600 mt-0.5\">👑 COMPLETE!</div>"
+                : "<div class=\"text-[9px] text-gray-400 mt-0.5\">あと" + (st.total - st.owned) + "枚</div>") +
+            "</div>" +
+          "</button>"
+        );
+      }).join("");
+
+      container.innerHTML =
+        "<div class=\"liquid-glass-card rounded-2xl p-3.5 border border-pink-200/80 shadow-sm space-y-3\">" +
+          "<div class=\"flex items-center justify-between\">" +
+            "<div class=\"text-xs font-extrabold text-pink-800 flex items-center gap-1.5\">📊 コレクション達成率</div>" +
+            "<span class=\"text-[10px] font-bold px-2 py-0.5 rounded-full bg-pink-100 text-pink-700\">" +
+              (remainTotal === 0 ? "👑 全種コンプリート！" : "あと " + remainTotal + " 枚でコンプ") +
+            "</span>" +
+          "</div>" +
+
+          "<!-- 全体ドーナツ円グラフ -->" +
+          "<div class=\"flex items-center gap-4 bg-white/90 rounded-xl p-3 border border-pink-100\">" +
+            "<div class=\"relative w-20 h-20 rounded-full shrink-0 flex items-center justify-center shadow-inner\" style=\"" + overallRingStyle + "\">" +
+              "<div class=\"w-14 h-14 rounded-full bg-white flex flex-col items-center justify-center leading-tight\">" +
+                "<span class=\"text-[9px] font-bold text-gray-400\">TOTAL</span>" +
+                "<span class=\"text-base font-black text-pink-600\">" + overallPct + "%</span>" +
+              "</div>" +
+            "</div>" +
+            "<div class=\"flex-1 space-y-1.5 text-xs\">" +
+              "<div class=\"flex items-center justify-between\">" +
+                "<span class=\"flex items-center gap-1.5 text-gray-700 font-bold\"><span class=\"w-2.5 h-2.5 rounded-full bg-pink-500 inline-block\"></span>所持</span>" +
+                "<span class=\"font-extrabold text-gray-900\">" + totalOwned + " <span class=\"text-[10px] font-normal text-gray-500\">/ " + totalAll + "枚</span></span>" +
+              "</div>" +
+              "<div class=\"flex items-center justify-between\">" +
+                "<span class=\"flex items-center gap-1.5 text-gray-700 font-bold\"><span class=\"w-2.5 h-2.5 rounded-full bg-blue-400 inline-block\"></span>求 (Want)</span>" +
+                "<span class=\"font-bold text-blue-600\">" + totalWant + "枚 <span class=\"text-[10px] font-normal text-gray-400\">(" + overallWantPct + "%)</span></span>" +
+              "</div>" +
+              "<div class=\"flex items-center justify-between\">" +
+                "<span class=\"flex items-center gap-1.5 text-gray-500\"><span class=\"w-2.5 h-2.5 rounded-full bg-gray-200 inline-block\"></span>未所持</span>" +
+                "<span class=\"text-gray-600 font-semibold\">" + Math.max(0, totalAll - totalOwned - totalWant) + "枚</span>" +
+              "</div>" +
+            "</div>" +
+          "</div>" +
+
+          "<!-- アルバムごとのミニ円グラフ一覧 -->" +
+          "<div>" +
+            "<div class=\"text-[11px] font-bold text-gray-600 mb-1.5\">💿 アルバム別コンプ率（タップで表示）</div>" +
+            "<div class=\"grid grid-cols-2 gap-2\">" + albumCardsHtml + "</div>" +
+          "</div>" +
+        "</div>";
+    };
+
+    window.selectAlbumFromPieChart = function(albumId) {
+      try {
+        if (typeof selectMyCardsAlbum === "function") {
+          selectMyCardsAlbum(albumId);
+          return;
+        }
+        const tabBtn = document.querySelector("[data-album-id=\"" + albumId + "\"]");
+        if (tabBtn) tabBtn.click();
+      } catch (_) {}
+    };
+
+    function renderMyCardsList() {
       const el = document.getElementById("mycards-list");
       const allAlbumCards = getAlbumCards(myCardsAlbum);
       const norm = s => String(s || "").split(" ")[0];
@@ -9027,6 +9179,8 @@ window.buildAndDownloadCardPackZip = async function() {
       detailCardId = null;
       const modal = document.getElementById("card-detail-modal");
       if (modal) modal.classList.add("hidden");
+    
+      if (typeof renderMyCardsPieCharts === "function") renderMyCardsPieCharts();
     };
 
     function renderCardDetailModal() {
@@ -9218,452 +9372,7 @@ window.buildAndDownloadCardPackZip = async function() {
     }
 
     // ===== 全体＆アルバムごとのコンプ率ドーナツ円グラフ描画 =====
-    window.renderMyCardsPieCharts = function() {
-      if (typeof ILLIT_CARD_ALBUMS === "undefined" || !Array.isArray(ILLIT_CARD_ALBUMS)) return;
-      if (typeof getAlbumCards !== "function" || typeof getCardStatus !== "function") return;
-
-      // 描画コンテナ（既存の統計ブロック付近またはMyトレカグリッド直上に自動挿入）
-      let container = document.getElementById("my-cards-pie-dashboard");
-      if (!container) {
-        const anchorEl =
-          document.getElementById("my-cards-share-stats") ||
-          document.getElementById("my-cards-stats") ||
-          document.getElementById("my-cards-album-tabs") ||
-          document.getElementById("my-cards-grid");
-        if (!anchorEl || !anchorEl.parentNode) return;
-        container = document.createElement("div");
-        container.id = "my-cards-pie-dashboard";
-        container.className = "mb-4 space-y-3";
-        anchorEl.parentNode.insertBefore(container, anchorEl);
-      }
-
-      let totalAll = 0;
-      let totalOwned = 0;
-      let totalWant = 0;
-      const albumStats = [];
-
-      ILLIT_CARD_ALBUMS.forEach(alb => {
-        const cards = getAlbumCards(alb.id) || [];
-        const total = cards.length;
-        if (total === 0) return;
-        let owned = 0;
-        let want = 0;
-        cards.forEach(c => {
-          const st = getCardStatus(c.id);
-          if (st === "owned") owned++;
-          else if (st === "want") want++;
-        });
-        totalAll += total;
-        totalOwned += owned;
-        totalWant += want;
-        const pct = total > 0 ? Math.round((owned / total) * 100) : 0;
-        const wantPct = total > 0 ? Math.round((want / total) * 100) : 0;
-        albumStats.push({
-          id: alb.id,
-          name: alb.name,
-          year: alb.year || "",
-          total,
-          owned,
-          want,
-          pct,
-          wantPct
-        });
-      });
-
-      if (totalAll === 0) {
-        container.innerHTML = "";
-        return;
-      }
-
-      const overallPct = Math.round((totalOwned / totalAll) * 100);
-      const overallWantPct = Math.round((totalWant / totalAll) * 100);
-      const ownedDeg = Math.round((totalOwned / totalAll) * 360);
-      const wantDeg = Math.min(360, ownedDeg + Math.round((totalWant / totalAll) * 360));
-      const remainTotal = Math.max(0, totalAll - totalOwned);
-
-      const overallRingStyle =
-        "background: conic-gradient(" +
-        "#ec4899 0deg " + ownedDeg + "deg, " +
-        "#60a5fa " + ownedDeg + "deg " + wantDeg + "deg, " +
-        "#e5e7eb " + wantDeg + "deg 360deg" +
-        ");";
-
-      const albumCardsHtml = albumStats.map(st => {
-        const aOwnedDeg = Math.round((st.owned / st.total) * 360);
-        const aWantDeg = Math.min(360, aOwnedDeg + Math.round((st.want / st.total) * 360));
-        const isComp = st.owned === st.total && st.total > 0;
-        const ringColor = isComp ? "#f59e0b" : "#ec4899";
-        const ringBg =
-          "background: conic-gradient(" +
-          ringColor + " 0deg " + aOwnedDeg + "deg, " +
-          "#93c5fd " + aOwnedDeg + "deg " + aWantDeg + "deg, " +
-          "#f3f4f6 " + aWantDeg + "deg 360deg" +
-          ");";
-        const safeName = String(st.name || "").replace(/</g, "&lt;");
-        return (
-          "<button type=\"button\" onclick=\"selectAlbumFromPieChart('" + st.id + "')\" " +
-          "class=\"text-left bg-white/85 hover:bg-white border " + (isComp ? "border-amber-300 ring-1 ring-amber-200" : "border-pink-100") + " rounded-2xl p-2.5 flex items-center gap-2.5 shadow-xs transition active:scale-95\">" +
-            "<div class=\"relative w-12 h-12 rounded-full shrink-0 flex items-center justify-center\" style=\"" + ringBg + "\">" +
-              "<div class=\"w-8 h-8 rounded-full bg-white flex items-center justify-center text-[10px] font-extrabold " + (isComp ? "text-amber-600" : "text-gray-800") + "\">" +
-                st.pct + "%" +
-              "</div>" +
-            "</div>" +
-            "<div class=\"min-w-0 flex-1\">" +
-              "<div class=\"text-[11px] font-bold text-gray-800 truncate\">" + safeName + "</div>" +
-              "<div class=\"text-[10px] text-gray-500 mt-0.5\">" +
-                "<span class=\"font-bold text-pink-600\">" + st.owned + "</span> / " + st.total + "枚" +
-              "</div>" +
-              (isComp
-                ? "<div class=\"text-[9px] font-extrabold text-amber-600 mt-0.5\">👑 COMPLETE!</div>"
-                : "<div class=\"text-[9px] text-gray-400 mt-0.5\">あと" + (st.total - st.owned) + "枚</div>") +
-            "</div>" +
-          "</button>"
-        );
-      }).join("");
-
-      container.innerHTML =
-        "<div class=\"liquid-glass-card rounded-2xl p-3.5 border border-pink-200/80 shadow-sm space-y-3\">" +
-          "<div class=\"flex items-center justify-between\">" +
-            "<div class=\"text-xs font-extrabold text-pink-800 flex items-center gap-1.5\">📊 コレクション達成率</div>" +
-            "<span class=\"text-[10px] font-bold px-2 py-0.5 rounded-full bg-pink-100 text-pink-700\">" +
-              (remainTotal === 0 ? "👑 全種コンプリート！" : "あと " + remainTotal + " 枚でコンプ") +
-            "</span>" +
-          "</div>" +
-
-          "<!-- 全体ドーナツ円グラフ -->" +
-          "<div class=\"flex items-center gap-4 bg-white/80 rounded-xl p-3 border border-pink-100\">" +
-            "<div class=\"relative w-20 h-20 rounded-full shrink-0 flex items-center justify-center shadow-inner\" style=\"" + overallRingStyle + "\">" +
-              "<div class=\"w-14 h-14 rounded-full bg-white flex flex-col items-center justify-center leading-tight\">" +
-                "<span class=\"text-[9px] font-bold text-gray-400\">TOTAL</span>" +
-                "<span class=\"text-base font-black text-pink-600\">" + overallPct + "%</span>" +
-              "</div>" +
-            "</div>" +
-            "<div class=\"flex-1 space-y-1.5 text-xs\">" +
-              "<div class=\"flex items-center justify-between\">" +
-                "<span class=\"flex items-center gap-1.5 text-gray-700 font-bold\"><span class=\"w-2.5 h-2.5 rounded-full bg-pink-500 inline-block\"></span>所持</span>" +
-                "<span class=\"font-extrabold text-gray-900\">" + totalOwned + " <span class=\"text-[10px] font-normal text-gray-500\">/ " + totalAll + "枚</span></span>" +
-              "</div>" +
-              "<div class=\"flex items-center justify-between\">" +
-                "<span class=\"flex items-center gap-1.5 text-gray-700 font-bold\"><span class=\"w-2.5 h-2.5 rounded-full bg-blue-400 inline-block\"></span>求 (Want)</span>" +
-                "<span class=\"font-bold text-blue-600\">" + totalWant + "枚 <span class=\"text-[10px] font-normal text-gray-400\">(" + overallWantPct + "%)</span></span>" +
-              "</div>" +
-              "<div class=\"flex items-center justify-between\">" +
-                "<span class=\"flex items-center gap-1.5 text-gray-500\"><span class=\"w-2.5 h-2.5 rounded-full bg-gray-200 inline-block\"></span>未所持</span>" +
-                "<span class=\"text-gray-600 font-semibold\">" + Math.max(0, totalAll - totalOwned - totalWant) + "枚</span>" +
-              "</div>" +
-            "</div>" +
-          "</div>" +
-
-          "<!-- アルバムごとのミニ円グラフ一覧 -->" +
-          "<div>" +
-            "<div class=\"text-[11px] font-bold text-gray-600 mb-1.5\">💿 アルバム別コンプ率（タップで表示）</div>" +
-            "<div class=\"grid grid-cols-2 gap-2\">" + albumCardsHtml + "</div>" +
-          "</div>" +
-        "</div>";
-    };
-
-    window.selectAlbumFromPieChart = function(albumId) {
-      try {
-        if (typeof selectMyCardsAlbum === "function") {
-          selectMyCardsAlbum(albumId);
-          return;
-        }
-        const tabBtn = document.querySelector("[data-album-id=\"" + albumId + "\"]");
-        if (tabBtn) tabBtn.click();
-      } catch (_) {}
-    };
-
-
-    // ===== 全体＆アルバムごとのコンプ率ドーナツ円グラフ描画 =====
-    window.renderMyCardsPieCharts = function() {
-      if (typeof ILLIT_CARD_ALBUMS === "undefined" || !Array.isArray(ILLIT_CARD_ALBUMS)) return;
-      if (typeof getAlbumCards !== "function" || typeof getCardStatus !== "function") return;
-
-      // 描画コンテナ（既存の統計ブロック付近またはMyトレカグリッド直上に自動挿入）
-      let container = document.getElementById("my-cards-pie-dashboard");
-      if (!container) {
-        const anchorEl =
-          document.getElementById("my-cards-share-stats") ||
-          document.getElementById("my-cards-stats") ||
-          document.getElementById("my-cards-album-tabs") ||
-          document.getElementById("my-cards-grid");
-        if (!anchorEl || !anchorEl.parentNode) return;
-        container = document.createElement("div");
-        container.id = "my-cards-pie-dashboard";
-        container.className = "mb-4 space-y-3";
-        anchorEl.parentNode.insertBefore(container, anchorEl);
-      }
-
-      let totalAll = 0;
-      let totalOwned = 0;
-      let totalWant = 0;
-      const albumStats = [];
-
-      ILLIT_CARD_ALBUMS.forEach(alb => {
-        const cards = getAlbumCards(alb.id) || [];
-        const total = cards.length;
-        if (total === 0) return;
-        let owned = 0;
-        let want = 0;
-        cards.forEach(c => {
-          const st = getCardStatus(c.id);
-          if (st === "owned") owned++;
-          else if (st === "want") want++;
-        });
-        totalAll += total;
-        totalOwned += owned;
-        totalWant += want;
-        const pct = total > 0 ? Math.round((owned / total) * 100) : 0;
-        const wantPct = total > 0 ? Math.round((want / total) * 100) : 0;
-        albumStats.push({
-          id: alb.id,
-          name: alb.name,
-          year: alb.year || "",
-          total,
-          owned,
-          want,
-          pct,
-          wantPct
-        });
-      });
-
-      if (totalAll === 0) {
-        container.innerHTML = "";
-        return;
-      }
-
-      const overallPct = Math.round((totalOwned / totalAll) * 100);
-      const overallWantPct = Math.round((totalWant / totalAll) * 100);
-      const ownedDeg = Math.round((totalOwned / totalAll) * 360);
-      const wantDeg = Math.min(360, ownedDeg + Math.round((totalWant / totalAll) * 360));
-      const remainTotal = Math.max(0, totalAll - totalOwned);
-
-      const overallRingStyle =
-        "background: conic-gradient(" +
-        "#ec4899 0deg " + ownedDeg + "deg, " +
-        "#60a5fa " + ownedDeg + "deg " + wantDeg + "deg, " +
-        "#e5e7eb " + wantDeg + "deg 360deg" +
-        ");";
-
-      const albumCardsHtml = albumStats.map(st => {
-        const aOwnedDeg = Math.round((st.owned / st.total) * 360);
-        const aWantDeg = Math.min(360, aOwnedDeg + Math.round((st.want / st.total) * 360));
-        const isComp = st.owned === st.total && st.total > 0;
-        const ringColor = isComp ? "#f59e0b" : "#ec4899";
-        const ringBg =
-          "background: conic-gradient(" +
-          ringColor + " 0deg " + aOwnedDeg + "deg, " +
-          "#93c5fd " + aOwnedDeg + "deg " + aWantDeg + "deg, " +
-          "#f3f4f6 " + aWantDeg + "deg 360deg" +
-          ");";
-        const safeName = String(st.name || "").replace(/</g, "&lt;");
-        return (
-          "<button type=\"button\" onclick=\"selectAlbumFromPieChart('" + st.id + "')\" " +
-          "class=\"text-left bg-white/85 hover:bg-white border " + (isComp ? "border-amber-300 ring-1 ring-amber-200" : "border-pink-100") + " rounded-2xl p-2.5 flex items-center gap-2.5 shadow-xs transition active:scale-95\">" +
-            "<div class=\"relative w-12 h-12 rounded-full shrink-0 flex items-center justify-center\" style=\"" + ringBg + "\">" +
-              "<div class=\"w-8 h-8 rounded-full bg-white flex items-center justify-center text-[10px] font-extrabold " + (isComp ? "text-amber-600" : "text-gray-800") + "\">" +
-                st.pct + "%" +
-              "</div>" +
-            "</div>" +
-            "<div class=\"min-w-0 flex-1\">" +
-              "<div class=\"text-[11px] font-bold text-gray-800 truncate\">" + safeName + "</div>" +
-              "<div class=\"text-[10px] text-gray-500 mt-0.5\">" +
-                "<span class=\"font-bold text-pink-600\">" + st.owned + "</span> / " + st.total + "枚" +
-              "</div>" +
-              (isComp
-                ? "<div class=\"text-[9px] font-extrabold text-amber-600 mt-0.5\">👑 COMPLETE!</div>"
-                : "<div class=\"text-[9px] text-gray-400 mt-0.5\">あと" + (st.total - st.owned) + "枚</div>") +
-            "</div>" +
-          "</button>"
-        );
-      }).join("");
-
-      container.innerHTML =
-        "<div class=\"liquid-glass-card rounded-2xl p-3.5 border border-pink-200/80 shadow-sm space-y-3\">" +
-          "<div class=\"flex items-center justify-between\">" +
-            "<div class=\"text-xs font-extrabold text-pink-800 flex items-center gap-1.5\">📊 コレクション達成率</div>" +
-            "<span class=\"text-[10px] font-bold px-2 py-0.5 rounded-full bg-pink-100 text-pink-700\">" +
-              (remainTotal === 0 ? "👑 全種コンプリート！" : "あと " + remainTotal + " 枚でコンプ") +
-            "</span>" +
-          "</div>" +
-
-          "<!-- 全体ドーナツ円グラフ -->" +
-          "<div class=\"flex items-center gap-4 bg-white/80 rounded-xl p-3 border border-pink-100\">" +
-            "<div class=\"relative w-20 h-20 rounded-full shrink-0 flex items-center justify-center shadow-inner\" style=\"" + overallRingStyle + "\">" +
-              "<div class=\"w-14 h-14 rounded-full bg-white flex flex-col items-center justify-center leading-tight\">" +
-                "<span class=\"text-[9px] font-bold text-gray-400\">TOTAL</span>" +
-                "<span class=\"text-base font-black text-pink-600\">" + overallPct + "%</span>" +
-              "</div>" +
-            "</div>" +
-            "<div class=\"flex-1 space-y-1.5 text-xs\">" +
-              "<div class=\"flex items-center justify-between\">" +
-                "<span class=\"flex items-center gap-1.5 text-gray-700 font-bold\"><span class=\"w-2.5 h-2.5 rounded-full bg-pink-500 inline-block\"></span>所持</span>" +
-                "<span class=\"font-extrabold text-gray-900\">" + totalOwned + " <span class=\"text-[10px] font-normal text-gray-500\">/ " + totalAll + "枚</span></span>" +
-              "</div>" +
-              "<div class=\"flex items-center justify-between\">" +
-                "<span class=\"flex items-center gap-1.5 text-gray-700 font-bold\"><span class=\"w-2.5 h-2.5 rounded-full bg-blue-400 inline-block\"></span>求 (Want)</span>" +
-                "<span class=\"font-bold text-blue-600\">" + totalWant + "枚 <span class=\"text-[10px] font-normal text-gray-400\">(" + overallWantPct + "%)</span></span>" +
-              "</div>" +
-              "<div class=\"flex items-center justify-between\">" +
-                "<span class=\"flex items-center gap-1.5 text-gray-500\"><span class=\"w-2.5 h-2.5 rounded-full bg-gray-200 inline-block\"></span>未所持</span>" +
-                "<span class=\"text-gray-600 font-semibold\">" + Math.max(0, totalAll - totalOwned - totalWant) + "枚</span>" +
-              "</div>" +
-            "</div>" +
-          "</div>" +
-
-          "<!-- アルバムごとのミニ円グラフ一覧 -->" +
-          "<div>" +
-            "<div class=\"text-[11px] font-bold text-gray-600 mb-1.5\">💿 アルバム別コンプ率（タップで表示）</div>" +
-            "<div class=\"grid grid-cols-2 gap-2\">" + albumCardsHtml + "</div>" +
-          "</div>" +
-        "</div>";
-    };
-
-    window.selectAlbumFromPieChart = function(albumId) {
-      try {
-        if (typeof selectMyCardsAlbum === "function") {
-          selectMyCardsAlbum(albumId);
-          return;
-        }
-        const tabBtn = document.querySelector("[data-album-id=\"" + albumId + "\"]");
-        if (tabBtn) tabBtn.click();
-      } catch (_) {}
-    };
-
-    window.toggleCollectionPublic = async function(on) {
-      userData.collectionPublic = !!on;
-      try { await saveUserData({ collectionPublic: !!on }); showToast(on ? "コレクションを公開しました" : "非公開にしました", "info"); }
-      catch (e) { showToast("設定の保存に失敗しました", "error"); document.getElementById("mycards-public").checked = !on; }
-    };
-    window.shareMyCollectionText = function() {
-      const map = userData.myCards || {};
-      const lines = ["🃏 ILLIT Myトレカ 所持状況", ""];
-      ILLIT_CARD_ALBUMS.forEach(a => {
-        const cards = getAlbumCards(a.id);
-        const ownedNames = cards.filter(c => getCardStatus(c.id) === "owned").map(c => c.name);
-        if (ownedNames.length) {
-          lines.push(`【${a.name}】`);
-          ownedNames.forEach(n => lines.push("・" + n));
-          lines.push("");
-        }
-      });
-      const want = Object.entries(map).filter(([, v]) => v === "want");
-      if (want.length) {
-        lines.push("【欲しい】");
-        want.forEach(([id]) => {
-          for (const a of ILLIT_CARD_ALBUMS) {
-            const c = getAlbumCards(a.id).find(x => x.id === id);
-            if (c) { lines.push("・" + c.name + (a.name ? ` (${a.name})` : "")); break; }
-          }
-        });
-      }
-      lines.push("", "via ILLIT Trade");
-      const text = lines.join("\n");
-      const url = "https://twitter.com/intent/tweet?text=" + encodeURIComponent(text);
-      window.open(url, "_blank");
-    };
-    window.copyMyCollectionLink = function() {
-      if (!currentUser) return;
-      const link = location.origin + location.pathname + "?collection=" + currentUser.uid;
-      navigator.clipboard.writeText(link).then(() => showToast("共有リンクをコピーしました", "success")).catch(() => alert(link));
-    };
-
-      
-
-
-
-    
-
-
-    // ===== 下部ナビ：長押しで透けるレンズ =====
-    (function initNavLens() {
-      const nav = document.querySelector("body > nav"); if (!nav) return;
-      const lens = document.createElement("div"); lens.id = "nav-lens"; document.body.appendChild(lens);
-      let timer = null, active = null, pressed = null;
-
-      function place(btn) {
-        const r = btn.getBoundingClientRect(), w = lens.offsetWidth, h = lens.offsetHeight;
-        const left = Math.min(window.innerWidth - w - 4, Math.max(4, r.left + r.width / 2 - w / 2));
-        lens.style.left = left + "px";
-        lens.style.top = (r.top + r.height / 2 - h / 2) + "px";
-      }
-      function setActive(btn) {
-        if (active === btn) return;
-        if (active) active.classList.remove("nav-pressed");
-        active = btn; if (!btn) return;
-        btn.classList.add("nav-pressed");
-        if (!lens.classList.contains("show")) {
-          lens.style.transition = "none"; place(btn); void lens.offsetWidth; lens.style.transition = "";
-          lens.classList.add("show");
-        } else place(btn);
-      }
-      function hide() {
-        clearTimeout(timer); timer = null;
-        if (active) active.classList.remove("nav-pressed");
-        active = null; pressed = null; lens.classList.remove("show");
-      }
-
-      nav.addEventListener("pointerdown", (e) => {
-        const b = e.target.closest("button"); if (!b) return;
-        pressed = b; clearTimeout(timer);
-        timer = setTimeout(() => setActive(b), 150); // 軽いタップでは出さない
-      });
-      nav.addEventListener("pointermove", (e) => {
-        if (!lens.classList.contains("show")) return;
-        const el = document.elementFromPoint(e.clientX, e.clientY);
-        const b = el && el.closest("button");
-        if (b && nav.contains(b)) setActive(b); // 指を滑らせるとレンズも追従
-      });
-      const release = () => {
-        // 別のボタンへ滑らせて離した場合は、そのボタンを実行
-        if (lens.classList.contains("show") && active && pressed && active !== pressed) {
-          const target = active; hide(); target.click(); return;
-        }
-        hide();
-      };
-      window.addEventListener("pointerup", release);
-      window.addEventListener("pointercancel", hide);
-      nav.addEventListener("contextmenu", (e) => e.preventDefault());
-    })();
-    // PWA standalone: 起動時・復帰時に上端へ強制（勝手に下へ行く対策）
-    (function fixStandaloneScroll() {
-      const isStandalone = window.navigator.standalone === true
-        || window.matchMedia('(display-mode: standalone)').matches;
-      if (!isStandalone) return;
-      const toTop = () => { try { window.scrollTo(0, 0); } catch (_) {} };
-      toTop();
-      setTimeout(toTop, 50);
-      setTimeout(toTop, 300);
-      document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') setTimeout(toTop, 50);
-      });
-      window.addEventListener('pageshow', (e) => { if (e.persisted) setTimeout(toTop, 50); });
-    })();
-
-    if (!hasAgreedLocally()) openTerms(false);
-    try {
-    renderFilters(); subscribePosts(); switchTab('home'); loadSiteAnnouncement();
-  } catch (e) {
-    console.error("Init error:", e);
-  }
-
-    // 👇 ここから追加・修正（Xなどのアプリ内ブラウザを自然に案内） 👇
-    const ua = navigator.userAgent;
-    const isInApp = /Twitter|FBAN|FBAV|Instagram|Line/i.test(ua);
-    if (isInApp) {
-      const isIOS = /iPhone|iPad|iPod/i.test(ua);
-      const promptElement = document.getElementById('inAppBrowserPrompt');
-      const messageElement = document.getElementById('promptMessage');
-      if (promptElement && messageElement) {
-        if (isIOS) {
-          messageElement.innerHTML = "X（Twitter）などのアプリ内ブラウザでは、Googleログインが制限されてしまいます。<br><br>お手数ですが、画面右下の<br><strong class='text-illit-darkPurple font-bold'>🧭コンパスアイコン（または共有アイコン）</strong><br>をタップして、<strong>「Safariで開く」</strong>を選択してください。";
-        } else {
-          messageElement.innerHTML = "アプリ内ブラウザでは、Googleログインが制限されてしまいます。<br><br>お手数ですが、画面右上の<br><strong class='text-illit-darkPurple font-bold'>︙（メニューアイコン）</strong><br>をタップして、<strong>「ブラウザで開く」</strong>を選択してください。";
-        }
-        promptElement.classList.remove('hidden');
-      }
-    }
-  </script>
+    </script>
 
   <!-- 👇 案内用のポップアップモーダル（サイトのデザインに合わせた綺麗な見た目） 👇 -->
   <div id="inAppBrowserPrompt" class="hidden fixed inset-0 z-[9999] modal-backdrop flex items-center justify-center p-4">
