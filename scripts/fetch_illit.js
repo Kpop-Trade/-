@@ -133,4 +133,63 @@ async function main() {
 【抽出項目】
 1. 公式発表されたシリアル特典の応募締切日
 2. 公式発表されたチケット関連日程
-3. 公式発表
+3. 公式発表されたアルバム発売日
+4. 公式発表されたライブ・コンサート日程
+5. 公式発表されたテレビ出演・誕生日
+
+【出力形式】
+[{"date":"YYYY-MM-DD","time":"HH:MM（不明なら終日）","title":"イベント名","category":"deadline | ticket | release | event | media | birthday","detail":"公式情報の補足"}]
+
+※公式発表されていない情報は含めないでください。不明な場合は [] を返してください。`;
+
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${groqKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: "openai/gpt-oss-120b",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.1
+    })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error("Groq API error: " + JSON.stringify(data));
+  const text = data?.choices?.[0]?.message?.content || "[]";
+  const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
+  fs.writeFileSync("illit_calendar.json", JSON.stringify(parsed, null, 2));
+  console.log(`SUCCESS: ${parsed.length}件更新`);
+
+  const crypto = require("crypto");
+  function base64url(input) {
+    return Buffer.from(input).toString("base64").replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+  }
+  async function getAccessToken(sa) {
+    const now = Math.floor(Date.now() / 1000);
+    const header = base64url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
+    const claim = base64url(JSON.stringify({
+      iss: sa.client_email,
+      scope: "https://www.googleapis.com/auth/cloud-platform https://www.googleapis.com/auth/datastore https://www.googleapis.com/auth/firebase.messaging",
+      aud: "https://oauth2.googleapis.com/token",
+      exp: now + 3600,
+      iat: now
+    }));
+    const sign = crypto.createSign("RSA-SHA256");
+    sign.update(`${header}.${claim}`);
+    const signature = sign.sign(sa.private_key, "base64").replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+    const jwt = `${header}.${claim}.${signature}`;
+    const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`
+    });
+    const tokenData = await tokenRes.json();
+    if (!tokenData.access_token) throw new Error("Token error: " + JSON.stringify(tokenData));
+    return tokenData.access_token;
+  }
+  const fbToken = await getAccessToken(sa);
+  await sendNotifications(sa.project_id, fbToken, parsed);
+}
+
+main().catch(e => { console.error(e); process.exit(1); });
