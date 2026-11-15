@@ -218,6 +218,19 @@
       bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));
     }
   </style>
+
+<style>
+  #post-type-sheet > div,
+  #post-modal > div,
+  #serial-post-modal > div,
+  #group-post-modal > div {
+    position: relative;
+    z-index: 2;
+    background-color: #ffffff;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+</style>
 </head>
 <body class="bg-illit-bg min-h-screen text-gray-800 relative overflow-x-hidden">
   <div class="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
@@ -844,7 +857,7 @@
   </div>
 
   <!-- 出品モーダル -->
-  <div id="post-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
+  <div id="post-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4" style="z-index:99999;-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(15,23,42,0.55);">
     <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b border-purple-200/50 pb-3">
         <h3 id="post-modal-title" class="font-bold text-base text-gray-800">🃏 トレカの出品</h3>
@@ -893,7 +906,7 @@
   </div>
 
   <!-- シリアル出品 -->
-  <div id="serial-post-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
+  <div id="serial-post-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4" style="z-index:99999;-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(15,23,42,0.55);">
     <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b border-purple-200/50 pb-3">
         <h3 id="serial-modal-title" class="font-bold text-base text-gray-800">🎫 シリアルでトレカを求める</h3>
@@ -915,7 +928,7 @@
   </div>
 
   <!-- 共同購入 -->
-  <div id="group-post-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
+  <div id="group-post-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4" style="z-index:99999;-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(15,23,42,0.55);">
     <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b border-purple-200/50 pb-3">
         <h3 class="font-bold text-base text-gray-800">🛍 共同購入を主催する</h3>
@@ -7943,7 +7956,7 @@ window.closeIllitCalendar = function() {
 };
 </script>
 
-<div id="post-type-sheet" class="fixed inset-0  hidden flex items-end md:items-center justify-center z-[9999] bg-black/50" style="-webkit-backdrop-filter:none;backdrop-filter:none;" style="z-index:9999;pointer-events:auto;" onclick="if(event.target===this)closePostTypeSheet()">
+<div id="post-type-sheet" class="fixed inset-0  hidden flex items-end md:items-center justify-center z-[9999] bg-black/50" style="-webkit-backdrop-filter:none;backdrop-filter:none;" style="z-index:9999;pointer-events:auto;z-index:99999;position:fixed;inset:0;" onclick="if(event.target===this)closePostTypeSheet()">
     <div class="bg-white relative z-10 w-full max-w-md rounded-t-[2rem] md:rounded-[2rem] p-5 space-y-4 shadow-2xl max-h-[88vh] overflow-y-auto" style="pointer-events:auto;" onclick="event.stopPropagation()">
       <div class="flex justify-between items-center border-b border-purple-200/50 pb-3">
         <h3 class="font-bold text-base text-gray-800">何を出品しますか？</h3>
