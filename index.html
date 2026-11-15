@@ -5718,7 +5718,7 @@ function getAiCardVectors() {
             </label>
             <label class="bg-gradient-to-r from-pink-500 to-purple-500 text-white text-[11px] font-bold py-2.5 px-3 rounded-full cursor-pointer text-center hover:opacity-95 shadow-sm block">
               ✂️ まとめ画像から自動切り抜き
-              <input type="file" accept="image/*" class="hidden" onchange="handleSheetAutoCropSelect(this)">
+              <input type="file" accept="image/*" multiple class="hidden" onchange="handleMultipleSheetCrop(this)">
             </label>
           </div>
 
@@ -5747,7 +5747,7 @@ function getAiCardVectors() {
             </div>
             <div class="flex gap-2">
               <button onclick="closeSheetCropArea()" class="flex-1 bg-gray-100 text-gray-600 text-xs font-bold py-2 rounded-full">キャンセル</button>
-              <button id="sheet-crop-confirm-btn" onclick="commitSheetAutoCropsToZip()" class="flex-[2] bg-gradient-to-r from-pink-500 to-purple-600 text-white text-xs font-bold py-2 rounded-full shadow">
+              <button id="sheet-crop-confirm-btn" onclick="confirmAndNextSheet()" class="flex-[2] bg-gradient-to-r from-pink-500 to-purple-600 text-white text-xs font-bold py-2 rounded-full shadow">
                 ✂️ 有効な枠を切り抜いてZIPリストへ追加
               </button>
             </div>
@@ -8442,6 +8442,182 @@ window.showDayDetail = function(dateStr) {
 window.closeIllitCalendar = function() {
   document.getElementById("illit-calendar-modal").classList.add("hidden");
 };
+// ===== まとめ画像からのトレカ枠自動検出ロジック（複数画像＋アルバム・メンバー指定＋クリーン/透かし対応） =====
+
+let multiSheetQueue = [];
+let multiSheetIndex = 0;
+
+window.handleMultipleSheetCrop = function(inputEl) {
+  const files = Array.from(inputEl.files || []);
+  inputEl.value = "";
+  if (!files.length) return;
+  multiSheetQueue = files;
+  multiSheetIndex = 0;
+  processNextSheet();
+};
+
+function processNextSheet() {
+  if (multiSheetIndex >= multiSheetQueue.length) {
+    showToast(multiSheetQueue.length + "枚のまとめ画像を処理しました", "success");
+    const area = document.getElementById("sheet-crop-area");
+    if (area) area.classList.add("hidden");
+    return;
+  }
+  const file = multiSheetQueue[multiSheetIndex];
+  const reader = new FileReader();
+  reader.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      sheetCropState.img = img;
+      sheetCropState.fileName = file.name;
+      sheetCropState.boxes = [];
+      const area = document.getElementById("sheet-crop-area");
+      if (area) area.classList.remove("hidden");
+      showAlbumMemberSelector();
+      if (typeof rerunSheetAutoDetect === "function") rerunSheetAutoDetect();
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function showAlbumMemberSelector() {
+  const area = document.getElementById("sheet-crop-area");
+  if (!area) return;
+  let selector = document.getElementById("sheet-album-member-selector");
+  if (!selector) {
+    selector = document.createElement("div");
+    selector.id = "sheet-album-member-selector";
+    selector.className = "space-y-2 bg-indigo-50 px-2 py-2 rounded-lg mb-2";
+    const albums = (window.ILLIT_CARD_ALBUMS || []).map(a => 
+      '<option value="' + a.id + '">' + a.name + '</option>'
+    ).join("");
+    const members = ["", "ウォニ", "ミンジュ", "イロハ", "モカ", "ユナ", "OT5"].map(m =>
+      '<option value="' + m + '">' + (m || "（メンバーなし）") + '</option>'
+    ).join("");
+    selector.innerHTML = 
+      '<div class="flex items-center gap-2 text-xs">' +
+        '<span class="font-bold text-indigo-800 w-16">アルバム:</span>' +
+        '<select id="sheet-current-album" class="flex-1 liquid-glass-input rounded px-2 py-1 text-xs">' + albums + '</select>' +
+      '</div>' +
+      '<div class="flex items-center gap-2 text-xs">' +
+        '<span class="font-bold text-indigo-800 w-16">メンバー:</span>' +
+        '<select id="sheet-current-member" class="flex-1 liquid-glass-input rounded px-2 py-1 text-xs">' + members + '</select>' +
+      '</div>';
+    area.insertBefore(selector, area.firstChild);
+  }
+}
+
+window.confirmAndNextSheet = function() {
+  if (typeof commitSheetAutoCropsToZip === "function") {
+    commitSheetAutoCropsToZip();
+  }
+  multiSheetIndex++;
+  processNextSheet();
+};
+
+window.closeSheetCropArea = function() {
+  sheetCropState.img = null;
+  sheetCropState.boxes = [];
+  const area = document.getElementById("sheet-crop-area");
+  if (area) area.classList.add("hidden");
+  const selector = document.getElementById("sheet-album-member-selector");
+  if (selector) selector.remove();
+};
+
+window.commitSheetAutoCropsToZip = async function() {
+  try {
+    const img = sheetCropState && sheetCropState.img;
+    const allBoxes = (sheetCropState && sheetCropState.boxes) ? sheetCropState.boxes : [];
+    const boxes = allBoxes.filter(b => b && b.active !== false);
+    if (!img || !boxes.length) {
+      alert("有効な枠がありません。");
+      return;
+    }
+    const btn = document.getElementById("sheet-crop-confirm-btn");
+    if (btn) { btn.disabled = true; btn.textContent = "切り抜き中..."; }
+
+    const albumSel = document.getElementById("sheet-current-album");
+    const memberSel = document.getElementById("sheet-current-member");
+    const currentAlbum = albumSel ? albumSel.value : (document.getElementById("admin-zip-album")?.value || adminCardsAlbum || "");
+    const currentMember = memberSel ? memberSel.value : "";
+    const baseStem = ((sheetCropState.fileName || "sheet").replace(/\.[^.]+$/, "") || "sheet");
+    let added = 0;
+
+    for (let i = 0; i < boxes.length; i++) {
+      const b = boxes[i];
+      if (btn) btn.textContent = "切り抜き中... (" + (i + 1) + "/" + boxes.length + ")";
+      await new Promise(r => setTimeout(r, 20));
+      try {
+        const sx = Math.max(0, Math.round(Number(b.x) || 0));
+        const sy = Math.max(0, Math.round(Number(b.y) || 0));
+        const cropW = Math.max(1, Math.min(img.naturalWidth || img.width, Math.round(Number(b.w) || 1)));
+        const cropH = Math.max(1, Math.min(img.naturalHeight || img.height, Math.round(Number(b.h) || 1)));
+        const canvas = document.createElement("canvas");
+        canvas.width = cropW;
+        canvas.height = cropH;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, cropW, cropH);
+        ctx.drawImage(img, sx, sy, cropW, cropH, 0, 0, cropW, cropH);
+        
+        // クリーン画像（判定用）
+        const cleanBlob = await new Promise(resolve => canvas.toBlob(b => resolve(b), "image/jpeg", 0.95));
+        
+        // 透かし入り画像（公開用）
+        let watermarkBlob = null;
+        if (typeof compressCardWithWatermark === "function") {
+          const tempFile = new File([cleanBlob], "temp.jpg", { type: "image/jpeg" });
+          const wmDataUrl = await compressCardWithWatermark(tempFile, PHOTO_THUMB);
+          if (wmDataUrl) {
+            const resp = await fetch(wmDataUrl);
+            watermarkBlob = await resp.blob();
+          }
+        }
+        
+        canvas.width = 0; canvas.height = 0;
+        if (!cleanBlob) continue;
+        
+        const member = currentMember || (b.member || "").trim();
+        const cardId = "crop_" + Date.now().toString(36) + "_" + i;
+        const fileName = (member ? member + "_" : "") + baseStem + "_" + String(i + 1).padStart(2, "0") + ".jpg";
+        
+        // クリーン画像を保存（判定用）
+        const cleanFile = new File([cleanBlob], "clean_" + fileName, { type: "image/jpeg" });
+        // 透かし画像を保存（公開用）
+        const wmFile = watermarkBlob ? new File([watermarkBlob], fileName, { type: "image/jpeg" }) : cleanFile;
+        
+        adminZipPackFiles.push({
+          file: wmFile,
+          cleanFile: cleanFile,
+          relPath: fileName,
+          albumId: currentAlbum,
+          member: member || (typeof guessMemberFromFileName === "function" ? guessMemberFromFileName(fileName) : ""),
+          cardId: cardId
+        });
+        added++;
+      } catch (e) { console.error(e); }
+    }
+    if (typeof updateAdminZipPackUI === "function") updateAdminZipPackUI();
+    if (added > 0) showToast(added + "枚を追加しました", "success");
+    if (btn) { btn.disabled = false; btn.textContent = "✂️ 切り抜いて次へ"; }
+  } catch (e) {
+    console.error(e);
+    alert("エラー: " + (e.message || e));
+  }
+};
+
+// HTML変更箇所:
+/*
+<label class="bg-gradient-to-r from-pink-500 to-purple-500 text-white text-[11px] font-bold py-2.5 px-3 rounded-full cursor-pointer text-center hover:opacity-95 shadow-sm block">
+  ✂️ まとめ画像から自動切り抜き（複数可）
+  <input type="file" accept="image/*" multiple class="hidden" onchange="handleMultipleSheetCrop(this)">
+</label>
+
+<button id="sheet-crop-confirm-btn" onclick="confirmAndNextSheet()" class="flex-[2] bg-gradient-to-r from-pink-500 to-purple-600 text-white text-xs font-bold py-2 rounded-full shadow">
+  ✂️ 切り抜いて次へ
+</button>
+*/
 </script>
 </body>
 </html>
