@@ -5299,7 +5299,7 @@ function getAiCardVectors() {
 
     function renderAiCandidates(container, matches) {
       if (!container) return;
-      const esc = window.escapeHtml || ((s) => String(s || "").replace(/[&<>"']/g, m => ({"&":"&","<":"<",">":">","\\"":""","'":"&#39;"}[m])));
+      const esc = window.escapeHtml || ((s) => String(s || "").replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m] || m)));
       if (!matches || matches.length === 0) {
         container.classList.remove("hidden");
         container.innerHTML = `<div class="text-[11px] text-gray-400 py-1.5 text-center">一致する候補が見つかりませんでした（手動で選択してください）</div>`;
