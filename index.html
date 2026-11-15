@@ -5798,7 +5798,7 @@ function getAiCardVectors() {
               <button onclick="closeSheetCropArea()" class="text-xs text-gray-400 hover:text-gray-700 font-bold px-1">✕ 閉じる</button>
             </div>
             <p class="text-[10px] text-gray-600 leading-snug">
-              赤い枠が切り抜かれるトレカです。<strong>誤検出された枠はタップでOFF（グレー）</strong>にできます。
+              赤い枠が切り抜かれるトレカです。<strong>既存枠をタップでON/OFF、枠がない場所をタップで新しい赤枠を追加</strong>できます。
             </p>
             <div class="flex items-center gap-2 text-[11px] bg-pink-50/70 px-2.5 py-1.5 rounded-lg">
               <span class="text-gray-700 shrink-0">検出感度:</span>
@@ -6089,7 +6089,10 @@ function getAiCardVectors() {
       if (area) area.classList.remove("hidden");
       const thrEl = document.getElementById("sheet-crop-threshold");
       if (thrEl) thrEl.value = String(it.threshold || 22);
-      if (typeof rerunSheetAutoDetect === "function") {
+      if (Array.isArray(it.customBoxes) && it.customBoxes.length > 0) {
+        window.sheetCropState.boxes = it.customBoxes.map(b => ({ ...b }));
+        if (typeof drawSheetCropPreview === "function") drawSheetCropPreview();
+      } else if (typeof rerunSheetAutoDetect === "function") {
         rerunSheetAutoDetect();
       }
       it.detectedCount = Array.isArray(window.sheetCropState.boxes) ? window.sheetCropState.boxes.filter(b => b.active !== false).length : 0;
@@ -6188,7 +6191,10 @@ function getAiCardVectors() {
           const sheetMemEl = document.getElementById("sheet-current-member");
           if (sheetMemEl) sheetMemEl.value = it.member || "";
 
-          if (typeof rerunSheetAutoDetect === "function") {
+          if (Array.isArray(it.customBoxes) && it.customBoxes.length > 0) {
+            window.sheetCropState.boxes = it.customBoxes.map(b => ({ ...b }));
+            if (typeof drawSheetCropPreview === "function") drawSheetCropPreview();
+          } else if (typeof rerunSheetAutoDetect === "function") {
             rerunSheetAutoDetect();
           }
           if (it.member && Array.isArray(window.sheetCropState.boxes)) {
@@ -6567,24 +6573,82 @@ function getAiCardVectors() {
       if (countEl) countEl.textContent = `${activeCount}枚有効 / 全${sheetCropState.boxes.length}枠`;
     }
 
+    window.syncActiveBatchSheetBoxes = function() {
+      const idx = window.activeBatchPreviewIdx;
+      if (typeof idx === "number" && idx >= 0 && window.batchSheetItems && window.batchSheetItems[idx]) {
+        const it = window.batchSheetItems[idx];
+        it.customBoxes = (sheetCropState.boxes || []).map(b => ({ ...b }));
+        it.detectedCount = it.customBoxes.filter(b => b.active !== false).length;
+        const cnt = document.getElementById("bs-cnt-" + idx);
+        if (cnt) cnt.textContent = it.detectedCount + "枚検出";
+      }
+    };
+
     window.handleSheetCanvasClick = function(ev) {
       const canvas = document.getElementById("sheet-crop-canvas");
-      if (!canvas || !sheetCropState.boxes || !sheetCropState.boxes.length) return;
+      const img = sheetCropState && sheetCropState.img;
+      if (!canvas || !img) return;
+      if (!Array.isArray(sheetCropState.boxes)) sheetCropState.boxes = [];
       const rect = canvas.getBoundingClientRect();
       if (!rect.width || !rect.height) return;
-      // 表示サイズ → 画像座標へ変換（scale は canvasバッファ / 元画像）
+
       const scale = sheetCropState.scale > 0 ? sheetCropState.scale : 1;
       const clickX = ((ev.clientX - rect.left) / rect.width) * (canvas.width / scale);
       const clickY = ((ev.clientY - rect.top) / rect.height) * (canvas.height / scale);
 
+      // 1. 既存枠内をタップした場合はON/OFF切り替え
       for (let i = sheetCropState.boxes.length - 1; i >= 0; i--) {
         const b = sheetCropState.boxes[i];
         if (clickX >= b.x && clickX <= b.x + b.w && clickY >= b.y && clickY <= b.y + b.h) {
           b.active = !b.active;
           drawSheetCropPreview();
-          break;
+          if (typeof syncActiveBatchSheetBoxes === "function") syncActiveBatchSheetBoxes();
+          return;
         }
       }
+
+      // 2. 空き場所をタップした場合は、他の枠と同じ標準サイズの新規赤枠を追加
+      const existing = sheetCropState.boxes.filter(b => b && b.w > 10 && b.h > 10);
+      let stdW, stdH;
+      if (existing.length > 0) {
+        const ws = existing.map(b => b.w).sort((a, b) => a - b);
+        const hs = existing.map(b => b.h).sort((a, b) => a - b);
+        stdW = ws[Math.floor(ws.length / 2)];
+        stdH = hs[Math.floor(hs.length / 2)];
+      } else {
+        stdW = Math.max(40, Math.round(img.width * 0.08));
+        stdH = Math.round(stdW * 1.52);
+      }
+
+      let newX = Math.round(clickX - stdW / 2);
+      let newY = Math.round(clickY - stdH / 2);
+
+      // 同じ横列にすでに枠があればY位置（高さライン）を自動スナップして綺麗に揃える
+      const sameRowBox = existing.find(b => Math.abs((b.y + b.h / 2) - clickY) < stdH * 0.45);
+      if (sameRowBox) {
+        newY = sameRowBox.y;
+      }
+
+      newX = Math.max(0, Math.min(img.width - stdW, newX));
+      newY = Math.max(0, Math.min(img.height - stdH, newY));
+
+      sheetCropState.boxes.push({
+        x: newX,
+        y: newY,
+        w: stdW,
+        h: stdH,
+        active: true,
+        member: ""
+      });
+
+      sheetCropState.boxes.sort((a, b) => {
+        const rowTol = Math.max(12, stdH * 0.35);
+        if (Math.abs(a.y - b.y) > rowTol) return a.y - b.y;
+        return a.x - b.x;
+      });
+
+      drawSheetCropPreview();
+      if (typeof syncActiveBatchSheetBoxes === "function") syncActiveBatchSheetBoxes();
     };
 
     window.assignSheetRowMembers = function(mode) {
