@@ -218,6 +218,14 @@
       bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));
     }
   </style>
+<style>
+  #post-type-sheet, #post-type-sheet * {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    transition: none !important;
+    animation: none !important;
+  }
+</style>
 </head>
 <body class="bg-illit-bg min-h-screen text-gray-800 relative overflow-x-hidden">
   <div class="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
@@ -3418,10 +3426,20 @@ const ILLIT_CARD_ALBUMS = [
     }
 
     window.openPostTypeSheet = function() {
-      if (!currentUser) return alert("ログインが必要です。");
-      document.getElementById("post-type-sheet").classList.remove("hidden");
-    };
-    window.closePostTypeSheet = function() { document.getElementById("post-type-sheet").classList.add("hidden"); };
+    if (!currentUser) return alert("ログインが必要です。");
+    var s = document.getElementById("post-type-sheet");
+    if (s) {
+      s.classList.remove("hidden");
+      s.style.display = "flex";
+    }
+  };
+    window.closePostTypeSheet = function() {
+    var s = document.getElementById("post-type-sheet");
+    if (s) {
+      s.classList.add("hidden");
+      s.style.display = "none";
+    }
+  };
 
     function renderSellTab() {
       const sec = document.getElementById("post-menu-section");
@@ -7978,20 +7996,6 @@ window.closeIllitCalendar = function() {
   const modal = document.getElementById("illit-calendar-modal");
   if (modal) modal.classList.add("hidden");
 };
-</script>
-<div id="ios-diag" style="position:fixed;top:0;left:0;right:0;z-index:2147483647;background:#111;color:#0f0;font-size:11px;padding:6px 8px;font-family:monospace;pointer-events:none;">DIAG READY</div>
-<script>
-(function(){
-  var box = document.getElementById("ios-diag");
-  function log(msg){ if(box) box.textContent = msg; }
-  window.addEventListener("error", function(e){ log("JS ERR: " + (e.message || e.type) + " @" + (e.lineno||"?")); });
-  window.addEventListener("unhandledrejection", function(e){ log("PROMISE ERR: " + (e.reason && e.reason.message ? e.reason.message : e.reason)); });
-  document.addEventListener("touchstart", function(e){
-    var t = e.target;
-    var btn = t && t.closest ? t.closest("button") : null;
-    log("TOUCH: " + (btn ? ("BTN[" + btn.textContent.trim().slice(0,12) + "]") : (t.tagName + "#" + (t.id||""))));
-  }, true);
-})();
 </script>
 </body>
 </html>
