@@ -9,9 +9,17 @@ async function sendNotifications(projectId, token, events) {
   const today = getJstDateStr(0);
   const tomorrow = getJstDateStr(1);
 
-  const targets = events.filter(e => e.date === today || e.date === tomorrow);
+  // 今日・明日の予定、または入金・シリアル締切
+  const targets = events.filter(e => {
+    const isTodayOrTomorrow = e.date === today || e.date === tomorrow;
+    const isDeadline = e.category === "deadline" || e.category === "ticket";
+    const title = (e.title || "").toLowerCase();
+    const isPaymentOrSerial = title.includes("入金") || title.includes("シリアル") || title.includes("締切");
+    return isTodayOrTomorrow || (isDeadline && isPaymentOrSerial);
+  });
+
   if (targets.length === 0) {
-    console.log("通知対象の今日・明日の予定はありません。");
+    console.log("通知対象の予定はありません。");
     return;
   }
 
@@ -26,7 +34,7 @@ async function sendNotifications(projectId, token, events) {
   }
 
   const newTargets = targets.filter(e => {
-    const label = e.date === today ? "today" : "tomorrow";
+    const label = e.date === today ? "today" : e.date === tomorrow ? "tomorrow" : "deadline";
     return !sentKeys.includes(`${label}:${e.date}:${e.title}`);
   });
   if (newTargets.length === 0) {
@@ -61,7 +69,8 @@ async function sendNotifications(projectId, token, events) {
 
   for (const ev of newTargets) {
     const isToday = ev.date === today;
-    const prefix = isToday ? "【本日】" : "【明日】";
+    const isTomorrow = ev.date === tomorrow;
+    const prefix = isToday ? "【本日】" : isTomorrow ? "【明日】" : "【締切】";
     const timeStr = ev.time && ev.time !== "終日" ? ` (${ev.time})` : "";
     const title = `${prefix}${ev.title}${timeStr}`;
     const body = ev.detail || "ILLIT予定カレンダーで詳細を確認";
@@ -93,7 +102,7 @@ async function sendNotifications(projectId, token, events) {
         }
       }
     }
-    const label = isToday ? "today" : "tomorrow";
+    const label = isToday ? "today" : isTomorrow ? "tomorrow" : "deadline";
     newlySentKeys.push(`${label}:${ev.date}:${ev.title}`);
     console.log(`通知送信完了: ${title} -> ${okCount}/${tokenDocs.length}端末`);
   }
@@ -122,22 +131,32 @@ async function main() {
   if (!raw) throw new Error("FIREBASE_SERVICE_ACCOUNT is not set");
   const sa = JSON.parse(raw);
 
-  const searchQuery = "ILLIT アイリット 公式スケジュール 2026 ライブ コンサート 発売日";
-  const searchRes = await fetch("https://api.tavily.com/search", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      api_key: tavilyKey,
-      query: searchQuery,
-      search_depth: "advanced",
-      include_answer: true,
-      max_results: 10
-    })
-  });
-  const searchData = await searchRes.json();
-  if (!searchRes.ok) throw new Error("Tavily error: " + JSON.stringify(searchData));
+  const currentMonth = getJstDateStr(0).slice(0, 7);
+  const queries = [
+    `ILLIT 公式 スケジュール ${currentMonth}`,
+    `ILLIT ライブ コンサート 2026`,
+    `ILLIT チケット 応募 締切 2026`,
+    `ILLIT シリアル 特典 応募 2026`,
+    `ILLIT アルバム 発売日 2026`
+  ];
 
-  const searchContext = searchData.answer || JSON.stringify(searchData.results);
+  let allResults = [];
+  for (const query of queries) {
+    const searchRes = await fetch("https://api.tavily.com/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        api_key: tavilyKey,
+        query: query,
+        search_depth: "advanced",
+        include_answer: true,
+        max_results: 5
+      })
+    });
+    const searchData = await searchRes.json();
+    if (searchData.results) allResults.push(...searchData.results);
+  }
+  const searchContext = JSON.stringify(allResults);
 
   const groqKey = process.env.GROQ_API_KEY;
   const prompt = `以下の検索結果から、K-POPグループ「ILLIT（アイリット）」の公式スケジュールのみを抽出してください。現在の日付は ${getJstDateStr(0)} です。
@@ -147,13 +166,16 @@ ${searchContext}
 
 【厳守事項】
 - 公式情報のみを使用
+- ${getJstDateStr(0)} 以降の予定のみを抽出
+- 過去の予定は含めない
 - 非公式情報、推測は含めない
 - 不明な場合は空配列 [] を返す
+- 入金締切、シリアル応募締切も必ず含める
 
 【出力形式】
 [{"date":"YYYY-MM-DD","time":"HH:MM（不明なら終日）","title":"イベント名","category":"deadline | ticket | release | event | media | birthday","detail":"補足情報","link":"公式ページのURL（あれば、なければ空文字）"}]
 
-※linkは公式サイトや公式SNSのURLを入れてください。不明な場合は空文字 "" にしてください。`;
+※${getJstDateStr(0)} より前の日付の予定は含めないでください。`;
 
   const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
