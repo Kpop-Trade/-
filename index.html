@@ -6371,20 +6371,24 @@ function getAiCardVectors() {
         return;
       }
       const btn = document.getElementById("batch-sheets-run-btn");
-      const origText = btn ? btn.textContent : "⚡ 全シートを一括切り抜きして一気にZIPダウンロード";
-      if (btn) btn.disabled = true;
+      const origText = btn ? btn.textContent : "✂️ 全シートを一括切り抜きして一気にZIPダウンロード";
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "⏳ 切り抜き準備中...";
+      }
 
       const mainAlbumEl = document.getElementById("admin-zip-album");
       const origMainAlbum = mainAlbumEl ? mainAlbumEl.value : "";
-      const thrEl = document.getElementById("sheet-crop-threshold");
-      const origThr = thrEl ? thrEl.value : "22";
 
       try {
+        if (!Array.isArray(window.adminZipPackFiles)) window.adminZipPackFiles = [];
+
         for (let i = 0; i < items.length; i++) {
           const it = items[i];
           if (btn) btn.textContent = "切り抜き中 (" + (i + 1) + "/" + items.length + "シート目)...";
 
           const img = it.imgObj || await new Promise((resolve, reject) => {
+            if (!it.file) return reject(new Error("画像データが見つかりません"));
             const reader = new FileReader();
             reader.onload = () => {
               const im = new Image();
@@ -6396,40 +6400,66 @@ function getAiCardVectors() {
             reader.readAsDataURL(it.file);
           });
 
-          window.sheetCropState.img = img;
-          window.sheetCropState.fileName = it.file.name;
-          if (thrEl) thrEl.value = String(it.threshold || 22);
-          if (mainAlbumEl && it.albumId) mainAlbumEl.value = it.albumId;
-          const sheetAlbEl = document.getElementById("sheet-current-album");
-          if (sheetAlbEl && it.albumId) sheetAlbEl.value = it.albumId;
-          const sheetMemEl = document.getElementById("sheet-current-member");
-          if (sheetMemEl) sheetMemEl.value = it.member || "";
-
+          let boxes = [];
           if (Array.isArray(it.customBoxes) && it.customBoxes.length > 0) {
-            window.sheetCropState.boxes = it.customBoxes.map(b => ({ ...b }));
-            if (typeof drawSheetCropPreview === "function") drawSheetCropPreview();
-          } else if (typeof rerunSheetAutoDetect === "function") {
-            rerunSheetAutoDetect();
+            boxes = it.customBoxes.filter(b => b && b.active !== false && b.w >= 10 && b.h >= 10);
+          } else if (typeof detectCardBoxesFromImage === "function") {
+            boxes = detectCardBoxesFromImage(img, Number(it.threshold || 22)) || [];
+          } else {
+            window.sheetCropState = window.sheetCropState || {};
+            window.sheetCropState.img = img;
+            const thEl = document.getElementById("sheet-crop-threshold");
+            if (thEl) thEl.value = String(it.threshold || 22);
+            if (typeof rerunSheetAutoDetect === "function") rerunSheetAutoDetect();
+            boxes = (window.sheetCropState && Array.isArray(window.sheetCropState.boxes))
+              ? window.sheetCropState.boxes.filter(b => b && b.active !== false && b.w >= 10 && b.h >= 10)
+              : [];
           }
-          if (it.member && Array.isArray(window.sheetCropState.boxes)) {
-            window.sheetCropState.boxes.forEach(b => { b.member = it.member; });
-          }
-          await new Promise(r => setTimeout(r, 80));
 
-          if (typeof commitSheetAutoCropToZip === "function") {
-            await commitSheetAutoCropToZip();
+          const albumId = it.albumId || origMainAlbum || "srm";
+          const baseName = (it.file && it.file.name ? it.file.name : (it.fileName || "sheet")).replace(/\.[^.]+$/, "");
+
+          for (let bi = 0; bi < boxes.length; bi++) {
+            const b = boxes[bi];
+            const sx = Math.max(0, Math.round(b.x));
+            const sy = Math.max(0, Math.round(b.y));
+            const sw = Math.min(img.width - sx, Math.round(b.w));
+            const sh = Math.min(img.height - sy, Math.round(b.h));
+            if (sw < 10 || sh < 10) continue;
+
+            const cropCanvas = document.createElement("canvas");
+            cropCanvas.width = sw;
+            cropCanvas.height = sh;
+            const cctx = cropCanvas.getContext("2d");
+            cctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+
+            const dataUrl = cropCanvas.toDataURL("image/png");
+            cropCanvas.width = 0;
+            cropCanvas.height = 0;
+
+            const byteStr = atob(dataUrl.split(",")[1]);
+            const ab = new ArrayBuffer(byteStr.length);
+            const ia = new Uint8Array(ab);
+            for (let k = 0; k < byteStr.length; k++) ia[k] = byteStr.charCodeAt(k);
+            const blob = new Blob([ab], { type: "image/png" });
+
+            const memberVal = (b.member || it.member || "").trim();
+            const cardFile = new File([blob], baseName + "_" + String(bi + 1).padStart(2, "0") + ".png", { type: "image/png" });
+            window.adminZipPackFiles.push({
+              file: cardFile,
+              albumId: albumId,
+              member: memberVal,
+              name: baseName + "_" + (bi + 1)
+            });
           }
         }
 
-        if (mainAlbumEl && origMainAlbum) mainAlbumEl.value = origMainAlbum;
-        if (thrEl) thrEl.value = origThr;
-
-        if (!Array.isArray(adminZipPackFiles) || adminZipPackFiles.length === 0) {
+        if (!Array.isArray(window.adminZipPackFiles) || window.adminZipPackFiles.length === 0) {
           alert("切り抜かれたトレカが0枚でした。各シートの「絞り(感度)」スライダーを調整してください。");
           return;
         }
 
-        if (btn) btn.textContent = "📦 透かし圧縮＆ZIP生成中 (" + adminZipPackFiles.length + "枚)...";
+        if (btn) btn.textContent = "📦 透かし圧縮＆ZIP生成中 (" + window.adminZipPackFiles.length + "枚)...";
         if (typeof buildAndDownloadCardPackZip === "function") {
           await buildAndDownloadCardPackZip();
         }
