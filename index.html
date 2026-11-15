@@ -6271,39 +6271,32 @@ function getAiCardVectors() {
       off.width = 0;
       off.height = 0;
 
-      // 1. 外周フチから代表背景色を推定（上位2色まで保持してグラデ背景にも対応）
+      // 1. 画面直撮りの黒ベゼルを避けて内側領域(14%〜86%)からシート台紙色を推定
       const colorCounts = new Map();
       const addSample = (x, y) => {
+        if (x < 0 || x >= sw || y < 0 || y >= sh) return;
         const i = (y * sw + x) * 4;
-        const r = data[i] & 0xf8;
-        const g = data[i + 1] & 0xf8;
-        const b = data[i + 2] & 0xf8;
-        const key = (r << 16) | (g << 8) | b;
+        const r = data[i], g = data[i + 1], b = data[i + 2];
+        if (r < 45 && g < 45 && b < 45) return;
+        const key = ((r & 0xf8) << 16) | ((g & 0xf8) << 8) | (b & 0xf8);
         colorCounts.set(key, (colorCounts.get(key) || 0) + 1);
       };
-      for (let x = 0; x < sw; x += 2) {
-        for (let b = 0; b < Math.min(8, sh); b++) {
-          addSample(x, b);
-          addSample(x, sh - 1 - b);
-        }
-      }
-      for (let y = 0; y < sh; y += 2) {
-        for (let b = 0; b < Math.min(8, sw); b++) {
-          addSample(b, y);
-          addSample(sw - 1 - b, y);
+      const x0 = Math.round(sw * 0.14), x1 = Math.round(sw * 0.86);
+      const y0 = Math.round(sh * 0.24), y1 = Math.round(sh * 0.96);
+      for (let y = y0; y <= y1; y += 3) {
+        for (let x = x0; x <= x1; x += 6) {
+          addSample(x, y);
         }
       }
       const sortedBg = [...colorCounts.entries()].sort((a, b) => b[1] - a[1]);
-      const bg1 = sortedBg[0] ? sortedBg[0][0] : ((255 << 16) | (255 << 8) | 255);
-      const bg2 = sortedBg[1] ? sortedBg[1][0] : bg1;
+      const bg1 = sortedBg[0] ? sortedBg[0][0] : ((220 << 16) | (220 << 8) | 220);
       const bg1R = (bg1 >> 16) & 0xff, bg1G = (bg1 >> 8) & 0xff, bg1B = bg1 & 0xff;
-      const bg2R = (bg2 >> 16) & 0xff, bg2G = (bg2 >> 8) & 0xff, bg2B = bg2 & 0xff;
 
-      // 2. 背景色差（2色対応）＋ 局所エッジ勾配（感度を高めて淡いトレカも拾う）
+      // 2. 台紙色との色差 ＋ 局所エッジ勾配による前景マスク
       const totalPx = sw * sh;
       const fg = new Uint8Array(totalPx);
-      const colorTol = Math.max(6, sensitivity * 1.15);
-      const edgeTol = Math.max(7, sensitivity * 0.85);
+      const colorTol = Math.max(8, sensitivity * 1.25);
+      const edgeTol = Math.max(9, sensitivity * 0.95);
 
       for (let y = 1; y < sh - 1; y++) {
         const rowOff = y * sw;
@@ -6312,9 +6305,12 @@ function getAiCardVectors() {
           const p = idx * 4;
           const r = data[p], g = data[p + 1], b = data[p + 2];
 
-          const d1 = (Math.abs(r - bg1R) + Math.abs(g - bg1G) + Math.abs(b - bg1B)) / 3;
-          const d2 = (Math.abs(r - bg2R) + Math.abs(g - bg2G) + Math.abs(b - bg2B)) / 3;
-          if (Math.min(d1, d2) > colorTol) {
+          if (r < 38 && g < 38 && b < 38 && (x < sw * 0.12 || x > sw * 0.88)) {
+            continue;
+          }
+
+          const diff = (Math.abs(r - bg1R) + Math.abs(g - bg1G) + Math.abs(b - bg1B)) / 3;
+          if (diff > colorTol) {
             fg[idx] = 1;
             continue;
           }
@@ -6333,7 +6329,7 @@ function getAiCardVectors() {
       const visited = new Uint8Array(totalPx);
       const queue = new Int32Array(totalPx);
       const rawBlobs = [];
-      const minSide = Math.max(16, Math.round(Math.min(sw, sh) * 0.035));
+      const minSide = Math.max(16, Math.round(Math.min(sw, sh) * 0.032));
 
       for (let y = 1; y < sh - 1; y++) {
         for (let x = 1; x < sw - 1; x++) {
@@ -6365,84 +6361,97 @@ function getAiCardVectors() {
           const bw = maxX - minX + 1;
           const bh = maxY - minY + 1;
           if (bw < minSide || bh < minSide) continue;
-          if (bw > sw * 0.96 && bh > sh * 0.96) continue;
+          if (bw > sw * 0.35 || bh > sh * 0.22) continue;
 
           const fillRatio = area / (bw * bh);
-          if (fillRatio < 0.25) continue;
+          if (fillRatio < 0.38) continue;
 
           rawBlobs.push({ minX, minY, maxX, maxY, bw, bh, area, fillRatio });
         }
       }
 
-      // 4. トレカらしい縦長矩形（比率 1.12〜2.10）から標準カードサイズ（中央値）を推定
-      const cardLike = rawBlobs.filter(b => {
+      // 4. トレカらしい縦長矩形（比率 1.25〜1.85）から標準カードサイズ（中央値）を厳密に算出
+      const strictCards = rawBlobs.filter(b => {
         const ratio = b.bh / b.bw;
-        return ratio >= 1.12 && ratio <= 2.10;
+        return ratio >= 1.25 && ratio <= 1.85;
       });
-      const refPool = cardLike.length >= 2 ? cardLike : rawBlobs;
+      const refPool = strictCards.length >= 2 ? strictCards : rawBlobs;
       const sortedW = refPool.map(b => b.bw).sort((a, b) => a - b);
       const sortedH = refPool.map(b => b.bh).sort((a, b) => a - b);
-      const medW = sortedW.length ? sortedW[Math.floor(sortedW.length / 2)] : Math.round(sw * 0.16);
-      const medH = sortedH.length ? Math.min(sortedH[Math.floor(sortedH.length / 2)], Math.round(medW * 1.65)) : Math.round(medW * 1.54);
+      const stdW = sortedW.length ? sortedW[Math.floor(sortedW.length / 2)] : Math.round(sw * 0.055);
+      // 高さは標準幅の 1.48〜1.56 倍の範囲にクランプして下部の文字ラベル混入を完全に防ぐ
+      const rawMedH = sortedH.length ? sortedH[Math.floor(sortedH.length / 2)] : Math.round(stdW * 1.52);
+      const stdH = Math.max(Math.round(stdW * 1.45), Math.min(rawMedH, Math.round(stdW * 1.56)));
 
-      // 5. 単体・横結合・縦結合・縦横グリッド結合をすべて分解＆下部文字ラベルを自動トリム
-      const splitCandidates = [];
+      // 5. 単体・横結合（2〜3枚）・縦結合（2段）を標準カードサイズ(stdW x stdH)で綺麗に切り出し
+      const singleCards = [];
+      const mergedCards = [];
+
       for (const b of rawBlobs) {
-        if (b.bh < medH * 0.52 || b.bw < medW * 0.50) continue;
+        if (b.bh < stdH * 0.68 || b.bw < stdW * 0.65) continue;
+        if (b.bh > stdH * 2.35 || b.bw > stdW * 3.4) continue;
 
-        const cols = Math.max(1, Math.round(b.bw / medW));
-        const rows = Math.max(1, Math.round(b.bh / medH));
+        const ratio = b.bh / b.bw;
+        // 単体カード：上端(minY)と水平中心を基準に、サイズは全カード共通の stdW x stdH に統一
+        if (ratio >= 1.18 && ratio <= 2.15 && b.bw >= stdW * 0.68 && b.bw <= stdW * 1.32) {
+          const centerX = b.minX + b.bw / 2;
+          singleCards.push({
+            minX: Math.round(centerX - stdW / 2),
+            minY: b.minY,
+            bw: stdW,
+            bh: stdH
+          });
+          continue;
+        }
 
-        if (cols >= 2 || rows >= 2) {
-          if (cols <= 10 && rows <= 10) {
-            const cellW = b.bw / cols;
-            const cellH = b.bh / rows;
-            const cellRatio = cellH / cellW;
-            if (cellRatio >= 1.05 && cellRatio <= 2.25) {
-              const trimH = cellRatio > 1.72 ? Math.round(cellW * 1.54) : Math.round(cellH);
-              for (let rIdx = 0; rIdx < rows; rIdx++) {
-                for (let cIdx = 0; cIdx < cols; cIdx++) {
-                  splitCandidates.push({
-                    minX: Math.round(b.minX + cIdx * cellW),
-                    minY: Math.round(b.minY + rIdx * cellH),
-                    bw: Math.round(cellW),
-                    bh: trimH
-                  });
-                }
-              }
-              continue;
-            }
+        // 縦に2段くっついた塊を上下2枚に分離
+        if (b.bw >= stdW * 0.72 && b.bw <= stdW * 1.32 && b.bh >= stdH * 1.75 && b.bh <= stdH * 2.35) {
+          const centerX = b.minX + b.bw / 2;
+          const nx = Math.round(centerX - stdW / 2);
+          const halfH = b.bh / 2;
+          mergedCards.push({ minX: nx, minY: b.minY, bw: stdW, bh: stdH });
+          mergedCards.push({ minX: nx, minY: Math.round(b.minY + halfH), bw: stdW, bh: stdH });
+          continue;
+        }
+
+        // 横に2枚または3枚くっついた塊を左右に分離
+        const cols = Math.round(b.bw / stdW);
+        if ((cols === 2 || cols === 3) && Math.abs(b.bw - cols * stdW) < stdW * 0.35 && b.bh <= stdH * 1.45) {
+          const cellW = b.bw / cols;
+          for (let c = 0; c < cols; c++) {
+            const centerX = b.minX + (c + 0.5) * cellW;
+            mergedCards.push({
+              minX: Math.round(centerX - stdW / 2),
+              minY: b.minY,
+              bw: stdW,
+              bh: stdH
+            });
           }
         }
+      }
 
-        // 単体カード（下に文字が付いて縦長になっていたら標準比率 1.54 にトリム）
-        const ratio = b.bh / b.bw;
-        if (ratio >= 1.05 && ratio <= 2.35 && b.bw <= medW * 1.55 && b.bh <= medH * 1.65) {
-          const finalH = ratio > 1.72 ? Math.round(b.bw * 1.54) : b.bh;
-          splitCandidates.push({
-            minX: b.minX,
-            minY: b.minY,
-            bw: b.bw,
-            bh: finalH
-          });
+      // 6. 重複排除（IoU 18%以上は追加しない）
+      const overlapRatio = (a, b) => {
+        const ix0 = Math.max(a.minX, b.minX);
+        const iy0 = Math.max(a.minY, b.minY);
+        const ix1 = Math.min(a.minX + a.bw, b.minX + b.bw);
+        const iy1 = Math.min(a.minY + a.bh, b.minY + b.bh);
+        if (ix1 <= ix0 || iy1 <= iy0) return 0;
+        const inter = (ix1 - ix0) * (iy1 - iy0);
+        const minArea = Math.min(a.bw * a.bh, b.bw * b.bh);
+        return minArea > 0 ? inter / minArea : 0;
+      };
+
+      const deduped = [];
+      for (const cand of [...singleCards, ...mergedCards]) {
+        if (!deduped.some(kept => overlapRatio(cand, kept) > 0.18)) {
+          deduped.push(cand);
         }
       }
 
-      // 6. 重複枠の除去
-      splitCandidates.sort((a, b) => (b.bw * b.bh) - (a.bw * a.bh));
-      const deduped = [];
-      for (const cand of splitCandidates) {
-        const cx = cand.minX + cand.bw / 2;
-        const cy = cand.minY + cand.bh / 2;
-        const isDup = deduped.some(kept => {
-          return cx >= kept.minX && cx <= kept.minX + kept.bw && cy >= kept.minY && cy <= kept.minY + kept.bh;
-        });
-        if (!isDup) deduped.push(cand);
-      }
-
-      // 7. 行ごとの歯抜け（等間隔グリッドの欠損トレカ）を自動補完
+      // 7. 行ごとのY座標スナップ（同じ行のカードの上端Y位置を一直線にピタッと揃える）＋ 欠損補完
       deduped.sort((a, b) => {
-        const rowTol = Math.max(12, medH * 0.38);
+        const rowTol = Math.max(10, stdH * 0.35);
         if (Math.abs(a.minY - b.minY) > rowTol) return a.minY - b.minY;
         return a.minX - b.minX;
       });
@@ -6450,54 +6459,62 @@ function getAiCardVectors() {
       const rowsGrouped = [];
       for (const item of deduped) {
         const lastRow = rowsGrouped[rowsGrouped.length - 1];
-        if (lastRow && Math.abs(item.minY - lastRow[0].minY) <= Math.max(12, medH * 0.38)) {
+        if (lastRow && Math.abs(item.minY - lastRow[0].minY) <= Math.max(10, stdH * 0.35)) {
           lastRow.push(item);
         } else {
           rowsGrouped.push([item]);
         }
       }
 
-      const completed = [];
+      const alignedAndCompleted = [];
       for (const row of rowsGrouped) {
         row.sort((a, b) => a.minX - b.minX);
-        if (row.length >= 2) {
+        // 行の中央値Yに揃えて、ガタつきを完全に解消
+        const ys = row.map(r => r.minY).sort((a, b) => a - b);
+        const snapY = ys[Math.floor(ys.length / 2)];
+        row.forEach(r => { r.minY = snapY; r.bw = stdW; r.bh = stdH; });
+
+        alignedAndCompleted.push(...row);
+
+        if (row.length >= 3) {
           const gaps = [];
           for (let i = 1; i < row.length; i++) {
-            gaps.push(row[i].minX - row[i - 1].minX);
+            const g = row[i].minX - row[i - 1].minX;
+            if (g > stdW * 0.92 && g < stdW * 1.45) gaps.push(g);
           }
-          gaps.sort((a, b) => a - b);
-          const stepX = gaps[0];
-          const avgY = Math.round(row.reduce((s, r) => s + r.minY, 0) / row.length);
-          const avgW = Math.round(row.reduce((s, r) => s + r.bw, 0) / row.length);
-          const avgH = Math.round(row.reduce((s, r) => s + r.bh, 0) / row.length);
-
-          if (stepX > avgW * 0.85 && stepX < avgW * 1.65) {
-            for (let i = 0; i < row.length; i++) {
-              completed.push(row[i]);
-              if (i + 1 < row.length) {
-                const diff = row[i + 1].minX - row[i].minX;
-                const missing = Math.round(diff / stepX) - 1;
-                if (missing >= 1 && missing <= 3) {
-                  for (let m = 1; m <= missing; m++) {
-                    completed.push({
-                      minX: Math.round(row[i].minX + m * stepX),
-                      minY: avgY,
-                      bw: avgW,
-                      bh: avgH
-                    });
+          if (gaps.length >= 2) {
+            gaps.sort((a, b) => a - b);
+            const stepX = gaps[Math.floor(gaps.length / 2)];
+            for (let i = 0; i < row.length - 1; i++) {
+              const diff = row[i + 1].minX - row[i].minX;
+              const missing = Math.round(diff / stepX) - 1;
+              if (missing === 1 || missing === 2) {
+                for (let m = 1; m <= missing; m++) {
+                  const cand = {
+                    minX: Math.round(row[i].minX + m * stepX),
+                    minY: snapY,
+                    bw: stdW,
+                    bh: stdH
+                  };
+                  if (!alignedAndCompleted.some(kept => overlapRatio(cand, kept) > 0.15)) {
+                    alignedAndCompleted.push(cand);
                   }
                 }
               }
             }
-            continue;
           }
         }
-        completed.push(...row);
       }
 
-      const rawBoxes = completed.map(c => ({
-        x: Math.round(c.minX / scale),
-        y: Math.round(c.minY / scale),
+      alignedAndCompleted.sort((a, b) => {
+        const rowTol = Math.max(10, stdH * 0.35);
+        if (Math.abs(a.minY - b.minY) > rowTol) return a.minY - b.minY;
+        return a.minX - b.minX;
+      });
+
+      const rawBoxes = alignedAndCompleted.map(c => ({
+        x: Math.max(0, Math.round(c.minX / scale)),
+        y: Math.max(0, Math.round(c.minY / scale)),
         w: Math.round(c.bw / scale),
         h: Math.round(c.bh / scale),
         active: true,
