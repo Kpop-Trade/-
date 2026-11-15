@@ -8360,7 +8360,7 @@ window.addEventListener("unhandledrejection", function(event) {
 
 
 <div id="illit-calendar-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-  <div class="bg-white rounded-2xl w-full max-w-md max-h-[80vh] flex flex-col shadow-2xl overflow-hidden">
+  <div class="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
     <div class="p-4 border-b bg-gradient-to-r from-indigo-50 to-pink-50 flex items-center justify-between">
       <div>
         <h3 class="font-bold text-base text-gray-900">📅 ILLIT 公式スケジュール</h3>
@@ -8368,35 +8368,79 @@ window.addEventListener("unhandledrejection", function(event) {
       </div>
       <button type="button" onclick="closeIllitCalendar()" class="w-8 h-8 rounded-full bg-white/80 text-gray-600 font-bold shadow-sm">✕</button>
     </div>
-    <div id="illit-calendar-list" class="p-4 overflow-y-auto space-y-3 flex-1"></div>
+    <div class="p-3 border-b flex items-center justify-between">
+      <button onclick="changeMonth(-1)" class="w-8 h-8 rounded-full bg-gray-100 text-gray-600 font-bold">◀</button>
+      <span id="calendar-month-label" class="font-bold text-sm"></span>
+      <button onclick="changeMonth(1)" class="w-8 h-8 rounded-full bg-gray-100 text-gray-600 font-bold">▶</button>
+    </div>
+    <div id="illit-calendar-grid" class="p-2 grid grid-cols-7 gap-1 text-center text-xs"></div>
+    <div id="illit-calendar-detail" class="p-4 border-t overflow-y-auto flex-1 max-h-48"></div>
   </div>
 </div>
 <script>
+let calendarEvents = [];
+let currentYear = new Date().getFullYear();
+let currentMonth = new Date().getMonth();
+
 window.openIllitCalendar = async function() {
   const modal = document.getElementById("illit-calendar-modal");
-  const list = document.getElementById("illit-calendar-list");
-  if (!modal || !list) return;
+  if (!modal) return;
   modal.classList.remove("hidden");
-  list.innerHTML = '<p class="text-center text-xs text-gray-500 py-8">スケジュールを読み込み中...</p>';
   try {
     const res = await fetch("./illit_calendar.json?t=" + Date.now());
     if (!res.ok) throw new Error("Not found");
-    const items = await res.json();
-    if (!items.length) {
-      list.innerHTML = '<p class="text-center text-xs text-gray-500 py-8">予定はまだありません</p>';
-      return;
-    }
-    list.innerHTML = items.map(item => {
-      const linkHtml = item.link ? ' onclick="window.open(\'' + item.link + '\', \'_blank\')" style="cursor:pointer"' : '';
-      return '<div class="p-3 rounded-xl border border-gray-200 bg-gray-50/50 space-y-1 hover:bg-gray-100 transition"' + linkHtml + '><div class="flex items-center justify-between gap-2"><span class="text-xs font-bold text-indigo-700">' + item.date + ' ' + (item.time || '') + '</span><span class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-indigo-100 text-indigo-700">' + (item.category || 'info') + '</span></div><div class="text-sm font-bold text-gray-900">' + item.title + '</div><div class="text-xs text-gray-600">' + (item.detail || '') + '</div></div>';
-    }).join("");
+    calendarEvents = await res.json();
+    renderCalendar();
   } catch (e) {
-    list.innerHTML = '<p class="text-center text-xs text-red-500 py-8">スケジュールを読み込めませんでした</p>';
+    document.getElementById("illit-calendar-detail").innerHTML = '<p class="text-center text-xs text-red-500">読み込めませんでした</p>';
   }
 };
+
+function renderCalendar() {
+  const label = document.getElementById("calendar-month-label");
+  const grid = document.getElementById("illit-calendar-grid");
+  const detail = document.getElementById("illit-calendar-detail");
+  label.textContent = `${currentYear}年${currentMonth + 1}月`;
+  
+  const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const days = ['日','月','火','水','木','金','土'];
+  
+  let html = days.map(d => `<div class="font-bold text-gray-500 py-1">${d}</div>`).join('');
+  for (let i = 0; i < firstDay; i++) html += '<div></div>';
+  
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const hasEvent = calendarEvents.some(e => e.date === dateStr);
+    const isToday = dateStr === new Date().toISOString().split('T')[0];
+    html += `<div onclick="showDayDetail('${dateStr}')" class="py-2 rounded-lg cursor-pointer ${hasEvent ? 'bg-indigo-100 font-bold text-indigo-700' : ''} ${isToday ? 'ring-2 ring-pink-400' : ''} hover:bg-gray-100">${d}</div>`;
+  }
+  grid.innerHTML = html;
+  detail.innerHTML = '<p class="text-center text-xs text-gray-400">日付をタップして詳細を表示</p>';
+}
+
+window.changeMonth = function(delta) {
+  currentMonth += delta;
+  if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+  if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+  renderCalendar();
+};
+
+window.showDayDetail = function(dateStr) {
+  const detail = document.getElementById("illit-calendar-detail");
+  const events = calendarEvents.filter(e => e.date === dateStr);
+  if (!events.length) {
+    detail.innerHTML = '<p class="text-center text-xs text-gray-400">この日の予定はありません</p>';
+    return;
+  }
+  detail.innerHTML = events.map(e => {
+    const linkHtml = e.link ? ` onclick="window.open('${e.link}', '_blank')" style="cursor:pointer"` : '';
+    return `<div class="p-2 rounded-lg border border-gray-200 bg-gray-50 mb-2"${linkHtml}><div class="text-xs font-bold text-indigo-700">${e.time || '終日'}</div><div class="text-sm font-bold">${e.title}</div><div class="text-xs text-gray-600">${e.detail || ''}</div></div>`;
+  }).join('');
+};
+
 window.closeIllitCalendar = function() {
-  const modal = document.getElementById("illit-calendar-modal");
-  if (modal) modal.classList.add("hidden");
+  document.getElementById("illit-calendar-modal").classList.add("hidden");
 };
 </script>
 </body>
