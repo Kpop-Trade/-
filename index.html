@@ -6629,89 +6629,112 @@ function getAiCardVectors() {
       }
     };
 
-        window.buildAndDownloadCardPackZip = async function() {
-      if (!adminZipPackFiles.length) return;
-      if (typeof JSZip === "undefined") {
-        return alert("JSZipライブラリが読み込まれていません。ページを再読み込みしてください。");
-      }
-      const selectedAlbum = document.getElementById("admin-zip-album")?.value || adminCardsAlbum;
-      const prefix = (document.getElementById("admin-zip-prefix")?.value || "").trim();
-      const mergeExisting = !!document.getElementById("admin-zip-merge-existing")?.checked;
-      const btn = document.getElementById("admin-zip-build-btn");
-      const prog = document.getElementById("admin-zip-progress");
-      if (btn) btn.disabled = true;
-      if (prog) { prog.classList.remove("hidden"); prog.textContent = "準備中..."; }
+        // ===== ZIP生成（クリーン画像＋透かし画像の両方を含む） =====
+// 既存の buildAndDownloadCardPackZip を以下に置き換え
+
+window.buildAndDownloadCardPackZip = async function() {
+  if (!adminZipPackFiles.length) return;
+  if (typeof JSZip === "undefined") {
+    return alert("JSZipライブラリが読み込まれていません。");
+  }
+  const selectedAlbum = document.getElementById("admin-zip-album")?.value || adminCardsAlbum;
+  const prefix = (document.getElementById("admin-zip-prefix")?.value || "").trim();
+  const btn = document.getElementById("admin-zip-build-btn");
+  const prog = document.getElementById("admin-zip-progress");
+  if (btn) btn.disabled = true;
+  if (prog) { prog.classList.remove("hidden"); prog.textContent = "準備中..."; }
+
+  try {
+    const zip = new JSZip();
+    const cardsFolder = zip.folder("cards");
+    const cleanFolder = zip.folder("cards_clean");
+    const catalogList = [];
+
+    const batchTs = Date.now().toString(36);
+    let processed = 0;
+
+    for (let i = 0; i < adminZipPackFiles.length; i++) {
+      const item = adminZipPackFiles[i];
+      if (prog) prog.textContent = "処理中... (" + (i + 1) + "/" + adminZipPackFiles.length + ")";
+      await new Promise(r => setTimeout(r, 10));
 
       try {
-        const zip = new JSZip();
-        const cardsFolder = zip.folder("cards");
-        const catalogList = mergeExisting
-          ? staticPackCards.map(c => ({ id: c.id, albumId: c.albumId, name: c.name, member: c.member, photo: c.photoUrl }))
-          : [];
+        const cardId = item.cardId || ("pk_" + batchTs + "_" + String(i + 1).padStart(4, "0"));
+        const fileName = cardId + ".jpg";
 
-        const batchTs = Date.now().toString(36);
-        let processed = 0;
-        let skipped = 0;
+        // 透かし画像（公開用）
+        const wmDataUrl = await compressCardWithWatermark(item.file, PHOTO_THUMB);
+        if (isJpegData(wmDataUrl)) {
+          const b64 = wmDataUrl.split(",")[1];
+          cardsFolder.file(fileName, b64, { base64: true });
+        }
 
-        for (let i = 0; i < adminZipPackFiles.length; i++) {
-          const item = adminZipPackFiles[i];
-          if (prog) prog.textContent = `透かし・圧縮処理中... (${i + 1} / ${adminZipPackFiles.length} 枚)`;
-          await new Promise(r => setTimeout(r, 10));
-
-          try {
-            const dataUrl = await compressCardWithWatermark(item.file, PHOTO_THUMB);
-            if (!isJpegData(dataUrl)) { skipped++; continue; }
-
-            const base64Data = dataUrl.split(",")[1];
-            const cardId = `pk_${batchTs}_${String(i + 1).padStart(4, "0")}`;
-            const fileName = `${cardId}.jpg`;
-            cardsFolder.file(fileName, base64Data, { base64: true });
-
-            const rawStem = item.file.name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim();
-            const cardName = prefix
-              ? [item.member, prefix].filter(Boolean).join(" ")
-              : (rawStem || [item.member, `トレカ ${i + 1}`].filter(Boolean).join(" "));
-
-            catalogList.push({
-              id: cardId,
-              albumId: selectedAlbum || item.albumId,
-              name: cardName,
-              member: item.member || "",
-              photo: `./cards/${fileName}`
-            });
-            processed++;
-          } catch (itemErr) {
-            console.warn("Skip image:", item.file.name, itemErr);
-            skipped++;
+        // クリーン画像（判定用）
+        if (item.cleanFile) {
+          const cleanDataUrl = await new Promise((resolve, reject) => {
+            const fr = new FileReader();
+            fr.onload = () => resolve(fr.result);
+            fr.onerror = reject;
+            fr.readAsDataURL(item.cleanFile);
+          });
+          if (cleanDataUrl && cleanDataUrl.startsWith("data:image")) {
+            const b64 = cleanDataUrl.split(",")[1];
+            cleanFolder.file(fileName, b64, { base64: true });
           }
         }
 
-        if (processed === 0) throw new Error("有効な画像を1枚も処理できませんでした。");
+        const rawStem = item.file.name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim();
+        const cardName = prefix
+          ? [item.member, prefix].filter(Boolean).join(" ")
+          : (rawStem || [item.member, "トレカ " + (i + 1)].filter(Boolean).join(" "));
 
-        if (prog) prog.textContent = "ZIPファイルを生成中（数秒かかります）...";
-        await new Promise(r => setTimeout(r, 20));
-        zip.file("catalog.json", JSON.stringify({ updatedAt: new Date().toISOString(), cards: catalogList }, null, 2));
-
-        const blob = await zip.generateAsync({ type: "blob", compression: "STORE" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `illit-cards-pack-${batchTs}.zip`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 10000);
-
-        if (prog) prog.textContent = `✅ 完了！${processed}枚処理（スキップ${skipped}枚）／合計 ${catalogList.length} 枚分のZIPをダウンロードしました`;
-        showToast("ZIPをダウンロードしました！", "success");
+        catalogList.push({
+          id: cardId,
+          albumId: selectedAlbum || item.albumId,
+          name: cardName,
+          member: item.member || "",
+          photo: "./cards/" + fileName,
+          cleanPhoto: "./cards_clean/" + fileName
+        });
+        processed++;
       } catch (e) {
-        console.error(e);
-        if (prog) prog.textContent = "❌ エラー: " + (e?.message || e);
-        alert("ZIP生成中にエラーが発生しました: " + (e?.message || e));
-      } finally {
-        if (btn) btn.disabled = false;
+        console.warn("Skip:", item.file.name, e);
       }
-    };
+    }
+
+    if (processed === 0) throw new Error("処理できる画像がありません。");
+
+    zip.file("catalog.json", JSON.stringify({
+      updatedAt: new Date().toISOString(),
+      cards: catalogList
+    }, null, 2));
+
+    const blob = await zip.generateAsync({ type: "blob", compression: "STORE" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "illit-cards-pack-" + batchTs + ".zip";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+
+    if (prog) prog.textContent = "完了！" + processed + "枚をZIPに保存しました";
+    showToast("ZIPをダウンロードしました", "success");
+  } catch (e) {
+    console.error(e);
+    if (prog) prog.textContent = "エラー: " + (e.message || e);
+    alert("エラー: " + (e.message || e));
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+};
+
+// 使い方：
+// 1. 上記のコードを既存の buildAndDownloadCardPackZip と置き換え
+// 2. ZIPには cards/（透かし）と cards_clean/（クリーン）の両方が入る
+// 3. catalog.json に photo と cleanPhoto の両方が記録される
+// 4. GitHubにZIPを展開すれば、Firestoreを圧迫せずに両方を保存できる
 
 
 
