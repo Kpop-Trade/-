@@ -3578,14 +3578,14 @@ const ILLIT_CARD_ALBUMS = [
         snap = await fetchWithTimeout();
       }
         } catch (loadErr) {
-          console.error("loadPosts query error:", loadErr); alert("Firestoreエラー: " + (loadErr.code || "") + " " + loadErr.message);
+          console.error("loadPosts query error:", loadErr);
           const container = document.getElementById("posts-container");
           if (container) {
             container.innerHTML = `<div class="p-4 m-4 bg-red-50 text-red-600 text-xs rounded-xl border border-red-200 text-center">⚠️ データの読み込みに失敗しました: ${loadErr.message}</div>`;
           }
           return;
         }
-        alert("取得件数: " + snap.size + " / uid: " + (auth.currentUser ? auth.currentUser.uid : "未ログイン")); const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         if (reset) {
           allPosts = list;
           Object.keys(joinsFresh).forEach(k => delete joinsFresh[k]);
