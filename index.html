@@ -563,17 +563,14 @@
       </div>
       <div id="mycards-own-panel" class="space-y-3">
         <div class="flex gap-2 items-center">
-          <label class="flex-1 bg-white border border-gray-200 rounded-full py-2.5 text-[13px] font-medium text-gray-800 text-center cursor-pointer">
+          <label class="shrink-0 bg-white border border-gray-200 rounded-full px-4 py-2.5 text-[13px] font-medium text-gray-800 text-center cursor-pointer">
             画像で探す
             <input type="file" accept="image/*" class="hidden" onchange="runMyCardsImageSearch(this)">
           </label>
-          <button type="button" id="mycards-image-search-clear" onclick="clearMyCardsImageSearch()" class="hidden shrink-0 px-3 py-2 text-[12px] text-gray-500">クリア</button>
+          <button type="button" id="mycards-image-search-clear" onclick="clearMyCardsImageSearch()" class="hidden shrink-0 px-2 py-2 text-[12px] text-gray-500">クリア</button>
+          <img src="./guide-pictogram.jpg?v=10" alt="机に置いて、明るくして、真上から撮る" class="h-[72px] w-auto min-w-0 flex-1 object-cover rounded-xl border border-gray-200 bg-white">
         </div>
         <div id="mycards-image-search-result" class="hidden"></div>
-        <figure class="bg-white border border-gray-200 rounded-2xl overflow-hidden">
-          <img src="./guide-pictogram.jpg?v=8" alt="机に置いて、明るくして、真上から撮る" class="w-full h-auto">
-          <figcaption class="px-3 py-2 text-[12px] text-gray-600">机に置いて、明るくして、真上から撮る</figcaption>
-        </figure>
         <div class="flex items-start gap-3">
           <div class="flex-1 min-w-0 space-y-2">
             <label class="block">
@@ -1089,7 +1086,7 @@
                         <label class="block font-bold text-gray-800">📷 トレカ写真・AI自動入力 <span id="photo-req-label" class="text-pink-600">（必須・最大3枚）</span></label>
                     </div>
                     <figure class="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                      <img src="./guide-pictogram.jpg?v=8" alt="机に置いて、明るくして、真上から撮る" class="w-full h-auto">
+                      <img src="./guide-pictogram.jpg?v=10" alt="机に置いて、明るくして、真上から撮る" class="w-full h-auto">
                       <figcaption class="px-2.5 py-1.5 text-[11px] text-gray-600">机に置いて、明るくして、真上から撮る</figcaption>
                     </figure>
                     <div class="grid grid-cols-2 gap-2">
@@ -9945,15 +9942,15 @@ window.buildAndDownloadCardPackZip = async function() {
               ? "border-emerald-400 ring-1 ring-emerald-400/50"
               : (isWant ? "border-pink-400 ring-1 ring-pink-400/50" : "border-white/70");
 
-            const memberLabel = String(c.member || "").split(" ")[0];
-            const memberChip = memberLabel
-              ? `<span class="absolute top-1 left-1 z-10 max-w-[70%] truncate px-1 py-0.5 rounded bg-black/55 text-white text-[9px] font-medium leading-none">${escapeHtml(memberLabel)}</span>`
+            const nameLabel = String(c.member || "").split(/[ (]/)[0] || String(c.name || "");
+            const nameChip = nameLabel
+              ? `<span class="absolute top-1 left-1 z-10 max-w-[68%] truncate px-1 py-0.5 rounded bg-black/60 text-white text-[9px] font-medium leading-none">${escapeHtml(nameLabel)}</span>`
               : "";
 
             return `<div data-card-id="${escapeHtml(c.id)}" onclick="openCardDetailModal('${escapeHtml(c.id)}')" class="relative aspect-[3/4] rounded-xl overflow-hidden cursor-pointer border ${borderClass} shadow-sm bg-white/60">
               ${imgHtml}
               ${listingRibbon}
-              ${memberChip}
+              ${nameChip}
               ${watching ? `<span class="absolute bottom-1 left-1 w-4 h-4 rounded-full bg-amber-400 text-white text-[9px] flex items-center justify-center shadow">🔔</span>` : ""}
               ${badgeHtml}
             </div>`;
