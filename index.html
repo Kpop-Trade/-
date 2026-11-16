@@ -332,6 +332,17 @@
     #detail-photos .detail-film { display: flex; gap: 0; overflow-x: auto; scroll-snap-type: x mandatory; height: 100%; }
     #detail-photos .detail-film .shot { flex: 0 0 100%; height: 100%; scroll-snap-align: center; display: flex; justify-content: center; align-items: center; }
     #detail-photos .detail-film img { width: auto; max-width: 72%; height: auto; max-height: 100%; object-fit: contain; background: transparent; filter: drop-shadow(0 10px 18px rgba(0,0,0,.14)); border-radius: 10px; }
+    #detail-photos .bundle-frame { position: relative; height: 100%; max-height: 100%; max-width: 72%; display: flex; align-items: center; }
+    #detail-photos .bundle-frame img { max-width: 100% !important; width: auto; height: auto; max-height: 100%; }
+    #detail-photos .bundle-hit { position: absolute; border: 2px solid rgba(255,255,255,.9); background: transparent; }
+    #detail-photos .bundle-hit.on { background: transparent; }
+    #detail-photos .bundle-hit.on:after, #detail-photos .bundle-hit.sold:after {
+      content: ""; position: absolute; inset: 12%;
+      background:
+        linear-gradient(to top right, transparent 45%, #e11d48 45% 55%, transparent 55%),
+        linear-gradient(to top left, transparent 45%, #e11d48 45% 55%, transparent 55%);
+    }
+    #detail-photos .bundle-hit.sold { pointer-events: none; }
     #detail-photo-wrap { position: relative; margin: 8px 0 0; background: transparent; }
     #detail-price-box { display: block; }
     #detail-price-box.hidden { display: none !important; }
@@ -1128,10 +1139,9 @@
           </select>
         </div>
         <div><label class="block font-medium text-gray-700 mb-1">説明文・備考（任意）</label><textarea id="input-desc" maxlength="200" rows="2" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></textarea></div>
-        <div id="bundle-box" class="hidden space-y-2">
-          <div class="text-[12px] font-medium text-gray-700">まとめて出品</div>
-          <div id="bundle-list" class="space-y-2"></div>
-          <button type="button" onclick="addBundleRow()" class="w-full py-2.5 rounded-xl bg-white border border-gray-200 text-[12px] text-gray-700">＋ もう1枚追加</button>
+        <div id="bundle-box" class="hidden bg-white border border-gray-200 rounded-xl p-3 text-[12px] text-gray-600 leading-relaxed">
+          1枚の写真に並べたトレカを検知します。申し込みは枠をタップして選びます。
+          <div id="bundle-detect" class="mt-1 font-medium text-gray-800"></div>
         </div>
                 
 
@@ -3405,6 +3415,9 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       const bundleBox = document.getElementById("bundle-box");
       if (bundleBox) bundleBox.classList.toggle("hidden", mode !== "exchange");
       bundleExtras = [];
+      window._pendingBundleBoxes = [];
+      const detectEl = document.getElementById("bundle-detect");
+      if (detectEl) detectEl.textContent = "";
       renderBundleList();
       if (_pm) {
         _pm.classList.remove("hidden");
@@ -3503,6 +3516,13 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         if (isFirstPhoto && window._pendingRecogImage && typeof runCardImageRecognition === "function") {
           runCardImageRecognition(window._pendingRecogImage);
         }
+        if (isFirstPhoto && postMode === "exchange" && postPhotos[0]) {
+          detectBundleBoxes(postPhotos[0].full).then(boxes => {
+            window._pendingBundleBoxes = boxes;
+            const el = document.getElementById("bundle-detect");
+            if (el) el.textContent = boxes.length >= 2 ? (boxes.length + "枚の枠を検知しました") : "2枚以上なら、枠を選んで申し込めるまとめ出品になります";
+          });
+        }
       } catch(e) {} finally { processingPhotos = false; renderPostPhotoPreview(); }
     };
 
@@ -3589,7 +3609,14 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
             catalogCardId: null, catalogCardName: null
           }));
         }
+        let bundleBoxes = [];
+        if (isExchange && postPhotos[0]) {
+          bundleBoxes = Array.isArray(window._pendingBundleBoxes) && window._pendingBundleBoxes.length
+            ? window._pendingBundleBoxes
+            : await detectBundleBoxes(postPhotos[0].full);
+        }
         for (const item of items) {
+          const useBundle = isExchange && bundleBoxes.length >= 2 && item === items[0];
           const ref = await addDoc(collection(db, "posts"), {
             kind, isBuy, isSell: isSell && !isBuy, member, give: item.give, want: item.want,
             price: (isBuy || isSell) ? price : 0, description: desc, condition,
@@ -3599,9 +3626,13 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
             deviceId: getOrCreateDeviceId(),
             paymentMethod: "azukari",
             catalogCardId: item.catalogCardId,
-            catalogCardName: item.catalogCardName
+            catalogCardName: item.catalogCardName,
+            bundleBoxes: useBundle ? bundleBoxes : [],
+            bundleTotal: useBundle ? bundleBoxes.length : 0,
+            bundleLeft: useBundle ? bundleBoxes.length : 0
           });
           for (let i = 0; i < item.photos.length; i++) await addDoc(collection(db, "posts", ref.id, "photos"), { data: item.photos[i].full, order: i, createdAt: serverTimestamp() });
+          if (useBundle && item.photos[0]) await addDoc(collection(db, "posts", ref.id, "photos"), { data: item.photos[0].full, order: -1, role: "base", createdAt: serverTimestamp() });
           if (item.catalogCardId) notifyCardWatchers(item.catalogCardId, item.catalogCardName || item.give, ref.id).catch(() => {});
         }
         showToast(items.length > 1 ? items.length + "件出品しました" : "出品が完了しました！詳細画面からXでシェアできます", "success");
@@ -4134,7 +4165,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
 
     async function getPhotos(postId) {
       if (photoCache[postId]) return photoCache[postId];
-      try { const snap = await getDocs(collection(db, "posts", postId, "photos")); const list = snap.docs.map(d => d.data()).sort((a,b)=>(a.order||0)-(b.order||0)).map(d=>d.data).filter(isJpegData); photoCache[postId] = list; return list; } catch(e) { return []; }
+      try { const snap = await getDocs(collection(db, "posts", postId, "photos")); const list = snap.docs.map(d => d.data()).filter(d => d.role !== "base").sort((a,b)=>(a.order||0)-(b.order||0)).map(d=>d.data).filter(isJpegData); photoCache[postId] = list; return list; } catch(e) { return []; }
     }
     window.viewPhoto = function(kind, i) { const arr = kind === "room" ? roomPhotos : detailPhotos; if (isJpegData(arr[i])) { document.getElementById("image-viewer-img").src = arr[i]; document.getElementById("image-viewer").classList.remove("hidden"); } };
     async function loadDetailPhotos(p, index) {
@@ -4142,7 +4173,19 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       if (p.kind === "serial" || !p.photoCount) { el.innerHTML = ""; return; }
       const paint = function (list) {
         if (!list.length) { el.innerHTML = ""; return; }
-        el.innerHTML = `<div class="detail-film">${list.map((src, i) => `<div class="shot"><img src="${src}" alt="" onclick="viewPhoto('detail', ${i})"></div>`).join("")}</div>`;
+        const boxes = Array.isArray(p.bundleBoxes) ? p.bundleBoxes : [];
+        const picks = window._bundlePick || new Set();
+        const shots = list.map((src, i) => {
+          if (i === 0 && boxes.length > 1) {
+            const hits = boxes.map((b, bi) => {
+              const cls = b.state && b.state !== "open" ? "sold" : (picks.has(bi) ? "on" : "");
+              return `<button type="button" class="bundle-hit ${cls}" style="left:${(b.x||0)*100}%;top:${(b.y||0)*100}%;width:${(b.w||0)*100}%;height:${(b.h||0)*100}%" onclick="event.stopPropagation(); toggleBundleBox(${bi})"></button>`;
+            }).join("");
+            return `<div class="shot"><div class="bundle-frame"><img src="${src}" alt="">${hits}</div></div>`;
+          }
+          return `<div class="shot"><img src="${src}" alt="" onclick="viewPhoto('detail', ${i})"></div>`;
+        }).join("");
+        el.innerHTML = `<div class="detail-film">${shots}</div>`;
       };
       const first = isJpegData(p.thumb) ? p.thumb : "";
       if (first) paint([first]);
@@ -4179,7 +4222,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     }
     window.openDetailModal = function(index) {
       const p = allPosts[index]; if (!p) return;
-      currentDetailIndex = index; currentDetailId = p.id; const isGroup = p.kind === "group", isBuy = !!p.isBuy;
+      currentDetailIndex = index; currentDetailId = p.id; window._bundlePick = new Set(); const isGroup = p.kind === "group", isBuy = !!p.isBuy;
       let title = "募集の詳細";
       if (isGroup) title = "🛍 共同購入の詳細";
       else if (p.kind === "album") title = "💿 アルバムの詳細";
@@ -4225,6 +4268,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       const joins = isGroup ? joinsOf(p.id) : []; const target = Number(p.target || 0); const joinCount = isGroup ? Math.max(0, typeof p.joinsCount === "number" ? p.joinsCount : joins.length) : 0; const full = isGroup && target > 0 && joinCount >= target; const closed = isGroup && p.status === "closed"; const isSold = p.status === "traded"; const joined = !!(isGroup && currentUser && joins.some(j => j.id === currentUser.uid));
       let extra = "";
       if (p.kind === "serial" && p.deadline) extra += `<div>有効期限: <b>${escapeHtml(p.deadline)}</b></div>`;
+      if (Array.isArray(p.bundleBoxes) && p.bundleBoxes.length > 1) extra += `<div>残り <b>${Number(p.bundleLeft ?? p.bundleBoxes.filter(b => !b.state || b.state === "open").length)}</b> / ${p.bundleBoxes.length}枚。枠をタップして選んでください</div>`;
       if (isGroup) {
         if (p.deadline) extra += `<div>締切: <b>${escapeHtml(p.deadline)}</b></div>`;
         extra += `<div>👥 参加: <b>${joinCount} / ${target}人</b></div>`;
@@ -4253,6 +4297,11 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           actions.innerHTML = `<p class="text-xs text-gray-500 font-medium text-center bg-white/50 p-2 rounded-xl border border-white">終了または満員です</p>`;
         } else if (isExpired(p)) {
           actions.innerHTML = `<p class="text-xs text-red-400 font-medium text-center bg-white/50 p-2 rounded-xl border border-white">期限切れです</p>`;
+        } else if (Array.isArray(p.bundleBoxes) && p.bundleBoxes.length > 1) {
+          const left = Number(p.bundleLeft ?? p.bundleBoxes.filter(b => !b.state || b.state === "open").length);
+          actions.innerHTML = left <= 0 || p.status === "closed"
+            ? `<p class="text-xs text-gray-500 font-medium text-center bg-white/50 p-2 rounded-xl border border-white">この募集は停止しています</p>`
+            : `<button onclick="applyBundlePost(${index})" class="w-full bg-gradient-to-r from-illit-purple to-illit-accent text-white font-medium py-3 rounded-full shadow-md border border-white/30">選んだカードを申し込む</button>`;
         } else {
           const btnLabel = isGroup ? "応募する" : (p.isSell ? "購入する" : "申し込む");
           const btnGrad = isGroup ? "from-teal-400 to-teal-500" : "from-illit-purple to-illit-accent";
@@ -4679,6 +4728,167 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       const ok = await appConfirm(msg, "購入を確定", false);
       if (!ok) return;
       return applyToPost(index);
+    };
+
+    function detectBundleBoxes(dataUrl) {
+      return new Promise((resolve) => {
+        const prevImg = sheetCropState && sheetCropState.img;
+        const prevBoxes = sheetCropState && Array.isArray(sheetCropState.boxes) ? sheetCropState.boxes.map(b => ({ ...b })) : [];
+        const img = new Image();
+        img.onload = () => {
+          try {
+            sheetCropState.img = img;
+            if (typeof rerunSheetAutoDetect === "function") rerunSheetAutoDetect();
+            const boxes = (sheetCropState.boxes || []).filter(b => b && b.active !== false && b.w > 8 && b.h > 8).map(b => ({
+              x: b.x / img.width, y: b.y / img.height, w: b.w / img.width, h: b.h / img.height, state: "open"
+            })).filter(b => b.w > 0.03 && b.h > 0.03 && b.x >= -0.02 && b.y >= -0.02);
+            resolve(boxes.slice(0, 24));
+          } catch (e) { resolve([]); }
+          sheetCropState.img = prevImg || null;
+          sheetCropState.boxes = prevBoxes;
+        };
+        img.onerror = () => resolve([]);
+        img.src = dataUrl;
+      });
+    }
+    function drawBundleMarks(baseUrl, boxes) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          const c = document.createElement("canvas");
+          c.width = img.width; c.height = img.height;
+          const ctx = c.getContext("2d");
+          ctx.drawImage(img, 0, 0);
+          boxes.forEach(b => {
+            if (!b || b.state === "open") return;
+            const x = b.x * img.width, y = b.y * img.height, w = b.w * img.width, h = b.h * img.height;
+            ctx.strokeStyle = "#e11d48";
+            ctx.lineWidth = Math.max(8, Math.min(w, h) * 0.08);
+            ctx.lineCap = "round";
+            ctx.beginPath();
+            ctx.moveTo(x + w * 0.2, y + h * 0.2); ctx.lineTo(x + w * 0.8, y + h * 0.8);
+            ctx.moveTo(x + w * 0.8, y + h * 0.2); ctx.lineTo(x + w * 0.2, y + h * 0.8);
+            ctx.stroke();
+          });
+          resolve(c.toDataURL("image/jpeg", 0.72));
+        };
+        img.onerror = () => resolve(baseUrl);
+        img.src = baseUrl;
+      });
+    }
+    async function bundlePhotoDocs(postId) {
+      const snap = await getDocs(collection(db, "posts", postId, "photos"));
+      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    }
+    async function rememberBundlePhoto(postId, dataUrl) {
+      if (!isJpegData(dataUrl)) return;
+      await addDoc(collection(db, "posts", postId, "photoHistory"), { data: dataUrl, createdAt: serverTimestamp() });
+      const snap = await getDocs(collection(db, "posts", postId, "photoHistory"));
+      const docs = snap.docs.slice().sort((a, b) => ((a.data().createdAt && a.data().createdAt.toMillis) ? a.data().createdAt.toMillis() : 0) - ((b.data().createdAt && b.data().createdAt.toMillis) ? b.data().createdAt.toMillis() : 0));
+      while (docs.length > 10) {
+        const old = docs.shift();
+        try { await deleteDoc(old.ref); } catch (_) {}
+      }
+    }
+    async function saveBundleDisplay(postId, dataUrl) {
+      const docs = await bundlePhotoDocs(postId);
+      const shown = docs.filter(d => d.role !== "base").sort((a, b) => (a.order || 0) - (b.order || 0));
+      const img = await new Promise((resolve) => {
+        const el = new Image();
+        el.onload = () => resolve(el);
+        el.onerror = () => resolve(null);
+        el.src = dataUrl;
+      });
+      let thumb = dataUrl;
+      if (img) thumb = compressFromImage(img, PHOTO_THUMB) || dataUrl;
+      if (shown[0]) await updateDoc(doc(db, "posts", postId, "photos", shown[0].id), { data: dataUrl });
+      await updateDoc(doc(db, "posts", postId), { thumb });
+      delete photoCache[postId];
+      const lp = allPosts.find(x => x.id === postId);
+      if (lp) lp.thumb = thumb;
+    }
+    window.toggleBundleBox = function(i) {
+      const p = allPosts[currentDetailIndex];
+      if (!p || !p.bundleBoxes || !p.bundleBoxes[i] || (p.bundleBoxes[i].state && p.bundleBoxes[i].state !== "open")) return;
+      if (currentUser && p.userId === currentUser.uid) return;
+      window._bundlePick = window._bundlePick || new Set();
+      if (window._bundlePick.has(i)) window._bundlePick.delete(i); else window._bundlePick.add(i);
+      const hits = document.querySelectorAll("#detail-photos .bundle-hit");
+      if (hits[i]) hits[i].classList.toggle("on", window._bundlePick.has(i));
+    };
+    async function revertBundleTrade(t) {
+      if (!t || !t.postId || !Array.isArray(t.bundleIndexes) || !t.bundleIndexes.length) return;
+      const pref = doc(db, "posts", t.postId);
+      const ps = await getDoc(pref);
+      if (!ps.exists() || !Array.isArray(ps.data().bundleBoxes)) return;
+      const boxes = ps.data().bundleBoxes.map(b => ({ x: b.x, y: b.y, w: b.w, h: b.h, state: b.state || "open" }));
+      t.bundleIndexes.forEach(i => { if (boxes[i]) boxes[i].state = "open"; });
+      const left = boxes.filter(b => b.state === "open").length;
+      await updateDoc(pref, { bundleBoxes: boxes, bundleLeft: left, status: "active" });
+      const hist = await getDocs(collection(db, "posts", t.postId, "photoHistory"));
+      const newest = hist.docs.slice().sort((a, b) => ((b.data().createdAt && b.data().createdAt.toMillis) ? b.data().createdAt.toMillis() : 0) - ((a.data().createdAt && a.data().createdAt.toMillis) ? a.data().createdAt.toMillis() : 0))[0];
+      if (newest && isJpegData(newest.data().data)) {
+        await saveBundleDisplay(t.postId, newest.data().data);
+        try { await deleteDoc(newest.ref); } catch (_) {}
+      }
+      const lp = allPosts.find(x => x.id === t.postId);
+      if (lp) { lp.bundleBoxes = boxes; lp.bundleLeft = left; lp.status = "active"; renderPosts(); }
+    }
+    window.applyBundlePost = async function(index) {
+      if (typeof checkCancelAccountLock === "function" && checkCancelAccountLock()) return;
+      const p = allPosts[index];
+      if (!currentUser || !p) return;
+      if (!requireShippingInfo()) return;
+      if (!(await checkDeviceLock())) return;
+      const picks = [...(window._bundlePick || [])].map(Number).filter(i => p.bundleBoxes && p.bundleBoxes[i] && (!p.bundleBoxes[i].state || p.bundleBoxes[i].state === "open"));
+      if (!picks.length) return alert("欲しいトレカの枠をタップしてください。");
+      try {
+        let nextBoxes = null;
+        await runTransaction(db, async (tx) => {
+          const postRef = doc(db, "posts", p.id);
+          const ps = await tx.get(postRef);
+          if (!ps.exists()) throw new Error("notfound");
+          const cur = ps.data();
+          if (cur.status !== "active") throw new Error("notactive");
+          const boxes = (cur.bundleBoxes || []).map(b => ({ x: b.x, y: b.y, w: b.w, h: b.h, state: b.state || "open" }));
+          for (const i of picks) {
+            if (!boxes[i] || boxes[i].state !== "open") throw new Error("taken");
+            boxes[i].state = "sold";
+          }
+          const left = boxes.filter(b => b.state === "open").length;
+          nextBoxes = boxes;
+          tx.update(postRef, { bundleBoxes: boxes, bundleLeft: left, status: left === 0 ? "closed" : "active" });
+        });
+        const docs = await bundlePhotoDocs(p.id);
+        const base = docs.find(d => d.role === "base") || docs.filter(d => d.role !== "base").sort((a, b) => (a.order || 0) - (b.order || 0))[0];
+        const shown = docs.filter(d => d.role !== "base").sort((a, b) => (a.order || 0) - (b.order || 0))[0];
+        if (shown && isJpegData(shown.data)) await rememberBundlePhoto(p.id, shown.data);
+        const source = base && isJpegData(base.data) ? base.data : (shown && shown.data);
+        if (source) {
+          const marked = await drawBundleMarks(source, nextBoxes);
+          await saveBundleDisplay(p.id, marked);
+        }
+        p.bundleBoxes = nextBoxes;
+        p.bundleLeft = nextBoxes.filter(b => b.state === "open").length;
+        p.status = p.bundleLeft === 0 ? "closed" : "active";
+        const ref = await addDoc(collection(db, "trades"), {
+          kind: p.kind, isBuy: false, isSell: false, postId: p.id,
+          postGive: p.give, postWant: p.want || "", postPrice: 0, postMember: p.member || "指定なし",
+          bundleIndexes: picks, paymentMethod: p.paymentMethod || "azukari",
+          ownerId: p.userId, ownerName: p.userName, applicantId: currentUser.uid, applicantName: getMyDisplayName(),
+          participants: [p.userId, currentUser.uid], status: "shipping",
+          agreed: { [p.userId]: true, [currentUser.uid]: true }, shipped: {}, received: {}, disputed: {},
+          lastMessageAt: serverTimestamp(), lastSenderId: currentUser.uid,
+          createdAt: serverTimestamp(), updatedAt: serverTimestamp(), deviceId: getOrCreateDeviceId()
+        });
+        renderPosts();
+        closeDetailModal();
+        openTrade(ref.id);
+        showToast(p.bundleLeft === 0 ? "申し込みました。枠が埋まったので募集を停止しました" : "選んだカードを申し込みました", "success");
+      } catch (e) {
+        if (e && (e.message === "taken" || e.message === "notactive")) return alert("そのカードは、さきほど選ばれました。");
+        alert("申し込みに失敗しました");
+      }
     };
 
     window.applyToPost = async function(index) {
@@ -5175,6 +5385,7 @@ window.openAzukariApp = function() {
         
         // 投稿を active（出品中）に戻す
         await restorePostToActive(postId, kind, applicantId);
+        await revertBundleTrade(currentTrade);
 
         showToast("取引がキャンセルされました。", "info");
       } catch (e) { alert("処理に失敗しました。"); }
@@ -5355,6 +5566,7 @@ window.openAzukariApp = function() {
         await updateDoc(doc(db, "trades", t.id), { status: "cancelled", cancelledBy: currentUser.uid, updatedAt: serverTimestamp() });
         // 投稿を active（出品中）に戻す
         await restorePostToActive(t.postId, t.kind, t.applicantId);
+        await revertBundleTrade(t);
         const isNowLocked = await recordUserCancelAndMaybeLock();
                 if (isNowLocked) {
                   alert("⚠️ 直近で2回キャンセルが行われたため、利用規約に基づき24時間のアカウントロックが適用されました。\n（ロック中は新規出品・購入確定・取引申し込みが制限されます）");
