@@ -1114,7 +1114,7 @@
           </select>
         </div>
         
-        <div><label id="label-give" class="block font-medium text-gray-700 mb-1">【譲】（出すもの）</label><input type="text" id="input-give" maxlength="100" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
+        <div><label id="label-give" class="block font-medium text-gray-700 mb-1">【譲】（出すもの）</label><input type="text" id="input-give" maxlength="160" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
         <div id="want-container"><label id="label-want" class="block font-medium text-gray-700 mb-1">【求】（希望するもの）</label><input type="text" id="input-want" maxlength="100" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
         <div id="price-container" class="hidden"><label class="block font-medium text-gray-700 mb-1">希望価格（円・アズカリ決済）</label><input type="number" id="input-price" min="1" max="100000" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
         <div id="condition-container">
@@ -3453,12 +3453,13 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       let found = null;
       for (const a of ILLIT_CARD_ALBUMS) {
         const c = getAlbumCards(a.id).find(x => x.id === cardId);
-        if (c) { found = { id: c.id, name: c.name, member: c.member || "", albumId: a.id }; break; }
+        if (c) { found = { id: c.id, name: c.name, member: c.member || "", albumId: a.id, albumName: a.name || "" }; break; }
       }
       selectedPostCard = found;
       if (found) {
         const giveEl = document.getElementById("input-give");
-        if (giveEl && !giveEl.value.trim()) giveEl.value = found.name + (found.member ? " / " + found.member : "");
+        const giveText = [found.albumName, found.name, found.member].filter(Boolean).join(" / ");
+        if (giveEl && !giveEl.value.trim()) giveEl.value = giveText;
         if (found.member) {
           const memEl = document.getElementById("input-member");
           if (memEl) {
@@ -6424,14 +6425,15 @@ function getAiCardVectors() {
     window.applyRecognizedCard = function(cardId, keepList) {
       const found = findCardById(cardId);
       if (!found) return;
-      const { card } = found;
+      const { card, album } = found;
 
       if (typeof selectPostCard === "function") {
         selectPostCard(card.id);
       }
       const giveEl = document.getElementById("input-give");
+      const albumName = (album && album.name) || "";
       if (giveEl) {
-        giveEl.value = (card.name || "") + (card.member ? " / " + card.member : "");
+        giveEl.value = [albumName, card.name || "", card.member || ""].filter(Boolean).join(" / ");
       }
       if (card.member) {
         const memEl = document.getElementById("input-member");
