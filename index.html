@@ -1243,7 +1243,11 @@
             <div id="detail-seller-items"></div>
             <div>
               <div class="text-sm font-medium text-gray-900 mb-2">コメント</div>
-              <p class="text-xs text-gray-500 bg-gray-100 rounded-lg py-3 text-center">コメントは、申し込み後の取引ルームでできます</p>
+              <div id="detail-comments" class="space-y-2 mb-2"></div>
+              <form class="flex gap-2" onsubmit="submitPostComment(event)">
+                <input id="detail-comment-input" maxlength="200" placeholder="コメントする" class="flex-1 bg-gray-100 rounded-lg px-3 py-2 text-sm outline-none">
+                <button type="submit" class="bg-[#ff0211] text-white text-sm font-medium px-4 rounded-lg">送信</button>
+              </form>
             </div>
             <div id="detail-related"></div>
           </div>
@@ -4055,7 +4059,7 @@ const ILLIT_CARD_ALBUMS = [
       }
       actions.innerHTML += `<button onclick="shareCurrentPost()" class="w-full bg-black text-white font-medium py-3 rounded-full shadow-md border border-white/30 mt-2">𝕏 で写真付きシェア</button>`;
       if (currentUser && p.userId !== currentUser.uid) actions.innerHTML += `<div class="flex gap-2 mt-2"><button onclick="blockPostOwner(${index})" class="flex-1 bg-white/60 text-gray-500 border border-white text-xs font-medium py-2 rounded-full hover:bg-white transition">🚫 ブロック</button><button onclick="reportPost(${index})" class="flex-1 bg-white/60 text-red-400 border border-white text-xs font-medium py-2 rounded-full hover:bg-white transition">🚨 通報</button></div>`;
-      document.getElementById("detail-modal").classList.remove("hidden"); loadDetailPhotos(p, index); if (p.userId) loadRating(p.userId, index); renderDetailRails(p);
+      document.getElementById("detail-modal").classList.remove("hidden"); loadDetailPhotos(p, index); if (p.userId) loadRating(p.userId, index); renderDetailRails(p); loadPostComments(p.id);
       if (isGroup && currentUser && !joinsFresh[p.id]) {
         joinsFresh[p.id] = true;
         loadJoins(p.id).then(() => {
@@ -4081,6 +4085,43 @@ const ILLIT_CARD_ALBUMS = [
       sellerEl.innerHTML = others.length ? `<div class="text-xs text-gray-500 mb-2">この人のほかの出品</div><div class="flex gap-2 overflow-x-auto pb-1">${others.map(tile).join("")}</div>` : "";
       relEl.innerHTML = similar.length ? `<div class="text-sm font-medium mb-2">似ている出品</div><div class="flex gap-2 overflow-x-auto pb-1">${similar.map(tile).join("")}</div>` : "";
     }
+
+    async function loadPostComments(postId) {
+      const el = document.getElementById("detail-comments");
+      if (!el || !postId) return;
+      el.innerHTML = `<p class="text-xs text-gray-400">読み込み中...</p>`;
+      try {
+        const snap = await getDocs(query(collection(db, "posts", postId, "comments"), orderBy("createdAt", "asc")));
+        if (currentDetailId !== postId) return;
+        const rows = snap.docs.map(d => d.data());
+        el.innerHTML = rows.length
+          ? rows.map(c => `<div class="text-[13px] leading-snug"><span class="font-medium">${escapeHtml(c.userName || "ユーザー")}</span> <span class="text-gray-700">${escapeHtml(c.text || "")}</span></div>`).join("")
+          : `<p class="text-xs text-gray-400">まだコメントはありません</p>`;
+      } catch (e) {
+        if (currentDetailId !== postId) return;
+        el.innerHTML = `<p class="text-xs text-gray-400">コメントを読み込めませんでした</p>`;
+      }
+    }
+    window.submitPostComment = async function(ev) {
+      if (ev) ev.preventDefault();
+      if (!currentUser) return alert("ログインが必要です。");
+      const input = document.getElementById("detail-comment-input");
+      const text = (input && input.value || "").trim();
+      const postId = currentDetailId;
+      if (!text || !postId) return;
+      input.value = "";
+      try {
+        await addDoc(collection(db, "posts", postId, "comments"), {
+          text: text,
+          userId: currentUser.uid,
+          userName: getMyDisplayName(),
+          createdAt: serverTimestamp()
+        });
+        loadPostComments(postId);
+      } catch (e) {
+        alert("コメントを送れませんでした。");
+      }
+    };
 
     async function loadRating(userId, index) {
       try {
@@ -4302,10 +4343,8 @@ const ILLIT_CARD_ALBUMS = [
       }
       try {
         // 売却は合意ステップをスキップし、即「取引・発送中」でルームを開く
-        const direct = !!p.isSell;
-        const agreedMap = direct
-          ? { [p.userId]: true, [currentUser.uid]: true }
-          : {};
+        const direct = true;
+        const agreedMap = { [p.userId]: true, [currentUser.uid]: true };
         const ref = await addDoc(collection(db, "trades"), {
           kind: p.kind,
           isBuy: !!p.isBuy,
@@ -4324,7 +4363,7 @@ const ILLIT_CARD_ALBUMS = [
           applicantId: currentUser.uid,
           applicantName: getMyDisplayName(),
           participants: [p.userId, currentUser.uid],
-          status: direct ? "shipping" : "negotiating",
+          status: "shipping",
           agreed: agreedMap,
           shipped: {},
           received: {},
@@ -4340,7 +4379,7 @@ const ILLIT_CARD_ALBUMS = [
 
         closeDetailModal();
         openTrade(ref.id);
-        showToast(direct ? "購入が完了しました。取引ルームで決済・発送を進めてください。" : "申し込みが完了しました！", "success");
+        showToast("申し込みが完了しました。取引ルームで決済・発送を進めてください。", "success");
       } catch (e) {
         console.error("applyToPost error:", e);
         if (claimed) restorePostToActive(p.id, p.kind, null); // 取引が作れなかったら確保を戻す
@@ -4398,14 +4437,15 @@ const ILLIT_CARD_ALBUMS = [
           postTarget: p.target || 0, postBundle: p.bundle || "ng", postBundleNote: p.bundleNote || "", bundleChoice: bc,
           paymentMethod: p.paymentMethod || (usesAzukariPayment(p) ? "azukari" : "paypay"),
           ownerId: p.userId, ownerName: p.userName, applicantId: currentUser.uid, applicantName: getMyDisplayName(),
-          participants: [p.userId, currentUser.uid], status: "negotiating", agreed: {},
+          participants: [p.userId, currentUser.uid], status: "shipping",
+          agreed: { [p.userId]: true, [currentUser.uid]: true },
           shipped: {}, received: {}, disputed: {},
           lastMessageAt: serverTimestamp(), lastSenderId: currentUser.uid,
           createdAt: serverTimestamp(), updatedAt: serverTimestamp(), deviceId: getOrCreateDeviceId()
         });
         closeDetailModal();
         openTrade(ref.id);
-        showToast("応募が完了しました。取引ルームで合意を進めてください。", "success");
+        showToast("応募が完了しました。取引ルームで決済・発送を進めてください。", "success");
       } catch(e) {
         const msg = e && e.message;
         if (msg === "full") alert("満員です。");
@@ -4811,8 +4851,20 @@ window.openAzukariApp = function() {
       const iAmPayer = t.isBuy ? iAmOwner : !iAmOwner; // 買取は出品者が支払う側
       const roomTitleEl = document.getElementById("room-title");
       if (roomTitleEl) roomTitleEl.textContent = (otherName || "相手") + " さんとの取引（プロフィール）";
-      const order = ["negotiating", "shipping", "completed"], labels = payFlow ? ["① 条件確認", usesAzukariPayment(t) ? "② アズカリ決済・発送" : "② 送金・発送", "③ 完了"] : ["① 交渉・合意", "② 発送・受取", "③ 完了"];
-      const idx = order.indexOf(t.status); const on = payFlow ? "bg-gradient-to-r from-pink-400 to-pink-500 text-white shadow-md border border-white/50" : "bg-gradient-to-r from-illit-purple to-illit-accent text-white shadow-md border border-white/50";
+      const order = ["negotiating", "shipping", "completed"], labels = payFlow ? ["① 開始", usesAzukariPayment(t) ? "② アズカリ決済・発送" : "② 送金・発送", "③ 完了"] : ["① 開始", "② 発送・受取", "③ 完了"];
+      const on = payFlow ? "bg-gradient-to-r from-pink-400 to-pink-500 text-white shadow-md border border-white/50" : "bg-gradient-to-r from-illit-purple to-illit-accent text-white shadow-md border border-white/50";
+      let idx = order.indexOf(t.status);
+      if (t.status === "negotiating") {
+        idx = 1;
+        if (!t._skipAgree) {
+          t._skipAgree = true;
+          updateDoc(doc(db, "trades", t.id), {
+            status: "shipping",
+            agreed: Object.assign({}, t.agreed || {}, { [t.ownerId]: true, [t.applicantId]: true }),
+            updatedAt: serverTimestamp()
+          }).catch(function () {});
+        }
+      }
       document.getElementById("room-steps").innerHTML = t.status === "cancelled" ? '<div class="text-xs font-medium text-gray-600 bg-white/60 border border-white rounded-xl p-2 text-center shadow-sm">この取引はキャンセルされました</div>' : '<div class="flex space-x-2">' + labels.map((l, i) => `<div class="flex-1 text-center text-[10px] font-medium py-2 rounded-xl border ${i <= idx ? on : "bg-white/40 border-white text-gray-500"}">${l}</div>`).join("") + "</div>";
       document.getElementById("room-info").innerHTML = `<div class="bg-white/60 backdrop-blur rounded-xl p-3 text-xs space-y-1 border shadow-sm border-white"><div class="font-medium text-gray-900">${escapeHtml(t.postGive)}</div></div>`;
       const mark = b => b ? "✅" : "⏳";
@@ -4827,10 +4879,7 @@ window.openAzukariApp = function() {
           ${isInitiator ? '<p class="text-[11px]">相手の同意をお待ちください。</p>' : `<button onclick="agreeCancel()" class="${btn} bg-red-500 text-white hover:bg-red-600">キャンセルに同意する</button>`}
         </div>`;
       }
-      if (t.status === "negotiating") {
-        const my = flag(t, "agreed", uid), other = flag(t, "agreed", otherId);
-        html += `<div class="text-xs text-gray-700 font-medium bg-white/50 p-2 rounded-lg border border-white shadow-inner">合意: あなた ${mark(my)} ／ 相手 ${mark(other)}</div>${my ? '<p class="text-xs text-gray-500 text-center font-medium">相手の合意を待っています…</p>' : `<button onclick="tradeAction('agreed')" class="${payFlow ? pinkBtn : primary}">合意する</button>`}<button onclick="cancelTrade()" class="${btn} bg-white/70 text-gray-500 border border-white hover:bg-white mt-2">キャンセル</button>`;
-      } else if (t.status === "shipping") {
+      if (t.status === "shipping" || t.status === "negotiating") {
         const myS = flag(t, "shipped", uid), otherS = flag(t, "shipped", otherId);
         const myR = flag(t, "received", uid), otherR = flag(t, "received", otherId);
         html += `<div class="text-xs text-gray-700 font-medium bg-white/50 p-3 rounded-lg border border-white shadow-inner space-y-1"><div>決済/発送: あなた ${mark(myS)} ／ 相手 ${mark(otherS)}</div><div>受取確認: あなた ${mark(myR)} ／ 相手 ${mark(otherR)}</div></div>${!myS ? `<button onclick="tradeAction('shipped')" class="${payFlow ? pinkBtn : primary} mt-2">${payFlow ? (usesAzukariPayment(t) ? (iAmPayer ? 'アズカリ支払い完了' : '発送した・支払い確認') : (iAmPayer ? '送金した' : '送った・確認した')) : '発送した'}</button>` : ''}${otherS && !myR ? `<button onclick="tradeAction('received')" class="${btn} bg-gradient-to-r from-green-400 to-green-500 text-white hover:opacity-90 mt-2">完了確認</button>` : ''}`;
