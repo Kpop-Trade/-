@@ -9139,7 +9139,7 @@ window.buildAndDownloadCardPackZip = async function() {
       const activeChip = "filter-chip bg-teal-500 text-white shadow-md text-[11px]";
       const normalChip = "filter-chip bg-white/70 text-teal-800 hover:bg-white text-[11px]";
       el.innerHTML = ILLIT_CARD_ALBUMS.map(a =>
-        `<button onclick="setMyCardsAlbum('${a.id}')" class="${a.id === myCardsAlbum ? activeChip : normalChip}">${a.name}</button>`
+        `<button onclick="setMyCardsAlbum('${a.id}')" class="${a.id === myCardsAlbum ? activeChip : normalChip} inline-flex items-center gap-1.5"><img src="albums/${a.id}.jpg" alt="" class="w-4 h-4 rounded-full object-cover shrink-0 border border-white/60" onerror="this.style.display='none'"><span>${a.name}</span></button>`
       ).join("");
     }
     
@@ -9505,7 +9505,7 @@ window.buildAndDownloadCardPackZip = async function() {
         return (
           '<button type="button" data-pie-album="' + safeId + '" onclick="selectAlbumFromPieChart(this.dataset.pieAlbum)" ' +
           'class="text-left bg-white/95 hover:bg-white border ' + (isComp ? 'border-amber-300 ring-1 ring-amber-200' : 'border-pink-100') + ' rounded-2xl p-2 flex items-center gap-2 shadow-xs transition active:scale-95">' +
-            '<div class="relative w-11 h-11 rounded-full shrink-0 flex items-center justify-center" style="' + ringBg + '">' +
+            '<img src="albums/' + safeId + '.jpg" alt="" class="w-11 h-11 rounded-xl object-cover shrink-0 border border-pink-100 shadow-xs" onerror="this.style.display=\'none\'">' + '<div class="relative w-11 h-11 rounded-full shrink-0 flex items-center justify-center" style="' + ringBg + '">' +
               '<div class="w-7 h-7 rounded-full bg-white flex items-center justify-center text-[9px] font-extrabold ' + (isComp ? 'text-amber-600' : 'text-gray-800') + '">' +
                 st.pct + '%' +
               '</div>' +
