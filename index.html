@@ -173,6 +173,15 @@
       position: relative;
       z-index: 2;
     }
+    #mycards-album-tabs:not(.hidden), #mycards-member-tabs:not(.hidden) { display: flex; flex-wrap: wrap; gap: 6px; }
+      border-radius: 12px !important;
+      padding: 7px 12px !important;
+      min-width: 0 !important;
+      min-height: 0 !important;
+      width: auto !important;
+      height: auto !important;
+      writing-mode: horizontal-tb !important;
+    }
     .filter-chip:active {
       transform: scale(0.96);
     }
@@ -531,8 +540,21 @@
           <button type="button" id="mycards-image-search-clear" onclick="clearMyCardsImageSearch()" class="hidden shrink-0 px-3 py-2 text-[12px] text-gray-500">クリア</button>
         </div>
         <div id="mycards-image-search-result" class="hidden"></div>
-        <div id="mycards-album-tabs" class="flex gap-1.5 overflow-x-auto hide-scrollbar pb-1"></div>
-        <div id="mycards-member-tabs" class="flex gap-1.5 overflow-x-auto hide-scrollbar pb-1"></div>
+        <div class="flex items-start gap-3">
+          <div class="flex-1 min-w-0 space-y-2">
+            <button type="button" id="mycards-album-btn" onclick="toggleMyCardsPicker('album')" class="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3 text-left">
+              <div class="text-[11px] text-gray-400">アルバムを選ぶ</div>
+              <div id="mycards-album-label" class="text-[14px] font-medium text-gray-900 truncate">SUPER REAL ME</div>
+            </button>
+            <div id="mycards-album-tabs" class="hidden"></div>
+            <button type="button" id="mycards-member-btn" onclick="toggleMyCardsPicker('member')" class="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3 text-left">
+              <div class="text-[11px] text-gray-400">メンバーを選ぶ</div>
+              <div id="mycards-member-label" class="text-[14px] font-medium text-gray-900 truncate">全員</div>
+            </button>
+            <div id="mycards-member-tabs" class="hidden"></div>
+          </div>
+          <div id="mycards-own-rate" class="w-[108px] shrink-0 pt-1"></div>
+        </div>
         <div id="mycards-list" class="space-y-2"></div>
         <button onclick="openAddCustomCard()" class="w-full text-[13px] text-gray-500 py-2">＋ カスタムカードを追加</button>
       </div>
@@ -9602,14 +9624,46 @@ window.buildAndDownloadCardPackZip = async function() {
       document.getElementById("mycards-tab-share").className = tab === "share" ? active : normal;
       if (tab === "share") renderMyCardsShareStats();
     };
+    window.toggleMyCardsPicker = function(which) {
+      const album = document.getElementById("mycards-album-tabs");
+      const member = document.getElementById("mycards-member-tabs");
+      if (!album || !member) return;
+      if (which === "album") {
+        album.classList.toggle("hidden");
+        member.classList.add("hidden");
+      } else {
+        member.classList.toggle("hidden");
+        album.classList.add("hidden");
+      }
+    };
+    function renderMyCardsOwnRate(owned, total) {
+      const el = document.getElementById("mycards-own-rate");
+      if (!el) return;
+      const pct = total ? Math.round((owned / total) * 100) : 0;
+      const r = 34;
+      const circ = 2 * Math.PI * r;
+      const dash = (pct / 100) * circ;
+      el.innerHTML = `<div class="flex flex-col items-center">
+        <svg width="96" height="96" viewBox="0 0 96 96" aria-label="所持率 ${pct}%">
+          <circle cx="48" cy="48" r="${r}" fill="none" stroke="#ececec" stroke-width="8"></circle>
+          <circle cx="48" cy="48" r="${r}" fill="none" stroke="#2f9e8f" stroke-width="8" stroke-linecap="round" stroke-dasharray="${dash} ${circ - dash}" transform="rotate(-90 48 48)"></circle>
+          <text x="48" y="52" text-anchor="middle" font-size="16" font-weight="700" fill="#222">${pct}%</text>
+        </svg>
+        <div class="text-[11px] text-gray-500 -mt-0.5">所持率</div>
+        <div class="text-[10px] text-gray-400">${owned}/${total}</div>
+      </div>`;
+    }
     function renderMyCardsAlbumTabs() {
       const el = document.getElementById("mycards-album-tabs");
       if (!el) return;
-      const activeChip = "filter-chip bg-teal-500 text-white shadow-md text-[11px]";
-      const normalChip = "filter-chip bg-white/70 text-teal-800 hover:bg-white text-[11px]";
+      const activeChip = "bg-teal-500 text-white text-[12px] font-medium";
+      const normalChip = "bg-white text-gray-700 border border-gray-200 text-[12px]";
       el.innerHTML = ILLIT_CARD_ALBUMS.map(a =>
-        `<button onclick="setMyCardsAlbum('${a.id}')" class="${a.id === myCardsAlbum ? activeChip : normalChip} inline-flex items-center gap-1.5"><img src="albums/${a.id}.jpg" alt="" class="w-4 h-4 rounded-full object-cover shrink-0 border border-white/60" onerror="this.style.display='none'"><span>${a.name}</span></button>`
+        `<button type="button" data-album-id="${a.id}" onclick="setMyCardsAlbum('${a.id}')" class="${a.id === myCardsAlbum ? activeChip : normalChip} rounded-xl px-3 py-1.5">${escapeHtml(a.name)}</button>`
       ).join("");
+      const label = document.getElementById("mycards-album-label");
+      const album = ILLIT_CARD_ALBUMS.find(a => a.id === myCardsAlbum);
+      if (label) label.textContent = album ? album.name : "未選択";
     }
     
 
@@ -9625,15 +9679,20 @@ window.buildAndDownloadCardPackZip = async function() {
       existing.forEach(m => { if (!sorted.includes(m)) sorted.push(m); });
 
       const tabs = [{ key: "ALL", label: "全員" }, ...sorted.map(m => ({ key: m, label: m }))];
-      const activeChip = "filter-chip bg-gradient-to-r from-illit-purple to-illit-accent text-white shadow-md text-[11px]";
-      const normalChip = "filter-chip bg-white/70 text-gray-700 hover:bg-white text-[11px]";
+      const activeChip = "bg-[#ff4d4f] text-white text-[12px] font-medium";
+      const normalChip = "bg-white text-gray-700 border border-gray-200 text-[12px]";
       el.innerHTML = tabs.map(t =>
-        `<button onclick="setMyCardsMember('${t.key}')" class="${t.key === myCardsMember ? activeChip : normalChip}">${escapeHtml(t.label)}</button>`
+        `<button type="button" onclick="setMyCardsMember('${t.key}')" class="${t.key === myCardsMember ? activeChip : normalChip} rounded-xl px-3 py-1.5">${escapeHtml(t.label)}</button>`
       ).join("");
+      const label = document.getElementById("mycards-member-label");
+      const current = tabs.find(t => t.key === myCardsMember);
+      if (label) label.textContent = current ? current.label : "全員";
     }
     window.setMyCardsAlbum = async function(id) {
       myCardsAlbum = id;
-      myCardsMember = "ALL"; // アルバムを切り替えたらメンバー選択を「全員」にリセット
+      myCardsMember = "ALL";
+      document.getElementById("mycards-album-tabs")?.classList.add("hidden");
+      document.getElementById("mycards-member-tabs")?.classList.add("hidden");
       renderMyCardsAlbumTabs();
       renderMyCardsMemberTabs();
       const el = document.getElementById("mycards-list");
@@ -9645,6 +9704,7 @@ window.buildAndDownloadCardPackZip = async function() {
     };
     window.setMyCardsMember = function(member) {
       myCardsMember = member;
+      document.getElementById("mycards-member-tabs")?.classList.add("hidden");
       renderMyCardsMemberTabs();
       renderMyCardsList();
     };
@@ -9664,6 +9724,11 @@ window.buildAndDownloadCardPackZip = async function() {
       const listingCardIds = getMyListingCardIds();
 
       const album = ILLIT_CARD_ALBUMS.find(a => a.id === myCardsAlbum);
+      const rateCards = myCardsMember === "ALL"
+        ? allAlbumCards
+        : allAlbumCards.filter(c => norm(c.member) === myCardsMember);
+      const rateOwned = rateCards.filter(c => getCardStatus(c.id) === "owned").length;
+      renderMyCardsOwnRate(rateOwned, rateCards.length);
       if (cards.length === 0) {
 
         el.innerHTML = `<p class="text-xs text-gray-500 text-center py-6">該当するカードがありません。<br>下からカスタム追加できます。</p>`;
