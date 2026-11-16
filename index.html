@@ -174,6 +174,14 @@
       z-index: 2;
     }
     #gllit-hub-schedule, #illit-calendar-modal .cal-sheet { background: #fff4c2 !important; }
+    #pull-gap { height: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #fff; margin: 0 -16px; }
+    .pull-spin { width: 28px; height: 28px; border-radius: 50%; background:
+      linear-gradient(#c8c8c8,#c8c8c8) center/2px 100% no-repeat,
+      linear-gradient(#c8c8c8,#c8c8c8) center/100% 2px no-repeat,
+      linear-gradient(45deg, transparent 46%, #c8c8c8 46% 54%, transparent 54%),
+      linear-gradient(-45deg, transparent 46%, #c8c8c8 46% 54%, transparent 54%);
+      animation: pullspin .8s linear infinite; }
+    @keyframes pullspin { to { transform: rotate(360deg); } }
     #mycards-album-tabs button, #mycards-member-tabs button {
       border-radius: 12px !important;
       padding: 7px 12px !important;
@@ -399,6 +407,7 @@
   </header>
 
   <main class="max-w-5xl mx-auto px-4 pb-6 space-y-6">
+    <div id="pull-gap" aria-hidden="true"><div class="pull-spin"></div></div>
     <section id="intro-section" class="space-y-3">
       <div id="site-announcement" class="hidden bg-amber-50/90 border border-amber-200 rounded-2xl p-3 text-xs text-amber-900 leading-relaxed">
         <div class="font-bold mb-0.5">📢 お知らせ</div>
@@ -10440,11 +10449,11 @@ window.addEventListener("unhandledrejection", function(event) {
 
 (function() {
   let startY = 0, pulling = false, dy = 0, busy = false;
-  const bar = document.createElement("div");
-  bar.id = "pull-refresh";
-  bar.setAttribute("aria-hidden", "true");
-  bar.style.cssText = "position:fixed;left:0;right:0;top:0;z-index:45;height:0;overflow:hidden;display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px;font-size:12px;color:#666;background:#f5f5f5;pointer-events:none;";
-  document.body.appendChild(bar);
+  const gap = document.getElementById("pull-gap");
+  function setGap(h) {
+    if (!gap) return;
+    gap.style.height = Math.max(0, h) + "px";
+  }
   function onHome() {
     const hub = document.getElementById("gllit-hub");
     return !!(hub && !hub.classList.contains("hidden"));
@@ -10460,27 +10469,25 @@ window.addEventListener("unhandledrejection", function(event) {
   }, { passive: true });
   document.addEventListener("touchmove", function(e) {
     if (!pulling) return;
-    if (window.scrollY > 1) { pulling = false; bar.style.height = "0"; return; }
+    if (window.scrollY > 1) { pulling = false; if (!busy) setGap(0); return; }
     dy = Math.max(0, e.touches[0].clientY - startY);
-    if (dy < 8) return;
+    if (dy < 6) return;
     e.preventDefault();
-    bar.style.height = Math.min(56, dy * 0.4) + "px";
-    bar.textContent = dy > 78 ? "離すと更新" : "引っ張って更新";
+    setGap(Math.min(220, dy * 0.55));
   }, { passive: false });
   async function endPull() {
     if (!pulling) return;
     pulling = false;
-    const go = dy > 78;
+    const go = dy > 90;
     dy = 0;
-    if (!go) { bar.style.height = "0"; bar.textContent = ""; return; }
-    bar.style.height = "36px";
-    bar.textContent = "更新中";
+    if (!go) { setGap(0); return; }
+    setGap(180);
     busy = true;
     try { if (typeof refreshPosts === "function") await refreshPosts(); }
-    finally { busy = false; bar.style.height = "0"; bar.textContent = ""; }
+    finally { busy = false; setGap(0); }
   }
   document.addEventListener("touchend", endPull);
-  document.addEventListener("touchcancel", function() { pulling = false; dy = 0; bar.style.height = "0"; });
+  document.addEventListener("touchcancel", function() { pulling = false; dy = 0; if (!busy) setGap(0); });
 })();
 </script>
 
