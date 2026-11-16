@@ -3936,7 +3936,7 @@ const ILLIT_CARD_ALBUMS = [
               <span class="text-[10px] font-bold text-gray-500 shrink-0">${place}</span>
             </div>
             <p class="text-[11px] text-gray-600 mt-0.5 leading-relaxed">${escapeHtml(t.detail || "")}</p>
-            ${t.href ? `<a href="${escapeHtml(t.href)}" target="_blank" rel="noopener" class="inline-block mt-1 text-[11px] font-bold text-indigo-700">開く</a>` : ""}
+            ${t.href ? `<a href="${escapeHtml(t.href)}" target="_blank" rel="noopener" class="inline-block mt-1.5 text-[12px] font-medium text-indigo-700 underline">${t.place === "公式アプリ" ? "投票ページを開く" : "再生ページを開く"}</a>` : ""}
           </div>
         </div>`;
       }).join("") : `<div class="liquid-glass rounded-2xl p-3 text-[11px] text-gray-500">今日の投票締切はありません。下の交換・シリアル・共同購入はサイト内で最後までできます。</div>`;
@@ -3959,9 +3959,15 @@ const ILLIT_CARD_ALBUMS = [
           _gllitEvents = res.ok ? await res.json() : [];
         }
         const today = gllitTodayKey();
-        const upcoming = (_gllitEvents || []).filter(e => e && e.date >= today).sort((a, b) => String(a.date).localeCompare(String(b.date))).slice(0, 3);
+        const upcoming = dedupeCalendarEvents(_gllitEvents || []).filter(e => e && e.date >= today).sort((a, b) => String(a.date).localeCompare(String(b.date)) || String(a.time || "").localeCompare(String(b.time || ""))).slice(0, 4);
         sched.innerHTML = upcoming.length
-          ? `<div class="font-bold text-gray-800 mb-1">次の予定</div>` + upcoming.map(e => `<button type="button" onclick="openIllitCalendar()" class="w-full text-left py-1 border-t border-white/70 first:border-0"><span class="text-indigo-700 font-bold">${escapeHtml(String(e.date).slice(5).replace("-", "/"))}</span> ${escapeHtml(e.title || "")}</button>`).join("")
+          ? `<div class="font-bold text-gray-800 mb-1">次の予定</div>` + upcoming.map(e => {
+              const href = e.link && String(e.link).startsWith("http") ? e.link : "";
+              return `<div class="py-1.5 border-t border-white/70 first:border-0">
+                <button type="button" onclick="openIllitCalendar()" class="text-left"><span class="text-indigo-700 font-bold">${escapeHtml(String(e.date).slice(5).replace("-", "/"))}</span> ${escapeHtml(e.title || "")}</button>
+                ${href ? `<a href="${escapeHtml(href)}" target="_blank" rel="noopener" class="block text-[11px] text-indigo-700 underline">詳細を開く</a>` : ""}
+              </div>`;
+            }).join("")
           : "直近の予定はありません";
       } catch (_) {
         sched.textContent = "予定を読み込めませんでした";
@@ -10404,6 +10410,18 @@ window.addEventListener("unhandledrejection", function(event) {
   </div>
 </div>
 <script>
+function dedupeCalendarEvents(list) {
+  const score = (e) => (e.link && String(e.link).startsWith("http") ? 2 : 0) + (e.detail ? 1 : 0);
+  const map = new Map();
+  (list || []).forEach((e) => {
+    if (!e || !e.date) return;
+    const title = String(e.title || "").replace(/（Day.*?）/g, "").replace(/\s/g, "");
+    const key = e.date + "|" + title.slice(0, 28);
+    const prev = map.get(key);
+    if (!prev || score(e) > score(prev)) map.set(key, e);
+  });
+  return Array.from(map.values());
+}
 let calendarEvents = [];
 let currentYear = new Date().getFullYear();
 let currentMonth = new Date().getMonth();
@@ -10415,7 +10433,7 @@ window.openIllitCalendar = async function() {
   try {
     const res = await fetch("./illit_calendar.json?t=" + Date.now());
     if (!res.ok) throw new Error("Not found");
-    calendarEvents = await res.json();
+    calendarEvents = dedupeCalendarEvents(await res.json());
     renderCalendar();
   } catch (e) {
     document.getElementById("illit-calendar-detail").innerHTML = '<p class="text-center text-xs text-red-500">読み込めませんでした</p>';
