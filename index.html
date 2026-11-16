@@ -1122,7 +1122,11 @@
             <button type="button" onclick="openBulkSlotEditor()" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-500 text-white font-bold text-xs shadow active:scale-95 transition">🎯 写真の枠を設定・編集する</button>
           </div>
                     <div id="bundle-box" class="hidden space-y-2">
-                      <div id="bundle-crop-host"></div>
+                      <div class="mb-2 flex items-center justify-between bg-purple-50 border border-purple-200 rounded-xl px-3 py-2">
+                  <span class="text-xs font-bold text-purple-900">🎯 まとめて出品：枠設定ツール</span>
+                  <button type="button" onclick="window.openBundleFrameEditor && window.openBundleFrameEditor()" class="px-3 py-1.5 rounded-lg bg-gradient-to-r from-purple-600 to-pink-500 text-white text-xs font-bold shadow active:scale-95">枠を開く・再検出</button>
+                </div>
+                <div id="bundle-crop-host"></div>
                       <div id="bundle-crop-preview" class="grid grid-cols-4 gap-1"></div>
                       <div id="bundle-detect" class="text-[12px] font-medium text-gray-800"></div>
                     </div>
@@ -11779,6 +11783,49 @@ window.commitSheetAutoCropsToZip = async function() {
       return origRenderPosts.apply(this, arguments);
     };
   }
+})();
+</script>
+
+<script>
+(function() {
+  let prevSrc = "";
+  let prevCount = 0;
+
+  function isBundleModeActive() {
+    const label = document.getElementById("photo-section-label");
+    const box = document.getElementById("bundle-box");
+    const hasBundleText = label && label.textContent && label.textContent.includes("まとめ写真");
+    const boxVisible = box && !box.classList.contains("hidden");
+    return !!(window.__isBulkMode || hasBundleText || boxVisible);
+  }
+
+  setInterval(() => {
+    const active = isBundleModeActive();
+    const box = document.getElementById("bundle-box");
+    if (active && box && box.classList.contains("hidden")) {
+      box.classList.remove("hidden");
+    }
+
+    const previewImg = document.querySelector("#post-photo-preview img");
+    const currentSrc = previewImg ? previewImg.src : "";
+    const pLen = (typeof postPhotos !== "undefined" && Array.isArray(postPhotos)) ? postPhotos.length : (currentSrc ? 1 : 0);
+
+    if (active && (currentSrc || pLen > 0) && (currentSrc !== prevSrc || pLen !== prevCount)) {
+      prevSrc = currentSrc;
+      prevCount = pLen;
+      window.__isBulkMode = true;
+      setTimeout(() => {
+        if (typeof window.openBundleFrameEditor === "function") {
+          window.openBundleFrameEditor();
+        }
+      }, 120);
+    }
+
+    if (!currentSrc && pLen === 0) {
+      prevSrc = "";
+      prevCount = 0;
+    }
+  }, 300);
 })();
 </script>
 </body>
