@@ -570,20 +570,10 @@
           <button type="button" id="mycards-image-search-clear" onclick="clearMyCardsImageSearch()" class="hidden shrink-0 px-3 py-2 text-[12px] text-gray-500">クリア</button>
         </div>
         <div id="mycards-image-search-result" class="hidden"></div>
-        <div class="flex gap-2 overflow-x-auto pb-1">
-          <figure class="w-[148px] shrink-0">
-            <img src="./guide-shoot.jpg" alt="机に置いて、真上から撮る" class="w-full h-[96px] object-cover rounded-xl border border-gray-200">
-            <figcaption class="mt-1 text-[11px] text-gray-600 leading-snug">机に置いて、真上から撮る</figcaption>
-          </figure>
-          <figure class="w-[148px] shrink-0">
-            <img src="./guide-fill.jpg" alt="カードを画面いっぱいに" class="w-full h-[96px] object-cover rounded-xl border border-gray-200">
-            <figcaption class="mt-1 text-[11px] text-gray-600 leading-snug">ふちまで入るように大きく</figcaption>
-          </figure>
-          <figure class="w-[148px] shrink-0">
-            <img src="./guide-ng.jpg" alt="指で隠したり斜めは避ける" class="w-full h-[96px] object-cover rounded-xl border border-gray-200">
-            <figcaption class="mt-1 text-[11px] text-gray-600 leading-snug">指で隠す・斜めは避ける</figcaption>
-          </figure>
-        </div>
+        <figure class="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+          <img src="./guide-pictogram.jpg" alt="机に置いて、明るくして、真上から撮る" class="w-full h-auto">
+          <figcaption class="px-3 py-2 text-[12px] text-gray-600">机に置いて、明るくして、真上から撮る</figcaption>
+        </figure>
         <div class="flex items-start gap-3">
           <div class="flex-1 min-w-0 space-y-2">
             <label class="block">
@@ -1098,6 +1088,10 @@
                     <div class="flex items-center justify-between">
                         <label class="block font-bold text-gray-800">📷 トレカ写真・AI自動入力 <span id="photo-req-label" class="text-pink-600">（必須・最大3枚）</span></label>
                     </div>
+                    <figure class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                      <img src="./guide-pictogram.jpg" alt="机に置いて、明るくして、真上から撮る" class="w-full h-auto">
+                      <figcaption class="px-2.5 py-1.5 text-[11px] text-gray-600">机に置いて、明るくして、真上から撮る</figcaption>
+                    </figure>
                     <div class="grid grid-cols-2 gap-2">
                         <button type="button" onclick="document.getElementById('post-camera-input').click()" class="bg-gradient-to-r from-illit-purple to-illit-accent text-white font-bold py-2.5 px-3 rounded-xl shadow-sm active:scale-95 transition flex items-center justify-center gap-1.5 text-xs">
                             <span>📸</span><span>カメラで撮る</span>
