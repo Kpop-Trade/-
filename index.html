@@ -265,9 +265,10 @@
     #detail-modal .detail-scroll { min-height: 0; }
     .detail-card { background: #fff; border: 1px solid #e8e8e8; border-radius: 16px; padding: 14px; margin: 12px 16px 0; box-sizing: border-box; }
     button.detail-card { display: flex; width: calc(100% - 32px); }
-    #detail-photos { margin: 0; border-radius: 16px; overflow: hidden; border: 1px solid #eee; background: #f3f3f3; }
-    #detail-photo-wrap { position: relative; margin: 12px 16px 0; }
-    #detail-photos img { width: auto; max-width: 100%; height: auto; max-height: 46vh; margin: 0 auto; object-fit: contain; display: block; }
+    #detail-photos { margin: 0; border: 0; background: transparent; overflow: visible; }
+    #detail-photo-wrap { position: relative; margin: 8px 0 0; background: transparent; }
+    #detail-photos .detail-film { display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 8px 20px 12px; }
+    #detail-photos .detail-film img { flex: 0 0 auto; width: auto; max-width: 78%; height: auto; max-height: 46vh; margin: 0; object-fit: contain; scroll-snap-align: center; background: transparent; filter: drop-shadow(0 10px 18px rgba(0,0,0,.14)); border-radius: 10px; }
     #detail-price-box { position: absolute; left: 10px; bottom: 10px; z-index: 2; max-width: calc(100% - 20px); background: rgba(255,255,255,0.46); border: 1px solid rgba(255,255,255,0.7); border-radius: 12px; padding: 6px 12px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
     #detail-price-box.hidden { display: none !important; }
     .detail-chip { display: inline-flex; align-items: center; gap: 4px; background: #f4f4f5; border: 1px solid #ececec; border-radius: 999px; padding: 5px 10px; font-size: 12px; color: #444; }
@@ -3920,16 +3921,14 @@ const ILLIT_CARD_ALBUMS = [
     async function loadDetailPhotos(p, index) {
       const el = document.getElementById("detail-photos"); detailPhotos = [];
       if (p.kind === "serial" || !p.photoCount) { el.innerHTML = ""; return; }
-      const frame = function (src, n, total) {
-        const zoom = src ? ` onclick="viewPhoto('detail', 0)"` : "";
-        const badge = total > 1 ? `<span class="absolute bottom-2 right-2 text-[11px] text-gray-600 bg-white/90 px-2 py-0.5 rounded-full">${n}/${total}</span>` : "";
-        return `<div class="relative w-full flex items-center justify-center py-3">${src ? `<img src="${src}"${zoom} alt="">` : ""}${badge}</div>`;
+      const paint = function (list) {
+        if (!list.length) { el.innerHTML = ""; return; }
+        el.innerHTML = `<div class="detail-film">${list.map((src, i) => `<img src="${src}" alt="" onclick="viewPhoto('detail', ${i})">`).join("")}</div>`;
       };
       const first = isJpegData(p.thumb) ? p.thumb : "";
-      el.innerHTML = frame(first, 1, 1);
-      try { const list = await getPhotos(p.id); if (currentDetailIndex !== index) return; detailPhotos = list; if (!list.length) return;
-        el.innerHTML = frame(list[0], 1, list.length);
-      } catch (e) {}
+      if (first) paint([first]);
+      try { const list = await getPhotos(p.id); if (currentDetailIndex !== index) return; detailPhotos = list; if (list.length) paint(list); }
+      catch (e) {}
     }
 
     function formatRelativeTimeJa(ts) {
