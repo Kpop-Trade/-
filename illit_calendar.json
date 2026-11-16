@@ -1,11 +1,99 @@
 [
   {
+    "date": "2026-10-26",
+    "time": "18:00",
+    "title": "【リリース】5th Mini Album『BREAK EVEN』韓国発売・音源配信開始",
+    "category": "release",
+    "detail": "ILLIT 韓国5枚目のミニアルバム『BREAK EVEN』（タイトル曲「You're...」）リリース。",
+    "link": "https://illit-official.jp/"
+  },
+  {
+    "date": "2026-11-12",
+    "time": "10:00",
+    "title": "【グッズ配送】HYBE CINE FEST 2026 OFFICIAL MERCHANDISE 順次お届け開始",
+    "category": "event",
+    "detail": "10月28日予約販売分のオフィシャルグッズ順次発送・お届け開始。",
+    "link": "https://illit-official.jp/news/65dd472ed083"
+  },
+  {
+    "date": "2026-11-14",
+    "time": "13:00",
+    "title": "【チケット】ILLIT LIVE “PRESS START” ENCORE in JAPAN 一般発売開始",
+    "category": "deadline",
+    "detail": "LaLa arena TOKYO-BAY 4公演の一般先着販売開始（12/26・27公演はローソンチケット限定）。予定枚数に達し次第終了。",
+    "link": "https://illit-official.jp/news/debc0b279e4a"
+  },
+  {
+    "date": "2026-11-15",
+    "time": "10:00",
+    "title": "【グッズ配送】ILLIT LIVE “PRESS START” ENCORE Official Merch. 順次発送開始",
+    "category": "event",
+    "detail": "日本アンコール公演オフィシャルマーチの事前予約分が11月中旬より順次発送開始。",
+    "link": "https://illit-official.jp/news/10c7b0e44ca3"
+  },
+  {
+    "date": "2026-11-19",
+    "time": "10:00",
+    "title": "【POP UP】Care Bears™ × ILLIT POP UP STORE＠名古屋PARCO 開催開始",
+    "category": "event",
+    "detail": "名古屋PARCOにて『Care Bears™ × ILLIT』コラボ限定グッズ・ぬいぐるみ等の店頭販売開始。",
+    "link": "https://marimocraft.co.jp/event/2026/"
+  },
+  {
+    "date": "2026-11-20",
+    "time": "10:00",
+    "title": "【タワレコ】対象店舗限定 ラッキードローイベント＆パネル展 開催開始",
+    "category": "event",
+    "detail": "タワーレコード対象店舗（渋谷・難波・名古屋近鉄パッセ等）にて対象CD購入で限定絵柄フォトカード抽選・サイン入りパネル抽選実施。",
+    "link": "https://tower.jp/"
+  },
+  {
+    "date": "2026-11-20",
+    "time": "10:00",
+    "title": "【HMV】HMV対象店舗限定 ラッキードロー＆クーポンキャンペーン開始",
+    "category": "event",
+    "detail": "HMV&BOOKS SHIBUYA・SHINSAIBASHI等対象店舗でのCD購入者限定ラキドロ・フライヤー配布実施。",
+    "link": "https://www.hmv.co.jp/"
+  },
+  {
+    "date": "2026-11-25",
+    "time": "23:59",
+    "title": "【Amazon】Amazon.co.jp限定 特典付きCD予約・シリアル応募受付締切",
+    "category": "deadline",
+    "detail": "Amazon限定メガジャケ・応募シリアルコード付き対象商品の購入・エントリー締切。",
+    "link": "https://www.amazon.co.jp/"
+  },
+  {
+    "date": "2026-11-30",
+    "time": "23:59",
+    "title": "【タワレコ・HMV】CD購入者対象オフラインイベント（サイン会・お見送り会）応募締切",
+    "category": "deadline",
+    "detail": "タワーレコード・HMV購入特典シリアルナンバーでのオフラインイベント抽選受付締切。",
+    "link": "https://illit-official.jp/"
+  },
+  {
     "date": "2026-12-23",
     "time": "18:30",
     "title": "ILLIT LIVE “PRESS START” ENCORE in JAPAN",
     "category": "event",
     "detail": "LaLa arena TOKYO‑BAY（千葉・船橋）で開催。開場 17:00、開演 18:30。4日間連続公演のうちの1日目。",
     "link": ""
+  },
+  {
+    "date": "2026-12-23",
+    "time": "18:30",
+    "title": "ILLIT LIVE “PRESS START” ENCORE in JAPAN（Day 1）",
+    "category": "event",
+    "detail": "LaLa arena TOKYO-BAY（千葉・船橋）で開催。開場 17:00 / 開演 18:30。",
+    "link": "https://www.hybejapan.events/illit/press_start_encore"
+  },
+  {
+    "date": "2026-12-23",
+    "time": "21:00",
+    "title": "【オフイベ】PRESS START ENCORE in JAPAN Day1 終演後お見送り会／VIP特典",
+    "category": "event",
+    "detail": "LaLa arena TOKYO-BAY 公演終了後に実施されるVIP席・CD予約抽選特典イベント。",
+    "link": "https://illit-official.jp/"
   },
   {
     "date": "2026-12-24",
@@ -16,6 +104,30 @@
     "link": ""
   },
   {
+    "date": "2026-12-24",
+    "time": "18:30",
+    "title": "ILLIT LIVE “PRESS START” ENCORE in JAPAN（Day 2）",
+    "category": "event",
+    "detail": "LaLa arena TOKYO-BAY（千葉・船橋）で開催。開場 17:00 / 開演 18:30。",
+    "link": "https://www.hybejapan.events/illit/press_start_encore"
+  },
+  {
+    "date": "2026-12-24",
+    "time": "21:00",
+    "title": "【オフイベ】PRESS START ENCORE in JAPAN Day2 終演後お見送り会／VIP特典",
+    "category": "event",
+    "detail": "LaLa arena TOKYO-BAY 公演終了後に実施されるVIP席・CD予約抽選特典イベント。",
+    "link": "https://illit-official.jp/"
+  },
+  {
+    "date": "2026-12-26",
+    "time": "17:00",
+    "title": "ILLIT LIVE “PRESS START” ENCORE in JAPAN（Day 3）",
+    "category": "event",
+    "detail": "LaLa arena TOKYO-BAY（千葉・船橋）で開催。開場 15:30 / 開演 17:00。",
+    "link": "https://www.hybejapan.events/illit/press_start_encore"
+  },
+  {
     "date": "2026-12-26",
     "time": "18:30",
     "title": "ILLIT LIVE “PRESS START” ENCORE in JAPAN",
@@ -24,11 +136,83 @@
     "link": ""
   },
   {
+    "date": "2026-12-26",
+    "time": "19:30",
+    "title": "【オフイベ】PRESS START ENCORE in JAPAN Day3 終演後お見送り会／VIP特典",
+    "category": "event",
+    "detail": "LaLa arena TOKYO-BAY 公演終了後に実施されるVIP席・CD予約抽選特典イベント。",
+    "link": "https://illit-official.jp/"
+  },
+  {
+    "date": "2026-12-27",
+    "time": "17:00",
+    "title": "ILLIT LIVE “PRESS START” ENCORE in JAPAN（Day 4・千秋楽）",
+    "category": "event",
+    "detail": "LaLa arena TOKYO-BAY（千葉・船橋）で開催。開場 15:30 / 開演 17:00。日本アンコール公演最終日。",
+    "link": "https://www.hybejapan.events/illit/press_start_encore"
+  },
+  {
     "date": "2026-12-27",
     "time": "18:30",
     "title": "ILLIT LIVE “PRESS START” ENCORE in JAPAN",
     "category": "event",
     "detail": "LaLa arena TOKYO‑BAY（千葉・船橋）で開催。開場 17:00、開演 18:30。4日間連続公演の最終日。",
+    "link": ""
+  },
+  {
+    "date": "2026-12-27",
+    "time": "19:30",
+    "title": "【オフイベ】PRESS START ENCORE in JAPAN Day4 終演後お見送り会／VIP特典",
+    "category": "event",
+    "detail": "LaLa arena TOKYO-BAY 公演終了後に実施されるVIP席・CD予約抽選特典イベント。",
+    "link": "https://illit-official.jp/"
+  },
+  {
+    "date": "2027-01-15",
+    "time": "00:00",
+    "title": "🎂 ユナ (YUNAH) 誕生日",
+    "category": "birthday",
+    "detail": "ILLIT 長女メンバー・ユナ（2004年1月15日生まれ）の誕生日。",
+    "link": ""
+  },
+  {
+    "date": "2027-02-04",
+    "time": "00:00",
+    "title": "🎂 イロハ (IROHA) 誕生日",
+    "category": "birthday",
+    "detail": "ILLIT 末っ子メンバー・イロハ（2008年2月4日生まれ）の誕生日。",
+    "link": ""
+  },
+  {
+    "date": "2027-03-25",
+    "time": "00:00",
+    "title": "🎉 ILLIT デビュー3周年記念日",
+    "category": "event",
+    "detail": "2024年3月25日 1st Mini Album『SUPER REAL ME』でのデビューから3周年。",
+    "link": "https://illit-official.jp/"
+  },
+  {
+    "date": "2027-05-11",
+    "time": "00:00",
+    "title": "🎂 ミンジュ (MINJU) 誕生日",
+    "category": "birthday",
+    "detail": "ILLIT メンバー・ミンジュ（2004年5月11日生まれ）の誕生日。",
+    "link": ""
+  },
+  {
+    "date": "2027-06-26",
+    "time": "00:00",
+    "title": "🎂 ウォンヒ (WONHEE) 誕生日",
+    "category": "birthday",
+    "detail": "ILLIT メンバー・ウォンヒ（2007年6月26日生まれ）の誕生日。",
+    "link": ""
+  },
+  {
+    "date": "2027-10-08",
+    "time": "00:00",
+    "title": "🎂 モカ (MOKA) 誕生日",
+    "category": "birthday",
+    "detail": "ILLIT メンバー・モカ（2004年10月8日生まれ）の誕生日。",
     "link": ""
   }
 ]
