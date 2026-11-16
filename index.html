@@ -226,7 +226,7 @@
       -webkit-overflow-scrolling: touch;
     }
     /* ステータスバー分の余白（standaloneでも安全） */
-    header.liquid-glass.sticky {
+    header.liquid-glass {
       padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
     }
     /* 下部ナビのセーフエリア */
@@ -370,7 +370,7 @@
 
   <div id="toast-container" class="fixed top-20 left-1/2 -translate-x-1/2 z-[110] space-y-2 w-[92%] max-w-sm pointer-events-none"></div>
 
-  <header class="liquid-glass sticky top-0 z-40 border-b-0 rounded-b-2xl mb-4">
+  <header class="liquid-glass border-b-0 mb-4">
     <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
       <div class="flex items-center space-x-2">
         <h1 class="text-xl font-bold text-gray-900">ILLIT Trade</h1>
