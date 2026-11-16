@@ -95,28 +95,46 @@
     .liquid-glass,
     .liquid-glass-heavy,
     .liquid-glass-input {
-      background:
-        linear-gradient(180deg, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.42) 100%);
-      backdrop-filter: blur(32px) saturate(1.8);
-      -webkit-backdrop-filter: blur(32px) saturate(1.8);
+      position: relative;
+      isolation: isolate;
+      background: transparent;
       border: 0.5px solid rgba(255,255,255,0.72);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    }
+    .liquid-glass::before,
+    .liquid-glass-heavy::before,
+    .liquid-glass-input::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      border-radius: inherit;
+      background: linear-gradient(180deg, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.42) 100%);
+      -webkit-backdrop-filter: blur(32px) saturate(1.8);
+      backdrop-filter: blur(32px) saturate(1.8);
       box-shadow:
         inset 0 1px 0 rgba(255,255,255,0.95),
-        inset 0 -0.5px 0 rgba(255,255,255,0.35),
-        0 10px 30px rgba(0,0,0,0.08);
+        inset 0 -0.5px 0 rgba(255,255,255,0.35);
     }
-    .liquid-glass-heavy {
-      background:
-        linear-gradient(180deg, rgba(255,255,255,0.78) 0%, rgba(248,248,250,0.5) 100%);
-      backdrop-filter: blur(44px) saturate(1.9);
+    .liquid-glass-heavy::before {
+      background: linear-gradient(180deg, rgba(255,255,255,0.78) 0%, rgba(248,248,250,0.5) 100%);
       -webkit-backdrop-filter: blur(44px) saturate(1.9);
+      backdrop-filter: blur(44px) saturate(1.9);
     }
     .liquid-glass-input:focus {
-      background: rgba(255,255,255,0.78);
-      box-shadow:
-        inset 0 1px 0 rgba(255,255,255,0.95),
-        0 0 0 1.5px rgba(17,17,17,0.16);
+      box-shadow: 0 0 0 1.5px rgba(17,17,17,0.16);
     }
+    input.liquid-glass-input,
+    button.liquid-glass,
+    button.liquid-glass-heavy,
+    button.liquid-glass-input {
+      background: linear-gradient(180deg, rgba(255,255,255,0.86), rgba(255,255,255,0.72));
+    }
+    input.liquid-glass-input::before,
+    button.liquid-glass::before,
+    button.liquid-glass-heavy::before,
+    button.liquid-glass-input::before { display: none; }
     .modal-backdrop {
       background: rgba(0, 0, 0, 0.25);
       backdrop-filter: blur(10px);
@@ -215,7 +233,7 @@
       color: #111;
       font-family: "Noto Sans JP", "Hiragino Sans", sans-serif;
     }
-    body > div.fixed.inset-0 { display: none !important; }
+    #bg-blobs { display: none !important; }
     header.liquid-glass {
       border-radius: 0 !important;
       border-left: 0 !important;
@@ -249,7 +267,7 @@
   </style>
 </head>
 <body class="bg-illit-bg min-h-screen text-gray-800 relative overflow-x-hidden">
-  <div class="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+  <div id="bg-blobs" class="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
     <div class="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-pink-300/40 rounded-full mix-blend-multiply filter blur-[80px] animate-blob"></div>
     <div class="absolute top-[20%] right-[-10%] w-[60vw] h-[60vw] bg-purple-300/40 rounded-full mix-blend-multiply filter blur-[80px] animate-blob animation-delay-2000"></div>
     <div class="absolute bottom-[-20%] left-[10%] w-[50vw] h-[50vw] bg-blue-300/40 rounded-full mix-blend-multiply filter blur-[100px] animate-blob animation-delay-4000"></div>
