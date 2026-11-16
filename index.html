@@ -265,12 +265,46 @@
         <div class="text-2xl drop-shadow-md">🤝</div>
         <div>
           <h2 class="font-bold text-base md:text-lg text-gray-900">ファン同士で直接トレカ・シリアル・アルバム・DEARLIT交換・買取・共同購入</h2>
-          <p class="text-xs md:text-sm text-gray-600 mt-1">写真付き出品・チャット・評価まで、すべてサイト内で完結。代金はアズカリ決済対応・手数料0円のプラットフォームです。</p>
+          <p class="text-xs md:text-sm text-gray-600 mt-1">交換・シリアル・共同購入・所持管理はサイト内で完結。投票と再生は公式アプリ、締切と「今日やった」はここにまとまります。手数料0円。</p>
         </div>
       </div>
       <div class="liquid-glass-input rounded-xl p-3 text-[11px] text-gray-600 leading-relaxed border-white/60">
         <p class="font-bold text-gray-700 mb-0.5">⚠️ 免責事項（ご利用規約）</p>
         <p>本サービスはファン同士の交流および情報交換の場を提供するものです。ユーザー間のトラブルや、ハッキング等の外部要因による損害につきましては、<b>運営は一切の責任を負いません。</b>お互いの評価や商品の状態を十分に確認のうえ、自己責任にてご利用ください。</p>
+      </div>
+    </section>
+
+    <section id="gllit-hub" class="space-y-3">
+      <div class="flex items-end justify-between px-1">
+        <div>
+          <h3 class="font-bold text-base text-gray-900">今日のGLLIT</h3>
+          <p class="text-[11px] text-gray-500">推し活を、ここで始めきる</p>
+        </div>
+        <button type="button" onclick="openIllitCalendar()" class="text-[11px] font-bold text-indigo-700 bg-white/80 border border-white px-3 py-1.5 rounded-full">予定を開く</button>
+      </div>
+      <div id="gllit-hub-tasks" class="space-y-2"></div>
+      <div id="gllit-hub-schedule" class="liquid-glass rounded-2xl p-3 text-xs text-gray-600">予定を読み込み中...</div>
+      <div class="grid grid-cols-2 gap-2">
+        <button type="button" onclick="focusBoard('card_exchange')" class="liquid-glass rounded-2xl p-3 text-left active:scale-[.98]">
+          <div class="text-[11px] text-gray-500">サイト内で完結</div>
+          <div class="font-bold text-sm text-gray-900">トレカ交換</div>
+          <div id="gllit-stat-exchange" class="text-[11px] text-gray-600 mt-0.5">募集を見る</div>
+        </button>
+        <button type="button" onclick="focusBoard('serial_sell')" class="liquid-glass rounded-2xl p-3 text-left active:scale-[.98]">
+          <div class="text-[11px] text-gray-500">サイト内で完結</div>
+          <div class="font-bold text-sm text-gray-900">シリアル</div>
+          <div id="gllit-stat-serial" class="text-[11px] text-gray-600 mt-0.5">相場を見る</div>
+        </button>
+        <button type="button" onclick="focusBoard('group_buy')" class="liquid-glass rounded-2xl p-3 text-left active:scale-[.98]">
+          <div class="text-[11px] text-gray-500">サイト内で完結</div>
+          <div class="font-bold text-sm text-gray-900">共同購入</div>
+          <div id="gllit-stat-group" class="text-[11px] text-gray-600 mt-0.5">募集を見る</div>
+        </button>
+        <button type="button" onclick="switchTab('mycards')" class="liquid-glass rounded-2xl p-3 text-left active:scale-[.98]">
+          <div class="text-[11px] text-gray-500">サイト内で完結</div>
+          <div class="font-bold text-sm text-gray-900">所持・欲しい</div>
+          <div class="text-[11px] text-gray-600 mt-0.5">コンプと通知</div>
+        </button>
       </div>
     </section>
 
@@ -1704,6 +1738,8 @@ const ILLIT_CARD_ALBUMS = [
       document.getElementById("post-menu-section").classList.toggle("hidden", tab !== 'post');
       document.getElementById("post-list-section").classList.toggle("hidden", !showList);
       document.getElementById("intro-section").classList.toggle("hidden", tab !== 'home' && tab !== 'likes');
+      const hub = document.getElementById("gllit-hub");
+      if (hub) hub.classList.toggle("hidden", tab !== "home");
       const mycardsSec = document.getElementById("mycards-section");
       const mypageSec = document.getElementById("mypage-section");
       const adminSec = document.getElementById("admin-section");
@@ -3660,10 +3696,99 @@ const ILLIT_CARD_ALBUMS = [
           loadingPosts = false;
           renderPosts();
         }
+        if (typeof renderGllitHub === "function") renderGllitHub();
       }
     }
     window.loadPosts = loadPosts;
     window.renderPosts = renderPosts;
+
+    let _gllitRoutine = null;
+    let _gllitEvents = null;
+    function gllitTodayKey() {
+      return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+    }
+    function gllitChecks() {
+      try { return JSON.parse(localStorage.getItem("gllit_checks") || "{}"); } catch (_) { return {}; }
+    }
+    function gllitTaskKey(task) {
+      return task.daily ? task.id + ":" + gllitTodayKey() : task.id;
+    }
+    window.toggleGllitTask = function(id) {
+      const bag = gllitChecks();
+      if (bag[id]) delete bag[id];
+      else bag[id] = gllitTodayKey();
+      localStorage.setItem("gllit_checks", JSON.stringify(bag));
+      renderGllitHub();
+    };
+    window.focusBoard = function(kind) {
+      if (typeof setKind === "function") setKind(kind);
+      const list = document.getElementById("post-list-section");
+      if (list) list.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+    function gllitMedian(nums) {
+      if (!nums.length) return null;
+      const s = nums.slice().sort((a, b) => a - b);
+      const mid = Math.floor(s.length / 2);
+      return s.length % 2 ? s[mid] : Math.round((s[mid - 1] + s[mid]) / 2);
+    }
+    async function renderGllitHub() {
+      const taskBox = document.getElementById("gllit-hub-tasks");
+      const sched = document.getElementById("gllit-hub-schedule");
+      if (!taskBox || !sched) return;
+      if (!_gllitRoutine) {
+        try {
+          const res = await fetch("./gllit_routine.json?t=" + Date.now().toString().slice(0, 8));
+          _gllitRoutine = res.ok ? await res.json() : { tasks: [] };
+        } catch (_) { _gllitRoutine = { tasks: [] }; }
+      }
+      const now = Date.now();
+      const done = gllitChecks();
+      const tasks = (_gllitRoutine.tasks || []).filter(t => !t.until || Date.parse(t.until) >= now);
+      taskBox.innerHTML = tasks.length ? tasks.map(t => {
+        const key = gllitTaskKey(t);
+        const on = !!done[key];
+        const place = t.place === "公式アプリ" || t.place === "音楽アプリ" ? "公式アプリで完了" : "ここで完了";
+        return `<div class="liquid-glass rounded-2xl p-3 flex gap-3 items-start">
+          <button type="button" onclick="toggleGllitTask('${escapeHtml(key)}')" class="mt-0.5 w-6 h-6 rounded-full border shrink-0 font-bold text-sm ${on ? "bg-emerald-500 border-emerald-500 text-white" : "bg-white border-gray-300 text-transparent"}" aria-label="完了">${on ? "✓" : "·"}</button>
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center justify-between gap-2">
+              <div class="font-bold text-sm text-gray-900 ${on ? "line-through text-gray-400" : ""}">${escapeHtml(t.title)}</div>
+              <span class="text-[10px] font-bold text-gray-500 shrink-0">${place}</span>
+            </div>
+            <p class="text-[11px] text-gray-600 mt-0.5 leading-relaxed">${escapeHtml(t.detail || "")}</p>
+            ${t.href ? `<a href="${escapeHtml(t.href)}" target="_blank" rel="noopener" class="inline-block mt-1 text-[11px] font-bold text-indigo-700">開く</a>` : ""}
+          </div>
+        </div>`;
+      }).join("") : `<div class="liquid-glass rounded-2xl p-3 text-[11px] text-gray-500">今日の投票締切はありません。下の交換・シリアル・共同購入はサイト内で最後までできます。</div>`;
+
+      const active = (allPosts || []).filter(p => p && p.status === "active");
+      const exchanges = active.filter(p => !p.isBuy && !p.isSell && p.kind !== "serial" && p.kind !== "group" && p.kind !== "album" && p.kind !== "dearlit");
+      const serials = active.filter(p => p.kind === "serial" && p.isSell && Number(p.price) > 0);
+      const groups = active.filter(p => p.kind === "group");
+      const med = gllitMedian(serials.map(p => Number(p.price)));
+      const exEl = document.getElementById("gllit-stat-exchange");
+      const seEl = document.getElementById("gllit-stat-serial");
+      const grEl = document.getElementById("gllit-stat-group");
+      if (exEl) exEl.textContent = exchanges.length ? `募集 ${exchanges.length}件` : "募集を見る";
+      if (seEl) seEl.textContent = med ? `売却の中央値 ¥${med.toLocaleString()}（${serials.length}件）` : "相場を見る";
+      if (grEl) grEl.textContent = groups.length ? `募集 ${groups.length}件` : "募集を見る";
+
+      try {
+        if (!_gllitEvents) {
+          const res = await fetch("./illit_calendar.json?t=" + Date.now().toString().slice(0, 8));
+          _gllitEvents = res.ok ? await res.json() : [];
+        }
+        const today = gllitTodayKey();
+        const upcoming = (_gllitEvents || []).filter(e => e && e.date >= today).sort((a, b) => String(a.date).localeCompare(String(b.date))).slice(0, 3);
+        sched.innerHTML = upcoming.length
+          ? `<div class="font-bold text-gray-800 mb-1">次の予定</div>` + upcoming.map(e => `<button type="button" onclick="openIllitCalendar()" class="w-full text-left py-1 border-t border-white/70 first:border-0"><span class="text-indigo-700 font-bold">${escapeHtml(String(e.date).slice(5).replace("-", "/"))}</span> ${escapeHtml(e.title || "")}</button>`).join("")
+          : "直近の予定はありません";
+      } catch (_) {
+        sched.textContent = "予定を読み込めませんでした";
+      }
+    }
+    window.renderGllitHub = renderGllitHub;
+
     function subscribePosts() { loadPosts(true); }
     window.loadMorePosts = function() { loadPosts(false); };
     window.refreshPosts = async function() { await loadPosts(true); showToast("最新の情報に更新しました。", "info"); };

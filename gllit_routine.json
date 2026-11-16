@@ -1,0 +1,29 @@
+{
+  "updated": "2026-11-16",
+  "note": "投票と再生そのものは公式アプリ。チェックと締切はここで持つ。",
+  "tasks": [
+    {
+      "id": "showkpop-live-20261116",
+      "until": "2026-11-16T19:30:00+09:00",
+      "title": "SHOW K-POP ライブ投票",
+      "detail": "Mubeat。18:00から放送中。Live Voting Ticketは有料分のみ。",
+      "place": "公式アプリ",
+      "href": "https://www.mubeat.tv/"
+    },
+    {
+      "id": "inkigayo-pre-20261120",
+      "until": "2026-11-20T23:59:00+09:00",
+      "title": "人気歌謡 事前投票",
+      "detail": "LiNC。1日最大10票。対象は11/29放送回。",
+      "place": "公式アプリ"
+    },
+    {
+      "id": "stream-yua",
+      "daily": true,
+      "title": "You're Under Arrest を再生",
+      "detail": "Spotify・Apple Music・YouTube。日本のTOP10維持。",
+      "place": "音楽アプリ",
+      "href": "https://open.spotify.com/search/ILLIT%20You%27re%20Under%20Arrest"
+    }
+  ]
+}
