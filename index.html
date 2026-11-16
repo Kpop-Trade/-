@@ -10437,6 +10437,51 @@ window.addEventListener("unhandledrejection", function(event) {
     (event.reason && event.reason.message ? event.reason.message : event.reason);
   container.prepend(errDiv);
 });
+
+(function() {
+  let startY = 0, pulling = false, dy = 0, busy = false;
+  const bar = document.createElement("div");
+  bar.id = "pull-refresh";
+  bar.setAttribute("aria-hidden", "true");
+  bar.style.cssText = "position:fixed;left:0;right:0;top:0;z-index:45;height:0;overflow:hidden;display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px;font-size:12px;color:#666;background:#f5f5f5;pointer-events:none;";
+  document.body.appendChild(bar);
+  function onHome() {
+    const hub = document.getElementById("gllit-hub");
+    return !!(hub && !hub.classList.contains("hidden"));
+  }
+  function modalOpen() {
+    return !!document.querySelector("#detail-modal:not(.hidden), .modal-backdrop:not(.hidden)");
+  }
+  document.addEventListener("touchstart", function(e) {
+    if (!onHome() || modalOpen() || busy || window.scrollY > 1 || e.touches.length !== 1) return;
+    startY = e.touches[0].clientY;
+    pulling = true;
+    dy = 0;
+  }, { passive: true });
+  document.addEventListener("touchmove", function(e) {
+    if (!pulling) return;
+    if (window.scrollY > 1) { pulling = false; bar.style.height = "0"; return; }
+    dy = Math.max(0, e.touches[0].clientY - startY);
+    if (dy < 8) return;
+    e.preventDefault();
+    bar.style.height = Math.min(56, dy * 0.4) + "px";
+    bar.textContent = dy > 78 ? "離すと更新" : "引っ張って更新";
+  }, { passive: false });
+  async function endPull() {
+    if (!pulling) return;
+    pulling = false;
+    const go = dy > 78;
+    dy = 0;
+    if (!go) { bar.style.height = "0"; bar.textContent = ""; return; }
+    bar.style.height = "36px";
+    bar.textContent = "更新中";
+    busy = true;
+    try { if (typeof refreshPosts === "function") await refreshPosts(); }
+    finally { busy = false; bar.style.height = "0"; bar.textContent = ""; }
+  }
+  document.addEventListener("touchend", endPull);
+  document.addEventListener("touchcancel", function() { pulling = false; dy = 0; bar.style.height = "0"; });
+})();
 </script>
 
 
