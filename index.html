@@ -3458,7 +3458,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       selectedPostCard = found;
       if (found) {
         const giveEl = document.getElementById("input-give");
-        const giveText = [found.albumName, found.name, found.member].filter(Boolean).join(" / ");
+        const giveText = [found.albumName, found.member].filter(Boolean).join(" / ");
         if (giveEl && !giveEl.value.trim()) giveEl.value = giveText;
         if (found.member) {
           const memEl = document.getElementById("input-member");
@@ -6433,7 +6433,7 @@ function getAiCardVectors() {
       const giveEl = document.getElementById("input-give");
       const albumName = (album && album.name) || "";
       if (giveEl) {
-        giveEl.value = [albumName, card.name || "", card.member || ""].filter(Boolean).join(" / ");
+        giveEl.value = [albumName, card.member || ""].filter(Boolean).join(" / ");
       }
       if (card.member) {
         const memEl = document.getElementById("input-member");
