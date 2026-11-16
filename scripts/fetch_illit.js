@@ -131,11 +131,15 @@ async function main() {
   const sa = JSON.parse(raw);
 
   const queries = [
-    `ILLIT スケジュール 2026`,
-    `ILLIT シリアル 応募 締切 2026`,
-    `ILLIT 当落発表 2026`,
-    `ILLIT ライブ コンサート 2026`,
-    `site:illit-official.jp シリアル`,
+    `ILLIT スケジュール 2026 2027`,
+    `ILLIT シリアル 応募 締切 2026 2027`,
+    `ILLIT 当落発表 入金期限 2026 2027`,
+    `ILLIT ライブ コンサート チケット 2026 2027`,
+    `ILLIT オフラインイベント サイン会 お見送り会 2026 2027`,
+    `ILLIT タワーレコード HMV Amazon イベント ラキドロ 2026 2027`,
+    `ILLIT グッズ POP UP 予約販売 2026 2027`,
+    `site:illit-official.jp/news`,
+    `site:universal-music.co.jp/illit/news`,
     `site:cdefgah.net ILLIT`
   ];
 
@@ -149,14 +153,14 @@ async function main() {
         query: query,
         search_depth: "basic",
         include_answer: false,
-        max_results: 4
+        max_results: 6
       })
     });
     const searchData = await searchRes.json();
     if (searchData.results) {
       allResults.push(...searchData.results.map(r => ({
         title: r.title,
-        content: (r.content || "").slice(0, 250)
+        content: (r.content || "").slice(0, 1200)
       })));
     }
   }
@@ -169,10 +173,11 @@ async function main() {
 ${searchContext}
 
 【厳守事項】
-- 公式情報を優先
-- ${getJstDateStr(0)} 以降の予定を抽出
-- シリアル応募締切、当落発表、入金期限も必ず含める
-- ライブ、グッズ、出演もできるだけ含める
+- 公式情報（illit-official.jp / universal-music / Weverse / タワレコ / HMV / Amazon）を最優先
+- ${getJstDateStr(0)} 以降の予定を網羅的に抽出
+- 1つの記事内に「予約開始日」「応募締切日」「当落発表日」「入金期限」「イベント開催当日」など複数の日付が含まれている場合は、必ず日付ごとに別々のイベントとしてすべて分解して出力すること
+- 店舗別イベント（タワーレコード・HMV・Amazon・POP UP STORE・ラッキードロー・サイン会・お見送り会）やグッズ販売・配送開始日も漏らさず含める
+- タイトルの冒頭に【チケット】【グッズ】【オフイベ】【タワレコ】【HMV】【Amazon】【POP UP】【リリース】【メディア】などのタグを付けて分かりやすくする
 - タイトルと詳細は日本語で出力
 - 不明な場合は空配列 [] を返す
 
