@@ -7864,8 +7864,11 @@ function getAiCardVectors() {
             const box = document.getElementById("bundle-box");
             if (box) box.classList.remove("hidden");
             const area = document.getElementById("sheet-crop-area");
+            const host = document.getElementById("bundle-crop-host");
             if (area) {
+              if (host && area.parentElement !== host) host.appendChild(area);
               area.classList.remove("hidden");
+              area.style.display = "block";
               area.dataset.mode = "bundle";
             }
             const img = new Image();
