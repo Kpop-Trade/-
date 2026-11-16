@@ -49,7 +49,7 @@
 </script>
   <title>ILLIT Trade</title>
   <meta name="description" content="ILLITファン同士のトレカ・シリアル・アルバム交換・買取・共同購入。手数料0円の非公式プラットフォーム">
-  <meta name="theme-color" content="#c084fc">
+  <meta name="theme-color" content="#ffffff">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="ILLIT Trade">
   <meta name="application-name" content="ILLIT Trade">
@@ -62,7 +62,7 @@
   <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
   <link rel="apple-touch-icon" sizes="152x152" href="icon-152.png">
   <link rel="apple-touch-icon" sizes="120x120" href="icon-120.png">
-  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
@@ -70,11 +70,11 @@
     tailwind.config = {
       theme: {
         extend: {
-          fontFamily: { sans: ['"M PLUS Rounded 1c"', 'sans-serif'] },
+          fontFamily: { sans: ['"Noto Sans JP"', 'Hiragino Sans', 'sans-serif'] },
           colors: {
             illit: {
-              purple: '#c084fc', darkPurple: '#9333ea', accent: '#a855f7',
-              pink: '#f472b6', bg: '#fdf4ff', card: 'rgba(255, 255, 255, 0.85)'
+              purple: '#ff0211', darkPurple: '#111111', accent: '#ff0211',
+              pink: '#ff0211', bg: '#f5f5f5', card: '#ffffff'
             }
           }
         }
@@ -215,8 +215,90 @@
     /* 下部ナビのセーフエリア */
     body > nav {
       padding-bottom: env(safe-area-inset-bottom, 0px);
-      bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));
+      bottom: 0;
     }
+
+    /* フリマアプリ寄りの画面。既存クラスはそのまま、見た目だけ差し替える */
+    body {
+      background: #f5f5f5 !important;
+      color: #111;
+      font-family: "Noto Sans JP", "Hiragino Sans", sans-serif;
+    }
+    body > div.fixed.inset-0 { display: none !important; }
+    #nav-lens { display: none !important; }
+    .liquid-glass, .liquid-glass-heavy, .liquid-glass-input {
+      background: #fff !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      border: 1px solid #eee !important;
+      box-shadow: none !important;
+    }
+    header.liquid-glass {
+      border-radius: 0 !important;
+      border-left: 0 !important;
+      border-right: 0 !important;
+      border-top: 0 !important;
+      margin-bottom: 0 !important;
+    }
+    header h1 {
+      background: none !important;
+      -webkit-text-fill-color: #111 !important;
+      color: #111 !important;
+      font-size: 17px;
+      letter-spacing: -0.02em;
+    }
+    #login-btn, #sell-fab {
+      background: #ff0211 !important;
+      color: #fff !important;
+      border: 0 !important;
+      border-radius: 8px !important;
+      box-shadow: none !important;
+    }
+    #sell-fab { bottom: calc(62px + env(safe-area-inset-bottom, 0px)) !important; }
+    #main-search-input {
+      background: #f2f2f2 !important;
+      border: 0 !important;
+      border-radius: 8px !important;
+      box-shadow: none !important;
+    }
+    .filter-chip {
+      font-family: inherit;
+      background: #fff;
+      border: 1px solid #e6e6e6 !important;
+      box-shadow: none !important;
+    }
+    body > nav.liquid-glass-heavy {
+      left: 0 !important;
+      right: 0 !important;
+      transform: none !important;
+      width: 100% !important;
+      max-width: none !important;
+      border-radius: 0 !important;
+      border-left: 0 !important;
+      border-right: 0 !important;
+      border-bottom: 0 !important;
+      border-top: 1px solid #e6e6e6 !important;
+      padding-top: 4px !important;
+    }
+    body > nav button {
+      background: transparent !important;
+      box-shadow: none !important;
+      color: #8a8a8a !important;
+      border-radius: 0 !important;
+      width: 20% !important;
+    }
+    body > nav button.bg-white\/70 {
+      color: #ff0211 !important;
+    }
+    #posts-container { gap: 10px 8px !important; }
+    #posts-container > div {
+      background: transparent !important;
+      border: 0 !important;
+      box-shadow: none !important;
+      border-radius: 0 !important;
+    }
+    #posts-container > div .aspect-square { border-radius: 6px; background: #f2f2f2 !important; }
+    .mercari-price { color: #ff0211; font-weight: 700; font-size: 15px; line-height: 1.2; }
   </style>
 </head>
 <body class="bg-illit-bg min-h-screen text-gray-800 relative overflow-x-hidden">
@@ -232,8 +314,7 @@
   <header class="liquid-glass sticky top-0 z-40 border-b-0 rounded-b-2xl mb-4">
     <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
       <div class="flex items-center space-x-2">
-        <span class="bg-gradient-to-r from-illit-purple to-illit-accent text-white font-bold text-xs px-2.5 py-1 rounded-full shadow-sm">ILLIT</span>
-        <h1 class="text-xl font-bold bg-gradient-to-r from-illit-darkPurple to-illit-accent bg-clip-text text-transparent drop-shadow-sm">ILLIT Trade</h1>
+        <h1 class="text-xl font-bold text-gray-900">ILLIT Trade</h1>
       </div>
       <div id="auth-container" class="flex items-center space-x-2">
         <button id="login-btn" onclick="loginWithGoogle()" class="bg-white/80 backdrop-blur border border-white text-illit-darkPurple text-xs md:text-sm font-bold py-2 px-4 rounded-full transition shadow-sm hover:bg-white">Googleログイン</button>
@@ -3602,12 +3683,12 @@ const ILLIT_CARD_ALBUMS = [
                 <span>${likesCount}</span>
               </button>
               ${photoBlock}
-              ${isSold ? '<div class="absolute inset-0 bg-black/30 flex items-center justify-center"><span class="text-white font-bold text-sm tracking-widest">SOLD OUT</span></div>' : ''}
-              ${priceText ? `<span class="absolute bottom-1.5 left-1.5 bg-black/70 text-white text-[11px] font-bold px-2 py-0.5 rounded-full">${priceText}</span>` : ''}
+              ${isSold ? '<div class="absolute inset-0 bg-black/35 flex items-center justify-center"><span class="text-white font-bold text-sm tracking-widest">SOLD</span></div>' : ''}
               ${!isSold && p.photoCount > 1 ? `<span class="absolute bottom-1.5 right-1.5 bg-black/50 text-white text-[9px] font-medium px-1.5 py-0.5 rounded-full">📷${p.photoCount}</span>` : ''}
             </div>
-            <div class="p-2 space-y-0.5">
-              <p class="text-[11px] font-medium text-gray-900 line-clamp-2 leading-snug">${title}</p>
+            <div class="pt-1.5 px-0.5 space-y-0.5">
+              ${priceText ? `<p class="mercari-price">${priceText}</p>` : ''}
+              <p class="text-[12px] font-normal text-gray-900 line-clamp-2 leading-snug">${title}</p>
               ${subInfo ? `<p class="text-[10px] text-gray-500">${subInfo}</p>` : ''}
                         ${formatRelativeTimeJa(p.updatedAt || p.createdAt) ? `<p class="text-[9px] text-gray-400">🕒 ${formatRelativeTimeJa(p.updatedAt || p.createdAt)}</p>` : ''}
               <p class="text-[10px] text-gray-400 truncate">${escapeHtml(p.userName || "")}</p>
