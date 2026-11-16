@@ -188,40 +188,22 @@
       min-height: 32px;
     }
 
-    /* 下バーの選択カプセル。指の下でもバーから離れない */
     #nav-glass {
       position: absolute;
       z-index: 0;
       pointer-events: none;
       top: 6px;
       bottom: 6px;
-      left: 8px;
+      left: 0;
       width: 60px;
       border-radius: 999px;
       background: rgba(120, 120, 128, 0.16);
-      transition: left .34s cubic-bezier(.2,.85,.2,1), width .34s cubic-bezier(.2,.85,.2,1), top .16s ease, bottom .16s ease, background .16s ease, box-shadow .16s ease;
-    }
-    #nav-glass.dragging {
-      top: -4px;
-      bottom: -4px;
-      background: rgba(255,255,255,0.55);
-      box-shadow: 0 6px 14px rgba(0,0,0,0.12), inset 0 0 0 1.5px rgba(255,255,255,0.9);
-      transition: left .06s linear, width .06s linear, top .12s ease, bottom .12s ease;
+      transform: translate3d(8px, 0, 0);
+      transition: transform .28s cubic-bezier(.2,.8,.2,1), width .28s cubic-bezier(.2,.8,.2,1);
     }
     body > nav { position: fixed; overflow: visible; }
-    body > nav button { position: relative; z-index: 1; background: transparent !important; box-shadow: none !important; transition: transform .2s ease; }
-    body > nav button.nav-hot { transform: scale(1.08); }
-    body > nav button span {
-      display: block;
-      max-height: 14px;
-      opacity: 1;
-      overflow: hidden;
-      transition: max-height .28s ease, opacity .2s ease;
-    }
-    body > nav.nav-min { padding-top: 3px; padding-bottom: 3px; }
-    body > nav.nav-min button span { max-height: 0; opacity: 0; }
-    body > nav.nav-min #nav-glass { top: 3px; bottom: 3px; }
-    body > nav.nav-min #nav-glass.dragging { top: -3px; bottom: -3px; }
+    body > nav button { position: relative; z-index: 1; background: transparent !important; box-shadow: none !important; }
+    body > nav button span { display: block; }
 
     /* PWA standalone: 上部が隠れる・引っ張ると戻る対策 */
     html {
@@ -303,15 +285,7 @@
       100% { transform: scale(1); }
     }
     .ui-in { animation: uiRise .32s cubic-bezier(.2,.8,.2,1); }
-    #posts-container > div { animation: uiRise .38s cubic-bezier(.2,.8,.2,1) both; }
-    #posts-container > div:nth-child(2) { animation-delay: .03s; }
-    #posts-container > div:nth-child(3) { animation-delay: .06s; }
-    #posts-container > div:nth-child(4) { animation-delay: .09s; }
-    #posts-container > div:nth-child(5) { animation-delay: .12s; }
-    #posts-container > div:nth-child(6) { animation-delay: .15s; }
-    #posts-container > div:nth-child(7) { animation-delay: .18s; }
-    #posts-container > div:nth-child(8) { animation-delay: .21s; }
-    #posts-container > div:active { transform: scale(.98); }
+    #posts-container > div { }
     button:not(#sell-fab):active { transform: scale(.97); }
     body > nav button:active { transform: none; }
     body > nav button.bg-white\/70 svg { animation: navPop .34s cubic-bezier(.34,1.56,.64,1); }
@@ -1865,13 +1839,6 @@ const ILLIT_CARD_ALBUMS = [
       if (tab === 'post') renderSellTab();
       if (tab === 'mypage') fillMyPageHeader();
       if (tab === 'mycards') openMyCardsPage();
-      ["intro-section", "gllit-hub", "post-list-section", "post-menu-section", "mycards-section", "mypage-section"].forEach(function (id) {
-        const el = document.getElementById(id);
-        if (!el || el.classList.contains("hidden")) return;
-        el.classList.remove("ui-in");
-        void el.offsetWidth;
-        el.classList.add("ui-in");
-      });
 
       const setNav = (id, on, activeColor) => {
         const el = document.getElementById(id);
@@ -10385,50 +10352,17 @@ window.commitSheetAutoCropsToZip = async function() {
   const glass = document.getElementById("nav-glass");
   if (!nav || !glass) return;
   const buttons = Array.from(nav.querySelectorAll("button"));
-  let dragging = false;
-
-  function nearest(x) {
-    let best = buttons[0], bestD = 1e9;
-    buttons.forEach(function (b) {
-      const r = b.getBoundingClientRect();
-      const d = Math.abs(x - (r.left + r.width / 2));
-      if (d < bestD) { bestD = d; best = b; }
-    });
-    return best;
-  }
   function activeBtn() {
     return buttons.find(function (b) { return b.classList.contains("bg-white/70"); }) || buttons[0];
   }
-  function place(btn, hot) {
+  function sync() {
+    const btn = activeBtn();
     if (!btn) return;
     const nr = nav.getBoundingClientRect();
     const br = btn.getBoundingClientRect();
-    glass.style.left = (br.left - nr.left) + "px";
     glass.style.width = br.width + "px";
-    buttons.forEach(function (b) { b.classList.toggle("nav-hot", hot && b === btn); });
+    glass.style.transform = "translate3d(" + (br.left - nr.left) + "px,0,0)";
   }
-  function sync() {
-    dragging = false;
-    glass.classList.remove("dragging");
-    place(activeBtn(), false);
-  }
-  function follow(x) {
-    dragging = true;
-    glass.classList.add("dragging");
-    place(nearest(x), true);
-  }
-  nav.addEventListener("touchstart", function (e) {
-    if (e.touches && e.touches.length === 1) follow(e.touches[0].clientX);
-  }, { passive: true });
-  nav.addEventListener("touchmove", function (e) {
-    if (dragging && e.touches && e.touches.length === 1) follow(e.touches[0].clientX);
-  }, { passive: true });
-  nav.addEventListener("touchend", function () {
-    dragging = false;
-    glass.classList.remove("dragging");
-    buttons.forEach(function (b) { b.classList.remove("nav-hot"); });
-  });
-  nav.addEventListener("touchcancel", sync);
   nav.addEventListener("click", function () { setTimeout(sync, 0); });
   window.addEventListener("resize", sync);
   sync();
