@@ -1092,11 +1092,18 @@
         <button onclick="closePostModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
       </div>
       <div class="space-y-3 text-xs md:text-sm">
+        <div id="exchange-style-box" class="hidden space-y-2">
+          <div class="grid grid-cols-2 gap-1 p-1 bg-[#f2f2f2] rounded-full">
+            <button type="button" id="exchange-style-single" onclick="setExchangeStyle('single')" class="py-2 rounded-full text-[13px] font-medium bg-white text-gray-900 shadow-sm">1枚</button>
+            <button type="button" id="exchange-style-bundle" onclick="setExchangeStyle('bundle')" class="py-2 rounded-full text-[13px] font-medium text-gray-500">まとめ</button>
+          </div>
+          <p id="exchange-style-guide" class="text-[12px] text-gray-600 leading-relaxed"></p>
+        </div>
         <div class="bg-purple-50/70 border border-purple-200/80 rounded-2xl p-3 space-y-2">
                     <div class="flex items-center justify-between">
-                        <label class="block font-bold text-gray-800">📷 トレカ写真・AI自動入力 <span id="photo-req-label" class="text-pink-600">（必須・最大3枚）</span></label>
+                        <label id="photo-section-label" class="block font-bold text-gray-800">📷 トレカ写真・AI自動入力 <span id="photo-req-label" class="text-pink-600">（必須・最大3枚）</span></label>
                     </div>
-                    <figure class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                    <figure id="post-guide-figure" class="bg-white border border-gray-200 rounded-xl overflow-hidden">
                       <img src="./guide-pictogram.jpg?v=11" alt="机に置いて、明るくして、真上から撮る" class="w-full h-auto object-contain">
                       <figcaption class="px-2.5 py-1.5 text-[11px] text-gray-600">机に置いて、明るくして、真上から撮る</figcaption>
                     </figure>
@@ -1140,7 +1147,7 @@
         </div>
         <div><label class="block font-medium text-gray-700 mb-1">説明文・備考（任意）</label><textarea id="input-desc" maxlength="200" rows="2" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></textarea></div>
         <div id="bundle-box" class="hidden bg-white border border-gray-200 rounded-xl p-3 text-[12px] text-gray-600 leading-relaxed">
-          1枚の写真に並べたトレカを検知します。申し込みは枠をタップして選びます。
+          並べたカードの枠を検知します。赤い枠をドラッグで直し、感度で絞れます。
           <div id="bundle-detect" class="mt-1 font-medium text-gray-800"></div>
           <button type="button" id="bundle-edit-btn" onclick="openBundleFrameEditor()" class="hidden mt-2 w-full py-2 rounded-xl bg-white border border-gray-200 text-[12px] text-gray-800">枠を直す</button>
         </div>
@@ -3414,7 +3421,11 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
 
       const _pm = _byId("post-modal");
       const bundleBox = document.getElementById("bundle-box");
-      if (bundleBox) bundleBox.classList.toggle("hidden", mode !== "exchange");
+      if (bundleBox) bundleBox.classList.add("hidden");
+      window.exchangeStyle = "single";
+      const styleBox = document.getElementById("exchange-style-box");
+      if (styleBox) styleBox.classList.toggle("hidden", mode !== "exchange");
+      if (mode === "exchange" && typeof setExchangeStyle === "function") setExchangeStyle("single");
       bundleExtras = [];
       window._pendingBundleBoxes = [];
       const detectEl = document.getElementById("bundle-detect");
@@ -3426,6 +3437,31 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       } else {
         alert("エラー: post-modal が見つかりません");
       }
+    };
+    window.setExchangeStyle = function(style) {
+      window.exchangeStyle = style === "bundle" ? "bundle" : "single";
+      const bundle = window.exchangeStyle === "bundle";
+      const singleBtn = document.getElementById("exchange-style-single");
+      const bundleBtn = document.getElementById("exchange-style-bundle");
+      if (singleBtn) singleBtn.className = "py-2 rounded-full text-[13px] font-medium " + (bundle ? "text-gray-500" : "bg-white text-gray-900 shadow-sm");
+      if (bundleBtn) bundleBtn.className = "py-2 rounded-full text-[13px] font-medium " + (bundle ? "bg-white text-gray-900 shadow-sm" : "text-gray-500");
+      const guide = document.getElementById("exchange-style-guide");
+      if (guide) guide.textContent = bundle
+        ? "カードを並べた写真を1枚撮ってください。赤い枠が各トレカです。感度で絞って、枠はドラッグで直せます。"
+        : "1枚を机に置いて、明るくして、真上から撮ってください。近いカードを自動で入れます。";
+      const figure = document.getElementById("post-guide-figure");
+      if (figure) figure.classList.toggle("hidden", bundle);
+      const photoLabel = document.getElementById("photo-section-label");
+      if (photoLabel && postMode === "exchange") {
+        photoLabel.innerHTML = bundle
+          ? '📷 まとめ写真 <span id="photo-req-label" class="text-pink-600">（必須・1枚）</span>'
+          : '📷 トレカ写真・AI自動入力 <span id="photo-req-label" class="text-pink-600">（必須・最大3枚）</span>';
+      }
+      const suggest = document.getElementById("similar-cards-suggest");
+      if (suggest && bundle) { suggest.classList.add("hidden"); suggest.innerHTML = ""; }
+      const box = document.getElementById("bundle-box");
+      if (box) box.classList.toggle("hidden", !bundle);
+      if (!bundle) window._pendingBundleBoxes = [];
     };
     window.closePostModal = function() {
       document.getElementById("post-modal").classList.add("hidden");
@@ -3514,16 +3550,17 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           postPhotos.push({ full: compressFromImage(img, PHOTO_FULL), thumb: compressFromImage(img, PHOTO_THUMB) });
           if (isFirstPhoto) window._pendingRecogImage = compressFromImage(img, { maxSide: 1400, quality: 0.92, maxChars: 1200000 });
         }
-        if (isFirstPhoto && window._pendingRecogImage && typeof runCardImageRecognition === "function") {
+        if (isFirstPhoto && window._pendingRecogImage && typeof runCardImageRecognition === "function" && !(postMode === "exchange" && window.exchangeStyle === "bundle")) {
           runCardImageRecognition(window._pendingRecogImage);
         }
-        if (isFirstPhoto && postMode === "exchange" && postPhotos[0]) {
+        if (isFirstPhoto && postMode === "exchange" && window.exchangeStyle === "bundle" && postPhotos[0]) {
           detectBundleBoxes(postPhotos[0].full).then(boxes => {
             window._pendingBundleBoxes = boxes;
             const el = document.getElementById("bundle-detect");
             const editBtn = document.getElementById("bundle-edit-btn");
             if (el) el.textContent = boxes.length ? (boxes.length + "枚の枠を検知しました。違えば枠を直せます") : "枠が見つかりません。枠を直すから追加できます";
             if (editBtn) editBtn.classList.remove("hidden");
+            if (typeof openBundleFrameEditor === "function") openBundleFrameEditor();
           });
         }
       } catch(e) {} finally { processingPhotos = false; renderPostPhotoPreview(); }
@@ -3613,7 +3650,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           }));
         }
         let bundleBoxes = [];
-        if (isExchange && postPhotos[0]) {
+        if (isExchange && window.exchangeStyle === "bundle" && postPhotos[0]) {
           bundleBoxes = Array.isArray(window._pendingBundleBoxes) && window._pendingBundleBoxes.length
             ? window._pendingBundleBoxes
             : await detectBundleBoxes(postPhotos[0].full);
