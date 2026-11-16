@@ -57,11 +57,28 @@ function shrinkForModel(dataUrl) {
     const img = new Image();
     img.onload = () => {
       const c = document.createElement("canvas");
-      c.width = 224;
-      c.height = 224;
-      c.getContext("2d").drawImage(img, 0, 0, 224, 224);
-      resolve(c.toDataURL("image/jpeg", 0.85));
+      c.width = 224; c.height = 224;
+      const ctx = c.getContext("2d");
+      
+      const targetRatio = 1.55;
+      const imgRatio = img.height / img.width;
+      let sw = img.width, sh = img.height, sx = 0, sy = 0;
+      
+      if (imgRatio > targetRatio) {
+        sh = img.width * targetRatio;
+        sy = (img.height - sh) / 2;
+      } else {
+        sw = img.height / targetRatio;
+        sx = (img.width - sw) / 2;
+      }
+      
+      ctx.filter = "contrast(110%) brightness(105%)";
+      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, 224, 224);
+      resolve(c.toDataURL("image/jpeg", 0.9));
     };
+    img.src = dataUrl;
+  });
+};
     img.onerror = () => resolve(dataUrl);
     img.src = dataUrl;
   });
