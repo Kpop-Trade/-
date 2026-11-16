@@ -6363,6 +6363,13 @@ function getAiCardVectors() {
         }
 
         renderAiCandidates(container, matches || []);
+        const best = matches && matches[0];
+        const second = matches && matches[1];
+        const raw = best ? Number(best.raw || 0) : 0;
+        const gap = second ? raw - Number(second.raw || 0) : 1;
+        if (best && best.card && best.card.id && (raw >= 0.9 || (raw >= 0.86 && gap >= 0.015) || Number(best.score) >= 60)) {
+          applyRecognizedCard(best.card.id, true);
+        }
         return matches || [];
       } catch (e) {
         console.error("AI Recognition Error:", e);
@@ -6414,25 +6421,41 @@ function getAiCardVectors() {
       }
     };
 
-    window.applyRecognizedCard = function(cardId) {
+    window.applyRecognizedCard = function(cardId, keepList) {
       const found = findCardById(cardId);
       if (!found) return;
       const { card } = found;
 
-      // カタログ選択・メンバー・【譲】欄を自動セット
       if (typeof selectPostCard === "function") {
         selectPostCard(card.id);
       }
       const giveEl = document.getElementById("input-give");
       if (giveEl) {
-        giveEl.value = card.name + (card.member ? " / " + card.member : "");
+        giveEl.value = (card.name || "") + (card.member ? " / " + card.member : "");
+      }
+      if (card.member) {
+        const memEl = document.getElementById("input-member");
+        if (memEl) {
+          const hit = Array.from(memEl.options).find(o => o.value.includes(card.member) || card.member.includes(String(o.value).split(" ")[0]));
+          if (hit) memEl.value = hit.value;
+        }
       }
 
       const container = document.getElementById("similar-cards-suggest");
+      const noteText = "「" + (card.member || "") + " / " + (card.name || "") + "」を入力しました";
+      if (keepList && container) {
+        let note = document.getElementById("ai-autofill-note");
+        if (!note) {
+          note = document.createElement("div");
+          note.id = "ai-autofill-note";
+          container.prepend(note);
+        }
+        note.className = "text-[11px] text-emerald-700 font-bold mb-1.5";
+        note.textContent = noteText + "。違えば下の候補をタップ";
+        return;
+      }
       if (container) {
-        container.innerHTML = `<div class="text-[11px] text-emerald-700 font-bold py-1.5 px-2 bg-emerald-50 rounded-xl text-center">
-          ✅ 「${escapeHtml(card.member || "")} / ${escapeHtml(card.name || "")}」をセットしました！
-        </div>`;
+        container.innerHTML = `<div class="text-[11px] text-emerald-700 font-bold py-1.5 px-2 bg-emerald-50 rounded-xl text-center">✅ ${escapeHtml(noteText)}</div>`;
       }
     };
 
