@@ -195,8 +195,39 @@ ${searchContext}
   if (!res.ok) throw new Error("Groq API error: " + JSON.stringify(data));
   const text = data?.choices?.[0]?.message?.content || "[]";
   const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
-  fs.writeFileSync("illit_calendar.json", JSON.stringify(parsed, null, 2));
-  console.log(`SUCCESS: ${parsed.length}件更新`);
+  let existing = [];
+  try {
+    if (fs.existsSync("illit_calendar.json")) {
+      existing = JSON.parse(fs.readFileSync("illit_calendar.json", "utf8"));
+      if (!Array.isArray(existing)) existing = [];
+    }
+  } catch (e) {
+    console.warn("既存JSONの読み込みスキップ:", e.message);
+  }
+
+  const normalize = (s) => String(s || "").toLowerCase().replace(/\s+/g, "").trim();
+  const merged = [...existing];
+  let addedCount = 0;
+
+  for (const item of parsed) {
+    if (!item || !item.date || !item.title) continue;
+    const isDup = merged.some(
+      (ex) => ex.date === item.date && normalize(ex.title) === normalize(item.title)
+    );
+    if (!isDup) {
+      merged.push(item);
+      addedCount++;
+    }
+  }
+
+  merged.sort((a, b) => {
+    const d = String(a.date).localeCompare(String(b.date));
+    if (d !== 0) return d;
+    return String(a.time || "99:99").localeCompare(String(b.time || "99:99"));
+  });
+
+  fs.writeFileSync("illit_calendar.json", JSON.stringify(merged, null, 2));
+  console.log(`SUCCESS: 新規${addedCount}件追加（合計${merged.length}件）`);
 
   const crypto = require("crypto");
   function base64url(input) {
