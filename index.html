@@ -1301,13 +1301,13 @@
   </div>
 
   <!-- 取引一覧 -->
-  <div id="trades-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
-    <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[85vh] flex flex-col">
-      <div class="flex justify-between items-center border-b border-purple-200/50 pb-3 shrink-0">
-        <h3 class="font-bold text-base text-gray-800">💬 あなたの取引</h3>
-        <button onclick="closeTradesModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
+  <div id="trades-modal" class="fixed inset-0 bg-black/40 hidden z-50 flex items-end sm:items-center justify-center">
+    <div class="bg-[#f5f5f5] w-full max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[88vh] flex flex-col">
+      <div class="flex justify-between items-center px-5 h-14 shrink-0">
+        <h3 class="font-bold text-[16px] text-gray-900">あなたの取引</h3>
+        <button onclick="closeTradesModal()" class="w-8 h-8 text-gray-400 text-xl leading-none" aria-label="閉じる">×</button>
       </div>
-      <div id="trades-list" class="space-y-3 overflow-y-auto"></div>
+      <div id="trades-list" class="px-4 pb-6 space-y-4 overflow-y-auto"></div>
     </div>
   </div>
 
@@ -4671,20 +4671,18 @@ const ILLIT_CARD_ALBUMS = [
           if (text) note = `<div class="text-[11px] text-gray-500 relative z-10">${escapeHtml(text)}</div>`;
         }
         const unread = !!(currentUser && t.lastSenderId !== currentUser.uid && isUnread(t));
-        const unreadCls = unread
-          ? "bg-pink-50/90 border-pink-300 ring-2 ring-pink-200 shadow-md"
-          : "liquid-glass-input hover:bg-white/70 shadow-sm";
-        return `<button data-trade-id="${escapeHtml(t.id)}" class="w-full text-left rounded-2xl p-4 transition space-y-2 relative overflow-hidden group border ${unreadCls}">
-            ${unread ? '<span class="absolute left-0 top-0 bottom-0 w-1.5 bg-pink-500"></span>' : ''}
-            <div class="flex justify-between items-center relative z-10 pl-1">
-              <span class="text-xs ${unread ? "text-pink-800 font-bold" : "text-gray-700 font-medium"}">${escapeHtml(otherName)} さん</span>
-              <span class="flex items-center gap-1">
-                ${unread ? '<span class="bg-pink-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm border border-white/50 animate-pulse">未読</span>' : ''}
-                <span class="text-[10px] font-medium px-2.5 py-0.5 rounded-full border shadow-sm ${STATUS_CLASS[t.status] || ''}">${STATUS_LABEL[t.status] || ""}</span>
-              </span>
+        const unreadCls = unread ? "bg-white border-pink-200" : "bg-white border-gray-200";
+        const when = formatRelativeTimeJa(t.lastMessageAt || t.updatedAt || t.createdAt);
+        return `<button data-trade-id="${escapeHtml(t.id)}" class="w-full text-left rounded-2xl px-4 py-3.5 border ${unreadCls}">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-[15px] font-medium text-gray-900 truncate">${escapeHtml(otherName || "相手")}さん</span>
+              <span class="shrink-0 text-[11px] font-medium px-2 py-0.5 rounded-full ${STATUS_CLASS[t.status] || "bg-gray-100 text-gray-600"}">${STATUS_LABEL[t.status] || ""}</span>
             </div>
-            <div class="text-sm ${unread ? "font-bold text-gray-900" : "font-medium text-gray-900"} relative z-10 pl-1">${escapeHtml(t.postGive)}</div>
-            ${unread ? '<div class="text-[11px] text-pink-600 font-medium relative z-10 pl-1">💬 新しいメッセージがあります</div>' : ''}
+            <div class="mt-1 text-[13px] text-gray-700 leading-snug line-clamp-2">${escapeHtml(t.postGive || "取引")}</div>
+            <div class="mt-1.5 flex items-center gap-2 text-[11px] text-gray-400">
+              ${unread ? '<span class="text-pink-500 font-medium">新しいメッセージ</span>' : ""}
+              ${when ? `<span>${escapeHtml(when)}</span>` : ""}
+            </div>
             ${note}
           </button>`;
       };
@@ -4696,20 +4694,20 @@ const ILLIT_CARD_ALBUMS = [
       const unknown = cancelled.filter(t => cancelSide(t) === "unknown");
       const section = (id, title, list, emptyText) => {
         if (list.length === 0 && !emptyText) return "";
-        return `<details id="trades-sec-${id}" ${tradeSecOpen[id] ? "open" : ""} ontoggle="tradeSecToggle('${id}', this.open)" class="group/sec">
-          <summary class="flex items-center justify-between cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden px-1 py-1.5">
-            <span class="font-bold text-sm text-gray-800">${title} <span class="text-xs font-medium text-gray-500">${list.length}件</span></span>
-            <span class="text-gray-400 text-xs">▾</span>
+        return `<details id="trades-sec-${id}" ${tradeSecOpen[id] ? "open" : ""} ontoggle="tradeSecToggle('${id}', this.open)">
+          <summary class="flex items-center justify-between cursor-pointer list-none [&::-webkit-details-marker]:hidden px-1 py-1">
+            <span class="text-[13px] font-medium text-gray-500">${title}<span class="ml-1">${list.length}</span></span>
+            <span class="text-gray-300 text-xs">▾</span>
           </summary>
-          <div class="space-y-3 mt-2">${list.length ? list.map(card).join("") : `<p class="text-xs text-gray-500 text-center py-3 bg-white/30 rounded-xl">${emptyText}</p>`}</div>
+          <div class="space-y-2 mt-2">${list.length ? list.map(card).join("") : `<p class="text-[12px] text-gray-400 text-center py-4">${emptyText}</p>`}</div>
         </details>`;
       };
       el.innerHTML = [
-        section("active", "💬 取引中" + (active.filter(t => isUnread(t)).length ? ` · 未読${active.filter(t => isUnread(t)).length}` : ""), active, "取引中のものはありません。"),
-        section("done", "🎉 完了", done, ""),
-        section("cancel_other", "🚫 キャンセルされたもの", byOther, ""),
-        section("cancel_me", "↩️ キャンセルしたもの", byMe, ""),
-        section("cancel_unknown", "キャンセル（どちらか不明）", unknown, "")
+        section("active", "取引中" + (active.filter(t => isUnread(t)).length ? ` · 未読${active.filter(t => isUnread(t)).length}` : ""), active, "取引中のものはありません"),
+        section("done", "完了", done, ""),
+        section("cancel_other", "キャンセルされたもの", byOther, ""),
+        section("cancel_me", "キャンセルしたもの", byMe, ""),
+        section("cancel_unknown", "キャンセル（どちらがしたか不明）", unknown, "")
       ].join("");
     };
 
