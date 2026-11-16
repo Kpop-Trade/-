@@ -269,8 +269,10 @@
     #detail-photo-wrap { position: relative; margin: 8px 0 0; background: transparent; }
     #detail-photos .detail-film { display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 8px 20px 12px; }
     #detail-photos .detail-film img { flex: 0 0 auto; width: auto; max-width: 78%; height: auto; max-height: 46vh; margin: 0; object-fit: contain; scroll-snap-align: center; background: transparent; filter: drop-shadow(0 10px 18px rgba(0,0,0,.14)); border-radius: 10px; }
-    #detail-price-box { position: absolute; left: 10px; bottom: 10px; z-index: 2; max-width: calc(100% - 20px); background: rgba(255,255,255,0.46); border: 1px solid rgba(255,255,255,0.7); border-radius: 12px; padding: 6px 12px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+    #detail-price-box { display: block; }
     #detail-price-box.hidden { display: none !important; }
+    #detail-price { color: #111 !important; font-size: 22px; font-weight: 700; line-height: 1.2; }
+    #detail-like-btn { width: auto; height: 36px; background: #f2f2f2 !important; color: #222 !important; border: 0; border-radius: 999px !important; box-shadow: none !important; padding: 0 12px; }
     .detail-chip { display: inline-flex; align-items: center; gap: 4px; background: #f4f4f5; border: 1px solid #ececec; border-radius: 999px; padding: 5px 10px; font-size: 12px; color: #444; }
     .detail-chip.hidden, #detail-desc-box.hidden { display: none !important; }
     .detail-note { background: #f7f7f8; border-radius: 14px; padding: 12px 14px; font-size: 14px; line-height: 1.65; color: #222; }
@@ -278,8 +280,7 @@
     #detail-actions { display: block; flex-shrink: 0; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: #fff; border-top: 1px solid #eee; }
     #detail-actions button { width: 100%; height: 48px; border-radius: 999px !important; background: #ff4d4f !important; color: #fff !important; font-weight: 700; box-shadow: none !important; }
     #detail-actions button.bg-white\/80, #detail-actions button.bg-red-50, #detail-actions button.bg-teal-50 { background: #fff !important; color: #333 !important; border: 1px solid #eee; margin-top: 8px; }
-    #detail-like-btn { width: auto; height: auto; background: #fff !important; color: #666 !important; border: 1px solid #eee; border-radius: 999px !important; box-shadow: none !important; padding: 6px 12px; }
-    #detail-price { color: #111 !important; font-size: 16px; font-weight: 700; line-height: 1.2; }
+    #detail-like-btn { width: auto; height: 36px; background: #f2f2f2 !important; color: #222 !important; border: 0; border-radius: 999px !important; box-shadow: none !important; padding: 0 12px; }
 
     @keyframes uiRise {
       from { opacity: 0; transform: translateY(10px); }
@@ -1196,24 +1197,28 @@
       <div class="detail-scroll flex-1 overflow-y-auto pb-6">
         <div class="pb-2">
           <div id="detail-photo-wrap">
-            <div id="detail-photos" class="bg-[#f3f3f3] flex items-center justify-center"></div>
-            <div id="detail-price-box" class="hidden"><span id="detail-price"></span></div>
+            <div id="detail-photos"></div>
           </div>
-          <div class="text-sm">
-            <div class="detail-card space-y-3">
-              <div class="flex flex-wrap gap-2">
-                <div id="detail-condition-box" class="detail-chip hidden"><span id="detail-condition"></span></div>
-                <div class="detail-chip">メンバー <span id="detail-member"></span></div>
-                <div id="detail-want-box" class="detail-chip"><span class="text-gray-400">希望</span> <span id="detail-want"></span></div>
-              </div>
-              <div id="detail-give-box" class="hidden"><span></span><span id="detail-give"></span></div>
-              <div id="detail-desc-box" class="detail-note"></div>
-              <div id="detail-extra" class="text-[12px] text-gray-500 space-y-1"></div>
-              <button id="detail-like-btn" onclick="toggleDetailLike()" class="text-[13px]">
+          <div class="px-4 pt-3 pb-2 space-y-3">
+            <div class="flex items-center gap-3">
+              <button id="detail-like-btn" onclick="toggleDetailLike()" class="text-[14px]">
                 <span id="detail-like-icon">♡</span> <span id="detail-like-count">0</span>
               </button>
+              <button type="button" onclick="document.getElementById('detail-comment-input').focus()" class="h-9 px-3 rounded-full bg-[#f2f2f2] text-[14px] text-gray-800">💬 <span id="detail-comment-count">0</span></button>
             </div>
-            <button type="button" id="detail-seller-btn" onclick="openSellerProfileFromDetail()" class="detail-card flex items-center gap-3 text-left">
+            <h2 id="detail-item-title" class="text-[20px] font-bold text-gray-900 leading-snug"></h2>
+            <div id="detail-condition-box" class="hidden text-[15px] text-gray-800"><span id="detail-condition"></span></div>
+            <div id="detail-time" class="text-[13px] text-gray-400"></div>
+            <div id="detail-price-box" class="hidden"><span id="detail-price"></span></div>
+            <div class="text-[13px] text-gray-500">メンバー <span id="detail-member" class="text-gray-800"></span></div>
+            <div id="detail-give-box" class="hidden"><span></span><span id="detail-give"></span></div>
+            <div id="detail-want-box" class="text-[14px] text-gray-700"><span class="text-gray-400">希望</span> <span id="detail-want"></span></div>
+            <div id="detail-extra" class="text-[13px] text-gray-500 space-y-1"></div>
+            <div>
+              <div class="text-[16px] font-bold text-gray-900 mb-2">商品の説明</div>
+              <div id="detail-desc-box" class="text-[15px] text-gray-800 whitespace-pre-wrap leading-relaxed"></div>
+            </div>
+            <button type="button" id="detail-seller-btn" onclick="openSellerProfileFromDetail()" class="w-full flex items-center gap-3 text-left py-2">
               <img id="detail-user-avatar" src="" alt="" class="w-11 h-11 rounded-full object-cover hidden shrink-0">
               <div id="detail-user-avatar-placeholder" class="w-11 h-11 rounded-full bg-gray-100 flex items-center justify-center text-sm shrink-0">👤</div>
               <div class="min-w-0 flex-1">
@@ -1223,16 +1228,16 @@
               </div>
               <span class="text-gray-300 text-lg">›</span>
             </button>
-            <div id="detail-seller-items" class="detail-card text-[13px]"></div>
-            <div class="detail-card">
-              <div class="text-[15px] font-medium text-gray-900 mb-3">コメント</div>
+            <div id="detail-seller-items" class="text-[13px]"></div>
+            <div>
+              <div class="text-[16px] font-bold text-gray-900 mb-3">コメント</div>
               <div id="detail-comments" class="space-y-3 mb-3"></div>
               <form class="flex gap-2 items-center" onsubmit="submitPostComment(event)">
                 <input id="detail-comment-input" maxlength="200" placeholder="コメントを入力" class="flex-1 bg-[#f6f6f7] border border-[#eee] rounded-full px-4 py-2.5 text-sm outline-none">
                 <button type="submit" class="h-10 px-4 rounded-full bg-[#fff1f0] text-[#e5484d] text-sm font-medium">送信</button>
               </form>
             </div>
-            <div id="detail-related" class="detail-card text-[13px]"></div>
+            <div id="detail-related" class="text-[13px]"></div>
             <div id="detail-more" class="flex justify-center gap-4 text-[12px] text-gray-400 py-4"></div>
           </div>
         </div>
@@ -3725,11 +3730,11 @@ const ILLIT_CARD_ALBUMS = [
                 <span>${likesCount}</span>
               </button>
               ${photoBlock}
+              ${priceText ? `<span class="absolute left-1.5 bottom-1.5 z-10 text-[12px] font-bold text-gray-900 bg-white/50 backdrop-blur rounded-lg px-2 py-1">${priceText}</span>` : ''}
               ${isSold ? '<div class="absolute inset-0 bg-black/35 flex items-center justify-center"><span class="text-white font-bold text-sm tracking-widest">SOLD</span></div>' : ''}
               ${!isSold && p.photoCount > 1 ? `<span class="absolute bottom-1.5 right-1.5 bg-black/50 text-white text-[9px] font-medium px-1.5 py-0.5 rounded-full">📷${p.photoCount}</span>` : ''}
             </div>
             <div class="pt-1.5 px-0.5 space-y-0.5">
-              ${priceText ? `<p class="mercari-price">${priceText}</p>` : ''}
               <p class="text-[12px] font-normal text-gray-900 line-clamp-2 leading-snug">${title}</p>
               ${subInfo ? `<p class="text-[10px] text-gray-500">${subInfo}</p>` : ''}
                         ${formatRelativeTimeJa(p.updatedAt || p.createdAt) ? `<p class="text-[9px] text-gray-400">🕒 ${formatRelativeTimeJa(p.updatedAt || p.createdAt)}</p>` : ''}
@@ -3967,18 +3972,22 @@ const ILLIT_CARD_ALBUMS = [
       else if (p.kind === "dearlit") title = "🎁 DEARLITの詳細";
       else if (isBuy) title = "💳 買取（購入希望）の詳細";
       else if (p.isSell) title = "💰 売却の詳細";
-      document.getElementById("detail-title").innerText = p.give || title;
+      document.getElementById("detail-title").innerText = "";
+      const itemTitle = document.getElementById("detail-item-title");
+      if (itemTitle) itemTitle.innerText = p.give || title;
       const priceHead = document.getElementById("detail-price-head");
       if (priceHead) priceHead.innerText = "";
       if (isGroup || isBuy || p.isSell) {
         const pay = paymentLabel(p);
-        document.getElementById("detail-price").innerHTML = "¥" + Number(p.price || 0).toLocaleString() + (pay ? `<span style="margin-left:6px;font-size:11px;font-weight:500;color:#333">${escapeHtml(pay)}</span>` : "");
+        document.getElementById("detail-price").innerHTML = "¥" + Number(p.price || 0).toLocaleString() + (pay ? `<span style="margin-left:8px;font-size:13px;font-weight:400;color:#666">${escapeHtml(pay)}</span>` : "");
       }
       document.getElementById("detail-give").innerText = p.give;
       document.getElementById("detail-want").innerText = p.want || "（なし）";
       document.getElementById("detail-member").innerText = p.member || "指定なし";
       const _relTime = formatRelativeTimeJa(p.updatedAt || p.createdAt);
-      document.getElementById("detail-user").innerText = _relTime ? `${p.userName}・${_relTime}` : p.userName;
+      const timeEl = document.getElementById("detail-time");
+      if (timeEl) timeEl.textContent = _relTime || "";
+      document.getElementById("detail-user").innerText = p.userName || "";
       trackPostView(p);
       updateDetailLikeUI(p.id);
       const avatarEl = document.getElementById("detail-user-avatar");
@@ -3994,7 +4003,7 @@ const ILLIT_CARD_ALBUMS = [
       const condBox = document.getElementById("detail-condition-box");
       if (p.condition && CONDITION_LABEL[p.condition]) {
         condBox.classList.remove("hidden");
-        document.getElementById("detail-condition").innerText = CONDITION_LABEL[p.condition];
+        document.getElementById("detail-condition").innerText = String(CONDITION_LABEL[p.condition] || "").split("：").pop();
       } else condBox.classList.add("hidden");
       const descBox = document.getElementById("detail-desc-box");
       if (p.description) { descBox.classList.remove("hidden"); descBox.innerText = p.description; }
@@ -4083,6 +4092,8 @@ const ILLIT_CARD_ALBUMS = [
         catch (e) { snap = await getDocs(collection(db, "posts", postId, "comments")); }
         if (currentDetailId !== postId) return;
         const rows = snap.docs.map(d => d.data());
+        const countEl = document.getElementById("detail-comment-count");
+        if (countEl) countEl.textContent = String(rows.length);
         el.innerHTML = rows.length
           ? rows.map(c => `<div class="text-[13px] leading-relaxed"><div class="text-gray-500 text-[12px]">${escapeHtml(c.userName || "ユーザー")}</div><div class="text-gray-800">${escapeHtml(c.text || "")}</div></div>`).join("")
           : `<p class="text-[13px] text-gray-400">まだコメントはありません</p>`;
