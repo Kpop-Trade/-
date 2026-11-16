@@ -5623,8 +5623,26 @@ function getAiCardVectors() {
     }
 
     function getCardPhoto(cardId) {
-      return cardPhotoCache[cardId] || null;
-    }
+  if (!cardId) return null;
+  if (cardPhotoCache[cardId]) return cardPhotoCache[cardId];
+  const fromCatalog = (Array.isArray(catalogCardsCache) ? catalogCardsCache : []).find(c => c && c.id === cardId);
+  if (fromCatalog && (fromCatalog.image || fromCatalog.photo || fromCatalog.img)) {
+    return fromCatalog.image || fromCatalog.photo || fromCatalog.img;
+  }
+  const fromStatic = (typeof staticPackCards !== "undefined" && Array.isArray(staticPackCards))
+    ? staticPackCards.find(c => c && c.id === cardId)
+    : null;
+  if (fromStatic && (fromStatic.image || fromStatic.photo || fromStatic.img)) {
+    return fromStatic.image || fromStatic.photo || fromStatic.img;
+  }
+  const fromCustom = (userData && Array.isArray(userData.customCards))
+    ? userData.customCards.find(c => c && c.id === cardId)
+    : null;
+  if (fromCustom && (fromCustom.image || fromCustom.photo || fromCustom.img)) {
+    return fromCustom.image || fromCustom.photo || fromCustom.img;
+  }
+  return null;
+}
     function isAdminCatalogCard(cardId) {
       return catalogCardsCache.some(c => c.id === cardId);
     }
@@ -9208,7 +9226,7 @@ window.buildAndDownloadCardPackZip = async function() {
               ${watching ? `<span class="absolute top-1 left-1 w-4 h-4 rounded-full bg-amber-400 text-white text-[9px] flex items-center justify-center shadow">🔔</span>` : ""}
               ${badgeHtml}
               <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/45 to-transparent px-1 pt-3 pb-1">
-                <div class="text-[9px] font-bold text-white truncate leading-tight">${escapeHtml(c.name)}</div>
+                <div class="text-[9px] font-bold text-white truncate leading-tight">${escapeHtml(c.name || c.member || c.id)}</div>
               </div>
             </div>`;
           }).join("")}
