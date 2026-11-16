@@ -260,7 +260,12 @@
       border-radius: 0 !important;
     }
     #posts-container > div .aspect-square { border-radius: 6px; background: #f2f2f2 !important; }
-    #detail-modal { background: #f5f5f5; }
+    button.detail-card { display: flex; width: calc(100% - 24px); }
+    .detail-chip { display: inline-flex; align-items: center; gap: 4px; background: #f4f4f5; border: 1px solid #ececec; border-radius: 999px; padding: 5px 10px; font-size: 12px; color: #444; }
+    .detail-chip.hidden, #detail-desc-box.hidden { display: none !important; }
+    .detail-note { background: #f7f7f8; border-radius: 14px; padding: 12px 14px; font-size: 14px; line-height: 1.65; color: #222; }
+    #detail-seller-items:empty, #detail-related:empty, #detail-extra:empty { display: none; }
+    #detail-photos { margin: 12px 12px 0; border-radius: 18px; overflow: hidden; border: 1px solid #eee; }
     #detail-actions { display: block; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: #fff; border-top: 1px solid #eee; }
     #detail-actions button { width: 100%; height: 48px; border-radius: 999px !important; background: #ff4d4f !important; color: #fff !important; font-weight: 700; box-shadow: none !important; }
     #detail-actions button.bg-white\/80, #detail-actions button.bg-red-50, #detail-actions button.bg-teal-50 { background: #fff !important; color: #333 !important; border: 1px solid #eee; margin-top: 8px; }
@@ -1168,41 +1173,45 @@
         <div id="detail-price-head" class="hidden"></div>
         <div class="w-8"></div>
       </div>
-      <div class="flex-1 overflow-y-auto">
-        <div class="md:grid md:grid-cols-2 md:gap-4 md:p-4">
+      <div class="flex-1 overflow-y-auto pb-4">
+        <div class="md:grid md:grid-cols-2 md:gap-2 md:items-start">
           <div id="detail-photos" class="bg-[#f2f2f2] min-h-[240px]"></div>
-          <div class="bg-white mt-2 md:mt-0 p-4 space-y-5 text-sm">
-            <div class="space-y-2">
+          <div class="text-sm">
+            <div class="detail-card space-y-3">
               <div id="detail-price-box" class="hidden"><span id="detail-price"></span></div>
-              <div id="detail-condition-box" class="hidden text-[13px] text-gray-500"><span id="detail-condition"></span></div>
-              <div class="text-[13px] text-gray-500">メンバー <span id="detail-member" class="text-gray-800"></span></div>
+              <div class="flex flex-wrap gap-2">
+                <div id="detail-condition-box" class="detail-chip hidden"><span id="detail-condition"></span></div>
+                <div class="detail-chip">メンバー <span id="detail-member"></span></div>
+                <div id="detail-want-box" class="detail-chip"><span class="text-gray-400">希望</span> <span id="detail-want"></span></div>
+              </div>
               <div id="detail-give-box" class="hidden"><span></span><span id="detail-give"></span></div>
-              <div id="detail-want-box" class="text-[13px] text-gray-700"><span class="text-gray-400">希望</span> <span id="detail-want"></span></div>
-              <div id="detail-desc-box" class="text-[14px] text-gray-800 whitespace-pre-wrap leading-relaxed"></div>
-              <div id="detail-extra" class="text-xs text-gray-500 space-y-1"></div>
+              <div id="detail-desc-box" class="detail-note"></div>
+              <div id="detail-extra" class="text-[12px] text-gray-500 space-y-1"></div>
+              <button id="detail-like-btn" onclick="toggleDetailLike()" class="text-[13px]">
+                <span id="detail-like-icon">♡</span> <span id="detail-like-count">0</span>
+              </button>
             </div>
-            <button type="button" id="detail-seller-btn" onclick="openSellerProfileFromDetail()" class="w-full flex items-center gap-3 text-left py-1">
-              <img id="detail-user-avatar" src="" alt="" class="w-10 h-10 rounded-full object-cover hidden shrink-0">
-              <div id="detail-user-avatar-placeholder" class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-sm shrink-0">👤</div>
-              <div class="min-w-0">
+            <button type="button" id="detail-seller-btn" onclick="openSellerProfileFromDetail()" class="detail-card flex items-center gap-3 text-left">
+              <img id="detail-user-avatar" src="" alt="" class="w-11 h-11 rounded-full object-cover hidden shrink-0">
+              <div id="detail-user-avatar-placeholder" class="w-11 h-11 rounded-full bg-gray-100 flex items-center justify-center text-sm shrink-0">👤</div>
+              <div class="min-w-0 flex-1">
+                <div class="text-[11px] text-gray-400">出品者</div>
                 <div id="detail-user" class="text-[14px] text-gray-900 truncate"></div>
                 <div id="detail-rating" class="text-[12px] text-gray-400"></div>
               </div>
+              <span class="text-gray-300 text-lg">›</span>
             </button>
-            <button id="detail-like-btn" onclick="toggleDetailLike()" class="text-[13px]">
-              <span id="detail-like-icon">♡</span> <span id="detail-like-count">0</span>
-            </button>
-            <div id="detail-seller-items" class="text-[13px]"></div>
-            <div>
-              <div class="text-[15px] text-gray-900 mb-2">コメント</div>
+            <div id="detail-seller-items" class="detail-card text-[13px]"></div>
+            <div class="detail-card">
+              <div class="text-[15px] font-medium text-gray-900 mb-3">コメント</div>
               <div id="detail-comments" class="space-y-3 mb-3"></div>
-              <form class="flex gap-2" onsubmit="submitPostComment(event)">
-                <input id="detail-comment-input" maxlength="200" placeholder="コメントを入力" class="flex-1 bg-[#f5f5f5] rounded-full px-4 py-2.5 text-sm outline-none">
-                <button type="submit" class="text-sm text-[#ff4d4f] px-2">送信</button>
+              <form class="flex gap-2 items-center" onsubmit="submitPostComment(event)">
+                <input id="detail-comment-input" maxlength="200" placeholder="コメントを入力" class="flex-1 bg-[#f6f6f7] border border-[#eee] rounded-full px-4 py-2.5 text-sm outline-none">
+                <button type="submit" class="h-10 px-4 rounded-full bg-[#fff1f0] text-[#e5484d] text-sm font-medium">送信</button>
               </form>
             </div>
-            <div id="detail-related" class="text-[13px]"></div>
-            <div id="detail-more" class="flex justify-center gap-4 text-[12px] text-gray-400 pt-2"></div>
+            <div id="detail-related" class="detail-card text-[13px]"></div>
+            <div id="detail-more" class="flex justify-center gap-4 text-[12px] text-gray-400 py-4"></div>
           </div>
         </div>
       </div>
