@@ -245,6 +245,17 @@
       font-size: 17px;
       letter-spacing: -0.02em;
     }
+    #sell-fab {
+      position: fixed;
+      left: 16px;
+      right: 16px;
+      width: auto;
+      max-width: 480px;
+      margin: 0 auto;
+      bottom: calc(96px + env(safe-area-inset-bottom));
+      transform: none !important;
+      z-index: 30;
+    }
     #login-btn, #sell-fab {
       background: #ff0211 !important;
       color: #fff !important;
@@ -306,7 +317,6 @@
     body > nav button.bg-white\/70 svg { animation: navPop .34s cubic-bezier(.34,1.56,.64,1); }
     .modal-backdrop:not(.hidden) { animation: uiFade .2s ease; }
     .modal-backdrop:not(.hidden) > div { animation: sheetUp .32s cubic-bezier(.2,.8,.2,1); }
-    #sell-fab.flex { animation: sheetUp .28s cubic-bezier(.2,.8,.2,1); }
     @media (prefers-reduced-motion: reduce) {
       .ui-in, #posts-container > div, .modal-backdrop:not(.hidden), .modal-backdrop:not(.hidden) > div, #sell-fab.flex, body > nav button.bg-white\/70 svg {
         animation: none !important;
@@ -592,7 +602,7 @@
 
   </main>
 
-  <button id="sell-fab" onclick="openPostTypeSheet()" class="hidden fixed left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-[480px] bottom-[104px] md:bottom-6 z-30 bg-gradient-to-r from-rose-500 to-pink-500 text-white font-bold text-base py-4 rounded-xl shadow-xl items-center justify-center gap-2 active:scale-[.98] transition">
+  <button id="sell-fab" onclick="openPostTypeSheet()" class="hidden fixed z-30 bg-[#ff0211] text-white font-bold text-base py-4 rounded-xl items-center justify-center gap-2">
     <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M9 3L7.2 5H4a2 2 0 00-2 2v11a2 2 0 002 2h16a2 2 0 002-2V7a2 2 0 00-2-2h-3.2L15 3H9zm3 15a5 5 0 110-10 5 5 0 010 10zm0-2a3 3 0 100-6 3 3 0 000 6z"/></svg>
     出品する
   </button>
