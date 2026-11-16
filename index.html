@@ -271,15 +271,18 @@
       border-radius: 0 !important;
     }
     #posts-container > div .aspect-square { border-radius: 6px; background: #f2f2f2 !important; }
-    #detail-modal { height: 100svh; max-height: 100svh; padding-top: env(safe-area-inset-top, 0px); overflow: hidden; box-sizing: border-box; }
+    #detail-modal { z-index: 30; height: auto; max-height: none; padding-top: env(safe-area-inset-top, 0px); overflow: hidden; box-sizing: border-box; }
+    @media (max-width: 767px) { #detail-modal { bottom: 96px; } }
+    #detail-photos .detail-film { display: flex; gap: 0; overflow-x: auto; scroll-snap-type: x mandatory; padding: 8px 0 4px; }
+    #detail-photos .detail-film .shot { flex: 0 0 100%; scroll-snap-align: center; display: flex; justify-content: center; align-items: center; }
+    #detail-photos .detail-film img { flex: 0 0 auto; width: auto; max-width: 72%; height: auto; max-height: 42vh; margin: 0; object-fit: contain; background: transparent; filter: drop-shadow(0 10px 18px rgba(0,0,0,.14)); border-radius: 10px; }
+    #detail-actions { display: block; flex-shrink: 0; padding: 8px 16px 10px; background: transparent; border: 0; }
     #detail-modal .detail-sheet { width: 100%; height: 100%; min-height: 0; max-width: none; margin: 0; background: #f5f5f5; display: flex; flex-direction: column; }
     #detail-modal .detail-scroll { min-height: 0; }
     .detail-card { background: #fff; border: 1px solid #e8e8e8; border-radius: 16px; padding: 14px; margin: 12px 16px 0; box-sizing: border-box; }
     button.detail-card { display: flex; width: calc(100% - 32px); }
     #detail-photos { margin: 0; border: 0; background: transparent; overflow: visible; }
     #detail-photo-wrap { position: relative; margin: 8px 0 0; background: transparent; }
-    #detail-photos .detail-film { display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 8px 20px 12px; }
-    #detail-photos .detail-film img { flex: 0 0 auto; width: auto; max-width: 78%; height: auto; max-height: 46vh; margin: 0; object-fit: contain; scroll-snap-align: center; background: transparent; filter: drop-shadow(0 10px 18px rgba(0,0,0,.14)); border-radius: 10px; }
     #detail-price-box { display: block; }
     #detail-price-box.hidden { display: none !important; }
     #detail-price { color: #111 !important; font-size: 22px; font-weight: 700; line-height: 1.2; }
@@ -288,7 +291,6 @@
     .detail-chip.hidden, #detail-desc-box.hidden { display: none !important; }
     .detail-note { background: #f7f7f8; border-radius: 14px; padding: 12px 14px; font-size: 14px; line-height: 1.65; color: #222; }
     #detail-seller-items:empty, #detail-related:empty, #detail-extra:empty { display: none; }
-    #detail-actions { display: block; flex-shrink: 0; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: #fff; border-top: 1px solid #eee; }
     #detail-actions button { width: 100%; height: 48px; border-radius: 999px !important; background: #ff4d4f !important; color: #fff !important; font-weight: 700; box-shadow: none !important; }
     #detail-actions button.bg-white\/80, #detail-actions button.bg-red-50, #detail-actions button.bg-teal-50 { background: #fff !important; color: #333 !important; border: 1px solid #eee; margin-top: 8px; }
     #detail-like-btn, #detail-comment-btn { width: auto; height: 52px; background: #f3f3f4 !important; color: #111 !important; border: 0; border-radius: 999px !important; box-shadow: none !important; padding: 0 18px; font-size: 20px; font-weight: 700; gap: 8px; }
@@ -3941,7 +3943,7 @@ const ILLIT_CARD_ALBUMS = [
       if (p.kind === "serial" || !p.photoCount) { el.innerHTML = ""; return; }
       const paint = function (list) {
         if (!list.length) { el.innerHTML = ""; return; }
-        el.innerHTML = `<div class="detail-film">${list.map((src, i) => `<img src="${src}" alt="" onclick="viewPhoto('detail', ${i})">`).join("")}</div>`;
+        el.innerHTML = `<div class="detail-film">${list.map((src, i) => `<div class="shot"><img src="${src}" alt="" onclick="viewPhoto('detail', ${i})"></div>`).join("")}</div>`;
       };
       const first = isJpegData(p.thumb) ? p.thumb : "";
       if (first) paint([first]);
