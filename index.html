@@ -437,6 +437,7 @@
           <div class="text-[11px] text-gray-600 mt-0.5">コンプと通知</div>
         </button>
       </div>
+      <div id="gllit-matches" class="space-y-2"></div>
     </section>
 
     <section id="post-menu-section" class="hidden space-y-5 pb-28">
@@ -3972,6 +3973,57 @@ const ILLIT_CARD_ALBUMS = [
       } catch (_) {
         sched.textContent = "予定を読み込めませんでした";
       }
+      renderGllitMatches();
+    }
+    function renderGllitMatches() {
+      const el = document.getElementById("gllit-matches");
+      if (!el) return;
+      if (!currentUser) { el.innerHTML = ""; return; }
+      const mine = userData.myCards || {};
+      const want = new Set(Object.keys(mine).filter(id => mine[id] === "want"));
+      const owned = new Set(Object.keys(mine).filter(id => mine[id] === "owned"));
+      if (!want.size && !owned.size) {
+        el.innerHTML = `<button type="button" onclick="switchTab('mycards')" class="w-full text-left bg-white border border-gray-200 rounded-2xl px-3 py-3 text-[13px] text-gray-600">欲しいを登録すると、交換できそうな出品がここに出ます</button>`;
+        return;
+      }
+      const nameOf = (id) => {
+        try {
+          if (typeof findCardById === "function") {
+            const found = findCardById(id);
+            if (found && found.card && found.card.name) return found.card.name;
+          }
+        } catch (_) {}
+        const c = (typeof catalogCardsCache !== "undefined" ? catalogCardsCache : []).find(x => x && x.id === id);
+        return c && c.name ? c.name : "";
+      };
+      const rows = [];
+      (allPosts || []).forEach((p, i) => {
+        if (!p || p.status !== "active" || p.userId === currentUser.uid) return;
+        if (p.kind === "serial" || p.kind === "group" || p.kind === "album" || p.kind === "dearlit") return;
+        const cid = p.catalogCardId || "";
+        if (cid && want.has(cid) && !p.isBuy) rows.push({ i, p, why: "欲しいカードの出品" });
+        else if (cid && owned.has(cid) && p.isBuy) rows.push({ i, p, why: "あなたの所持を買いたい人" });
+      });
+      if (rows.length < 4) {
+        const names = [...owned].map(nameOf).filter(n => n.length >= 4);
+        (allPosts || []).forEach((p, i) => {
+          if (rows.length >= 4 || !p || p.status !== "active" || p.userId === currentUser.uid || p.isBuy || p.isSell || !p.want) return;
+          if (rows.some(r => r.i === i)) return;
+          if (names.some(n => String(p.want).includes(n))) rows.push({ i, p, why: "あなたの所持を探している" });
+        });
+      }
+      if (!rows.length) {
+        el.innerHTML = `<div class="bg-white border border-gray-200 rounded-2xl px-3 py-3 text-[13px] text-gray-500">いま交換できそうな出品はありません</div>`;
+        return;
+      }
+      el.innerHTML = `<div class="px-1 text-[13px] font-medium text-gray-800">交換できそう</div>` + rows.slice(0, 4).map(r => {
+        const price = Number(r.p.price) > 0 ? "¥" + Number(r.p.price).toLocaleString() : "交換";
+        return `<button type="button" onclick="openDetailModal(${r.i})" class="w-full text-left bg-white border border-gray-200 rounded-2xl px-3 py-2.5">
+          <div class="text-[11px] text-gray-400">${escapeHtml(r.why)}</div>
+          <div class="text-[14px] font-medium text-gray-900 truncate">${escapeHtml(r.p.give || r.p.catalogCardName || "出品")}</div>
+          <div class="text-[12px] text-gray-500">${escapeHtml(price)} · ${escapeHtml(r.p.userName || "")}</div>
+        </button>`;
+      }).join("");
     }
     window.renderGllitHub = renderGllitHub;
 
