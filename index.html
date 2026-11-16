@@ -5117,51 +5117,12 @@ window.openAzukariApp = function() {
 function getAiCardVectors() {
       if (!_aiCardVectorsPromise) {
         _aiCardVectorsPromise = (async () => {
-          const base = await fetch("./card_vectors.json?v=20261116b", { cache: "no-store" })
+          const base = await fetch("./card_vectors.json?v=20261116c", { cache: "no-store" })
             .then(r => r.ok ? r.json() : null)
             .then(d => (d && d.vectors) ? { ...d.vectors } : {})
             .catch(() => ({}));
-          try {
-            if (typeof db !== "undefined" && typeof getDocs === "function" && typeof collection === "function") {
-              const vecSnap = await getDocs(collection(db, "cardVectors")).catch(() => null);
-              if (vecSnap) {
-                vecSnap.forEach(d => {
-                  const data = d.data();
-                  if (data && Array.isArray(data.vector) && data.vector.length > 0) {
-                    base[d.id] = data.vector;
-                  }
-                });
-              }
-              const cleanSnap = await getDocs(collection(db, "cardPhotosClean")).catch(() => null);
-              if (cleanSnap && !cleanSnap.empty) {
-                const pending = [];
-                cleanSnap.forEach(d => {
-                  const data = d.data();
-                  if (!base[d.id] && data && data.data && isJpegData(data.data)) {
-                    pending.push({ id: d.id, dataUrl: data.data });
-                  }
-                });
-                if (pending.length > 0) {
-                  const extractor = await getAiClipExtractor().catch(() => null);
-                  if (extractor) {
-                    for (const p of pending) {
-                      try {
-                        const out = await extractor(p.dataUrl, { pooling: "mean", normalize: true });
-                        const arr = poolImageEmbedding(out);
-                        if (!arr) continue;
-                        base[p.id] = arr;
-                        if (typeof setDoc === "function" && typeof doc === "function") {
-                          setDoc(doc(db, "cardVectors", p.id), { vector: arr, updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
-                        }
-                      } catch (_) {}
-                    }
-                  }
-                }
-              }
-            }
-          } catch (e) {
-            console.warn("dynamic vectors merge error:", e);
-          }
+          // ベクトルは clean/ から作った静的ファイルだけを使う。
+          // Firestore を読むと古いベクトルで上書きされ、読み取りも増える。
           return Object.keys(base).length > 0 ? base : null;
         })();
       }
