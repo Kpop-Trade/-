@@ -5252,12 +5252,37 @@ function getAiCardVectors() {
       }
       return _aiClipExtractorPromise;
     }
-        window.ensureCatalogCardsLoaded = window.ensureCatalogCardsLoaded || (async function() {
-      if (typeof loadCatalogCards === "function") return await loadCatalogCards();
-      if (typeof ensureCatalogLoaded === "function") return await ensureCatalogLoaded();
-      if (typeof loadCatalog === "function") return await loadCatalog();
-      return true;
-    });
+        window.ensureCatalogCardsLoaded = async function() {
+    if (Array.isArray(catalogCardsCache) && catalogCardsCache.length > 0) return true;
+    if (window._catalogJsonLoadingPromise) return await window._catalogJsonLoadingPromise;
+    window._catalogJsonLoadingPromise = (async () => {
+        try {
+            if (typeof loadCatalogCards === "function") await loadCatalogCards();
+        } catch (_) {}
+        if (!Array.isArray(catalogCardsCache) || catalogCardsCache.length === 0) {
+            try {
+                const res = await fetch("./catalog.json?v=" + Date.now(), { cache: "no-store" });
+                if (res.ok) {
+                    const data = await res.json();
+                    const raw = data && data.cards ? data.cards : data;
+                    const arr = Array.isArray(raw) ? raw : Object.values(raw || {});
+                    const valid = arr.filter(c => c && c.id);
+                    if (valid.length > 0) {
+                        catalogCardsCache = valid;
+                        valid.forEach(c => {
+                            const img = c.image || c.photo || c.img;
+                            if (img && !cardPhotoCache[c.id]) cardPhotoCache[c.id] = img;
+                        });
+                    }
+                }
+            } catch (e) {
+                console.warn("catalog.json load error:", e);
+            }
+        }
+        return true;
+    })();
+    return await window._catalogJsonLoadingPromise;
+};
     window.ensureCardPhotosLoaded = window.ensureCardPhotosLoaded || (async function() {
       if (typeof loadCardPhotos === "function") return await loadCardPhotos();
       return true;
