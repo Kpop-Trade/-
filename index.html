@@ -1113,6 +1113,11 @@
                     <input id="post-camera-input" type="file" accept="image/*" capture="environment" class="hidden" onchange="addPostPhotos(this)">
                     <input id="post-photo-input" type="file" accept="image/*" multiple class="hidden" onchange="addPostPhotos(this)">
                     <div id="post-photo-preview" class="flex flex-wrap gap-2"></div>
+                    <div id="bundle-box" class="hidden space-y-2">
+                      <div id="bundle-crop-host"></div>
+                      <div id="bundle-crop-preview" class="grid grid-cols-4 gap-1"></div>
+                      <div id="bundle-detect" class="text-[12px] font-medium text-gray-800"></div>
+                    </div>
                     <div id="similar-cards-suggest" class="hidden mt-1 bg-pink-50/90 border border-pink-200 rounded-xl p-2.5"></div>
                 </div>
                 <div>
@@ -1141,11 +1146,6 @@
           </select>
         </div>
         <div><label class="block font-medium text-gray-700 mb-1">説明文・備考（任意）</label><textarea id="input-desc" maxlength="200" rows="2" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></textarea></div>
-        <div id="bundle-box" class="hidden space-y-2">
-          <div id="bundle-crop-host"></div>
-          <div id="bundle-crop-preview" class="grid grid-cols-4 gap-1"></div>
-          <div id="bundle-detect" class="text-[12px] font-medium text-gray-800"></div>
-        </div>
                 
 
       </div>
@@ -7782,6 +7782,9 @@ function getAiCardVectors() {
         const area = document.getElementById("sheet-crop-area");
         if (area) { area.classList.remove("hidden"); area.dataset.mode = "bundle"; }
         if (typeof rerunSheetAutoDetect === "function") rerunSheetAutoDetect();
+        const box = document.getElementById("bundle-box");
+        if (box) box.classList.remove("hidden");
+        if (area && area.scrollIntoView) setTimeout(() => area.scrollIntoView({ block: "start" }), 50);
       };
       img.src = src;
     };
