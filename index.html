@@ -9683,8 +9683,13 @@ window.showDayDetail = function(dateStr) {
     return;
   }
   detail.innerHTML = events.map(e => {
-    const linkHtml = e.link ? ` onclick="window.open('${e.link}', '_blank')" style="cursor:pointer"` : '';
-    return `<div class="p-2 rounded-lg border border-gray-200 bg-gray-50 mb-2"${linkHtml}><div class="text-xs font-bold text-indigo-700">${e.time || '終日'}</div><div class="text-sm font-bold">${e.title}</div><div class="text-xs text-gray-600">${e.detail || ''}</div></div>`;
+    const hasLink = e.link && e.link.trim().startsWith("http");
+    const linkBadge = hasLink
+      ? `<div class="mt-1.5 inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">🔗 タップすると公式サイト・詳細ページへ移動します ↗</div>`
+      : "";
+    const tagOpen = hasLink ? `<a href="${e.link}" target="_blank" rel="noopener noreferrer" class="block p-2.5 rounded-lg border border-indigo-200 bg-white hover:bg-indigo-50/40 active:scale-[0.99] transition mb-2 shadow-sm">` : `<div class="p-2.5 rounded-lg border border-gray-200 bg-gray-50 mb-2">`;
+    const tagClose = hasLink ? `</a>` : `</div>`;
+    return `${tagOpen}<div class="text-xs font-bold text-indigo-700">${e.time || '終日'}</div><div class="text-sm font-bold text-gray-900">${e.title}</div><div class="text-xs text-gray-600 mt-0.5">${e.detail || ''}</div>${linkBadge}${tagClose}`;
   }).join('');
 };
 
