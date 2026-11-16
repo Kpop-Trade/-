@@ -260,18 +260,21 @@
       border-radius: 0 !important;
     }
     #posts-container > div .aspect-square { border-radius: 6px; background: #f2f2f2 !important; }
-    button.detail-card { display: flex; width: calc(100% - 24px); }
+    #detail-modal { height: 100dvh; max-height: 100dvh; overflow: hidden; }
+    #detail-modal .detail-sheet { width: 100%; height: 100%; min-height: 0; max-width: none; margin: 0; background: #f5f5f5; display: flex; flex-direction: column; }
+    #detail-modal .detail-scroll { min-height: 0; }
+    .detail-card { background: #fff; border: 1px solid #e8e8e8; border-radius: 16px; padding: 14px; margin: 12px 16px 0; box-sizing: border-box; }
+    button.detail-card { display: flex; width: calc(100% - 32px); }
+    #detail-photos { margin: 0; border-radius: 16px; overflow: hidden; border: 1px solid #eee; background: #f3f3f3; }
+    #detail-photo-wrap { position: relative; margin: 12px 16px 0; }
+    #detail-photos img { width: auto; max-width: 100%; height: auto; max-height: 46vh; margin: 0 auto; object-fit: contain; display: block; }
+    #detail-price-box { position: absolute; left: 10px; bottom: 10px; z-index: 2; max-width: calc(100% - 20px); background: rgba(255,255,255,0.46); border: 1px solid rgba(255,255,255,0.7); border-radius: 12px; padding: 6px 12px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+    #detail-price-box.hidden { display: none !important; }
     .detail-chip { display: inline-flex; align-items: center; gap: 4px; background: #f4f4f5; border: 1px solid #ececec; border-radius: 999px; padding: 5px 10px; font-size: 12px; color: #444; }
     .detail-chip.hidden, #detail-desc-box.hidden { display: none !important; }
     .detail-note { background: #f7f7f8; border-radius: 14px; padding: 12px 14px; font-size: 14px; line-height: 1.65; color: #222; }
     #detail-seller-items:empty, #detail-related:empty, #detail-extra:empty { display: none; }
-    #detail-modal .detail-sheet { width: 100%; max-width: 430px; margin: 0 auto; background: #f5f5f5; }
-    #detail-photos { margin: 0; border-radius: 16px; overflow: hidden; border: 1px solid #eee; background: #f3f3f3; min-height: 0; }
-    #detail-photo-wrap { position: relative; margin: 8px 16px 0; }
-    #detail-price-box { position: absolute; left: 10px; bottom: 10px; z-index: 2; background: rgba(255,255,255,0.46); border: 1px solid rgba(255,255,255,0.7); border-radius: 12px; padding: 6px 12px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
-    #detail-price-box.hidden { display: none !important; }
-    #detail-photos img { width: auto; max-width: 100%; max-height: 280px; margin: 0 auto; object-fit: contain; display: block; }
-    #detail-actions { display: block; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: #fff; border-top: 1px solid #eee; }
+    #detail-actions { display: block; flex-shrink: 0; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: #fff; border-top: 1px solid #eee; }
     #detail-actions button { width: 100%; height: 48px; border-radius: 999px !important; background: #ff4d4f !important; color: #fff !important; font-weight: 700; box-shadow: none !important; }
     #detail-actions button.bg-white\/80, #detail-actions button.bg-red-50, #detail-actions button.bg-teal-50 { background: #fff !important; color: #333 !important; border: 1px solid #eee; margin-top: 8px; }
     #detail-like-btn { width: auto; height: auto; background: #fff !important; color: #666 !important; border: 1px solid #eee; border-radius: 999px !important; box-shadow: none !important; padding: 6px 12px; }
@@ -1171,14 +1174,14 @@
 
   <!-- 詳細モーダル -->
   <div id="detail-modal" class="fixed inset-0 bg-[#f5f5f5] hidden z-50 flex flex-col">
-    <div class="detail-sheet h-full flex flex-col">
+    <div class="detail-sheet">
       <div class="flex items-center gap-2 px-3 h-12 bg-white shrink-0">
         <button onclick="closeDetailModal()" class="w-8 h-8 text-gray-700 text-lg leading-none" aria-label="戻る">←</button>
         <h3 id="detail-title" class="flex-1 min-w-0 text-center font-medium text-[15px] text-gray-900 truncate">募集の詳細</h3>
         <div id="detail-price-head" class="hidden"></div>
         <div class="w-8"></div>
       </div>
-      <div class="flex-1 overflow-y-auto pb-4">
+      <div class="detail-scroll flex-1 overflow-y-auto pb-6">
         <div class="pb-2">
           <div id="detail-photo-wrap">
             <div id="detail-photos" class="bg-[#f3f3f3] flex items-center justify-center"></div>
