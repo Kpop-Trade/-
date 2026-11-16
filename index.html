@@ -332,16 +332,11 @@
     #detail-photos .detail-film { display: flex; gap: 0; overflow-x: auto; scroll-snap-type: x mandatory; height: 100%; }
     #detail-photos .detail-film .shot { flex: 0 0 100%; height: 100%; scroll-snap-align: center; display: flex; justify-content: center; align-items: center; }
     #detail-photos .detail-film img { width: auto; max-width: 72%; height: auto; max-height: 100%; object-fit: contain; background: transparent; filter: drop-shadow(0 10px 18px rgba(0,0,0,.14)); border-radius: 10px; }
-    #detail-photos .bundle-frame { position: relative; height: 100%; max-height: 100%; max-width: 72%; display: flex; align-items: center; }
-    #detail-photos .bundle-frame img { max-width: 100% !important; width: auto; height: auto; max-height: 100%; }
-    #detail-photos .bundle-hit { position: absolute; border: 2px solid rgba(255,255,255,.9); background: transparent; }
-    #detail-photos .bundle-hit.on { background: transparent; }
-    #detail-photos .bundle-hit.on:after, #detail-photos .bundle-hit.sold:after {
-      content: ""; position: absolute; inset: 12%;
-      background:
-        linear-gradient(to top right, transparent 45%, #e11d48 45% 55%, transparent 55%),
-        linear-gradient(to top left, transparent 45%, #e11d48 45% 55%, transparent 55%);
-    }
+    #detail-photos .bundle-frame { position: relative; display: inline-block; max-width: 92%; max-height: 100%; line-height: 0; }
+    #detail-photos .detail-film .bundle-frame img { display: block; width: auto; height: auto; max-width: 100% !important; max-height: 62vh; }
+    #detail-photos .bundle-hit { position: absolute; z-index: 2; border: 2px solid rgba(225,29,72,.85); background: rgba(225,29,72,.08); padding: 0; }
+    #detail-photos .bundle-hit.on, #detail-photos .bundle-hit.sold { background: rgba(225,29,72,.16); }
+    #detail-photos .bundle-hit span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #e11d48; font-size: 28px; font-weight: 700; line-height: 1; }
     #detail-photos .bundle-hit.sold { pointer-events: none; }
     #detail-photo-wrap { position: relative; margin: 8px 0 0; background: transparent; }
     #detail-price-box { display: block; }
@@ -4218,13 +4213,16 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         const shots = list.map((src, i) => {
           if (i === 0 && boxes.length > 1) {
             const hits = boxes.map((b, bi) => {
-              const cls = b.state && b.state !== "open" ? "sold" : (picks.has(bi) ? "on" : "");
-              return `<button type="button" class="bundle-hit ${cls}" style="left:${(b.x||0)*100}%;top:${(b.y||0)*100}%;width:${(b.w||0)*100}%;height:${(b.h||0)*100}%" onclick="event.stopPropagation(); toggleBundleBox(${bi})"></button>`;
+              const taken = b.state && b.state !== "open";
+              const on = !taken && picks.has(bi);
+              return `<button type="button" class="bundle-hit ${taken ? "sold" : (on ? "on" : "")}" style="left:${(b.x||0)*100}%;top:${(b.y||0)*100}%;width:${(b.w||0)*100}%;height:${(b.h||0)*100}%" onclick="event.stopPropagation(); toggleBundleBox(${bi})">${taken || on ? "<span>×</span>" : ""}</button>`;
             }).join("");
+            el.style.height = "64vh";
             return `<div class="shot"><div class="bundle-frame"><img src="${src}" alt="">${hits}</div></div>`;
           }
           return `<div class="shot"><img src="${src}" alt="" onclick="viewPhoto('detail', ${i})"></div>`;
         }).join("");
+        if (!(Array.isArray(p.bundleBoxes) && p.bundleBoxes.length > 1)) el.style.height = "";
         el.innerHTML = `<div class="detail-film">${shots}</div>`;
       };
       const first = isJpegData(p.thumb) ? p.thumb : "";
@@ -4308,7 +4306,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       const joins = isGroup ? joinsOf(p.id) : []; const target = Number(p.target || 0); const joinCount = isGroup ? Math.max(0, typeof p.joinsCount === "number" ? p.joinsCount : joins.length) : 0; const full = isGroup && target > 0 && joinCount >= target; const closed = isGroup && p.status === "closed"; const isSold = p.status === "traded"; const joined = !!(isGroup && currentUser && joins.some(j => j.id === currentUser.uid));
       let extra = "";
       if (p.kind === "serial" && p.deadline) extra += `<div>有効期限: <b>${escapeHtml(p.deadline)}</b></div>`;
-      if (Array.isArray(p.bundleBoxes) && p.bundleBoxes.length > 1) extra += `<div>残り <b>${Number(p.bundleLeft ?? p.bundleBoxes.filter(b => !b.state || b.state === "open").length)}</b> / ${p.bundleBoxes.length}枚。枠をタップして選んでください</div>`;
+      if (Array.isArray(p.bundleBoxes) && p.bundleBoxes.length > 1) extra += `<div>欲しいカードの枠をタップするとバツが付きます。残り <b>${Number(p.bundleLeft ?? p.bundleBoxes.filter(b => !b.state || b.state === "open").length)}</b> / ${p.bundleBoxes.length}枚</div>`;
       if (isGroup) {
         if (p.deadline) extra += `<div>締切: <b>${escapeHtml(p.deadline)}</b></div>`;
         extra += `<div>👥 参加: <b>${joinCount} / ${target}人</b></div>`;
@@ -4341,7 +4339,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           const left = Number(p.bundleLeft ?? p.bundleBoxes.filter(b => !b.state || b.state === "open").length);
           actions.innerHTML = left <= 0 || p.status === "closed"
             ? `<p class="text-xs text-gray-500 font-medium text-center bg-white/50 p-2 rounded-xl border border-white">この募集は停止しています</p>`
-            : `<button onclick="applyBundlePost(${index})" class="w-full bg-gradient-to-r from-illit-purple to-illit-accent text-white font-medium py-3 rounded-full shadow-md border border-white/30">選んだカードを申し込む</button>`;
+            : `<button onclick="applyBundlePost(${index})" class="w-full bg-gradient-to-r from-illit-purple to-illit-accent text-white font-medium py-3 rounded-full shadow-md border border-white/30">バツを付けたカードを交換申し込み</button>`;
         } else {
           const btnLabel = isGroup ? "応募する" : (p.isSell ? "購入する" : "申し込む");
           const btnGrad = isGroup ? "from-teal-400 to-teal-500" : "from-illit-purple to-illit-accent";
@@ -4854,7 +4852,11 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       window._bundlePick = window._bundlePick || new Set();
       if (window._bundlePick.has(i)) window._bundlePick.delete(i); else window._bundlePick.add(i);
       const hits = document.querySelectorAll("#detail-photos .bundle-hit");
-      if (hits[i]) hits[i].classList.toggle("on", window._bundlePick.has(i));
+      if (hits[i]) {
+        const on = window._bundlePick.has(i);
+        hits[i].classList.toggle("on", on);
+        hits[i].innerHTML = on ? "<span>×</span>" : "";
+      }
     };
     async function revertBundleTrade(t) {
       if (!t || !t.postId || !Array.isArray(t.bundleIndexes) || !t.bundleIndexes.length) return;
