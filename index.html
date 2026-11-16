@@ -6960,7 +6960,7 @@ function getAiCardVectors() {
               <button onclick="closeSheetCropArea()" class="text-xs text-gray-400 hover:text-gray-700 font-bold px-1">✕ 閉じる</button>
             </div>
             <p class="text-[10px] text-gray-600 leading-snug">
-              赤い枠が切り抜かれるトレカです。<strong>枠をドラッグで位置移動、空き場所はタップで標準枠追加・ドラッグで自由枠作成</strong>ができます（間違えたら右上の「ひとつ戻す」で戻せます）。
+              赤い枠が有効なトレカです。感度で絞れます。枠をドラッグで移動、空きを押したまま伸ばして離すと枠を追加、枠をタップで解除、もう一度タップで戻します。間違えたら「ひとつ戻す」。
             </p>
             <div class="flex items-center gap-2 text-[11px] bg-pink-50/70 px-2.5 py-1.5 rounded-lg">
               <span class="text-gray-700 shrink-0">検出感度:</span>
@@ -8182,6 +8182,10 @@ function getAiCardVectors() {
       for (let i = sheetCropState.boxes.length - 1; i >= 0; i--) {
         const b = sheetCropState.boxes[i];
         if (clickX >= b.x && clickX <= b.x + b.w && clickY >= b.y && clickY <= b.y + b.h) {
+          if (typeof pushSheetBoxHistory === "function") pushSheetBoxHistory();
+          b.active = b.active === false;
+          drawSheetCropPreview();
+          if (typeof syncActiveBatchSheetBoxes === "function") syncActiveBatchSheetBoxes();
           return;
         }
       }
@@ -8327,7 +8331,6 @@ function getAiCardVectors() {
         }
 
         window._sheetDragHandledClick = true;
-        if (typeof pushSheetBoxHistory === "function") pushSheetBoxHistory();
         if (typeof pushSheetBoxHistory === "function") pushSheetBoxHistory();
         if (st.mode === "create" && st.draftBox && st.draftBox.w >= 16 && st.draftBox.h >= 16) {
           sheetCropState.boxes.push({
