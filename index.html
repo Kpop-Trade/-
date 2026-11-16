@@ -5414,7 +5414,7 @@ function getAiCardVectors() {
     function renderAiCandidates(container, matches) {
       if (!container) return;
       const esc = window.escapeHtml || ((s) => String(s || "").replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m] || m)));
-      if (!matches || matches.length === 0) {
+      if (!Array.isArray(matches)) {
         container.classList.remove("hidden");
         container.innerHTML = `<div class="text-[11px] text-gray-400 py-1.5 text-center">一致する候補が見つかりませんでした（手動で選択してください）</div>`;
         return;
@@ -5502,13 +5502,13 @@ function getAiCardVectors() {
                 if (!v || v.length !== qVec.length) continue;
                 let dot = 0;
                 for (let i = 0; i < qVec.length; i++) dot += qVec[i] * v[i];
-                if (dot >= 0.70) {
-                  scored.push({
-                    card: c,
-                    score: Math.max(10, Math.min(99, Math.round(((dot - 0.68) / 0.30) * 100))),
-                    raw: dot
-                  });
-                }
+                if (dot >= 0.35) {
+    scored.push({
+      card: c,
+      score: Math.max(30, Math.min(99, Math.round(((dot - 0.35) / 0.55) * 69 + 30))),
+      raw: dot
+    });
+  }
               }
               scored.sort((a, b) => b.raw - a.raw);
               return scored.slice(0, 6);
