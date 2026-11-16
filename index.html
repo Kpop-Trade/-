@@ -294,6 +294,45 @@
     }
     #posts-container > div .aspect-square { border-radius: 6px; background: #f2f2f2 !important; }
     .mercari-price { color: #ff0211; font-weight: 700; font-size: 15px; line-height: 1.2; }
+
+    @keyframes uiRise {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: none; }
+    }
+    @keyframes uiFade {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes sheetUp {
+      from { opacity: 0; transform: translateY(18px) scale(.98); }
+      to { opacity: 1; transform: none; }
+    }
+    @keyframes navPop {
+      0% { transform: scale(.8); }
+      70% { transform: scale(1.08); }
+      100% { transform: scale(1); }
+    }
+    .ui-in { animation: uiRise .32s cubic-bezier(.2,.8,.2,1); }
+    #posts-container > div { animation: uiRise .38s cubic-bezier(.2,.8,.2,1) both; }
+    #posts-container > div:nth-child(2) { animation-delay: .03s; }
+    #posts-container > div:nth-child(3) { animation-delay: .06s; }
+    #posts-container > div:nth-child(4) { animation-delay: .09s; }
+    #posts-container > div:nth-child(5) { animation-delay: .12s; }
+    #posts-container > div:nth-child(6) { animation-delay: .15s; }
+    #posts-container > div:nth-child(7) { animation-delay: .18s; }
+    #posts-container > div:nth-child(8) { animation-delay: .21s; }
+    #posts-container > div:active { transform: scale(.98); }
+    button:not(#sell-fab):active { transform: scale(.97); }
+    body > nav button:active { transform: none; }
+    body > nav button.bg-white\/70 svg { animation: navPop .34s cubic-bezier(.34,1.56,.64,1); }
+    .modal-backdrop:not(.hidden) { animation: uiFade .2s ease; }
+    .modal-backdrop:not(.hidden) > div { animation: sheetUp .32s cubic-bezier(.2,.8,.2,1); }
+    #sell-fab.flex { animation: sheetUp .28s cubic-bezier(.2,.8,.2,1); }
+    @media (prefers-reduced-motion: reduce) {
+      .ui-in, #posts-container > div, .modal-backdrop:not(.hidden), .modal-backdrop:not(.hidden) > div, #sell-fab.flex, body > nav button.bg-white\/70 svg {
+        animation: none !important;
+      }
+    }
   </style>
 </head>
 <body class="bg-illit-bg min-h-screen text-gray-800 relative overflow-x-hidden">
@@ -1824,6 +1863,13 @@ const ILLIT_CARD_ALBUMS = [
       if (tab === 'post') renderSellTab();
       if (tab === 'mypage') fillMyPageHeader();
       if (tab === 'mycards') openMyCardsPage();
+      ["intro-section", "gllit-hub", "post-list-section", "post-menu-section", "mycards-section", "mypage-section"].forEach(function (id) {
+        const el = document.getElementById(id);
+        if (!el || el.classList.contains("hidden")) return;
+        el.classList.remove("ui-in");
+        void el.offsetWidth;
+        el.classList.add("ui-in");
+      });
 
       const setNav = (id, on, activeColor) => {
         const el = document.getElementById(id);
