@@ -1142,6 +1142,7 @@
         <div id="bundle-box" class="hidden bg-white border border-gray-200 rounded-xl p-3 text-[12px] text-gray-600 leading-relaxed">
           1枚の写真に並べたトレカを検知します。申し込みは枠をタップして選びます。
           <div id="bundle-detect" class="mt-1 font-medium text-gray-800"></div>
+          <button type="button" id="bundle-edit-btn" onclick="openBundleFrameEditor()" class="hidden mt-2 w-full py-2 rounded-xl bg-white border border-gray-200 text-[12px] text-gray-800">枠を直す</button>
         </div>
                 
 
@@ -3520,7 +3521,9 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           detectBundleBoxes(postPhotos[0].full).then(boxes => {
             window._pendingBundleBoxes = boxes;
             const el = document.getElementById("bundle-detect");
-            if (el) el.textContent = boxes.length >= 2 ? (boxes.length + "枚の枠を検知しました") : "2枚以上なら、枠を選んで申し込めるまとめ出品になります";
+            const editBtn = document.getElementById("bundle-edit-btn");
+            if (el) el.textContent = boxes.length ? (boxes.length + "枚の枠を検知しました。違えば枠を直せます") : "枠が見つかりません。枠を直すから追加できます";
+            if (editBtn) editBtn.classList.remove("hidden");
           });
         }
       } catch(e) {} finally { processingPhotos = false; renderPostPhotoPreview(); }
@@ -7697,6 +7700,54 @@ function getAiCardVectors() {
       reader.readAsDataURL(file);
     };
 
+    window.openBundleFrameEditor = function() {
+      const src = postPhotos[0] && postPhotos[0].full;
+      if (!src) return alert("先に写真を追加してください。");
+      const img = new Image();
+      img.onload = () => {
+        sheetCropState.img = img;
+        sheetCropState.fileName = "bundle";
+        sheetCropState.boxes = (window._pendingBundleBoxes || []).map(b => ({
+          x: b.x * img.width, y: b.y * img.height, w: b.w * img.width, h: b.h * img.height, active: true, member: ""
+        }));
+        const area = document.getElementById("sheet-crop-area");
+        if (!area) return;
+        if (!area.dataset.homeParent) {
+          area.dataset.homeParent = "1";
+          window._sheetCropParent = area.parentNode;
+          window._sheetCropNext = area.nextSibling;
+        }
+        document.body.appendChild(area);
+        area.classList.remove("hidden");
+        area.dataset.mode = "bundle";
+        area.style.cssText = "position:fixed;left:12px;right:12px;top:12px;bottom:12px;z-index:80;overflow:auto;background:#fff;border-radius:16px;padding:12px;";
+        const btn = document.getElementById("sheet-crop-confirm-btn");
+        if (btn) { btn.textContent = "この枠で使う"; btn.onclick = confirmBundleFrames; }
+        if (sheetCropState.boxes.length) drawSheetCropPreview();
+        else if (typeof rerunSheetAutoDetect === "function") rerunSheetAutoDetect();
+      };
+      img.src = src;
+    };
+    function confirmBundleFrames() {
+      const img = sheetCropState && sheetCropState.img;
+      const boxes = ((sheetCropState && sheetCropState.boxes) || []).filter(b => b && b.active !== false && b.w > 8 && b.h > 8).map(b => ({
+        x: b.x / img.width, y: b.y / img.height, w: b.w / img.width, h: b.h / img.height, state: "open"
+      }));
+      window._pendingBundleBoxes = boxes;
+      const el = document.getElementById("bundle-detect");
+      if (el) el.textContent = boxes.length ? (boxes.length + "枚の枠を使います") : "有効な枠がありません";
+      closeBundleFrameEditor();
+    }
+    function closeBundleFrameEditor() {
+      const area = document.getElementById("sheet-crop-area");
+      if (!area) return;
+      area.classList.add("hidden");
+      area.dataset.mode = "";
+      area.style.cssText = "";
+      const btn = document.getElementById("sheet-crop-confirm-btn");
+      if (btn) { btn.textContent = "✂️ 有効な枠を切り抜いてZIPリストへ追加"; btn.onclick = confirmAndNextSheet; }
+      if (window._sheetCropParent) window._sheetCropParent.insertBefore(area, window._sheetCropNext || null);
+    }
     window.closeSheetCropArea = function() {
       sheetCropState.img = null;
       sheetCropState.boxes = [];
@@ -11088,9 +11139,18 @@ window.confirmAndNextSheet = function() {
 };
 
 window.closeSheetCropArea = function() {
+  const area = document.getElementById("sheet-crop-area");
+  if (area && area.dataset.mode === "bundle") {
+    area.classList.add("hidden");
+    area.dataset.mode = "";
+    area.style.cssText = "";
+    const btn = document.getElementById("sheet-crop-confirm-btn");
+    if (btn) { btn.textContent = "✂️ 有効な枠を切り抜いてZIPリストへ追加"; btn.onclick = window.confirmAndNextSheet; }
+    if (window._sheetCropParent) window._sheetCropParent.insertBefore(area, window._sheetCropNext || null);
+    return;
+  }
   sheetCropState.img = null;
   sheetCropState.boxes = [];
-  const area = document.getElementById("sheet-crop-area");
   if (area) area.classList.add("hidden");
   const selector = document.getElementById("sheet-album-member-selector");
   if (selector) selector.remove();
