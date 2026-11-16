@@ -302,7 +302,8 @@
       border-radius: 0 !important;
     }
     #posts-container > div .aspect-square { border-radius: 6px; background: #f2f2f2 !important; }
-    .mercari-price { color: #ff0211; font-weight: 700; font-size: 15px; line-height: 1.2; }
+    #detail-actions button { flex: 1 1 140px; border-radius: 6px !important; }
+    #detail-actions .bg-gradient-to-r { background: #ff0211 !important; color: #fff !important; }
 
     @keyframes uiRise {
       from { opacity: 0; transform: translateY(10px); }
@@ -1205,42 +1206,50 @@
   </div>
 
   <!-- 詳細モーダル -->
-  <div id="detail-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
-    <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
-      <div class="flex justify-between items-center border-b border-purple-200/50 pb-3">
-        <h3 id="detail-title" class="font-bold text-base text-gray-800">募集の詳細</h3>
-        <button onclick="closeDetailModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
-      </div>
-      <div class="space-y-3 text-xs md:text-sm">
-        <div id="detail-photos"></div>
-        <div class="bg-white/40 border border-white/60 p-4 rounded-[1.5rem] space-y-2 shadow-inner">
-          <div class="font-medium text-gray-700">メンバー: <span id="detail-member" class="text-gray-900"></span></div>
-          <div id="detail-give-box"><span class="bg-pink-100 border border-pink-200 text-pink-700 text-xs font-medium px-2.5 py-0.5 rounded-full shadow-sm">譲</span> <span id="detail-give" class="font-medium text-gray-900 ml-1"></span></div>
-          <div id="detail-want-box"><span class="bg-purple-100 border border-purple-200 text-illit-darkPurple text-xs font-medium px-2.5 py-0.5 rounded-full shadow-sm">求</span> <span id="detail-want" class="font-medium text-gray-900 ml-1"></span></div>
-          <div id="detail-price-box" class="hidden"><span class="bg-gradient-to-r from-pink-400 to-pink-500 text-white text-xs font-medium px-2.5 py-0.5 rounded-full shadow-sm border border-white/50">価格</span> <span id="detail-price" class="font-bold text-pink-600 ml-1 text-base"></span></div>
-          <div id="detail-condition-box" class="hidden"><span class="bg-gray-100 border border-gray-200 text-gray-700 text-xs font-medium px-2.5 py-0.5 rounded-full shadow-sm">状態</span> <span id="detail-condition" class="font-medium text-gray-900 ml-1"></span></div>
-          <div id="detail-desc-box" class="pt-2 border-t border-white/50 text-gray-800 text-xs whitespace-pre-wrap font-medium leading-relaxed"></div>
-          <div id="detail-extra" class="text-xs text-gray-700 space-y-1 font-medium pt-1"></div>
+  <div id="detail-modal" class="fixed inset-0 bg-white hidden z-50 flex flex-col">
+    <div class="bg-white w-full h-full flex flex-col">
+      <div class="flex items-center gap-2 px-3 py-2 border-b border-gray-100 shrink-0">
+        <button onclick="closeDetailModal()" class="w-9 h-9 rounded-full bg-gray-100 text-gray-800 text-lg leading-none" aria-label="戻る">←</button>
+        <div class="flex-1 min-w-0 text-center">
+          <h3 id="detail-title" class="font-medium text-[13px] text-gray-900 truncate">募集の詳細</h3>
+          <div id="detail-price-head" class="text-[15px] font-bold text-gray-900"></div>
         </div>
-        <div class="flex justify-between items-center bg-white/30 p-3 rounded-2xl border border-white/50 shadow-sm gap-2">
-          <button type="button" id="detail-seller-btn" onclick="openSellerProfileFromDetail()" class="px-1 flex items-center gap-2.5 min-w-0 flex-1 text-left rounded-xl hover:bg-white/50 transition active:scale-[.99]">
-            <img id="detail-user-avatar" src="" alt="" class="w-8 h-8 rounded-full object-cover border-2 border-white shadow-sm hidden shrink-0">
-            <div id="detail-user-avatar-placeholder" class="w-8 h-8 rounded-full bg-white/70 border border-white flex items-center justify-center text-sm text-gray-400 shrink-0">👤</div>
-            <div class="min-w-0">
-              <span class="font-medium text-gray-700 text-xs">出品者 · タップで評価・出品を見る</span>
-              <div class="flex items-center gap-1.5 min-w-0">
-                <span id="detail-user" class="text-gray-900 font-medium text-sm truncate"></span>
-                <span id="detail-rating" class="text-yellow-500 font-medium text-[11px] shrink-0"></span>
-              </div>
+        <div class="w-9"></div>
+      </div>
+      <div class="flex-1 overflow-y-auto">
+        <div class="md:grid md:grid-cols-2 md:gap-4">
+          <div id="detail-photos" class="bg-black min-h-[240px]"></div>
+          <div class="p-4 space-y-4 text-sm">
+            <div class="space-y-2 text-xs md:text-sm">
+              <div class="text-gray-500">メンバー <span id="detail-member" class="text-gray-900 font-medium"></span></div>
+              <div id="detail-give-box"><span class="text-gray-400 text-xs">内容</span> <span id="detail-give" class="font-medium text-gray-900"></span></div>
+              <div id="detail-want-box"><span class="text-gray-400 text-xs">希望</span> <span id="detail-want" class="font-medium text-gray-900"></span></div>
+              <div id="detail-price-box" class="hidden"><span id="detail-price" class="font-bold text-[#ff0211] text-lg"></span></div>
+              <div id="detail-condition-box" class="hidden text-gray-600"><span id="detail-condition"></span></div>
+              <div id="detail-desc-box" class="text-gray-800 text-[13px] whitespace-pre-wrap leading-relaxed"></div>
+              <div id="detail-extra" class="text-xs text-gray-600 space-y-1"></div>
             </div>
-          </button>
-          <button id="detail-like-btn" onclick="toggleDetailLike()" class="bg-white/80 text-pink-500 font-medium px-4 py-2 rounded-full text-xs border border-white hover:bg-white transition flex items-center space-x-1 shadow-md shrink-0">
-            <span id="detail-like-icon">♡</span> <span id="detail-like-count">0</span>
-          </button>
+            <button type="button" id="detail-seller-btn" onclick="openSellerProfileFromDetail()" class="w-full flex items-center gap-3 text-left">
+              <img id="detail-user-avatar" src="" alt="" class="w-10 h-10 rounded-full object-cover hidden shrink-0">
+              <div id="detail-user-avatar-placeholder" class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-sm shrink-0">👤</div>
+              <div class="min-w-0">
+                <div id="detail-user" class="font-medium text-gray-900 truncate"></div>
+                <div id="detail-rating" class="text-yellow-500 text-xs"></div>
+              </div>
+            </button>
+            <button id="detail-like-btn" onclick="toggleDetailLike()" class="text-pink-500 text-sm font-medium">
+              <span id="detail-like-icon">♡</span> <span id="detail-like-count">0</span>
+            </button>
+            <div id="detail-seller-items"></div>
+            <div>
+              <div class="text-sm font-medium text-gray-900 mb-2">コメント</div>
+              <p class="text-xs text-gray-500 bg-gray-100 rounded-lg py-3 text-center">コメントは、申し込み後の取引ルームでできます</p>
+            </div>
+            <div id="detail-related"></div>
+          </div>
         </div>
       </div>
-      <div id="detail-actions" class="space-y-2 pt-2"></div>
-      <button onclick="closeDetailModal()" class="w-full bg-white/60 text-gray-700 border border-white font-medium py-3 rounded-full hover:bg-white transition text-sm shadow-sm">閉じる</button>
+      <div id="detail-actions" class="shrink-0 border-t border-gray-200 bg-white px-3 py-3 flex flex-wrap gap-2"></div>
     </div>
   </div>
 
@@ -3928,10 +3937,12 @@ const ILLIT_CARD_ALBUMS = [
     window.viewPhoto = function(kind, i) { const arr = kind === "room" ? roomPhotos : detailPhotos; if (isJpegData(arr[i])) { document.getElementById("image-viewer-img").src = arr[i]; document.getElementById("image-viewer").classList.remove("hidden"); } };
     async function loadDetailPhotos(p, index) {
       const el = document.getElementById("detail-photos"); detailPhotos = [];
-      if (p.kind === "serial" || !p.photoCount) { el.innerHTML = ""; return; }
-      el.innerHTML = isJpegData(p.thumb) ? `<img src="${p.thumb}" class="w-full h-48 object-cover rounded-2xl opacity-60 shadow-sm">` : '';
-      try { const list = await getPhotos(p.id); if (currentDetailIndex !== index) return; detailPhotos = list; if (list.length === 0) { el.innerHTML = ""; return; }
-        el.innerHTML = `<div class="grid ${list.length===1?'grid-cols-1':list.length===2?'grid-cols-2':'grid-cols-3'} gap-2">${list.map((src, i) => `<img src="${src}" onclick="viewPhoto('detail', ${i})" class="w-full ${list.length===1?'h-64':'h-32'} object-cover rounded-2xl cursor-pointer hover:opacity-90 shadow-md border border-white/50">`).join("")}</div>`;
+      if (p.kind === "serial" || !p.photoCount) { el.innerHTML = `<div class="min-h-[240px] bg-neutral-900"></div>`; return; }
+      const first = isJpegData(p.thumb) ? p.thumb : "";
+      el.innerHTML = first ? `<div class="relative bg-black min-h-[280px] md:min-h-[70vh] flex items-center justify-center"><img src="${first}" class="max-h-[70vh] w-full object-contain"></div>` : "";
+      try { const list = await getPhotos(p.id); if (currentDetailIndex !== index) return; detailPhotos = list; if (list.length === 0) { return; }
+        const src = list[0];
+        el.innerHTML = `<div class="relative bg-black min-h-[280px] md:min-h-[70vh] flex items-center justify-center"><img src="${src}" onclick="viewPhoto('detail', 0)" class="max-h-[70vh] w-full object-contain cursor-zoom-in"><span class="absolute bottom-3 right-3 text-white text-[11px] bg-black/55 px-2 py-0.5 rounded">1/${list.length}</span></div>`;
       } catch(e){}
     }
 
@@ -3971,7 +3982,13 @@ const ILLIT_CARD_ALBUMS = [
       else if (p.kind === "dearlit") title = "🎁 DEARLITの詳細";
       else if (isBuy) title = "💳 買取（購入希望）の詳細";
       else if (p.isSell) title = "💰 売却の詳細";
-      document.getElementById("detail-title").innerText = title;
+      document.getElementById("detail-title").innerText = p.give || title;
+      const priceHead = document.getElementById("detail-price-head");
+      if (priceHead) {
+        priceHead.innerText = (isGroup || isBuy || p.isSell) && Number(p.price || 0) > 0
+          ? "¥" + Number(p.price || 0).toLocaleString()
+          : "交換";
+      }
       document.getElementById("detail-give").innerText = p.give;
       document.getElementById("detail-want").innerText = p.want || "（なし）";
       document.getElementById("detail-member").innerText = p.member || "指定なし";
@@ -4038,7 +4055,7 @@ const ILLIT_CARD_ALBUMS = [
       }
       actions.innerHTML += `<button onclick="shareCurrentPost()" class="w-full bg-black text-white font-medium py-3 rounded-full shadow-md border border-white/30 mt-2">𝕏 で写真付きシェア</button>`;
       if (currentUser && p.userId !== currentUser.uid) actions.innerHTML += `<div class="flex gap-2 mt-2"><button onclick="blockPostOwner(${index})" class="flex-1 bg-white/60 text-gray-500 border border-white text-xs font-medium py-2 rounded-full hover:bg-white transition">🚫 ブロック</button><button onclick="reportPost(${index})" class="flex-1 bg-white/60 text-red-400 border border-white text-xs font-medium py-2 rounded-full hover:bg-white transition">🚨 通報</button></div>`;
-      document.getElementById("detail-modal").classList.remove("hidden"); loadDetailPhotos(p, index); if (p.userId) loadRating(p.userId, index);
+      document.getElementById("detail-modal").classList.remove("hidden"); loadDetailPhotos(p, index); if (p.userId) loadRating(p.userId, index); renderDetailRails(p);
       if (isGroup && currentUser && !joinsFresh[p.id]) {
         joinsFresh[p.id] = true;
         loadJoins(p.id).then(() => {
@@ -4048,6 +4065,22 @@ const ILLIT_CARD_ALBUMS = [
       }
     };
     window.closeDetailModal = function() { document.getElementById("detail-modal").classList.add("hidden"); currentDetailIndex = -1; currentDetailId = null; };
+
+    function renderDetailRails(p) {
+      const sellerEl = document.getElementById("detail-seller-items");
+      const relEl = document.getElementById("detail-related");
+      if (!sellerEl || !relEl || !p) return;
+      const tile = function (post) {
+        const i = allPosts.indexOf(post);
+        const price = Number(post.price || 0) > 0 ? "¥" + Number(post.price).toLocaleString() : "交換";
+        const img = isJpegData(post.thumb) ? `<img src="${post.thumb}" alt="" class="w-full h-full object-cover">` : "";
+        return `<button type="button" onclick="openDetailModal(${i})" class="text-left w-[88px] shrink-0"><div class="aspect-square bg-gray-100 overflow-hidden">${img}</div><div class="text-[11px] font-bold mt-1">${price}</div></button>`;
+      };
+      const others = allPosts.filter(function (x) { return x.userId && x.userId === p.userId && x.id !== p.id; }).slice(0, 8);
+      const similar = allPosts.filter(function (x) { return x.id !== p.id && p.member && x.member === p.member; }).slice(0, 6);
+      sellerEl.innerHTML = others.length ? `<div class="text-xs text-gray-500 mb-2">この人のほかの出品</div><div class="flex gap-2 overflow-x-auto pb-1">${others.map(tile).join("")}</div>` : "";
+      relEl.innerHTML = similar.length ? `<div class="text-sm font-medium mb-2">似ている出品</div><div class="flex gap-2 overflow-x-auto pb-1">${similar.map(tile).join("")}</div>` : "";
+    }
 
     async function loadRating(userId, index) {
       try {
