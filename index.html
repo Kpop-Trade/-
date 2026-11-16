@@ -9873,6 +9873,264 @@ window.commitSheetAutoCropsToZip = async function() {
 </button>
 */
 </script>
+
+<!-- gllit-super-tools-injected -->
+<div id="gllit-tools-fab" class="fixed bottom-20 right-4 z-[65] flex flex-col gap-2 items-end">
+  <button onclick="openGllitToolsModal('chant')" class="px-3.5 py-2 rounded-full bg-gradient-to-r from-pink-500 to-indigo-600 text-white text-xs font-bold shadow-lg flex items-center gap-1.5 active:scale-95 transition">
+    <span>🎤 掛け声・参戦メモ</span>
+  </button>
+  <button onclick="openGllitToolsModal('trade')" class="px-3.5 py-2 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-bold shadow-lg flex items-center gap-1.5 active:scale-95 transition">
+    <span>🃏 求・譲 交換画像作成</span>
+  </button>
+</div>
+
+<div id="gllit-tools-modal" class="hidden fixed inset-0 z-[95] bg-black/60 backdrop-blur-sm flex items-center justify-center p-3">
+  <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[88vh]">
+    <div class="p-4 bg-gradient-to-r from-indigo-600 to-pink-500 text-white flex items-center justify-between">
+      <div>
+        <div class="text-[10px] font-bold opacity-90">GLLIT FIELD & TRADE TOOLS</div>
+        <h3 id="gllit-tools-title" class="text-base font-extrabold">現場サポート＆交換画像メーカー</h3>
+      </div>
+      <button onclick="closeGllitToolsModal()" class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white font-bold">✕</button>
+    </div>
+
+    <div id="gllit-next-countdown" class="px-4 py-2 bg-indigo-50 border-b border-indigo-100 text-xs font-bold text-indigo-800 flex items-center justify-between">
+      <span>⏰ 直近予定を読み込み中...</span>
+    </div>
+
+    <div class="flex border-b border-gray-200 bg-gray-50 text-xs font-bold">
+      <button id="gtab-chant" onclick="switchGllitToolTab('chant')" class="flex-1 py-2.5 text-indigo-600 border-b-2 border-indigo-600 bg-white">🎤 掛け声カンペ</button>
+      <button id="gtab-check" onclick="switchGllitToolTab('check')" class="flex-1 py-2.5 text-gray-500">✅ 参戦持ち物</button>
+      <button id="gtab-trade" onclick="switchGllitToolTab('trade')" class="flex-1 py-2.5 text-gray-500">🃏 交換画像作成</button>
+    </div>
+
+    <div class="p-4 overflow-y-auto flex-1 space-y-3 text-sm">
+      <!-- 掛け声カンペ -->
+      <div id="gpanel-chant" class="space-y-3">
+        <div class="p-3 rounded-2xl bg-pink-50/70 border border-pink-100">
+          <div class="font-extrabold text-pink-700 text-xs mb-1">🎵 Magnetic（公式掛け声ポイント）</div>
+          <p class="text-xs leading-relaxed text-gray-800">
+            冒頭メンバーコール：<span class="font-extrabold text-pink-600">ユナ！ミンジュ！モカ！ウォンヒ！イロハ！アイリット！マグネティッ！</span><br>
+            サビ：<span class="font-extrabold text-pink-600">You, you, you, you like it's magnetic (ユー！ユー！)</span> / <span class="font-extrabold text-pink-600">Super 이끌림 (슈퍼 이끌림!)</span>
+          </p>
+        </div>
+        <div class="p-3 rounded-2xl bg-indigo-50/70 border border-indigo-100">
+          <div class="font-extrabold text-indigo-700 text-xs mb-1">🎵 Cherish (My Love)（公式掛け声ポイント）</div>
+          <p class="text-xs leading-relaxed text-gray-800">
+            イントロ：<span class="font-extrabold text-indigo-600">ノ・ユナ！パク・ミンジュ！サカイ・モカ！イ・ウォンヒ！ホカゾノ・イロハ！チェリッシュ・マイ・ラブ！</span><br>
+            サビ：<span class="font-extrabold text-indigo-600">Ch-ch-ch-cherish my love (チェリッシュ！)</span>
+          </p>
+        </div>
+        <div class="p-3 rounded-2xl bg-purple-50/70 border border-purple-100">
+          <div class="font-extrabold text-purple-700 text-xs mb-1">🎵 Tick-Tack（公式掛け声ポイント）</div>
+          <p class="text-xs leading-relaxed text-gray-800">
+            サビ：<span class="font-extrabold text-purple-600">Tick-tack, ti-tack, tick-tack-ta-tick-tack (ティックタック！)</span><br>
+            ラスト：<span class="font-extrabold text-purple-600">サランヘ・アイリット！</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- 参戦持ち物チェックリスト -->
+      <div id="gpanel-check" class="hidden space-y-2">
+        <p class="text-[11px] text-gray-500">※チェック状態はスマホに自動保存されます（オフライン対応）</p>
+        <div id="gllit-checklist-items" class="space-y-1.5"></div>
+      </div>
+
+      <!-- 求・譲 交換画像ジェネレーター -->
+      <div id="gpanel-trade" class="hidden space-y-3">
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-[11px] font-bold text-gray-600 mb-1">X (Twitter) ID</label>
+            <input id="trade-x-id" type="text" placeholder="@your_id" class="w-full px-2.5 py-1.5 border rounded-lg text-xs">
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-gray-600 mb-1">取引方法</label>
+            <select id="trade-method" class="w-full px-2.5 py-1.5 border rounded-lg text-xs bg-white">
+              <option value="郵送交換希望">郵送交換希望</option>
+              <option value="12/23-27 LaLa arena手渡し">12/23-27 LaLa arena手渡し</option>
+              <option value="郵送・現地手渡しどちらも可">郵送・現地手渡しどちらも可</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-[11px] font-bold text-pink-600 mb-1">【求】ほしいメンバー・種別</label>
+            <input id="trade-want-text" type="text" placeholder="例: ウォンヒ タワレコ特典" class="w-full px-2.5 py-1.5 border border-pink-200 rounded-lg text-xs">
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-indigo-600 mb-1">【譲】だせるメンバー・種別</label>
+            <input id="trade-give-text" type="text" placeholder="例: ミンジュ / ユナ HMV" class="w-full px-2.5 py-1.5 border border-indigo-200 rounded-lg text-xs">
+          </div>
+        </div>
+        <button onclick="generateTradeCardImage()" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-pink-500 text-white font-bold text-xs shadow">
+          ✨ X投稿用の「求・譲」募集画像を生成する
+        </button>
+        <div id="trade-canvas-wrap" class="hidden space-y-2 text-center">
+          <canvas id="trade-canvas" width="900" height="500" class="w-full rounded-xl border shadow-sm"></canvas>
+          <a id="trade-download-link" download="illit_trade_sheet.png" class="inline-block px-4 py-2 rounded-full bg-gray-900 text-white text-xs font-bold">
+            📥 画像を保存する（長押しでも保存可）
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const CHECKLIST = [
+    "顔写真付き本人確認書類（運転免許証・パスポート・マイナンバー等）",
+    "チケット発券済み（ローチケ電子チケット画面 / 紙チケット）",
+    "GLLIT Membership デジタル会員証（Weverseアプリ）",
+    "公式ペンライト ＋ 予備の単4アルカリ乾電池（3本）",
+    "モバイルバッテリー ＋ 充電ケーブル",
+    "硬質ケース・スリーブ・OPP袋（現地トレカ交換用）",
+    "双眼鏡・オペラグラス（アリーナ後方・スタンド席用）"
+  ];
+
+  window.openGllitToolsModal = async function(tab) {
+    document.getElementById("gllit-tools-modal").classList.remove("hidden");
+    switchGllitToolTab(tab || "chant");
+    renderChecklist();
+    updateCountdownBanner();
+  };
+
+  window.closeGllitToolsModal = function() {
+    document.getElementById("gllit-tools-modal").classList.add("hidden");
+  };
+
+  window.switchGllitToolTab = function(tab) {
+    ["chant", "check", "trade"].forEach(t => {
+      document.getElementById("gpanel-" + t).classList.toggle("hidden", t !== tab);
+      const btn = document.getElementById("gtab-" + t);
+      if (t === tab) {
+        btn.className = "flex-1 py-2.5 text-indigo-600 border-b-2 border-indigo-600 bg-white";
+      } else {
+        btn.className = "flex-1 py-2.5 text-gray-500";
+      }
+    });
+  };
+
+  function renderChecklist() {
+    const wrap = document.getElementById("gllit-checklist-items");
+    if (!wrap) return;
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem("gllit_checklist_v1") || "{}"); } catch(e) {}
+    wrap.innerHTML = CHECKLIST.map((item, idx) => {
+      const checked = saved[idx] ? "checked" : "";
+      return `<label class="flex items-start gap-2.5 p-2.5 rounded-xl border border-gray-200 bg-gray-50/70 cursor-pointer">
+        <input type="checkbox" ${checked} onchange="toggleGllitCheck(${idx}, this.checked)" class="mt-0.5 rounded text-indigo-600">
+        <span class="text-xs text-gray-800 leading-snug">${item}</span>
+      </label>`;
+    }).join("");
+  }
+
+  window.toggleGllitCheck = function(idx, val) {
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem("gllit_checklist_v1") || "{}"); } catch(e) {}
+    saved[idx] = val;
+    localStorage.setItem("gllit_checklist_v1", JSON.stringify(saved));
+  };
+
+  async function updateCountdownBanner() {
+    const banner = document.getElementById("gllit-next-countdown");
+    if (!banner) return;
+    try {
+      const res = await fetch("./illit_calendar.json?t=" + Date.now());
+      const list = await res.json();
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const upcoming = list
+        .map(ev => ({ ...ev, dt: new Date(ev.date + "T00:00:00") }))
+        .filter(ev => !isNaN(ev.dt) && ev.dt >= today)
+        .sort((a, b) => a.dt - b.dt);
+      if (upcoming.length) {
+        const next = upcoming[0];
+        const diffDays = Math.round((next.dt - today) / 86400000);
+        const dayText = diffDays === 0 ? "本日開催！" : `あと${diffDays}日（${next.date}）`;
+        banner.innerHTML = `<span>⏰ 次の予定：${next.title}</span><span class="px-2 py-0.5 rounded-full bg-indigo-600 text-white text-[10px] shrink-0">${dayText}</span>`;
+      }
+    } catch (e) {}
+  }
+
+  window.generateTradeCardImage = function() {
+    const xId = document.getElementById("trade-x-id").value.trim() || "@GLLIT";
+    const method = document.getElementById("trade-method").value;
+    const want = document.getElementById("trade-want-text").value.trim() || "未入力";
+    const give = document.getElementById("trade-give-text").value.trim() || "未入力";
+
+    const canvas = document.getElementById("trade-canvas");
+    const ctx = canvas.getContext("2d");
+
+    const grad = ctx.createLinearGradient(0, 0, 900, 500);
+    grad.addColorStop(0, "#fdf2f8");
+    grad.addColorStop(0.5, "#eef2ff");
+    grad.addColorStop(1, "#f5f3ff");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 900, 500);
+
+    ctx.fillStyle = "#4f46e5";
+    ctx.fillRect(0, 0, 900, 74);
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 28px sans-serif";
+    ctx.fillText("ILLIT トレカ交換募集  |  " + method, 32, 47);
+
+    // 求ボックス
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(32, 105, 405, 310);
+    ctx.strokeStyle = "#ec4899";
+    ctx.lineWidth = 4;
+    ctx.strokeRect(32, 105, 405, 310);
+    ctx.fillStyle = "#ec4899";
+    ctx.fillRect(32, 105, 405, 52);
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 26px sans-serif";
+    ctx.fillText("【求】WANT", 52, 140);
+    ctx.fillStyle = "#1f2937";
+    ctx.font = "bold 28px sans-serif";
+    wrapCanvasText(ctx, want, 52, 210, 365, 38);
+
+    // 譲ボックス
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(463, 105, 405, 310);
+    ctx.strokeStyle = "#4f46e5";
+    ctx.lineWidth = 4;
+    ctx.strokeRect(463, 105, 405, 310);
+    ctx.fillStyle = "#4f46e5";
+    ctx.fillRect(463, 105, 405, 52);
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 26px sans-serif";
+    ctx.fillText("【譲】HAVE", 483, 140);
+    ctx.fillStyle = "#1f2937";
+    ctx.font = "bold 28px sans-serif";
+    wrapCanvasText(ctx, give, 483, 210, 365, 38);
+
+    ctx.fillStyle = "#374151";
+    ctx.font = "bold 22px sans-serif";
+    ctx.fillText("連絡先 (X): " + xId + "   ※リプまたはDMにてお気軽にお声がけください", 34, 465);
+
+    document.getElementById("trade-canvas-wrap").classList.remove("hidden");
+    document.getElementById("trade-download-link").href = canvas.toDataURL("image/png");
+  };
+
+  function wrapCanvasText(ctx, text, x, y, maxWidth, lineHeight) {
+    const chars = Array.from(text);
+    let line = "";
+    for (let i = 0; i < chars.length; i++) {
+      const testLine = line + chars[i];
+      if (ctx.measureText(testLine).width > maxWidth && i > 0) {
+        ctx.fillText(line, x, y);
+        line = chars[i];
+        y += lineHeight;
+      } else {
+        line = testLine;
+      }
+    }
+    ctx.fillText(line, x, y);
+  }
+})();
+</script>
+
 </body>
 </html>
 
