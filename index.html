@@ -188,44 +188,53 @@
       min-height: 32px;
     }
 
-    /* バーの中に張り付く Liquid Glass。指についても縦には離れない */
+    /* 離しているときはグレー。押しているあいだだけ、バーに張り付くガラス */
     #nav-glass {
       position: absolute;
       z-index: 0;
       pointer-events: none;
-      top: 5px;
-      bottom: 5px;
+      top: 6px;
+      bottom: 6px;
       left: 8px;
       width: 60px;
       border-radius: 999px;
-      background: linear-gradient(180deg, rgba(255,255,255,0.78), rgba(255,255,255,0.42));
-      box-shadow:
-        inset 0 1px 0 rgba(255,255,255,0.95),
-        inset 0 -0.5px 0 rgba(0,0,0,0.04),
-        0 4px 10px rgba(0,0,0,0.06);
-      transform-origin: center;
-      transition: left .46s cubic-bezier(.2,.85,.2,1), width .46s cubic-bezier(.2,.85,.2,1), transform .46s cubic-bezier(.2,.85,.2,1);
+      overflow: hidden;
+      background: rgba(120, 120, 128, 0.16);
+      box-shadow: none;
+      transition: left .42s cubic-bezier(.2,.85,.2,1), width .42s cubic-bezier(.2,.85,.2,1), top .16s ease, bottom .16s ease, background .16s ease, box-shadow .16s ease;
     }
     #nav-glass::after {
       content: "";
       position: absolute;
       inset: 0;
       border-radius: inherit;
-      padding: 1.5px;
-      background: conic-gradient(rgba(255,154,213,.7), rgba(255,226,122,.55), rgba(139,233,255,.7), rgba(201,182,255,.55), rgba(255,154,213,.7));
+      padding: 2px;
+      background: conic-gradient(#ff9ad5, #ffe27a, #8be9ff, #c9b6ff, #ff9ad5);
       -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
       -webkit-mask-composite: xor;
       mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
       mask-composite: exclude;
-      opacity: .55;
+      opacity: 0;
+      transition: opacity .12s ease;
     }
+    #nav-glass .nav-mag { display: none; position: absolute; left: 0; top: 0; transform-origin: 0 0; }
     #nav-glass.dragging {
-      transition: left .07s linear, width .12s ease, transform .12s ease;
-      transform: scaleX(1.14) scaleY(0.94);
+      z-index: 2;
+      top: -8px;
+      bottom: -8px;
+      background: rgba(255,255,255,0.92);
+      box-shadow: 0 10px 18px rgba(0,0,0,0.12);
+      transition: left .045s linear, width .045s linear, top .14s ease, bottom .14s ease;
     }
-    body > nav { position: fixed; }
-    body > nav button { position: relative; z-index: 1; transition: transform .4s cubic-bezier(.2,.85,.2,1); }
-    body > nav button.in-glass { transform: scale(1.1); transform-origin: center; }
+    #nav-glass.dragging::after { opacity: .8; }
+    #nav-glass.dragging .nav-mag { display: block; }
+    #nav-glass .nav-mag button {
+      background: transparent !important;
+      box-shadow: none !important;
+      transform: none !important;
+    }
+    body > nav { position: fixed; overflow: visible; }
+    body > nav button { position: relative; z-index: 1; background: transparent !important; box-shadow: none !important; }
     body > nav button span {
       display: block;
       max-height: 14px;
@@ -236,7 +245,7 @@
     body > nav.nav-min { padding-top: 3px; padding-bottom: 3px; transition: padding .32s cubic-bezier(.2,.8,.2,1); }
     body > nav.nav-min button span { max-height: 0; opacity: 0; }
     body > nav.nav-min #nav-glass { top: 3px; bottom: 3px; }
-    body > nav button.nav-pressed { transform: scale(1.04); }
+    body > nav.nav-min #nav-glass.dragging { top: -6px; bottom: -6px; }
 
     /* PWA standalone: 上部が隠れる・引っ張ると戻る対策 */
     html {
@@ -10310,18 +10319,16 @@ window.commitSheetAutoCropsToZip = async function() {
   const glass = document.getElementById("nav-glass");
   if (!nav || !glass) return;
   const buttons = Array.from(nav.querySelectorAll("button"));
-  function place(btn, dragging) {
-    if (!btn) return;
-    const nr = nav.getBoundingClientRect();
-    const br = btn.getBoundingClientRect();
-    glass.style.left = (br.left - nr.left) + "px";
-    glass.style.width = br.width + "px";
-    glass.classList.toggle("dragging", !!dragging);
-    buttons.forEach(function (b) { b.classList.toggle("in-glass", b === btn); });
-  }
-  function activeBtn() {
-    return buttons.find(function (b) { return b.classList.contains("bg-white/70"); }) || buttons[0];
-  }
+  const mag = document.createElement("div");
+  mag.className = "nav-mag";
+  glass.appendChild(mag);
+  const LENS = 86;
+  const SCALE = 1.22;
+  let lastX = 0;
+  let moved = false;
+  let startX = 0;
+  let blockNative = false;
+
   function nearest(x) {
     let best = buttons[0], bestD = 1e9;
     buttons.forEach(function (b) {
@@ -10331,17 +10338,87 @@ window.commitSheetAutoCropsToZip = async function() {
     });
     return best;
   }
-  function sync() { place(activeBtn(), false); }
+  function activeBtn() {
+    return buttons.find(function (b) { return b.classList.contains("bg-white/70"); }) || buttons[0];
+  }
+  function paintMag(left) {
+    const nr = nav.getBoundingClientRect();
+    const clone = nav.cloneNode(true);
+    const old = clone.querySelector("#nav-glass");
+    if (old) old.remove();
+    clone.querySelectorAll("[id]").forEach(function (n) { n.removeAttribute("id"); });
+    clone.className = "";
+    clone.style.cssText = "position:relative;margin:0;width:" + nr.width + "px;height:" + nr.height + "px;display:flex;align-items:center;justify-content:space-between;background:transparent;border:0;box-shadow:none;padding:0 8px;border-radius:0;";
+    mag.replaceChildren(clone);
+    const gh = glass.offsetHeight || (nr.height + 16);
+    const tx = -SCALE * (left + LENS / 2) + LENS / 2;
+    const ty = gh / 2 - (nr.height * SCALE) / 2;
+    mag.style.transform = "translate(" + tx + "px," + ty + "px) scale(" + SCALE + ")";
+  }
+  function placeIdle(btn) {
+    if (!btn) return;
+    const nr = nav.getBoundingClientRect();
+    const br = btn.getBoundingClientRect();
+    glass.classList.remove("dragging");
+    glass.style.left = (br.left - nr.left) + "px";
+    glass.style.width = br.width + "px";
+    mag.replaceChildren();
+  }
+  function placeFinger(x) {
+    const nr = nav.getBoundingClientRect();
+    let left = x - nr.left - LENS / 2;
+    left = Math.max(-8, Math.min(nr.width - LENS + 8, left));
+    glass.classList.add("dragging");
+    glass.style.left = left + "px";
+    glass.style.width = LENS + "px";
+    paintMag(left);
+  }
+  function sync() { placeIdle(activeBtn()); }
+
   nav.addEventListener("touchstart", function (e) {
-    if (e.touches && e.touches.length === 1) place(nearest(e.touches[0].clientX), true);
+    if (!e.touches || e.touches.length !== 1) return;
+    startX = lastX = e.touches[0].clientX;
+    moved = false;
+    placeFinger(lastX);
   }, { passive: true });
   nav.addEventListener("touchmove", function (e) {
-    if (e.touches && e.touches.length === 1) place(nearest(e.touches[0].clientX), true);
+    if (!e.touches || e.touches.length !== 1) return;
+    lastX = e.touches[0].clientX;
+    if (Math.abs(lastX - startX) > 6) moved = true;
+    placeFinger(lastX);
   }, { passive: true });
-  function settle() { setTimeout(sync, 0); }
-  nav.addEventListener("touchend", settle);
-  nav.addEventListener("touchcancel", settle);
-  nav.addEventListener("click", settle);
+  function endTouch() {
+    const btn = nearest(lastX);
+    if (moved && btn) {
+      btn.click();
+      blockNative = true;
+      setTimeout(function () { blockNative = false; }, 400);
+    }
+    setTimeout(sync, 40);
+  }
+  nav.addEventListener("touchend", endTouch);
+  nav.addEventListener("touchcancel", function () { setTimeout(sync, 30); });
+  nav.addEventListener("click", function (e) {
+    if (blockNative) { e.stopPropagation(); e.preventDefault(); return; }
+    setTimeout(sync, 0);
+  }, true);
+  nav.addEventListener("mousedown", function (e) {
+    if (e.button !== 0) return;
+    startX = lastX = e.clientX;
+    moved = false;
+    placeFinger(lastX);
+  });
+  window.addEventListener("mousemove", function (e) {
+    if (e.buttons !== 1 || !glass.classList.contains("dragging")) return;
+    lastX = e.clientX;
+    if (Math.abs(lastX - startX) > 6) moved = true;
+    placeFinger(lastX);
+  });
+  window.addEventListener("mouseup", function () {
+    if (!glass.classList.contains("dragging")) return;
+    endTouch();
+  });
+
   let lastY = window.scrollY, ticking = false;
   window.addEventListener("scroll", function () {
     if (ticking) return;
