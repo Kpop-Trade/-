@@ -515,30 +515,26 @@
     <!-- Myトレカ ページ -->
     <section id="mycards-section" class="hidden space-y-3 pb-8">
       <div class="flex items-center justify-between px-1">
-        <h2 class="font-bold text-lg text-gray-900">🃏 Myトレカ</h2>
-      <button type="button" onclick="openIllitCalendar()" class="px-3 py-1.5 rounded-full bg-indigo-600 text-white text-xs font-bold shadow-sm active:scale-95 transition flex items-center gap-1"><span>📅</span><span>ILLIT予定</span></button>
+        <h2 class="font-bold text-lg text-gray-900">Myトレカ</h2>
+        <button type="button" onclick="openIllitCalendar()" class="text-[12px] font-medium text-gray-600 bg-white border border-gray-200 px-3 py-1.5 rounded-full">予定</button>
       </div>
-      <div class="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
-        <button id="mycards-tab-own" onclick="setMyCardsTab('own')" class="filter-chip bg-gradient-to-r from-illit-purple to-illit-accent text-white border-white/50 shadow-md">所持リスト</button>
-        <button id="mycards-tab-share" onclick="setMyCardsTab('share')" class="filter-chip bg-white/70 text-gray-700 hover:bg-white">共有・公開</button>
+      <div class="grid grid-cols-2 gap-1 p-1 bg-[#f2f2f2] rounded-full">
+        <button id="mycards-tab-own" onclick="setMyCardsTab('own')" class="py-2 rounded-full text-[13px] font-medium bg-white text-gray-900 shadow-sm">所持</button>
+        <button id="mycards-tab-share" onclick="setMyCardsTab('share')" class="py-2 rounded-full text-[13px] font-medium text-gray-500">共有</button>
       </div>
-            <div id="mycards-own-panel" class="space-y-3">
-        <p class="text-[11px] text-gray-600 leading-relaxed bg-white/50 rounded-xl p-2.5 border border-white">アルバムごとに主要トレカを一覧表示します。タップで「所持 / 未所持 / 欲しい」を切り替え。🔔で出品通知も設定できます。</p>
+      <div id="mycards-own-panel" class="space-y-3">
         <div class="flex gap-2 items-center">
-          <label class="flex-1 liquid-glass-input rounded-xl py-2.5 text-xs font-bold text-illit-darkPurple text-center cursor-pointer active:scale-[.99] transition">
-            📷 画像でMyトレカ検索
+          <label class="flex-1 bg-white border border-gray-200 rounded-full py-2.5 text-[13px] font-medium text-gray-800 text-center cursor-pointer">
+            画像で探す
             <input type="file" accept="image/*" class="hidden" onchange="runMyCardsImageSearch(this)">
           </label>
-          <button type="button" id="mycards-image-search-clear" onclick="clearMyCardsImageSearch()" class="hidden shrink-0 px-3 py-2.5 text-xs font-bold text-gray-600 bg-white/70 rounded-xl border border-white">クリア</button>
+          <button type="button" id="mycards-image-search-clear" onclick="clearMyCardsImageSearch()" class="hidden shrink-0 px-3 py-2 text-[12px] text-gray-500">クリア</button>
         </div>
-        <div id="mycards-image-search-result" class="hidden text-[11px] text-gray-600 bg-white/60 rounded-xl p-2 border border-white"></div>
+        <div id="mycards-image-search-result" class="hidden"></div>
         <div id="mycards-album-tabs" class="flex gap-1.5 overflow-x-auto hide-scrollbar pb-1"></div>
         <div id="mycards-member-tabs" class="flex gap-1.5 overflow-x-auto hide-scrollbar pb-1"></div>
         <div id="mycards-list" class="space-y-2"></div>
-
-        <div class="pt-2 border-t border-purple-100">
-          <button onclick="openAddCustomCard()" class="w-full liquid-glass-input rounded-xl py-2.5 text-xs font-medium text-illit-darkPurple">＋ カスタムカードを追加</button>
-        </div>
+        <button onclick="openAddCustomCard()" class="w-full text-[13px] text-gray-500 py-2">＋ カスタムカードを追加</button>
       </div>
       <div id="mycards-share-panel" class="space-y-3 hidden">
         <div class="bg-white/50 rounded-xl p-3 border border-white space-y-2">
@@ -9463,47 +9459,42 @@ window.buildAndDownloadCardPackZip = async function() {
         });
         const matches = await findSimilarCards(dataUrl);
         if (!matches || !matches.length) {
-          myCardsImageFilterIds = new Set();
-          if (resultEl) resultEl.innerHTML = '<div class="text-center py-2 text-gray-500">一致するトレカが見つかりませんでした</div>';
+          myCardsImageFilterIds = null;
+          if (resultEl) resultEl.innerHTML = `<div class="bg-white border border-gray-200 rounded-2xl p-3 flex gap-3 items-center"><img src="${dataUrl}" alt="" class="w-16 h-20 object-cover rounded-lg bg-gray-100"><div class="text-[13px] text-gray-500">一致するトレカが見つかりませんでした</div></div>`;
           if (clearBtn) clearBtn.classList.remove("hidden");
           renderMyCardsList();
           return;
         }
-        myCardsImageFilterIds = new Set(matches.map(m => m.card.id));
-        // 一番スコアが高いカードのアルバムへ移動
-        const top = matches[0].card;
-        if (top.albumId) {
-          myCardsAlbum = top.albumId;
-          myCardsMember = "ALL";
-          renderMyCardsAlbumTabs();
-          renderMyCardsMemberTabs();
-        }
-        // 候補を写真付きで表示
+        myCardsImageFilterIds = null;
+        window._myCardsQueryImage = dataUrl;
         if (resultEl) {
           const esc = window.escapeHtml || ((s) => String(s || ""));
           const top6 = matches.slice(0, 6);
           resultEl.innerHTML = `
-            <div class="text-[11px] font-bold text-purple-700 mb-1.5">✨ AI候補 ${matches.length}件（タップで所持リストを絞り込み）</div>
-            <div class="grid grid-cols-3 gap-1.5 mb-2">
-              ${top6.map(m => {
-                const c = m.card || {};
-                const img = (typeof getCardPhoto === "function" && getCardPhoto(c.id)) || c.photoUrl || "";
-                return `<div class="bg-white border border-purple-200 rounded-lg p-1 text-center shadow-sm">
-                  <div class="relative aspect-[3/4] bg-gray-100 rounded overflow-hidden mb-1">
-                    ${img ? `<img src="${esc(img)}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center text-[9px] text-gray-400">No</div>`}
-                    <span class="absolute top-0.5 right-0.5 bg-purple-600 text-white text-[8px] font-bold px-1 rounded">${m.score || 0}%</span>
-                  </div>
-                  <div class="text-[9px] font-bold truncate">${esc(c.member || "")}</div>
-                  <div class="text-[8px] text-gray-500 truncate">${esc(c.name || "")}</div>
-                </div>`;
-              }).join("")}
-            </div>
-            <div class="text-center"><button type="button" class="underline text-illit-darkPurple font-bold text-[11px]" onclick="clearMyCardsImageSearch()">絞り込み解除</button></div>
-          `;
+            <div class="bg-white border border-gray-200 rounded-2xl p-3">
+              <div class="flex gap-3 items-center mb-3">
+                <img src="${dataUrl}" alt="" class="w-16 h-20 object-cover rounded-lg bg-gray-100">
+                <div>
+                  <div class="text-[13px] font-medium text-gray-900">検索した画像</div>
+                  <div class="text-[12px] text-gray-500 mt-0.5">${top6.length}件の候補</div>
+                </div>
+              </div>
+              <div class="grid grid-cols-3 gap-2">
+                ${top6.map(m => {
+                  const c = m.card || {};
+                  const img = (typeof getCardPhoto === "function" && getCardPhoto(c.id)) || c.photoUrl || "";
+                  return `<button type="button" onclick="jumpToSearchedCard('${esc(c.id)}')" class="text-left">
+                    <div class="aspect-[3/4] bg-gray-100 rounded-lg overflow-hidden">
+                      ${img ? `<img src="${esc(img)}" class="w-full h-full object-cover">` : ""}
+                    </div>
+                    <div class="text-[11px] text-gray-800 truncate mt-1">${esc(c.member || "")}</div>
+                    <div class="text-[10px] text-gray-400 truncate">${esc(c.name || "")}</div>
+                  </button>`;
+                }).join("")}
+              </div>
+            </div>`;
         }
         if (clearBtn) clearBtn.classList.remove("hidden");
-        renderMyCardsList();
-        showToast("画像検索の結果で絞り込みました", "success");
       } catch (e) {
         console.error(e);
         if (resultEl) resultEl.innerHTML = '<div class="text-center py-2 text-red-500">検索に失敗しました</div>';
@@ -9511,8 +9502,24 @@ window.buildAndDownloadCardPackZip = async function() {
       }
     };
 
+    window.jumpToSearchedCard = function(cardId) {
+      const found = typeof findCardById === "function" ? findCardById(cardId) : null;
+      if (!found || !found.card) return;
+      myCardsImageFilterIds = null;
+      myCardsAlbum = found.card.albumId || (found.album && found.album.id) || myCardsAlbum;
+      myCardsMember = "ALL";
+      if (typeof renderMyCardsAlbumTabs === "function") renderMyCardsAlbumTabs();
+      if (typeof renderMyCardsMemberTabs === "function") renderMyCardsMemberTabs();
+      renderMyCardsList();
+      openCardDetailModal(cardId);
+      setTimeout(function () {
+        const el = document.querySelector('[data-card-id="' + cardId.replace(/"/g, "") + '"]');
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 60);
+    };
     window.clearMyCardsImageSearch = function() {
       myCardsImageFilterIds = null;
+      window._myCardsQueryImage = "";
       const resultEl = document.getElementById("mycards-image-search-result");
       const clearBtn = document.getElementById("mycards-image-search-clear");
       if (resultEl) { resultEl.classList.add("hidden"); resultEl.textContent = ""; }
@@ -9589,8 +9596,8 @@ window.buildAndDownloadCardPackZip = async function() {
       myCardsTab = tab;
       document.getElementById("mycards-own-panel").classList.toggle("hidden", tab !== "own");
       document.getElementById("mycards-share-panel").classList.toggle("hidden", tab !== "share");
-      const active = "filter-chip bg-gradient-to-r from-illit-purple to-illit-accent text-white border-white/50 shadow-md";
-      const normal = "filter-chip bg-white/70 text-gray-700 hover:bg-white";
+      const active = "py-2 rounded-full text-[13px] font-medium bg-white text-gray-900 shadow-sm";
+      const normal = "py-2 rounded-full text-[13px] font-medium text-gray-500";
       document.getElementById("mycards-tab-own").className = tab === "own" ? active : normal;
       document.getElementById("mycards-tab-share").className = tab === "share" ? active : normal;
       if (tab === "share") renderMyCardsShareStats();
@@ -9708,7 +9715,7 @@ window.buildAndDownloadCardPackZip = async function() {
               ? "border-emerald-400 ring-1 ring-emerald-400/50"
               : (isWant ? "border-pink-400 ring-1 ring-pink-400/50" : "border-white/70");
 
-            return `<div onclick="openCardDetailModal('${escapeHtml(c.id)}')" class="relative aspect-[3/4] rounded-xl overflow-hidden cursor-pointer border ${borderClass} shadow-sm bg-white/60 active:scale-95 transition">
+            return `<div data-card-id="${escapeHtml(c.id)}" onclick="openCardDetailModal('${escapeHtml(c.id)}')" class="relative aspect-[3/4] rounded-xl overflow-hidden cursor-pointer border ${borderClass} shadow-sm bg-white/60">
               ${imgHtml}
               ${listingRibbon}
               ${watching ? `<span class="absolute top-1 left-1 w-4 h-4 rounded-full bg-amber-400 text-white text-[9px] flex items-center justify-center shadow">🔔</span>` : ""}
