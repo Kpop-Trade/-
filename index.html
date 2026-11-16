@@ -5711,6 +5711,43 @@ function getAiCardVectors() {
       return arr;
     }
 
+    function paintSquareView(img, mode) {
+      const side = 518;
+      const c = document.createElement("canvas");
+      c.width = side;
+      c.height = side;
+      const ctx = c.getContext("2d");
+      const w = img.naturalWidth || img.width;
+      const h = img.naturalHeight || img.height;
+      ctx.fillStyle = "#f3f3f3";
+      ctx.fillRect(0, 0, side, side);
+      if (!w || !h) return c.toDataURL("image/jpeg", 0.92);
+      if (mode === "crop") {
+        const s = Math.min(w, h);
+        ctx.drawImage(img, (w - s) / 2, (h - s) / 2, s, s, 0, 0, side, side);
+      } else {
+        const scale = Math.min(side / w, side / h);
+        const dw = Math.round(w * scale);
+        const dh = Math.round(h * scale);
+        ctx.drawImage(img, (side - dw) / 2, (side - dh) / 2, dw, dh);
+      }
+      return c.toDataURL("image/jpeg", 0.92);
+    }
+    function cardQueryViews(dataUrl) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve([paintSquareView(img, "fit"), paintSquareView(img, "crop")]);
+        img.onerror = () => resolve([dataUrl]);
+        img.src = dataUrl;
+      });
+    }
+    function pickNearMatches(scored) {
+      if (!scored.length || scored[0].raw < 0.5) return [];
+      const best = scored[0].raw;
+      const span = best >= 0.93 ? 0.016 : best >= 0.86 ? 0.028 : 0.045;
+      const near = scored.filter(s => best - s.raw <= span);
+      return (near.length ? near : scored).slice(0, 6);
+    }
     function dinov2MatchScore(dot) {
       return Math.max(1, Math.min(99, Math.round(((dot - 0.88) / 0.12) * 70 + 29)));
     }
@@ -5735,9 +5772,14 @@ function getAiCardVectors() {
       const resEl = document.getElementById("mycards-image-search-result");
       if (resEl) resEl.textContent = "🤖 AIモデル準備＆解析中（初回のみ数秒）...";
       const extractor = await getAiClipExtractor();
-      const out = await extractor(dataUrl, { pooling: "mean", normalize: true });
-      const qVec = poolImageEmbedding(out);
-      if (!qVec) return null;
+      const views = await cardQueryViews(dataUrl);
+      const qVecs = [];
+      for (const view of views) {
+        const out = await extractor(view, { pooling: "mean", normalize: true });
+        const qVec = poolImageEmbedding(out);
+        if (qVec && qVec.length) qVecs.push(qVec);
+      }
+      if (!qVecs.length) return null;
 
       const allCards = [];
       const seen = new Set();
@@ -5754,18 +5796,21 @@ function getAiCardVectors() {
       let compared = 0;
       for (const c of allCards) {
         const v = vecMap[c.id];
-        if (!v || v.length !== qVec.length) continue;
+        if (!v) continue;
+        let dot = -1;
+        for (const qVec of qVecs) {
+          if (v.length !== qVec.length) continue;
+          let d = 0;
+          for (let i = 0; i < qVec.length; i++) d += qVec[i] * v[i];
+          if (d > dot) dot = d;
+        }
+        if (dot < 0) continue;
         compared++;
-        let dot = 0;
-        for (let i = 0; i < qVec.length; i++) dot += qVec[i] * v[i];
         scored.push({ card: c, score: dinov2MatchScore(dot), raw: dot });
       }
       if (!compared) return null;
       scored.sort((a, b) => b.raw - a.raw);
-      if (!scored.length || scored[0].raw < 0.5) return [];
-      const best = scored[0].raw;
-      const near = scored.filter(s => best - s.raw <= 0.045);
-      return (near.length ? near : scored).slice(0, 6);
+      return pickNearMatches(scored);
     }
 
     async function findSimilarCards(uploadedDataUrl) {
@@ -5914,50 +5959,10 @@ function getAiCardVectors() {
 
         // 1. CLIPを試す（短時間で諦め）
         try {
-          const smallUrl = await shrinkForClip(uploadedDataUrl);
           matches = await Promise.race([
             (async () => {
-              const extractor = await getAiClipExtractor();
               updateStatus("⚡ トレカ画像を解析中...");
-              const vecMap = await getAiCardVectors();
-              if (!vecMap || !Object.keys(vecMap).length) return null;
-
-              const out = await extractor(smallUrl, { pooling: "mean", normalize: true });
-              const qVec = poolImageEmbedding(out);
-              if (!qVec || !qVec.length) return null;
-
-              const allCards = [];
-              const seen = new Set();
-              const pushCard = (c) => {
-                if (c && c.id && !seen.has(c.id)) { seen.add(c.id); allCards.push(c); }
-              };
-              (window.ILLIT_CARD_ALBUMS || ILLIT_CARD_ALBUMS || []).forEach(a => {
-                const list = typeof getAlbumCards === "function" ? getAlbumCards(a.id) : [];
-                list.forEach(pushCard);
-              });
-              (typeof staticPackCards !== "undefined" ? staticPackCards : []).forEach(pushCard);
-              (typeof catalogCardsCache !== "undefined" ? catalogCardsCache : []).forEach(pushCard);
-
-              const scored = [];
-              let compared = 0;
-              for (const c of allCards) {
-                const v = vecMap[c.id];
-                if (!v || v.length !== qVec.length) continue;
-                compared++;
-                let dot = 0;
-                for (let i = 0; i < qVec.length; i++) dot += qVec[i] * v[i];
-                scored.push({
-                  card: c,
-                  score: dinov2MatchScore(dot),
-                  raw: dot
-                });
-              }
-              if (!compared) return null;
-              scored.sort((a, b) => b.raw - a.raw);
-              if (!scored.length || scored[0].raw < 0.5) return [];
-              const best = scored[0].raw;
-              const near = scored.filter(s => best - s.raw <= 0.045);
-              return (near.length ? near : scored).slice(0, 6);
+              return await _findSimilarCardsWithAIRaw(uploadedDataUrl);
             })(),
             overallTimeout
           ]);
