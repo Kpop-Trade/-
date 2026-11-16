@@ -188,55 +188,54 @@
       min-height: 32px;
     }
 
-    /* 下バーを押しているあいだ、写真のような拡大ガラス */
-    #nav-lens {
-      position: fixed;
-      z-index: 80;
+    /* バーの中に張り付く Liquid Glass。指についても縦には離れない */
+    #nav-glass {
+      position: absolute;
+      z-index: 0;
       pointer-events: none;
-      width: 176px;
-      height: 112px;
-      border-radius: 9999px;
-      overflow: hidden;
-      opacity: 0;
-      transform: scale(.72);
-      left: 0;
-      top: 0;
-      background: rgba(255,255,255,0.2);
+      top: 5px;
+      bottom: 5px;
+      left: 8px;
+      width: 60px;
+      border-radius: 999px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.78), rgba(255,255,255,0.42));
       box-shadow:
         inset 0 1px 0 rgba(255,255,255,0.95),
-        0 12px 28px rgba(0,0,0,0.14);
-      transition: opacity .16s ease, transform .22s cubic-bezier(.34,1.56,.64,1);
+        inset 0 -0.5px 0 rgba(0,0,0,0.04),
+        0 4px 10px rgba(0,0,0,0.06);
+      transform-origin: center;
+      transition: left .46s cubic-bezier(.2,.85,.2,1), width .46s cubic-bezier(.2,.85,.2,1), transform .46s cubic-bezier(.2,.85,.2,1);
     }
-    #nav-lens.show { opacity: 1; transform: scale(1); }
-    #nav-lens-mag { position: absolute; left: 0; top: 0; z-index: 1; transform-origin: 0 0; }
-    #nav-lens::before {
-      content: "";
-      position: absolute;
-      left: 14%;
-      right: 14%;
-      top: 4px;
-      height: 38%;
-      border-radius: 999px;
-      background: linear-gradient(180deg, rgba(255,255,255,0.8), rgba(255,255,255,0));
-      z-index: 3;
-    }
-    #nav-lens::after {
+    #nav-glass::after {
       content: "";
       position: absolute;
       inset: 0;
-      z-index: 4;
       border-radius: inherit;
-      padding: 3px;
-      background: conic-gradient(#ff9ad5, #ffe27a, #8be9ff, #c9b6ff, #ff9ad5);
+      padding: 1.5px;
+      background: conic-gradient(rgba(255,154,213,.7), rgba(255,226,122,.55), rgba(139,233,255,.7), rgba(201,182,255,.55), rgba(255,154,213,.7));
       -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
       -webkit-mask-composite: xor;
       mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
       mask-composite: exclude;
-      opacity: .85;
+      opacity: .55;
     }
-    body > nav { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
-    body > nav button { transition: transform .25s cubic-bezier(.34,1.56,.64,1); }
-    body > nav button.nav-pressed { transform: scale(1.22); }
+    #nav-glass.dragging {
+      transition: left .07s linear, width .12s ease, transform .12s ease;
+      transform: scaleX(1.14) scaleY(0.94);
+    }
+    body > nav { position: fixed; }
+    body > nav button { position: relative; z-index: 1; transition: transform .25s cubic-bezier(.34,1.56,.64,1); }
+    body > nav button span {
+      display: block;
+      max-height: 14px;
+      opacity: 1;
+      overflow: hidden;
+      transition: max-height .28s ease, opacity .2s ease;
+    }
+    body > nav.nav-min { padding-top: 3px; padding-bottom: 3px; transition: padding .32s cubic-bezier(.2,.8,.2,1); }
+    body > nav.nav-min button span { max-height: 0; opacity: 0; }
+    body > nav.nav-min #nav-glass { top: 3px; bottom: 3px; }
+    body > nav button.nav-pressed { transform: scale(1.04); }
 
     /* PWA standalone: 上部が隠れる・引っ張ると戻る対策 */
     html {
@@ -657,6 +656,7 @@
   </div>
 
   <nav class="liquid-glass-heavy fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-[380px] rounded-[2rem] z-40 flex justify-between items-center px-2 py-1.5 md:hidden">
+    <span id="nav-glass" aria-hidden="true"></span>
     <button id="nav-home" onclick="switchTab('home')" class="flex flex-col items-center justify-center w-[60px] h-[52px] bg-white/70 shadow-sm text-illit-darkPurple rounded-[1.5rem] transition">
       <svg class="w-6 h-6 mb-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
       <span class="text-[9px] font-bold">ホーム</span>
@@ -10306,46 +10306,55 @@ window.commitSheetAutoCropsToZip = async function() {
 <script>
 (function () {
   const nav = document.querySelector("body > nav");
-  if (!nav) return;
-  const lens = document.createElement("div");
-  lens.id = "nav-lens";
-  const mag = document.createElement("div");
-  mag.id = "nav-lens-mag";
-  lens.appendChild(mag);
-  document.body.appendChild(lens);
-  const W = 176, H = 112, SCALE = 1.7;
-  let on = false;
-  function hide() {
-    lens.classList.remove("show");
-    nav.querySelectorAll("button.nav-pressed").forEach(function (b) { b.classList.remove("nav-pressed"); });
-    on = false;
+  const glass = document.getElementById("nav-glass");
+  if (!nav || !glass) return;
+  const buttons = Array.from(nav.querySelectorAll("button"));
+  function place(btn, dragging) {
+    if (!btn) return;
+    const nr = nav.getBoundingClientRect();
+    const br = btn.getBoundingClientRect();
+    glass.style.left = (br.left - nr.left) + "px";
+    glass.style.width = br.width + "px";
+    glass.classList.toggle("dragging", !!dragging);
   }
-  function show(x, y) {
-    const r = nav.getBoundingClientRect();
-    if (x < r.left - 12 || x > r.right + 12 || y < r.top - 20 || y > r.bottom + 28) { hide(); return; }
-    lens.style.left = (x - W / 2) + "px";
-    lens.style.top = (y - H / 2) + "px";
-    const clone = nav.cloneNode(true);
-    clone.style.cssText = "position:absolute;left:0;top:0;transform:none!important;width:" + r.width + "px;height:" + r.height + "px;margin:0;display:flex;border-radius:2rem;";
-    mag.replaceChildren(clone);
-    mag.style.transform = "translate(" + ((r.left - x) * SCALE + W / 2) + "px," + ((r.top - y) * SCALE + H / 2) + "px) scale(" + SCALE + ")";
-    lens.classList.add("show");
-    on = true;
-    const hit = document.elementFromPoint(x, y);
-    const btn = hit && hit.closest ? hit.closest("nav button") : null;
-    nav.querySelectorAll("button").forEach(function (b) { b.classList.toggle("nav-pressed", !!btn && b === btn); });
+  function activeBtn() {
+    return buttons.find(function (b) { return b.classList.contains("bg-white/70"); }) || buttons[0];
   }
+  function nearest(x) {
+    let best = buttons[0], bestD = 1e9;
+    buttons.forEach(function (b) {
+      const r = b.getBoundingClientRect();
+      const d = Math.abs(x - (r.left + r.width / 2));
+      if (d < bestD) { bestD = d; best = b; }
+    });
+    return best;
+  }
+  function sync() { place(activeBtn(), false); }
   nav.addEventListener("touchstart", function (e) {
-    if (e.touches && e.touches.length === 1) show(e.touches[0].clientX, e.touches[0].clientY);
+    if (e.touches && e.touches.length === 1) place(nearest(e.touches[0].clientX), true);
   }, { passive: true });
   nav.addEventListener("touchmove", function (e) {
-    if (e.touches && e.touches.length === 1) show(e.touches[0].clientX, e.touches[0].clientY);
+    if (e.touches && e.touches.length === 1) place(nearest(e.touches[0].clientX), true);
   }, { passive: true });
-  nav.addEventListener("touchend", hide);
-  nav.addEventListener("touchcancel", hide);
-  nav.addEventListener("mousedown", function (e) { if (e.button === 0) show(e.clientX, e.clientY); });
-  window.addEventListener("mousemove", function (e) { if (on && e.buttons === 1) show(e.clientX, e.clientY); });
-  window.addEventListener("mouseup", hide);
+  function settle() { setTimeout(sync, 0); }
+  nav.addEventListener("touchend", settle);
+  nav.addEventListener("touchcancel", settle);
+  nav.addEventListener("click", settle);
+  let lastY = window.scrollY, ticking = false;
+  window.addEventListener("scroll", function () {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(function () {
+      const y = window.scrollY;
+      const dy = y - lastY;
+      if (y > 56 && dy > 8) nav.classList.add("nav-min");
+      else if (dy < -8 || y < 16) nav.classList.remove("nav-min");
+      lastY = y;
+      ticking = false;
+    });
+  }, { passive: true });
+  window.addEventListener("resize", sync);
+  sync();
 })();
 </script>
 
