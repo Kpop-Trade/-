@@ -1179,7 +1179,18 @@
         <button onclick="closeDetailModal()" class="w-8 h-8 text-gray-700 text-lg leading-none" aria-label="戻る">←</button>
         <h3 id="detail-title" class="flex-1 min-w-0 text-center font-medium text-[15px] text-gray-900 truncate">募集の詳細</h3>
         <div id="detail-price-head" class="hidden"></div>
-        <div class="w-8"></div>
+        <div class="relative w-9 h-9 shrink-0">
+          <button id="detail-more-btn" type="button" onclick="toggleDetailMenu(event)" class="w-9 h-9 rounded-full border border-gray-300 bg-white shadow-sm flex items-center justify-center" aria-label="その他">
+            <span class="flex flex-col items-center gap-[3px]">
+              <span class="w-[5px] h-[5px] rounded-full bg-gray-900"></span>
+              <span class="w-[5px] h-[5px] rounded-full bg-gray-900"></span>
+              <span class="w-[5px] h-[5px] rounded-full bg-gray-900"></span>
+            </span>
+          </button>
+          <div id="detail-menu" class="hidden absolute right-0 top-11 min-w-[128px] bg-white border border-gray-200 rounded-xl shadow-lg py-1 z-30">
+            <button type="button" onclick="reportCurrentDetail()" class="w-full text-left px-4 py-2.5 text-sm text-gray-800">通報</button>
+          </div>
+        </div>
       </div>
       <div class="detail-scroll flex-1 overflow-y-auto pb-6">
         <div class="pb-2">
@@ -3782,6 +3793,7 @@ const ILLIT_CARD_ALBUMS = [
         if (wrap) wrap.classList.toggle("hidden", !postsHasMore);
         loadingPosts = false;
         renderPosts();
+        notifyWatchedListings();
         scheduleHealSoldPosts();
         if (reset && currentDetailId && !document.getElementById("detail-modal").classList.contains("hidden")) {
           const di = allPosts.findIndex(x => x.id === currentDetailId);
@@ -4030,9 +4042,11 @@ const ILLIT_CARD_ALBUMS = [
       if (more) {
         let moreHtml = "";
         if (currentUser && p.userId === currentUser.uid) moreHtml += `<button type="button" onclick="shareCurrentPost()" class="text-gray-400">シェア</button>`;
-        if (currentUser && p.userId !== currentUser.uid) moreHtml += `<button type="button" onclick="blockPostOwner(${index})">ブロック</button><button type="button" onclick="reportPost(${index})">通報</button>`;
         more.innerHTML = moreHtml;
       }
+      document.getElementById("detail-menu")?.classList.add("hidden");
+      const moreBtn = document.getElementById("detail-more-btn");
+      if (moreBtn) moreBtn.classList.toggle("hidden", !!(currentUser && p.userId === currentUser.uid));
       document.getElementById("detail-modal").classList.remove("hidden"); loadDetailPhotos(p, index); if (p.userId) loadRating(p.userId, index); renderDetailRails(p); loadPostComments(p.id);
       if (isGroup && currentUser && !joinsFresh[p.id]) {
         joinsFresh[p.id] = true;
@@ -4208,7 +4222,12 @@ const ILLIT_CARD_ALBUMS = [
         <div>
           <div class="font-bold text-sm text-gray-800 mb-2">出品中（${listings.length}）</div>
           ${listHtml}
-        </div>`;
+        </div>
+        ${currentUser && currentUser.uid !== userId ? `<div class="grid grid-cols-2 gap-2">
+          <button type="button" onclick="blockUser(window._profileTarget.id, window._profileTarget.name)" class="py-2.5 rounded-full border border-gray-200 bg-white text-sm text-gray-700">ブロック</button>
+          <button type="button" id="seller-notify-btn" onclick="toggleSellerNotify(window._profileTarget.id)" class="py-2.5 rounded-full border border-gray-200 bg-white text-sm text-gray-800">${(userData.watchSellers || []).includes(userId) ? "通知オン" : "通知"}</button>
+        </div>` : ""}`;
+      window._profileTarget = { id: userId, name: displayName || "ユーザー" };
     };
 
     window.deletePost = async function(index) {
@@ -4227,6 +4246,51 @@ const ILLIT_CARD_ALBUMS = [
       } catch(e) { alert("失敗しました。"); }
     };
     window.blockPostOwner = function(index) { const p = allPosts[index]; if (p) blockUser(p.userId, p.userName); };
+    window.toggleDetailMenu = function(ev) {
+      if (ev) ev.stopPropagation();
+      const menu = document.getElementById("detail-menu");
+      if (!menu) return;
+      menu.classList.toggle("hidden");
+    };
+    document.addEventListener("click", function() {
+      document.getElementById("detail-menu")?.classList.add("hidden");
+    });
+    window.reportCurrentDetail = function() {
+      document.getElementById("detail-menu")?.classList.add("hidden");
+      if (currentDetailIndex < 0) return;
+      reportPost(currentDetailIndex);
+    };
+    window.toggleSellerNotify = async function(userId) {
+      if (!currentUser) return alert("ログインが必要です。");
+      if (!userId) return;
+      const list = Array.isArray(userData.watchSellers) ? [...userData.watchSellers] : [];
+      const on = list.includes(userId);
+      if (on) list.splice(list.indexOf(userId), 1);
+      else list.push(userId);
+      userData.watchSellers = list;
+      try { await saveUserData({ watchSellers: list }); } catch (e) { return alert("保存できませんでした。"); }
+      if (!on) {
+        const seen = new Set(JSON.parse(localStorage.getItem("gllit_watch_seen") || "[]"));
+        allPosts.forEach(function (p) { if (p.userId === userId) seen.add(p.id); });
+        localStorage.setItem("gllit_watch_seen", JSON.stringify(Array.from(seen).slice(-400)));
+      }
+      const btn = document.getElementById("seller-notify-btn");
+      if (btn) btn.textContent = on ? "通知" : "通知オン";
+      showToast(on ? "この人の通知をオフにしました" : "この人の新しい出品を通知します", "info");
+    };
+    function notifyWatchedListings() {
+      if (!currentUser || !Array.isArray(userData.watchSellers) || !userData.watchSellers.length) return;
+      let seen;
+      try { seen = new Set(JSON.parse(localStorage.getItem("gllit_watch_seen") || "[]")); } catch (e) { seen = new Set(); }
+      let changed = false;
+      allPosts.forEach(function (p) {
+        if (!userData.watchSellers.includes(p.userId) || seen.has(p.id) || p.userId === currentUser.uid) return;
+        seen.add(p.id);
+        changed = true;
+        addNotification((p.userName || "出品者") + "さんが出品しました: " + (p.give || "出品"), "info");
+      });
+      if (changed) localStorage.setItem("gllit_watch_seen", JSON.stringify(Array.from(seen).slice(-400)));
+    }
     window.reportPost = async function(index) {
       const p = allPosts[index]; if (!p || !currentUser) return;
       const reason = prompt("通報の理由を入力してください:");
