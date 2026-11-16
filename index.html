@@ -260,7 +260,7 @@
       border-radius: 0 !important;
     }
     #posts-container > div .aspect-square { border-radius: 6px; background: #f2f2f2 !important; }
-    #detail-modal { height: 100dvh; max-height: 100dvh; overflow: hidden; }
+    #detail-modal { height: 100svh; max-height: 100svh; padding-top: env(safe-area-inset-top, 0px); overflow: hidden; box-sizing: border-box; }
     #detail-modal .detail-sheet { width: 100%; height: 100%; min-height: 0; max-width: none; margin: 0; background: #f5f5f5; display: flex; flex-direction: column; }
     #detail-modal .detail-scroll { min-height: 0; }
     .detail-card { background: #fff; border: 1px solid #e8e8e8; border-radius: 16px; padding: 14px; margin: 12px 16px 0; box-sizing: border-box; }
@@ -1630,6 +1630,7 @@ const ILLIT_CARD_ALBUMS = [
     }
     window.shareCurrentPost = async function() {
       const p = allPosts[currentDetailIndex]; if (!p) return;
+      if (!currentUser || p.userId !== currentUser.uid) return;
       const link = location.origin + location.pathname + "?post=" + p.id;
       const text = buildShareText(p, link);
       // Xアプリが文面の一部を落としても貼り付けられるよう、全文をコピーしておく
@@ -4027,7 +4028,8 @@ const ILLIT_CARD_ALBUMS = [
       }
       const more = document.getElementById("detail-more");
       if (more) {
-        let moreHtml = `<button type="button" onclick="shareCurrentPost()" class="text-gray-400">シェア</button>`;
+        let moreHtml = "";
+        if (currentUser && p.userId === currentUser.uid) moreHtml += `<button type="button" onclick="shareCurrentPost()" class="text-gray-400">シェア</button>`;
         if (currentUser && p.userId !== currentUser.uid) moreHtml += `<button type="button" onclick="blockPostOwner(${index})">ブロック</button><button type="button" onclick="reportPost(${index})">通報</button>`;
         more.innerHTML = moreHtml;
       }
