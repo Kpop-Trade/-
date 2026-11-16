@@ -3476,9 +3476,13 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       const isFirstPhoto = postPhotos.length === 0;
       processingPhotos = true; renderPostPhotoPreview();
       try {
-        for (const f of targets) { const img = await loadImageFromFile(f); postPhotos.push({ full: compressFromImage(img, PHOTO_FULL), thumb: compressFromImage(img, PHOTO_THUMB) }); }
-        if (isFirstPhoto && postPhotos[0] && typeof runCardImageRecognition === "function") {
-          runCardImageRecognition(postPhotos[0].full);
+        for (const f of targets) {
+          const img = await loadImageFromFile(f);
+          postPhotos.push({ full: compressFromImage(img, PHOTO_FULL), thumb: compressFromImage(img, PHOTO_THUMB) });
+          if (isFirstPhoto) window._pendingRecogImage = compressFromImage(img, { maxSide: 1400, quality: 0.92, maxChars: 1200000 });
+        }
+        if (isFirstPhoto && window._pendingRecogImage && typeof runCardImageRecognition === "function") {
+          runCardImageRecognition(window._pendingRecogImage);
         }
       } catch(e) {} finally { processingPhotos = false; renderPostPhotoPreview(); }
     };
@@ -6015,10 +6019,21 @@ function getAiCardVectors() {
       return pickNearMatches(head.concat(scored.slice(8)));
     }
 
-    async function findSimilarCards(uploadedDataUrl) {
+    async function recognizeCardImage(dataUrl) {
       try {
-        const aiHits = await findSimilarCardsWithAI(uploadedDataUrl);
-        if (Array.isArray(aiHits) && aiHits.length) return aiHits;
+        const ai = await _findSimilarCardsWithAIRaw(dataUrl);
+        if (ai && ai.length) return ai;
+      } catch (e) {
+        console.warn("DINOv2 search failed:", e);
+      }
+      return findSimilarCards(dataUrl, true);
+    }
+    async function findSimilarCards(uploadedDataUrl, skipAI) {
+      try {
+        if (!skipAI) {
+          const aiHits = await findSimilarCardsWithAI(uploadedDataUrl);
+          if (Array.isArray(aiHits) && aiHits.length) return aiHits;
+        }
       } catch (aiErr) {
         console.warn("AI search fallback:", aiErr);
       }
@@ -6158,38 +6173,14 @@ function getAiCardVectors() {
         }
 
         let matches = null;
-
-        // 1. CLIPを試す（短時間で諦め）
         try {
           matches = await Promise.race([
-            (async () => {
-              updateStatus("⚡ トレカ画像を解析中...");
-              return await _findSimilarCardsWithAIRaw(uploadedDataUrl);
-            })(),
+            recognizeCardImage(uploadedDataUrl),
             overallTimeout
           ]);
         } catch (clipErr) {
-          console.warn("DINOv2 failed or timed out, falling back:", clipErr);
-          updateStatus("⚡ 軽量検索に切り替え中...");
+          console.warn("card search failed or timed out:", clipErr);
           matches = null;
-        }
-
-        // 2. CLIPがダメなら既存の軽い特徴量マッチにフォールバック
-        if (!matches || matches.length === 0) {
-          try {
-            if (typeof findSimilarCards === "function") {
-              updateStatus("🔍 画像から類似カードを検索中...");
-              const fallback = await Promise.race([
-                findSimilarCards(uploadedDataUrl),
-                new Promise((_, rej) => setTimeout(() => rej(new Error("軽量検索タイムアウト")), 90000))
-              ]);
-              if (Array.isArray(fallback) && fallback.length) {
-                matches = fallback;
-              }
-            }
-          } catch (fbErr) {
-            console.warn("Fallback search failed:", fbErr);
-          }
         }
 
         renderAiCandidates(container, matches || []);
@@ -9652,7 +9643,9 @@ window.buildAndDownloadCardPackZip = async function() {
           fr.onerror = reject;
           fr.readAsDataURL(file);
         });
-        const matches = await findSimilarCards(dataUrl);
+        const img = await loadImageFromFile(file);
+        const query = compressFromImage(img, { maxSide: 1400, quality: 0.92, maxChars: 1200000 }) || dataUrl;
+        const matches = await recognizeCardImage(query);
         if (!matches || !matches.length) {
           myCardsImageFilterIds = null;
           if (resultEl) resultEl.innerHTML = `<div class="bg-white border border-gray-200 rounded-2xl p-3 flex gap-3 items-center"><img src="${dataUrl}" alt="" class="w-16 h-20 object-cover rounded-lg bg-gray-100"><div class="text-[13px] text-gray-500">一致するトレカが見つかりませんでした</div></div>`;
