@@ -1128,6 +1128,11 @@
           </select>
         </div>
         <div><label class="block font-medium text-gray-700 mb-1">説明文・備考（任意）</label><textarea id="input-desc" maxlength="200" rows="2" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></textarea></div>
+        <div id="bundle-box" class="hidden space-y-2">
+          <div class="text-[12px] font-medium text-gray-700">まとめて出品</div>
+          <div id="bundle-list" class="space-y-2"></div>
+          <button type="button" onclick="addBundleRow()" class="w-full py-2.5 rounded-xl bg-white border border-gray-200 text-[12px] text-gray-700">＋ もう1枚追加</button>
+        </div>
                 
 
       </div>
@@ -1288,6 +1293,7 @@
             <div id="detail-give-box" class="hidden"><span></span><span id="detail-give"></span></div>
             <div id="detail-want-box" class="text-[14px] text-gray-700"><span class="text-gray-400">希望</span> <span id="detail-want"></span></div>
             <div id="detail-extra" class="text-[13px] text-gray-500 space-y-1"></div>
+            <div id="detail-offers" class="space-y-2"></div>
             <div>
               <div class="text-[16px] font-bold text-gray-900 mb-2">商品の説明</div>
               <div id="detail-desc-box" class="text-[15px] text-gray-800 whitespace-pre-wrap leading-relaxed"></div>
@@ -1307,9 +1313,14 @@
               <div class="text-[16px] font-bold text-gray-900 mb-3">コメント</div>
               <div id="detail-comments" class="space-y-3 mb-3"></div>
               <form class="flex gap-2 items-center" onsubmit="submitPostComment(event)">
+                <label class="shrink-0 w-10 h-10 rounded-full bg-[#f6f6f7] border border-[#eee] flex items-center justify-center text-[11px] text-gray-500 cursor-pointer">
+                  画像
+                  <input id="detail-comment-photo" type="file" accept="image/*" class="hidden" onchange="setCommentPhoto(this)">
+                </label>
                 <input id="detail-comment-input" maxlength="200" placeholder="コメントを入力" class="flex-1 bg-[#f6f6f7] border border-[#eee] rounded-full px-4 py-2.5 text-sm outline-none">
                 <button type="submit" class="h-10 px-4 rounded-full bg-[#fff1f0] text-[#e5484d] text-sm font-medium">送信</button>
               </form>
+              <div id="detail-comment-preview" class="hidden mt-2"></div>
             </div>
             <div id="detail-related" class="text-[13px]"></div>
             <div id="detail-more" class="flex justify-center gap-4 text-[12px] text-gray-400 py-4"></div>
@@ -3391,6 +3402,10 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       } catch (_) {}
 
       const _pm = _byId("post-modal");
+      const bundleBox = document.getElementById("bundle-box");
+      if (bundleBox) bundleBox.classList.toggle("hidden", mode !== "exchange");
+      bundleExtras = [];
+      renderBundleList();
       if (_pm) {
         _pm.classList.remove("hidden");
         _pm.style.display = "";
@@ -3492,6 +3507,43 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
 
     window.removePostPhoto = function(i) { postPhotos.splice(i, 1); renderPostPhotoPreview(); };
 
+    let bundleExtras = [];
+    function renderBundleList() {
+      const el = document.getElementById("bundle-list");
+      if (!el) return;
+      el.innerHTML = bundleExtras.map((row, i) => `
+        <div class="bg-white border border-gray-200 rounded-xl p-2 space-y-1.5">
+          <div class="flex justify-between items-center">
+            <span class="text-[11px] text-gray-500">${i + 2}枚目</span>
+            <button type="button" onclick="removeBundleRow(${i})" class="text-[11px] text-gray-400">削除</button>
+          </div>
+          <input value="${escapeHtml(row.give || "")}" oninput="bundleExtras[${i}].give=this.value" maxlength="100" placeholder="出すカード" class="w-full bg-[#f6f6f7] rounded-lg px-2.5 py-2 text-[13px]">
+          <input value="${escapeHtml(row.want || "")}" oninput="bundleExtras[${i}].want=this.value" maxlength="100" placeholder="希望するカード" class="w-full bg-[#f6f6f7] rounded-lg px-2.5 py-2 text-[13px]">
+          <label class="block text-[12px] text-gray-600">
+            ${row.thumb ? "写真を変更" : "写真を追加"}
+            <input type="file" accept="image/*" class="hidden" onchange="setBundlePhoto(${i}, this)">
+          </label>
+          ${row.thumb ? `<img src="${row.thumb}" alt="" class="w-16 h-20 object-cover rounded-lg">` : ""}
+        </div>`).join("");
+    }
+    window.addBundleRow = function() {
+      if (bundleExtras.length >= 7) return alert("一度に追加できるのは8枚までです。");
+      bundleExtras.push({ give: "", want: "", full: "", thumb: "" });
+      renderBundleList();
+    };
+    window.removeBundleRow = function(i) { bundleExtras.splice(i, 1); renderBundleList(); };
+    window.setBundlePhoto = async function(i, input) {
+      const file = input.files && input.files[0];
+      input.value = "";
+      if (!file || !bundleExtras[i]) return;
+      try {
+        const img = await loadImageFromFile(file);
+        bundleExtras[i].full = compressFromImage(img, PHOTO_FULL);
+        bundleExtras[i].thumb = compressFromImage(img, PHOTO_THUMB);
+        renderBundleList();
+      } catch (e) { alert("写真を読み込めませんでした"); }
+    };
+
     window.submitPost = async function() {
       if (typeof checkCancelAccountLock === "function" && checkCancelAccountLock()) return;
       if (submittingPost || processingPhotos || !(await checkDeviceLock())) return;
@@ -3513,26 +3565,45 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       if ((isBuy || isSell) && (!price || price <= 0)) return alert("価格を正しく入力してください。");
       if (!condition) return alert("商品の状態を選択してください。");
       if (!isBuy && postPhotos.length < 1) return alert("写真を1枚以上追加してください。");
+      const isExchange = postMode === "exchange";
+      if (isExchange) {
+        for (const row of bundleExtras) {
+          if (!String(row.give || "").trim() || !String(row.want || "").trim() || !row.full) {
+            return alert("追加したカードは、出すもの・希望・写真をすべて入れてください。");
+          }
+        }
+      }
       submittingPost = true; const btn = document.getElementById("post-submit-btn"); btn.disabled = true; btn.innerText = "投稿中…";
       try {
         const catalogCardId = selectedPostCard ? selectedPostCard.id : "";
         const catalogCardName = selectedPostCard ? selectedPostCard.name : "";
-        const ref = await addDoc(collection(db, "posts"), {
-          kind, isBuy, isSell: isSell && !isBuy, member, give, want: (isBuy || isSell) ? "" : want,
-          price: (isBuy || isSell) ? price : 0, description: desc, condition,
-          status: "active", photoCount: postPhotos.length, thumb: postPhotos.length > 0 ? postPhotos[0].thumb : "",
-          userId: currentUser.uid, userName: getMyDisplayName(), userPhoto: getMyProfile()?.photo || "",
-          likesCount: 0, createdAt: serverTimestamp(),
-          deviceId: getOrCreateDeviceId(),
-          paymentMethod: "azukari",
-          catalogCardId: catalogCardId || null,
-          catalogCardName: catalogCardName || null
-        });
-        for (let i = 0; i < postPhotos.length; i++) await addDoc(collection(db, "posts", ref.id, "photos"), { data: postPhotos[i].full, order: i, createdAt: serverTimestamp() });
-        if (catalogCardId) {
-          notifyCardWatchers(catalogCardId, catalogCardName || give, ref.id).catch(e => console.warn("watch notify:", e));
+        const items = [{
+          give, want: (isBuy || isSell) ? "" : want, photos: postPhotos.slice(),
+          catalogCardId: catalogCardId || null, catalogCardName: catalogCardName || null
+        }];
+        if (isExchange) {
+          bundleExtras.forEach(row => items.push({
+            give: row.give.trim(), want: row.want.trim(),
+            photos: [{ full: row.full, thumb: row.thumb }],
+            catalogCardId: null, catalogCardName: null
+          }));
         }
-        showToast("出品が完了しました！詳細画面からXでシェアできます", "success");
+        for (const item of items) {
+          const ref = await addDoc(collection(db, "posts"), {
+            kind, isBuy, isSell: isSell && !isBuy, member, give: item.give, want: item.want,
+            price: (isBuy || isSell) ? price : 0, description: desc, condition,
+            status: "active", photoCount: item.photos.length, thumb: item.photos.length > 0 ? item.photos[0].thumb : "",
+            userId: currentUser.uid, userName: getMyDisplayName(), userPhoto: getMyProfile()?.photo || "",
+            likesCount: 0, createdAt: serverTimestamp(),
+            deviceId: getOrCreateDeviceId(),
+            paymentMethod: "azukari",
+            catalogCardId: item.catalogCardId,
+            catalogCardName: item.catalogCardName
+          });
+          for (let i = 0; i < item.photos.length; i++) await addDoc(collection(db, "posts", ref.id, "photos"), { data: item.photos[i].full, order: i, createdAt: serverTimestamp() });
+          if (item.catalogCardId) notifyCardWatchers(item.catalogCardId, item.catalogCardName || item.give, ref.id).catch(() => {});
+        }
+        showToast(items.length > 1 ? items.length + "件出品しました" : "出品が完了しました！詳細画面からXでシェアできます", "success");
         closePostModal(); loadPosts(true); switchTab('home');
       } catch(e) { alert("失敗しました"); } finally { submittingPost = false; btn.disabled = false; btn.innerText = "出品する"; }
     };
@@ -4185,7 +4256,8 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           const btnLabel = isGroup ? "応募する" : (p.isSell ? "購入する" : "申し込む");
           const btnGrad = isGroup ? "from-teal-400 to-teal-500" : "from-illit-purple to-illit-accent";
           const onclick = isGroup ? `joinGroup(${index})` : (p.isSell ? `confirmPurchase(${index})` : `applyToPost(${index})`);
-          actions.innerHTML = `<button onclick="${onclick}" class="w-full bg-gradient-to-r ${btnGrad} text-white font-medium py-3 rounded-full shadow-md border border-white/30">${btnLabel}</button>`;
+          const offerBtn = p.isSell ? `<button onclick="proposePriceCut(${index})" class="bg-white/80">値下げを提案</button>` : "";
+          actions.innerHTML = `<button onclick="${onclick}" class="w-full bg-gradient-to-r ${btnGrad} text-white font-medium py-3 rounded-full shadow-md border border-white/30">${btnLabel}</button>${offerBtn}`;
         }
       }
       const more = document.getElementById("detail-more");
@@ -4202,7 +4274,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       if (sheet) { sheet.style.transition = "none"; sheet.style.transform = ""; }
       const scroller = modal.querySelector(".detail-scroll");
       if (scroller) scroller.scrollTop = 0;
-      modal.classList.remove("hidden"); loadDetailPhotos(p, index); if (p.userId) loadRating(p.userId, index); renderDetailRails(p); loadPostComments(p.id);
+      modal.classList.remove("hidden"); loadDetailPhotos(p, index); if (p.userId) loadRating(p.userId, index); renderDetailRails(p); loadPostComments(p.id); loadSellOffers(p);
       if (isGroup && currentUser && !joinsFresh[p.id]) {
         joinsFresh[p.id] = true;
         loadJoins(p.id).then(() => {
@@ -4249,24 +4321,60 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         const countEl = document.getElementById("detail-comment-count");
         if (countEl) countEl.textContent = String(rows.length);
         el.innerHTML = rows.length
-          ? rows.map(c => `<div class="text-[13px] leading-relaxed"><div class="text-gray-500 text-[12px]">${escapeHtml(c.userName || "ユーザー")}</div><div class="text-gray-800">${escapeHtml(c.text || "")}</div></div>`).join("")
+          ? rows.map(c => {
+              const img = c.image && isJpegData(c.image)
+                ? `<button type="button" onclick="openCommentImage(this.dataset.src)" data-src="${c.image}" class="block mt-1"><img src="${c.image}" alt="" class="max-h-40 rounded-xl"></button>`
+                : "";
+              return `<div class="text-[13px] leading-relaxed"><div class="text-gray-500 text-[12px]">${escapeHtml(c.userName || "ユーザー")}</div>${c.text ? `<div class="text-gray-800">${escapeHtml(c.text || "")}</div>` : ""}${img}</div>`;
+            }).join("")
           : `<p class="text-[13px] text-gray-400">まだコメントはありません</p>`;
       } catch (e) {
         if (currentDetailId !== postId) return;
         el.innerHTML = `<p class="text-[13px] text-gray-400">まだコメントはありません</p>`;
       }
     }
+    let pendingCommentImage = "";
+    window.openCommentImage = function(src) {
+      const img = document.getElementById("image-viewer-img");
+      const box = document.getElementById("image-viewer");
+      if (!img || !box || !src) return;
+      img.src = src;
+      box.classList.remove("hidden");
+    };
+    window.setCommentPhoto = async function(input) {
+      const file = input.files && input.files[0];
+      input.value = "";
+      if (!file) return;
+      try {
+        const img = await loadImageFromFile(file);
+        pendingCommentImage = compressFromImage(img, { maxSide: 720, quality: 0.7, maxChars: 120000 });
+        const preview = document.getElementById("detail-comment-preview");
+        if (preview) {
+          preview.classList.remove("hidden");
+          preview.innerHTML = `<div class="flex items-center gap-2"><img src="${pendingCommentImage}" alt="" class="h-16 rounded-lg"><button type="button" onclick="clearCommentPhoto()" class="text-[12px] text-gray-500">取り消す</button></div>`;
+        }
+      } catch (e) { alert("画像を読み込めませんでした"); }
+    };
+    window.clearCommentPhoto = function() {
+      pendingCommentImage = "";
+      const preview = document.getElementById("detail-comment-preview");
+      if (preview) { preview.classList.add("hidden"); preview.innerHTML = ""; }
+    };
     window.submitPostComment = async function(ev) {
       if (ev) ev.preventDefault();
       if (!currentUser) return alert("ログインが必要です。");
       const input = document.getElementById("detail-comment-input");
       const text = (input && input.value || "").trim();
       const postId = currentDetailId;
-      if (!text || !postId) return;
-      input.value = "";
+      const image = pendingCommentImage;
+      if ((!text && !image) || !postId) return;
+      if (input) input.value = "";
+      pendingCommentImage = "";
+      if (typeof clearCommentPhoto === "function") clearCommentPhoto();
       try {
         await addDoc(collection(db, "posts", postId, "comments"), {
           text: text,
+          image: image || "",
           userId: currentUser.uid,
           userName: getMyDisplayName(),
           createdAt: serverTimestamp()
@@ -4275,6 +4383,66 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       } catch (e) {
         alert("コメントを送れませんでした。");
       }
+    };
+
+    async function loadSellOffers(p) {
+      const box = document.getElementById("detail-offers");
+      if (!box) return;
+      box.innerHTML = "";
+      if (!p || !p.isSell || !p.id || p.status === "traded") return;
+      try {
+        const snap = await getDocs(collection(db, "posts", p.id, "offers"));
+        if (currentDetailId !== p.id) return;
+        const rows = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(o => o.status === "pending");
+        const mine = currentUser && p.userId === currentUser.uid;
+        const visible = mine ? rows : rows.filter(o => currentUser && o.userId === currentUser.uid);
+        if (!visible.length) return;
+        box.innerHTML = `<div class="text-[13px] font-medium text-gray-800">値下げの提案</div>` + visible.map(o => {
+          const price = "¥" + Number(o.price || 0).toLocaleString();
+          const actions = mine
+            ? `<div class="flex gap-2 mt-1"><button type="button" onclick="acceptPriceOffer('${p.id}','${o.id}',${Number(o.price)||0})" class="px-3 py-1 rounded-full bg-[#ff4d4f] text-white text-[12px]">この値段にする</button><button type="button" onclick="declinePriceOffer('${p.id}','${o.id}')" class="px-3 py-1 rounded-full bg-white border text-[12px] text-gray-600">断る</button></div>`
+            : "";
+          const who = mine || (currentUser && o.userId === currentUser.uid) ? escapeHtml(o.userName || "ユーザー") : "提案";
+          return `<div class="bg-white border border-gray-200 rounded-xl px-3 py-2"><div class="text-[13px] text-gray-800">${who} ${price}</div>${actions}</div>`;
+        }).join("");
+      } catch (e) {}
+    }
+    window.proposePriceCut = async function(index) {
+      if (!currentUser) return alert("ログインが必要です。");
+      const p = allPosts[index];
+      if (!p || !p.isSell) return;
+      const now = Number(p.price || 0);
+      const raw = prompt("希望価格を入力（今の価格 " + now.toLocaleString() + "円より低く）", "");
+      if (raw == null) return;
+      const price = Math.floor(Number(String(raw).replace(/,/g, "")));
+      if (!price || price <= 0 || price >= now) return alert("今の価格より低い金額にしてください。");
+      try {
+        const snap = await getDocs(collection(db, "posts", p.id, "offers"));
+        const mine = snap.docs.find(d => d.data().userId === currentUser.uid && d.data().status === "pending");
+        if (mine) await updateDoc(doc(db, "posts", p.id, "offers", mine.id), { price, createdAt: serverTimestamp() });
+        else await addDoc(collection(db, "posts", p.id, "offers"), {
+          userId: currentUser.uid, userName: getMyDisplayName(), price, status: "pending", createdAt: serverTimestamp()
+        });
+        showToast("値下げを提案しました", "success");
+        loadSellOffers(p);
+      } catch (e) { alert("提案を送れませんでした"); }
+    };
+    window.acceptPriceOffer = async function(postId, offerId, price) {
+      try {
+        await updateDoc(doc(db, "posts", postId), { price: Number(price) });
+        await updateDoc(doc(db, "posts", postId, "offers", offerId), { status: "accepted" });
+        const i = allPosts.findIndex(x => x.id === postId);
+        if (i >= 0) allPosts[i].price = Number(price);
+        showToast("価格を更新しました", "success");
+        if (i >= 0) openDetailModal(i);
+      } catch (e) { alert("更新できませんでした"); }
+    };
+    window.declinePriceOffer = async function(postId, offerId) {
+      try {
+        await updateDoc(doc(db, "posts", postId, "offers", offerId), { status: "declined" });
+        const p = allPosts.find(x => x.id === postId);
+        if (p) loadSellOffers(p);
+      } catch (e) { alert("更新できませんでした"); }
     };
 
     async function loadRating(userId, index) {
