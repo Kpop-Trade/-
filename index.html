@@ -406,6 +406,7 @@
           <p class="text-[11px] text-gray-500">公開すると、プロフィールや共有リンクから所持状況を見られるようになります。</p>
         </div>
         <div id="mycards-share-stats" class="text-xs text-gray-700 space-y-1"></div>
+      <div id="mycards-pie-charts" class="mt-3"></div>
         <button onclick="shareMyCollectionText()" class="w-full bg-black text-white font-medium py-3 rounded-full text-sm shadow-md">𝕏 で所持状況をシェア</button>
         <button onclick="copyMyCollectionLink()" class="w-full bg-white/80 border border-white text-illit-darkPurple font-medium py-2.5 rounded-full text-sm">共有リンクをコピー</button>
       </div>
@@ -9505,7 +9506,7 @@ window.buildAndDownloadCardPackZip = async function() {
         return (
           '<button type="button" data-pie-album="' + safeId + '" onclick="selectAlbumFromPieChart(this.dataset.pieAlbum)" ' +
           'class="text-left bg-white/95 hover:bg-white border ' + (isComp ? 'border-amber-300 ring-1 ring-amber-200' : 'border-pink-100') + ' rounded-2xl p-2 flex items-center gap-2 shadow-xs transition active:scale-95">' +
-            '<img src="albums/' + safeId + '.jpg" alt="" class="w-11 h-11 rounded-xl object-cover shrink-0 border border-pink-100 shadow-xs" onerror="this.style.display=\'none\'">' + '<div class="relative w-11 h-11 rounded-full shrink-0 flex items-center justify-center" style="' + ringBg + '">' +
+            '<img src="albums/' + safeId + '.jpg" alt="" class="w-11 h-11 rounded-xl object-cover shrink-0 border border-pink-100 shadow-xs" onerror="this.style.display=\'none\'">' + '<img src="albums/' + safeId + '.jpg" alt="" class="w-11 h-11 rounded-xl object-cover shrink-0 border border-pink-100 shadow-xs" onerror="this.style.display=\'none\'">' + '<div class="relative w-11 h-11 rounded-full shrink-0 flex items-center justify-center" style="' + ringBg + '">' +
               '<div class="w-7 h-7 rounded-full bg-white flex items-center justify-center text-[9px] font-extrabold ' + (isComp ? 'text-amber-600' : 'text-gray-800') + '">' +
                 st.pct + '%' +
               '</div>' +
@@ -9609,7 +9610,97 @@ window.buildAndDownloadCardPackZip = async function() {
     }
 
     // ===== 全体＆アルバムごとのコンプ率ドーナツ円グラフ描画 =====
-    </script>
+window.renderMyCardsPieCharts = function() {
+  const container = document.getElementById("mycards-pie-charts");
+  if (!container) return;
+
+  const map = (typeof userData !== "undefined" && userData && userData.myCards) ? userData.myCards : {};
+  const albums = window.ILLIT_CARD_ALBUMS || [];
+  let totalAll = 0, totalOwned = 0, totalWant = 0;
+  const albumStats = [];
+
+  albums.forEach(alb => {
+    const cards = (typeof getAlbumCards === "function") ? getAlbumCards(alb.id) : [];
+    const total = cards.length;
+    let owned = 0, want = 0;
+    cards.forEach(c => {
+      const st = map[c.id];
+      if (st === "owned") owned++;
+      else if (st === "want") want++;
+    });
+    totalAll += total;
+    totalOwned += owned;
+    totalWant += want;
+    const pct = total > 0 ? Math.round((owned / total) * 100) : 0;
+    const wantPct = total > 0 ? Math.round((want / total) * 100) : 0;
+    albumStats.push({ id: alb.id, name: alb.name, total, owned, want, pct, wantPct });
+  });
+
+  if (totalAll === 0) {
+    container.innerHTML = "";
+    return;
+  }
+
+  const overallPct = Math.round((totalOwned / totalAll) * 100);
+  const overallWantPct = Math.round((totalWant / totalAll) * 100);
+  const ownedDeg = Math.round((totalOwned / totalAll) * 360);
+  const wantDeg = Math.min(360, ownedDeg + Math.round((totalWant / totalAll) * 360));
+  const overallRingStyle = "background: conic-gradient(#ec4899 0deg " + ownedDeg + "deg, #60a5fa " + ownedDeg + "deg " + wantDeg + "deg, #e5e7eb " + wantDeg + "deg 360deg);";
+
+  const albumCardsHtml = albumStats.map(st => {
+    const aOwnedDeg = st.total > 0 ? Math.round((st.owned / st.total) * 360) : 0;
+    const aWantDeg = st.total > 0 ? Math.min(360, aOwnedDeg + Math.round((st.want / st.total) * 360)) : 0;
+    const isComp = st.owned === st.total && st.total > 0;
+    const ringColor = isComp ? "#f59e0b" : "#ec4899";
+    const ringBg = "background: conic-gradient(" + ringColor + " 0deg " + aOwnedDeg + "deg, #93c5fd " + aOwnedDeg + "deg " + aWantDeg + "deg, #f3f4f6 " + aWantDeg + "deg 360deg);";
+    const safeName = String(st.name || "").replace(/</g, "&lt;");
+    const safeId = String(st.id || "").replace(/"/g, "&quot;");
+    return (
+      '<button type="button" data-pie-album="' + safeId + '" onclick="if(typeof selectAlbumFromPieChart===\'function\'){selectAlbumFromPieChart(this.dataset.pieAlbum)}else if(typeof setMyCardsAlbum===\'function\'){setMyCardsAlbum(this.dataset.pieAlbum)}" ' +
+      'class="text-left bg-white/95 hover:bg-white border ' + (isComp ? 'border-amber-300 ring-1 ring-amber-200' : 'border-pink-100') + ' rounded-2xl p-2 flex items-center gap-2 shadow-xs transition active:scale-95">' +
+        '<img src="albums/' + safeId + '.jpg" alt="" class="w-11 h-11 rounded-xl object-cover shrink-0 border border-pink-100 shadow-xs" onerror="this.style.display=\'none\'">' +
+        '<div class="relative w-11 h-11 rounded-full shrink-0 flex items-center justify-center" style="' + ringBg + '">' +
+          '<div class="w-7 h-7 rounded-full bg-white flex items-center justify-center text-[9px] font-extrabold ' + (isComp ? 'text-amber-600' : 'text-gray-800') + '">' +
+            st.pct + '%' +
+          '</div>' +
+        '</div>' +
+        '<div class="min-w-0 flex-1">' +
+          '<div class="text-[11px] font-bold text-gray-800 truncate">' + safeName + '</div>' +
+          '<div class="text-[10px] text-gray-500"><span class="font-bold text-pink-600">' + st.owned + '</span> / ' + st.total + '枚</div>' +
+          (isComp ? '<div class="text-[9px] font-extrabold text-amber-600">🎉 COMPLETE!</div>' : '<div class="text-[9px] text-gray-400">あと' + (st.total - st.owned) + '枚</div>') +
+        '</div>' +
+      '</button>'
+    );
+  }).join("");
+
+  container.innerHTML =
+    '<div class="liquid-glass-card rounded-2xl p-3 border border-pink-200/80 shadow-sm space-y-2.5">' +
+      '<div class="flex items-center justify-between">' +
+        '<div class="text-xs font-extrabold text-pink-800">📊 コレクション達成率</div>' +
+        '<div class="text-[10px] font-bold text-pink-600">' + overallPct + '% 達成</div>' +
+      '</div>' +
+      '<div class="flex items-center gap-3.5 bg-white/90 rounded-xl p-2.5 border border-pink-100">' +
+        '<div class="relative rounded-full shrink-0 flex items-center justify-center shadow-inner" style="' + overallRingStyle + ' width:72px; height:72px;">' +
+          '<div class="w-12 h-12 rounded-full bg-white flex flex-col items-center justify-center leading-tight">' +
+            '<span class="text-[8px] font-bold text-gray-400">TOTAL</span>' +
+            '<span class="text-sm font-black text-pink-600">' + overallPct + '%</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="flex-1 space-y-1 text-xs">' +
+          '<div class="flex items-center justify-between">' +
+            '<span class="flex items-center gap-1.5 text-gray-700 font-bold"><span class="w-2.5 h-2.5 rounded-full bg-pink-500 inline-block"></span>所持</span>' +
+            '<span class="font-extrabold text-gray-900">' + totalOwned + ' <span class="text-[10px] font-normal text-gray-500">/ ' + totalAll + '枚</span></span>' +
+          '</div>' +
+          '<div class="flex items-center justify-between">' +
+            '<span class="flex items-center gap-1.5 text-gray-700 font-bold"><span class="w-2.5 h-2.5 rounded-full bg-blue-400 inline-block"></span>求 (Want)</span>' +
+            '<span class="font-bold text-blue-600">' + totalWant + '枚 <span class="text-[10px] font-normal text-gray-400">(' + overallWantPct + '%)</span></span>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="grid grid-cols-2 gap-2">' + albumCardsHtml + '</div>' +
+    '</div>';
+};
+</script>
 
   <!-- 👇 案内用のポップアップモーダル（サイトのデザインに合わせた綺麗な見た目） 👇 -->
   <div id="inAppBrowserPrompt" class="hidden fixed inset-0 z-[9999] modal-backdrop flex items-center justify-center p-4">
