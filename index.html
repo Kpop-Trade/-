@@ -1925,6 +1925,7 @@ const ILLIT_CARD_ALBUMS = [
         renderFilters(); renderPosts();
       }
       window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (typeof window.syncNavGlass === "function") window.syncNavGlass();
     };
 
     function getOrCreateDeviceId() {
@@ -10486,6 +10487,7 @@ window.commitSheetAutoCropsToZip = async function() {
     glass.style.width = br.width + "px";
     glass.style.transform = "translate3d(" + (br.left - nr.left) + "px,0,0)";
   }
+  window.syncNavGlass = function () { requestAnimationFrame(sync); };
   nav.addEventListener("click", function () { setTimeout(sync, 0); });
   window.addEventListener("resize", sync);
   sync();
