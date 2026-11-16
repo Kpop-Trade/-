@@ -4837,13 +4837,18 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         el.onerror = () => resolve(null);
         el.src = dataUrl;
       });
+      let stored = dataUrl;
       let thumb = dataUrl;
-      if (img) thumb = compressFromImage(img, PHOTO_THUMB) || dataUrl;
-      if (shown[0]) await updateDoc(doc(db, "posts", postId, "photos", shown[0].id), { data: dataUrl });
-      await updateDoc(doc(db, "posts", postId), { thumb });
+      if (img) {
+        try { stored = compressFromImage(img, PHOTO_FULL); } catch (_) {}
+        try { thumb = compressFromImage(img, PHOTO_THUMB); } catch (_) { thumb = stored; }
+      }
+      if (!isJpegData(stored)) return;
+      if (shown[0]) await updateDoc(doc(db, "posts", postId, "photos", shown[0].id), { data: stored });
+      await updateDoc(doc(db, "posts", postId), { thumb: isJpegData(thumb) ? thumb : stored });
       delete photoCache[postId];
       const lp = allPosts.find(x => x.id === postId);
-      if (lp) lp.thumb = thumb;
+      if (lp) lp.thumb = isJpegData(thumb) ? thumb : stored;
     }
     window.toggleBundleBox = function(i) {
       const p = allPosts[currentDetailIndex];
@@ -4926,7 +4931,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         renderPosts();
         closeDetailModal();
         openTrade(ref.id);
-        showToast(p.bundleLeft === 0 ? "申し込みました。枠が埋まったので募集を停止しました" : "選んだカードを申し込みました", "success");
+        showToast(p.bundleLeft === 0 ? "成立しました。バツ付きの写真に更新し、募集を停止しました" : "成立しました。バツ付きの写真に更新しました", "success");
       } catch (e) {
         if (e && (e.message === "taken" || e.message === "notactive")) return alert("そのカードは、さきほど選ばれました。");
         alert("申し込みに失敗しました");
