@@ -173,7 +173,7 @@
       position: relative;
       z-index: 2;
     }
-    #mycards-album-tabs:not(.hidden), #mycards-member-tabs:not(.hidden) { display: flex; flex-wrap: wrap; gap: 6px; }
+    #gllit-hub-schedule, #illit-calendar-modal .cal-sheet { background: #fff4c2 !important; }
     #mycards-album-tabs button, #mycards-member-tabs button {
       border-radius: 12px !important;
       padding: 7px 12px !important;
@@ -236,7 +236,7 @@
     }
 
     body {
-      background: #fff4c2 !important;
+      background: #f5f5f5 !important;
       color: #111;
       font-family: "Noto Sans JP", "Hiragino Sans", sans-serif;
     }
@@ -414,7 +414,7 @@
         <button type="button" onclick="openIllitCalendar()" class="text-[11px] font-bold text-indigo-700 bg-white/80 border border-white px-3 py-1.5 rounded-full">予定を開く</button>
       </div>
       <div id="gllit-hub-tasks" class="space-y-2"></div>
-      <div id="gllit-hub-schedule" class="liquid-glass rounded-2xl p-3 text-xs text-gray-600">予定を読み込み中...</div>
+      <div id="gllit-hub-schedule" class="rounded-2xl p-3 text-xs text-gray-700">予定を読み込み中...</div>
       <div class="grid grid-cols-2 gap-2">
         <button type="button" onclick="focusBoard('card_exchange')" class="liquid-glass rounded-2xl p-3 text-left active:scale-[.98]">
           <div class="text-[11px] text-gray-500">サイト内で完結</div>
@@ -556,16 +556,14 @@
         <div id="mycards-image-search-result" class="hidden"></div>
         <div class="flex items-start gap-3">
           <div class="flex-1 min-w-0 space-y-2">
-            <button type="button" id="mycards-album-btn" onclick="toggleMyCardsPicker('album')" class="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3 text-left">
-              <div class="text-[11px] text-gray-400">アルバムを選ぶ</div>
-              <div id="mycards-album-label" class="text-[14px] font-medium text-gray-900 truncate">SUPER REAL ME</div>
-            </button>
-            <div id="mycards-album-tabs" class="hidden"></div>
-            <button type="button" id="mycards-member-btn" onclick="toggleMyCardsPicker('member')" class="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3 text-left">
-              <div class="text-[11px] text-gray-400">メンバーを選ぶ</div>
-              <div id="mycards-member-label" class="text-[14px] font-medium text-gray-900 truncate">全員</div>
-            </button>
-            <div id="mycards-member-tabs" class="hidden"></div>
+            <label class="block">
+              <span class="sr-only">アルバム</span>
+              <select id="mycards-album-select" onchange="setMyCardsAlbum(this.value)" class="w-full bg-white border border-gray-200 rounded-2xl px-3 py-3.5 text-[16px] text-gray-900"></select>
+            </label>
+            <label class="block">
+              <span class="sr-only">メンバー</span>
+              <select id="mycards-member-select" onchange="setMyCardsMember(this.value)" class="w-full bg-white border border-gray-200 rounded-2xl px-3 py-3.5 text-[16px] text-gray-900"></select>
+            </label>
           </div>
           <div id="mycards-own-rate" class="w-[108px] shrink-0 pt-1"></div>
         </div>
@@ -9797,39 +9795,24 @@ window.buildAndDownloadCardPackZip = async function() {
       </div>`;
     }
     function renderMyCardsAlbumTabs() {
-      const el = document.getElementById("mycards-album-tabs");
+      const el = document.getElementById("mycards-album-select");
       if (!el) return;
-      const activeChip = "bg-teal-500 text-white text-[12px] font-medium";
-      const normalChip = "bg-white text-gray-700 border border-gray-200 text-[12px]";
       el.innerHTML = ILLIT_CARD_ALBUMS.map(a =>
-        `<button type="button" data-album-id="${a.id}" onclick="setMyCardsAlbum('${a.id}')" class="${a.id === myCardsAlbum ? activeChip : normalChip} rounded-xl px-3 py-1.5">${escapeHtml(a.name)}</button>`
+        `<option value="${a.id}" ${a.id === myCardsAlbum ? "selected" : ""}>${escapeHtml(a.name)}</option>`
       ).join("");
-      const label = document.getElementById("mycards-album-label");
-      const album = ILLIT_CARD_ALBUMS.find(a => a.id === myCardsAlbum);
-      if (label) label.textContent = album ? album.name : "未選択";
     }
-    
-
-
     function renderMyCardsMemberTabs() {
-      const el = document.getElementById("mycards-member-tabs");
+      const el = document.getElementById("mycards-member-select");
       if (!el) return;
       const cards = getAlbumCards(myCardsAlbum);
-      // 登録データ有無に関わらず基本メンバーは常に選べるようにしつつ、その他メンバーがあれば後ろに追加
       const order = ["ウォニ", "ミンジュ", "イロハ", "モカ", "ユナ", "OT5"];
       const existing = new Set(cards.map(c => c.member).filter(Boolean));
       const sorted = [...order];
       existing.forEach(m => { if (!sorted.includes(m)) sorted.push(m); });
-
       const tabs = [{ key: "ALL", label: "全員" }, ...sorted.map(m => ({ key: m, label: m }))];
-      const activeChip = "bg-[#ff4d4f] text-white text-[12px] font-medium";
-      const normalChip = "bg-white text-gray-700 border border-gray-200 text-[12px]";
       el.innerHTML = tabs.map(t =>
-        `<button type="button" onclick="setMyCardsMember('${t.key}')" class="${t.key === myCardsMember ? activeChip : normalChip} rounded-xl px-3 py-1.5">${escapeHtml(t.label)}</button>`
+        `<option value="${escapeHtml(t.key)}" ${t.key === myCardsMember ? "selected" : ""}>${escapeHtml(t.label)}</option>`
       ).join("");
-      const label = document.getElementById("mycards-member-label");
-      const current = tabs.find(t => t.key === myCardsMember);
-      if (label) label.textContent = current ? current.label : "全員";
     }
     window.setMyCardsAlbum = async function(id) {
       myCardsAlbum = id;
@@ -10235,17 +10218,8 @@ window.buildAndDownloadCardPackZip = async function() {
 
     window.selectAlbumFromPieChart = function(albumId) {
       try {
-        if (typeof myCardsAlbum !== "undefined") {
-          myCardsAlbum = albumId;
-        }
-        const tabBtn = document.querySelector('#mycards-album-tabs [data-album-id="' + albumId + '"]') || document.querySelector('[data-album-id="' + albumId + '"]');
-        if (tabBtn) {
-          tabBtn.click();
-          return;
-        }
-        if (typeof renderMyCardsAlbumTabs === "function") renderMyCardsAlbumTabs();
-        if (typeof renderMyCardsMemberTabs === "function") renderMyCardsMemberTabs();
-        if (typeof renderMyCardsList === "function") renderMyCardsList();
+        if (typeof setMyCardsTab === "function") setMyCardsTab("own");
+        if (typeof setMyCardsAlbum === "function") setMyCardsAlbum(albumId);
       } catch (_) {}
     };
 
@@ -10444,7 +10418,7 @@ window.addEventListener("unhandledrejection", function(event) {
 
 
 <div id="illit-calendar-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-  <div class="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+  <div class="cal-sheet rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
     <div class="p-4 border-b bg-gradient-to-r from-indigo-50 to-pink-50 flex items-center justify-between">
       <div>
         <h3 class="font-bold text-base text-gray-900">📅 ILLIT 公式スケジュール</h3>
