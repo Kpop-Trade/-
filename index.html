@@ -1113,6 +1113,14 @@
                     <input id="post-camera-input" type="file" accept="image/*" capture="environment" class="hidden" onchange="addPostPhotos(this)">
                     <input id="post-photo-input" type="file" accept="image/*" multiple class="hidden" onchange="addPostPhotos(this)">
                     <div id="post-photo-preview" class="flex flex-wrap gap-2"></div>
+          <div id="bulk-slot-setup-box" class="hidden mt-2 p-3 rounded-2xl bg-purple-50/90 border border-purple-200 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-purple-900">📦 まとめて出品：トレカ枠設定</span>
+              <span id="bulk-slot-count-badge" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-purple-600 text-white">0枠設定中</span>
+            </div>
+            <p class="text-[11px] text-purple-700 leading-snug">写真を1枚追加してから下のボタンを押すと、写真の上に交換用の枠を配置できます。</p>
+            <button type="button" onclick="openBulkSlotEditor()" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-500 text-white font-bold text-xs shadow active:scale-95 transition">🎯 写真の枠を設定・編集する</button>
+          </div>
                     <div id="bundle-box" class="hidden space-y-2">
                       <div id="bundle-crop-host"></div>
                       <div id="bundle-crop-preview" class="grid grid-cols-4 gap-1"></div>
@@ -1631,7 +1639,26 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     }
 
     // 投稿をactive（出品中）に戻す共通処理
-    async function restorePostToActive(postId, kind, applicantId) {
+    async function restorePostToActive(postId, kind, applicantId, tradeIdOverride) {
+        const targetTradeId = tradeIdOverride || (typeof currentTrade !== "undefined" && currentTrade && currentTrade.id) || null;
+        const lpCheck = allPosts.find(x => x.id === postId);
+        if (lpCheck && lpCheck.isBulk) {
+          try {
+            const postRef = doc(db, "posts", postId);
+            await runTransaction(db, async (tx) => {
+              const ps = await tx.get(postRef);
+              if (!ps.exists()) return;
+              const pData = ps.data();
+              const slots = Array.isArray(pData.bulkSlots) ? pData.bulkSlots : [];
+              const rolledBack = slots.map(s => (targetTradeId && s.tradeId === targetTradeId) ? { ...s, sold: false, tradeId: null } : s);
+              tx.update(postRef, { bulkSlots: rolledBack, status: "active" });
+              lpCheck.bulkSlots = rolledBack;
+              lpCheck.status = "active";
+            });
+            renderPosts();
+          } catch (e) { console.warn("bulk rollback error:", e); }
+          return;
+        }
       if (!postId) return;
       if (kind === "group") {
         // 共同購入は参加枠を戻すだけ（statusは触らない）
@@ -3655,7 +3682,15 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         }
         for (const item of items) {
           const useBundle = isExchange && bundleBoxes.length >= 2 && item === items[0];
-          const ref = await addDoc(collection(db, "posts"), {
+          if (window.__isBulkMode && (!window.__bulkSlots || window.__bulkSlots.length === 0)) {
+          btn.disabled = false; btn.innerText = "出品する";
+          return alert("まとめて出品では「写真の枠を設定・編集する」から枠を1つ以上設定してください。");
+        }
+        const __bulkExtra = (window.__isBulkMode && window.__bulkSlots.length > 0)
+          ? { isBulk: true, bulkSlots: JSON.parse(JSON.stringify(window.__bulkSlots)) }
+          : { isBulk: false };
+        const ref = await addDoc(collection(db, "posts"), {
+          ...__bulkExtra,
             kind, isBuy, isSell: isSell && !isBuy, member, give: item.give, want: item.want,
             price: (isBuy || isSell) ? price : 0, description: desc, condition,
             status: "active", photoCount: item.photos.length, thumb: item.photos.length > 0 ? item.photos[0].thumb : "",
@@ -4922,6 +4957,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         p.bundleLeft = nextBoxes.filter(b => b.state === "open").length;
         p.status = p.bundleLeft === 0 ? "closed" : "active";
         const ref = await addDoc(collection(db, "trades"), {
+          ...(p.isBulk ? { isBulk: true, selectedSlotIds: __chosenBulkSlotIds || [] } : {}),
           kind: p.kind, isBuy: false, isSell: false, postId: p.id,
           postGive: p.give, postWant: p.want || "", postPrice: 0, postMember: p.member || "指定なし",
           bundleIndexes: picks, paymentMethod: p.paymentMethod || "azukari",
@@ -4948,7 +4984,19 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       if (p.kind === "group") return joinGroup(index);
       if (!(await checkDeviceLock())) return;
 
-      const existing = myTrades.find(t => t.postId === p.id && t.status !== "cancelled");
+      if (p.isBulk && Array.isArray(p.bulkSlots) && p.bulkSlots.length > 0) {
+          if (!window.__pendingBulkSlotIds) {
+            window.__proceedOriginalTradeApply = () => {
+              if (typeof window.applyTrade === "function") window.applyTrade(index);
+              else if (typeof applyTrade === "function") applyTrade(index);
+            };
+            window.openBulkSelectModal(p);
+            return;
+          }
+        }
+        const __chosenBulkSlotIds = window.__pendingBulkSlotIds || null;
+        window.__pendingBulkSlotIds = null;
+        const existing = myTrades.find(t => t.postId === p.id && t.applicantId === currentUser.uid && t.status !== "cancelled");
       if (existing) {
         alert("すでにこの出品に対する取引ルームが存在します。");
         closeDetailModal();
@@ -4967,7 +5015,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           if (ps.data().status !== "active") throw new Error("notactive");
           tx.update(postRef, { status: "traded" });
         });
-        claimed = true; p.status = "traded"; renderPosts();
+        if (!p.isBulk) { claimed = true; p.status = "traded"; renderPosts(); }
       } catch (claimErr) {
         if (claimErr && (claimErr.message === "notactive" || claimErr.message === "notfound")) {
           return alert("この出品はすでに取引中、または終了しています。");
@@ -5608,7 +5656,33 @@ window.openAzukariApp = function() {
       try { await setDoc(doc(db, "users", currentUser.uid), patch, { merge: true }); } catch(_) {}
       return locked;
     }
-    window.cancelTrade = async function() {
+    
+      window.approveBulkTradeByOwner = async function() {
+        const t = currentTrade;
+        if (!t || !currentUser || t.ownerId !== currentUser.uid) return alert("この操作は出品者のみ実行できます。");
+        try {
+          const postRef = doc(db, "posts", t.postId);
+          await runTransaction(db, async (tx) => {
+            const ps = await tx.get(postRef);
+            if (!ps.exists()) throw new Error("投稿が見つかりません");
+            const pData = ps.data();
+            const slots = Array.isArray(pData.bulkSlots) ? [...pData.bulkSlots] : [];
+            const targetIds = new Set(t.selectedSlotIds || []);
+            for (const s of slots) {
+              if (targetIds.has(s.id) && s.sold && s.tradeId !== t.id) throw new Error("すでに他の取引で成約済みの枠が含まれています");
+            }
+            const updatedSlots = slots.map(s => targetIds.has(s.id) ? { ...s, sold: true, tradeId: t.id } : s);
+            const allSold = updatedSlots.length > 0 && updatedSlots.every(s => s.sold);
+            tx.update(postRef, { bulkSlots: updatedSlots, ...(allSold ? { status: "traded" } : {}) });
+            const localPost = allPosts.find(x => x.id === t.postId);
+            if (localPost) { localPost.bulkSlots = updatedSlots; if (allSold) localPost.status = "traded"; }
+          });
+          await updateDoc(doc(db, "trades", t.id), { agreed: { [t.ownerId]: true, [t.applicantId]: true }, status: "shipping", updatedAt: serverTimestamp() });
+          showToast("交換に合意しました！選択された枠が成約確定しました。", "success");
+          renderPosts();
+        } catch (err) { alert(err?.message || "合意処理に失敗しました。"); }
+      };
+      window.cancelTrade = async function() {
       const t = currentTrade; if (!t || cancellingTrade) return;
       if (!(await appConfirm("この取引をキャンセルしますか？\n相手にもキャンセルされたと表示されます。", "キャンセルする", true))) return;
       cancellingTrade = true;
@@ -11405,6 +11479,222 @@ window.commitSheetAutoCropsToZip = async function() {
 })();
 </script>
 
+
+<div id="bulk-slot-editor-modal" class="fixed inset-0 hidden z-[90] bg-black/80 backdrop-blur-sm flex flex-col justify-between p-3">
+  <div class="flex items-center justify-between text-white px-1 py-1">
+    <div><h3 class="font-bold text-sm">🎯 トレカ枠の設定</h3><p class="text-[11px] text-gray-300">枠をドラッグで移動・右下でサイズ調整・タップで選択</p></div>
+    <button type="button" onclick="closeBulkSlotEditor()" class="px-3 py-1.5 rounded-full bg-white/15 text-white text-xs font-bold">閉じる</button>
+  </div>
+  <div class="flex-1 flex items-center justify-center overflow-hidden my-2">
+    <div id="bulk-editor-canvas-wrap" class="relative inline-block max-w-full max-h-[65vh] select-none touch-none rounded-xl overflow-hidden shadow-2xl border border-white/20">
+      <img id="bulk-editor-img" src="" alt="preview" class="block max-w-full max-h-[65vh] object-contain pointer-events-none" />
+      <div id="bulk-editor-overlay" class="absolute inset-0"></div>
+    </div>
+  </div>
+  <div class="bg-white/95 rounded-2xl p-3 space-y-2 shadow-xl">
+    <div class="grid grid-cols-4 gap-1.5 text-xs font-bold">
+      <button type="button" onclick="addBulkSlot()" class="py-2 rounded-xl bg-purple-600 text-white shadow">＋ 1枠追加</button>
+      <button type="button" onclick="generateBulkGrid(2,3)" class="py-2 rounded-xl bg-purple-100 text-purple-900">2×3自動</button>
+      <button type="button" onclick="generateBulkGrid(3,3)" class="py-2 rounded-xl bg-purple-100 text-purple-900">3×3自動</button>
+      <button type="button" onclick="removeSelectedBulkSlot()" class="py-2 rounded-xl bg-rose-100 text-rose-700">選択削除</button>
+    </div>
+    <div class="flex gap-2">
+      <button type="button" onclick="clearAllBulkSlots()" class="px-3 py-2.5 rounded-xl bg-gray-200 text-gray-700 text-xs font-bold">全消去</button>
+      <button type="button" onclick="saveBulkSlotsAndClose()" class="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-500 text-white text-xs font-bold shadow">✅ この枠設定で決定（<span id="bulk-editor-total">0</span>枠）</button>
+    </div>
+  </div>
+</div>
+
+<div id="bulk-select-modal" class="fixed inset-0 hidden z-[90] bg-black/80 backdrop-blur-sm flex flex-col justify-between p-3">
+  <div class="flex items-center justify-between text-white px-1 py-1">
+    <div><h3 class="font-bold text-sm">❌ 希望するトレカをタップ</h3><p class="text-[11px] text-gray-300">選択した枠に「×」がつきます（灰色の枠は成約済み）</p></div>
+    <button type="button" onclick="closeBulkSelectModal()" class="px-3 py-1.5 rounded-full bg-white/15 text-white text-xs font-bold">閉じる</button>
+  </div>
+  <div class="flex-1 flex items-center justify-center overflow-hidden my-2">
+    <div class="relative inline-block max-w-full max-h-[65vh] select-none rounded-xl overflow-hidden shadow-2xl border border-white/20">
+      <img id="bulk-select-img" src="" alt="bulk" class="block max-w-full max-h-[65vh] object-contain pointer-events-none" />
+      <div id="bulk-select-overlay" class="absolute inset-0"></div>
+    </div>
+  </div>
+  <div class="bg-white/95 rounded-2xl p-3 space-y-2 shadow-xl">
+    <div class="flex items-center justify-between text-xs">
+      <span class="font-bold text-gray-700">選択中の枠：<span id="bulk-selected-count" class="text-rose-600 font-extrabold">0</span>枚</span>
+      <span class="text-[11px] text-gray-500">※出品者が合意すると成約確定します</span>
+    </div>
+    <button type="button" onclick="confirmBulkSelectionAndApply()" class="w-full py-3 rounded-xl bg-gradient-to-r from-rose-500 to-pink-600 text-white font-bold text-sm shadow-md active:scale-95 transition">❌ バツをつけた枠で交換を申し込む</button>
+  </div>
+</div>
+
+<script>
+(function() {
+  window.__isBulkMode = false;
+  window.__bulkSlots = [];
+  window.__selectedEditorSlotId = null;
+  window.__bulkSelectTargetPost = null;
+  window.__bulkSelectedSlotIds = new Set();
+
+  window.openBulkPostModal = function() {
+    window.__fromBulkBtn = true;
+    setTimeout(() => { window.__fromBulkBtn = false; }, 100);
+    window.__isBulkMode = true;
+    window.__bulkSlots = [];
+    if (typeof openPostModal === "function") openPostModal("exchange");
+    const titleEl = document.getElementById("post-modal-title");
+    if (titleEl) titleEl.textContent = "📦 まとめて出品（枠設定）";
+    const box = document.getElementById("bulk-slot-setup-box");
+    if (box) box.classList.remove("hidden");
+    updateBulkSlotBadge();
+  };
+
+  function updateBulkSlotBadge() {
+    const b1 = document.getElementById("bulk-slot-count-badge");
+    const b2 = document.getElementById("bulk-editor-total");
+    if (b1) b1.textContent = window.__bulkSlots.length + "枠設定中";
+    if (b2) b2.textContent = String(window.__bulkSlots.length);
+  }
+
+  function getUploadedPhotoSrc() {
+    const previewImg = document.querySelector("#post-photo-preview img");
+    return previewImg ? previewImg.src : "";
+  }
+
+  window.openBulkSlotEditor = function() {
+    const src = getUploadedPhotoSrc();
+    if (!src) return alert("先に「写真を追加」からトレカが写った写真を1枚選択してください！");
+    document.getElementById("bulk-editor-img").src = src;
+    if (window.__bulkSlots.length === 0) window.generateBulkGrid(2, 3);
+    else renderBulkEditorOverlay();
+    document.getElementById("bulk-slot-editor-modal").classList.remove("hidden");
+  };
+
+  window.closeBulkSlotEditor = function() { document.getElementById("bulk-slot-editor-modal").classList.add("hidden"); };
+  window.saveBulkSlotsAndClose = function() {
+    if (window.__bulkSlots.length === 0) return alert("少なくとも1つ以上の枠を設定してください。");
+    updateBulkSlotBadge();
+    closeBulkSlotEditor();
+  };
+
+  window.addBulkSlot = function() {
+    const idx = window.__bulkSlots.length + 1;
+    const id = "slot_" + Date.now().toString(36) + "_" + idx;
+    window.__bulkSlots.push({ id, x: Math.min(70, 10 + (idx * 5) % 50), y: Math.min(70, 10 + (idx * 5) % 50), w: 24, h: 34, sold: false, tradeId: null });
+    window.__selectedEditorSlotId = id;
+    renderBulkEditorOverlay();
+    updateBulkSlotBadge();
+  };
+
+  window.generateBulkGrid = function(cols, rows) {
+    window.__bulkSlots = [];
+    const padX = 4, padY = 4, gapX = 2, gapY = 2;
+    const w = (100 - padX * 2 - gapX * (cols - 1)) / cols;
+    const h = (100 - padY * 2 - gapY * (rows - 1)) / rows;
+    let n = 1;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        window.__bulkSlots.push({ id: "slot_" + n++, x: +(padX + c * (w + gapX)).toFixed(2), y: +(padY + r * (h + gapY)).toFixed(2), w: +w.toFixed(2), h: +h.toFixed(2), sold: false, tradeId: null });
+      }
+    }
+    window.__selectedEditorSlotId = window.__bulkSlots[0]?.id || null;
+    renderBulkEditorOverlay();
+    updateBulkSlotBadge();
+  };
+
+  window.removeSelectedBulkSlot = function() {
+    if (!window.__selectedEditorSlotId) return;
+    window.__bulkSlots = window.__bulkSlots.filter(s => s.id !== window.__selectedEditorSlotId);
+    window.__selectedEditorSlotId = window.__bulkSlots[0]?.id || null;
+    renderBulkEditorOverlay();
+    updateBulkSlotBadge();
+  };
+
+  window.clearAllBulkSlots = function() {
+    window.__bulkSlots = [];
+    window.__selectedEditorSlotId = null;
+    renderBulkEditorOverlay();
+    updateBulkSlotBadge();
+  };
+
+  function renderBulkEditorOverlay() {
+    const overlay = document.getElementById("bulk-editor-overlay");
+    if (!overlay) return;
+    overlay.innerHTML = "";
+    window.__bulkSlots.forEach((slot, i) => {
+      const isSel = slot.id === window.__selectedEditorSlotId;
+      const box = document.createElement("div");
+      box.style.cssText = `position:absolute;left:${slot.x}%;top:${slot.y}%;width:${slot.w}%;height:${slot.h}%;border:2px solid ${isSel ? "#ec4899" : "#22d3ee"};background:${isSel ? "rgba(236,72,153,0.25)" : "rgba(34,211,238,0.18)"};border-radius:6px;box-sizing:border-box;touch-action:none;cursor:move;`;
+      box.innerHTML = `<span style="position:absolute;top:2px;left:3px;background:rgba(0,0,0,0.7);color:#fff;font-size:10px;font-weight:bold;padding:0 4px;border-radius:4px;">#${i + 1}</span>
+        <div data-resize="1" style="position:absolute;right:-4px;bottom:-4px;width:16px;height:16px;background:#ec4899;border:2px solid #fff;border-radius:50%;cursor:nwse-resize;"></div>`;
+      let startX = 0, startY = 0, origX = slot.x, origY = slot.y, origW = slot.w, origH = slot.h, resizing = false;
+      box.addEventListener("pointerdown", (e) => {
+        e.stopPropagation();
+        window.__selectedEditorSlotId = slot.id;
+        resizing = e.target && e.target.getAttribute("data-resize") === "1";
+        startX = e.clientX; startY = e.clientY;
+        origX = slot.x; origY = slot.y; origW = slot.w; origH = slot.h;
+        box.setPointerCapture(e.pointerId);
+        renderBulkEditorOverlay();
+      });
+      box.addEventListener("pointermove", (e) => {
+        if (!box.hasPointerCapture(e.pointerId)) return;
+        const rect = overlay.getBoundingClientRect();
+        const dx = ((e.clientX - startX) / rect.width) * 100;
+        const dy = ((e.clientY - startY) / rect.height) * 100;
+        if (resizing) {
+          slot.w = Math.max(8, Math.min(100 - slot.x, +(origW + dx).toFixed(2)));
+          slot.h = Math.max(8, Math.min(100 - slot.y, +(origH + dy).toFixed(2)));
+        } else {
+          slot.x = Math.max(0, Math.min(100 - slot.w, +(origX + dx).toFixed(2)));
+          slot.y = Math.max(0, Math.min(100 - slot.h, +(origY + dy).toFixed(2)));
+        }
+        box.style.left = slot.x + "%"; box.style.top = slot.y + "%";
+        box.style.width = slot.w + "%"; box.style.height = slot.h + "%";
+      });
+      overlay.appendChild(box);
+    });
+  }
+
+  window.openBulkSelectModal = function(post) {
+    window.__bulkSelectTargetPost = post;
+    window.__bulkSelectedSlotIds = new Set();
+    document.getElementById("bulk-select-img").src = (post.images && post.images[0]) || post.image || "";
+    renderBulkSelectOverlay(post.bulkSlots || []);
+    document.getElementById("bulk-selected-count").textContent = "0";
+    document.getElementById("bulk-select-modal").classList.remove("hidden");
+  };
+
+  window.closeBulkSelectModal = function() { document.getElementById("bulk-select-modal").classList.add("hidden"); };
+
+  function renderBulkSelectOverlay(slots) {
+    const overlay = document.getElementById("bulk-select-overlay");
+    overlay.innerHTML = "";
+    slots.forEach((slot, i) => {
+      const isSold = !!slot.sold;
+      const isChecked = window.__bulkSelectedSlotIds.has(slot.id);
+      const box = document.createElement("div");
+      box.style.cssText = `position:absolute;left:${slot.x}%;top:${slot.y}%;width:${slot.w}%;height:${slot.h}%;border:2px solid ${isSold ? "#9ca3af" : isChecked ? "#ef4444" : "#38bdf8"};background:${isSold ? "rgba(31,41,55,0.68)" : isChecked ? "rgba(239,68,68,0.32)" : "rgba(56,189,248,0.12)"};border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:${isSold ? "not-allowed" : "pointer"};`;
+      if (isSold) box.innerHTML = `<span style="color:#e5e7eb;font-weight:900;font-size:11px;background:rgba(0,0,0,0.65);padding:1px 5px;border-radius:4px;">成約済</span>`;
+      else if (isChecked) box.innerHTML = `<span style="color:#ef4444;font-weight:900;font-size:28px;line-height:1;text-shadow:0 0 6px #fff,0 0 2px #000;">×</span>`;
+      else box.innerHTML = `<span style="position:absolute;top:2px;left:3px;background:rgba(0,0,0,0.6);color:#fff;font-size:10px;padding:0 4px;border-radius:4px;">#${i + 1}</span>`;
+      if (!isSold) {
+        box.onclick = () => {
+          if (window.__bulkSelectedSlotIds.has(slot.id)) window.__bulkSelectedSlotIds.delete(slot.id);
+          else window.__bulkSelectedSlotIds.add(slot.id);
+          document.getElementById("bulk-selected-count").textContent = String(window.__bulkSelectedSlotIds.size);
+          renderBulkSelectOverlay(slots);
+        };
+      }
+      overlay.appendChild(box);
+    });
+  }
+
+  window.confirmBulkSelectionAndApply = function() {
+    if (window.__bulkSelectedSlotIds.size === 0) return alert("交換したいトレカの枠を1つ以上タップして「×」をつけてください。");
+    window.__pendingBulkSlotIds = Array.from(window.__bulkSelectedSlotIds);
+    closeBulkSelectModal();
+    if (typeof window.__proceedOriginalTradeApply === "function") window.__proceedOriginalTradeApply();
+  };
+})();
+</script>
 </body>
 </html>
 
