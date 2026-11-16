@@ -5754,6 +5754,61 @@ function getAiCardVectors() {
       return arr;
     }
 
+    function isolateCardSource(img) {
+      const w0 = img.naturalWidth || img.width;
+      const h0 = img.naturalHeight || img.height;
+      if (!w0 || !h0) return img;
+      const scale = Math.min(1, 320 / w0);
+      const w = Math.max(48, Math.round(w0 * scale));
+      const h = Math.max(48, Math.round(h0 * scale));
+      const c = document.createElement("canvas");
+      c.width = w;
+      c.height = h;
+      const ctx = c.getContext("2d", { willReadFrequently: true });
+      ctx.drawImage(img, 0, 0, w, h);
+      const data = ctx.getImageData(0, 0, w, h).data;
+      const samples = [];
+      const take = (x, y) => {
+        const i = (y * w + x) * 4;
+        samples.push([data[i], data[i + 1], data[i + 2]]);
+      };
+      for (let x = 0; x < w; x += 3) { take(x, 1); take(x, h - 2); }
+      for (let y = 0; y < h; y += 3) { take(1, y); take(w - 2, y); }
+      samples.sort((a, b) => (a[0] + a[1] + a[2]) - (b[0] + b[1] + b[2]));
+      const mid = samples[Math.floor(samples.length / 2)] || [200, 200, 200];
+      let minX = w, minY = h, maxX = 0, maxY = 0, count = 0;
+      for (let y = 2; y < h - 2; y += 2) {
+        for (let x = 2; x < w - 2; x += 2) {
+          const i = (y * w + x) * 4;
+          const dr = data[i] - mid[0];
+          const dg = data[i + 1] - mid[1];
+          const db = data[i + 2] - mid[2];
+          if (dr * dr + dg * dg + db * db > 38 * 38) {
+            if (x < minX) minX = x;
+            if (y < minY) minY = y;
+            if (x > maxX) maxX = x;
+            if (y > maxY) maxY = y;
+            count++;
+          }
+        }
+      }
+      const bw = maxX - minX;
+      const bh = maxY - minY;
+      const area = (bw * bh) / (w * h);
+      if (count < 60 || bw < 24 || bh < 24 || area < 0.2 || area > 0.9) return img;
+      const inv = w0 / w;
+      const padX = bw * 0.04;
+      const padY = bh * 0.04;
+      const sx = Math.max(0, (minX - padX) * inv);
+      const sy = Math.max(0, (minY - padY) * inv);
+      const sw = Math.min(w0 - sx, (bw + padX * 2) * inv);
+      const sh = Math.min(h0 - sy, (bh + padY * 2) * inv);
+      const out = document.createElement("canvas");
+      out.width = Math.max(1, Math.round(sw));
+      out.height = Math.max(1, Math.round(sh));
+      out.getContext("2d").drawImage(img, sx, sy, sw, sh, 0, 0, out.width, out.height);
+      return out;
+    }
     function paintSquareView(img, mode) {
       const side = 518;
       const c = document.createElement("canvas");
@@ -5779,7 +5834,10 @@ function getAiCardVectors() {
     function cardQueryViews(dataUrl) {
       return new Promise((resolve) => {
         const img = new Image();
-        img.onload = () => resolve([paintSquareView(img, "fit"), paintSquareView(img, "crop")]);
+        img.onload = () => {
+          const src = isolateCardSource(img);
+          resolve([paintSquareView(src, "fit"), paintSquareView(src, "crop")]);
+        };
         img.onerror = () => resolve([dataUrl]);
         img.src = dataUrl;
       });
@@ -5853,7 +5911,23 @@ function getAiCardVectors() {
       }
       if (!compared) return null;
       scored.sort((a, b) => b.raw - a.raw);
-      return pickNearMatches(scored);
+      const head = scored.slice(0, 8);
+      try {
+        const qFeat = await extractImageFeatures(views[0]);
+        if (qFeat) {
+          await Promise.all(head.map(async (s) => {
+            const url = typeof getCardPhoto === "function" ? getCardPhoto(s.card && s.card.id) : "";
+            if (!url) return;
+            const feat = await extractImageFeatures(url);
+            if (!feat) return;
+            const color = Math.max(0, _cosineVec(qFeat.colorGrid, feat.colorGrid));
+            const face = Math.max(0, _cosineVec(qFeat.face, feat.face));
+            s.raw += color * 0.02 + face * 0.015;
+          }));
+          head.sort((a, b) => b.raw - a.raw);
+        }
+      } catch (_) {}
+      return pickNearMatches(head.concat(scored.slice(8)));
     }
 
     async function findSimilarCards(uploadedDataUrl) {
