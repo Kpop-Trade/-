@@ -224,7 +224,8 @@
       transform: scaleX(1.14) scaleY(0.94);
     }
     body > nav { position: fixed; }
-    body > nav button { position: relative; z-index: 1; transition: transform .25s cubic-bezier(.34,1.56,.64,1); }
+    body > nav button { position: relative; z-index: 1; transition: transform .4s cubic-bezier(.2,.85,.2,1); }
+    body > nav button.in-glass { transform: scale(1.1); transform-origin: center; }
     body > nav button span {
       display: block;
       max-height: 14px;
@@ -10316,6 +10317,7 @@ window.commitSheetAutoCropsToZip = async function() {
     glass.style.left = (br.left - nr.left) + "px";
     glass.style.width = br.width + "px";
     glass.classList.toggle("dragging", !!dragging);
+    buttons.forEach(function (b) { b.classList.toggle("in-glass", b === btn); });
   }
   function activeBtn() {
     return buttons.find(function (b) { return b.classList.contains("bg-white/70"); }) || buttons[0];
