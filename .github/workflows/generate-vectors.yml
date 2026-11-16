@@ -1,0 +1,40 @@
+name: Generate Card Vectors
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-vectors:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: |
+          if [ -f package.json ]; then
+            npm install
+          else
+            npm init -y
+            npm install @xenova/transformers sharp
+          fi
+
+      - name: Run vector generation script
+        run: |
+          SCRIPT_FILE=$(find scripts -maxdepth 1 -name "*.js" | head -n 1)
+          echo "Running $SCRIPT_FILE"
+          node "$SCRIPT_FILE"
+
+      - name: Commit and push card_vectors.json
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add card_vectors.json
+          git diff --staged --quiet || git commit -m "Update card_vectors.json for new 3649 cards"
+          git push
