@@ -189,10 +189,7 @@
     }
 
     /* 離しているときはグレー。押しているあいだだけ、バーに張り付くガラス */
-    #nav-glass {
-      position: absolute;
-      z-index: 0;
-      pointer-events: none;
+    #nav-glass, #nav-glass * { pointer-events: none !important; }
       top: 6px;
       bottom: 6px;
       left: 8px;
@@ -10407,9 +10404,7 @@ window.commitSheetAutoCropsToZip = async function() {
   const LENS = 86;
   const SCALE = 1.22;
   let lastX = 0;
-  let moved = false;
   let startX = 0;
-  let blockNative = false;
 
   function nearest(x) {
     let best = buttons[0], bestD = 1e9;
@@ -10460,40 +10455,28 @@ window.commitSheetAutoCropsToZip = async function() {
   nav.addEventListener("touchstart", function (e) {
     if (!e.touches || e.touches.length !== 1) return;
     startX = lastX = e.touches[0].clientX;
-    moved = false;
     placeFinger(lastX);
   }, { passive: true });
   nav.addEventListener("touchmove", function (e) {
     if (!e.touches || e.touches.length !== 1) return;
     lastX = e.touches[0].clientX;
-    if (Math.abs(lastX - startX) > 6) moved = true;
     placeFinger(lastX);
   }, { passive: true });
   function endTouch() {
-    const btn = nearest(lastX);
-    if (moved && btn) {
-      btn.click();
-      blockNative = true;
-      setTimeout(function () { blockNative = false; }, 400);
-    }
-    setTimeout(sync, 40);
+    glass.classList.remove("dragging");
+    mag.replaceChildren();
   }
   nav.addEventListener("touchend", endTouch);
-  nav.addEventListener("touchcancel", function () { setTimeout(sync, 30); });
-  nav.addEventListener("click", function (e) {
-    if (blockNative) { e.stopPropagation(); e.preventDefault(); return; }
-    setTimeout(sync, 0);
-  }, true);
+  nav.addEventListener("touchcancel", endTouch);
+  nav.addEventListener("click", function () { setTimeout(sync, 0); });
   nav.addEventListener("mousedown", function (e) {
     if (e.button !== 0) return;
     startX = lastX = e.clientX;
-    moved = false;
     placeFinger(lastX);
   });
   window.addEventListener("mousemove", function (e) {
     if (e.buttons !== 1 || !glass.classList.contains("dragging")) return;
     lastX = e.clientX;
-    if (Math.abs(lastX - startX) > 6) moved = true;
     placeFinger(lastX);
   });
   window.addEventListener("mouseup", function () {
