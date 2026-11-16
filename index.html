@@ -272,7 +272,7 @@
     #detail-price-box { display: block; }
     #detail-price-box.hidden { display: none !important; }
     #detail-price { color: #111 !important; font-size: 22px; font-weight: 700; line-height: 1.2; }
-    #detail-like-btn { width: auto; height: 36px; background: #f2f2f2 !important; color: #222 !important; border: 0; border-radius: 999px !important; box-shadow: none !important; padding: 0 12px; }
+    #detail-like-btn, #detail-comment-btn { width: auto; height: 52px; background: #f3f3f4 !important; color: #111 !important; border: 0; border-radius: 999px !important; box-shadow: none !important; padding: 0 18px; font-size: 20px; font-weight: 700; gap: 8px; }
     .detail-chip { display: inline-flex; align-items: center; gap: 4px; background: #f4f4f5; border: 1px solid #ececec; border-radius: 999px; padding: 5px 10px; font-size: 12px; color: #444; }
     .detail-chip.hidden, #detail-desc-box.hidden { display: none !important; }
     .detail-note { background: #f7f7f8; border-radius: 14px; padding: 12px 14px; font-size: 14px; line-height: 1.65; color: #222; }
@@ -280,7 +280,7 @@
     #detail-actions { display: block; flex-shrink: 0; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: #fff; border-top: 1px solid #eee; }
     #detail-actions button { width: 100%; height: 48px; border-radius: 999px !important; background: #ff4d4f !important; color: #fff !important; font-weight: 700; box-shadow: none !important; }
     #detail-actions button.bg-white\/80, #detail-actions button.bg-red-50, #detail-actions button.bg-teal-50 { background: #fff !important; color: #333 !important; border: 1px solid #eee; margin-top: 8px; }
-    #detail-like-btn { width: auto; height: 36px; background: #f2f2f2 !important; color: #222 !important; border: 0; border-radius: 999px !important; box-shadow: none !important; padding: 0 12px; }
+    #detail-like-btn, #detail-comment-btn { width: auto; height: 52px; background: #f3f3f4 !important; color: #111 !important; border: 0; border-radius: 999px !important; box-shadow: none !important; padding: 0 18px; font-size: 20px; font-weight: 700; gap: 8px; }
 
     @keyframes uiRise {
       from { opacity: 0; transform: translateY(10px); }
@@ -1201,10 +1201,13 @@
           </div>
           <div class="px-4 pt-3 pb-2 space-y-3">
             <div class="flex items-center gap-3">
-              <button id="detail-like-btn" onclick="toggleDetailLike()" class="text-[14px]">
-                <span id="detail-like-icon">♡</span> <span id="detail-like-count">0</span>
+              <button id="detail-like-btn" onclick="toggleDetailLike()" class="inline-flex items-center">
+                <span id="detail-like-icon" class="text-[26px] font-normal leading-none">♡</span> <span id="detail-like-count">0</span>
               </button>
-              <button type="button" onclick="document.getElementById('detail-comment-input').focus()" class="h-9 px-3 rounded-full bg-[#f2f2f2] text-[14px] text-gray-800">💬 <span id="detail-comment-count">0</span></button>
+              <button id="detail-comment-btn" type="button" onclick="document.getElementById('detail-comment-input').focus()" class="inline-flex items-center">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 16.5 4.2 20c-.4.8.5 1.6 1.2 1.1L9 18.6A8.5 8.5 0 1 0 6 16.5Z" stroke="#111" stroke-width="1.6"/><circle cx="8.2" cy="12" r="1" fill="#111"/><circle cx="12" cy="12" r="1" fill="#111"/><circle cx="15.8" cy="12" r="1" fill="#111"/></svg>
+                <span id="detail-comment-count">0</span>
+              </button>
             </div>
             <h2 id="detail-item-title" class="text-[20px] font-bold text-gray-900 leading-snug"></h2>
             <div id="detail-condition-box" class="hidden text-[15px] text-gray-800"><span id="detail-condition"></span></div>
