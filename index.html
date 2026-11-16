@@ -9042,6 +9042,18 @@ window.buildAndDownloadCardPackZip = async function() {
       return null;
     }
             async function openMyCardsPage() {
+            // autoSwitchOwnedAlbum: 現在のアルバムに所持0件で他に所持があれば自動切替
+            try {
+                const ownedIds = Object.keys(userData.myCards || {}).filter(id => userData.myCards[id] === "owned");
+                if (ownedIds.length > 0 && typeof findCardById === "function") {
+                    const curCards = typeof getAlbumCards === "function" ? getAlbumCards(myCardsAlbum) : [];
+                    const hasCurOwned = curCards.some(c => userData.myCards[c.id] === "owned");
+                    if (!hasCurOwned) {
+                        const found = findCardById(ownedIds[ownedIds.length - 1]);
+                        if (found && found.card && found.card.albumId) myCardsAlbum = found.card.albumId;
+                    }
+                }
+            } catch (_) {}
       if (!currentUser) return;
       myCardsTab = "own";
       setMyCardsTab("own");
