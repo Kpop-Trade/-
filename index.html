@@ -263,6 +263,9 @@
       border-radius: 8px !important;
       box-shadow: none !important;
     }
+    #notif-btn { position: relative; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; }
+    #notif-btn .notif-ring { position: absolute; inset: 2px; border-radius: 999px; border: 1.5px solid #222; opacity: 0; transform: scale(.84); transition: opacity .16s ease, transform .16s ease; }
+    #notif-btn:active .notif-ring, #notif-btn.holding .notif-ring { opacity: 1; transform: scale(1); }
     #login-btn {
       background: rgba(255,255,255,0.38) !important;
       color: #222 !important;
@@ -353,9 +356,13 @@
         <button id="login-btn" onclick="loginWithGoogle()" class="bg-white/80 backdrop-blur border border-white text-illit-darkPurple text-xs md:text-sm font-bold py-2 px-4 rounded-full transition shadow-sm hover:bg-white">Googleログイン</button>
         <div id="user-profile" class="hidden flex items-center space-x-2">
           <button id="admin-panel-btn" onclick="openAdminModal()" class="hidden bg-red-100/80 text-red-700 text-xs font-bold px-2.5 py-1.5 rounded-full hover:bg-red-200 transition" title="管理者パネル">👑</button>
-          <button onclick="openNotificationsModal()" class="relative bg-white/70 border border-white text-illit-darkPurple text-xs font-bold w-9 h-9 rounded-full flex items-center justify-center hover:bg-white transition shadow-sm" title="通知">
-            🔔
-            <span id="notif-badge" class="hidden absolute -top-1 -right-1 bg-pink-500 text-white text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 border border-white">0</span>
+          <button id="notif-btn" type="button" onclick="openNotificationsModal()" onpointerdown="this.classList.add('holding')" onpointerup="this.classList.remove('holding')" onpointerleave="this.classList.remove('holding')" onpointercancel="this.classList.remove('holding')" aria-label="通知">
+            <span class="notif-ring"></span>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M6.2 9.4a5.8 5.8 0 0 1 11.6 0c0 3.7 1 5 1.5 5.4H4.7c.5-.4 1.5-1.7 1.5-5.4Z" stroke="#222" stroke-width="1.7" stroke-linejoin="round"/>
+              <path d="M10 18.4a2 2 0 0 0 4 0" stroke="#222" stroke-width="1.7" stroke-linecap="round"/>
+            </svg>
+            <span id="notif-badge" class="hidden absolute -top-0.5 -right-0.5 bg-pink-500 text-white text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 border border-white">0</span>
           </button>
           <button onclick="openTradesModal()" class="relative hidden md:block bg-purple-100/80 backdrop-blur text-illit-darkPurple text-xs font-bold px-3 py-1.5 rounded-full hover:bg-purple-200 transition border border-white">
             💬 取引
@@ -363,7 +370,6 @@
           </button>
           <img id="user-avatar" src="" alt="" class="w-7 h-7 rounded-full object-cover border-2 border-white shadow-sm hidden cursor-pointer" onclick="openMyPage()">
           <span id="user-name" class="text-xs md:text-sm font-bold text-gray-700 max-w-[70px] truncate cursor-pointer" onclick="openMyPage()"></span>
-          <button onclick="logout()" class="text-[10px] text-gray-500 hover:text-gray-700 underline">ログアウト</button>
         </div>
       </div>
     </div>
@@ -576,6 +582,7 @@
         <button onclick="openFaq()" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">❓ FAQ</span><span class="text-gray-400">›</span></button>
         <button onclick="openInquiry()" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">📩 運営に問い合わせ</span><span class="text-gray-400">›</span></button>
         <button onclick="openTerms(true)" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">📜 利用規約</span><span class="text-gray-400">›</span></button>
+        <button onclick="logout()" class="w-full bg-white border border-gray-200 text-gray-600 font-medium py-3 rounded-full text-sm">ログアウト</button>
       </div>
     </section>
   <!-- 管理画面（通常ページ） -->
@@ -4567,19 +4574,26 @@ const ILLIT_CARD_ALBUMS = [
         const lastAct = t => Math.max(tsValue(t.updatedAt), tsMillis(t.lastMessageAt));
         myTrades.sort((a, b) => lastAct(b) - lastAct(a));
         const unread = myTrades.filter(t => isUnread(t)).length;
-        const ownerNegotiating = myTrades.filter(t => t.ownerId === currentUser.uid && t.status === "negotiating").length;
-        if (prevUnreadCount >= 0 && unread > prevUnreadCount) {
-          showToast("💬 新しいメッセージがあります！", "info");
-          const latestUnread = myTrades.find(t => isUnread(t));
-          addNotification("新しいメッセージが届きました", "info", latestUnread ? { type: "trade", id: latestUnread.id } : null);
-        }
-        if (prevTradeCountAsOwner >= 0 && ownerNegotiating > prevTradeCountAsOwner) {
-          showToast("📥 新しい申し込みがありました！", "success");
-          const newestApp = myTrades.find(t => t.ownerId === currentUser.uid && t.status === "negotiating");
-          addNotification("あなたの出品に新しい申し込みがありました", "success", newestApp ? { type: "trade", id: newestApp.id } : null);
+        if (!window._seenTradeIds) {
+          window._seenTradeIds = new Set(myTrades.map(t => t.id));
+          window._tradeMsgAt = {};
+          myTrades.forEach(t => { window._tradeMsgAt[t.id] = tsMillis(t.lastMessageAt); });
+        } else {
+          const apps = myTrades.filter(t => t.ownerId === currentUser.uid && !window._seenTradeIds.has(t.id));
+          const msgs = myTrades.filter(t => window._seenTradeIds.has(t.id) && isUnread(t) && tsMillis(t.lastMessageAt) > (window._tradeMsgAt[t.id] || 0));
+          if (apps.length) {
+            showToast("📥 購入申請が来ました！", "success");
+            addNotification("購入申請が来ました", "success", { type: "trade", id: apps[0].id });
+          }
+          if (msgs.length) {
+            showToast("💬 新しいメッセージがあります！", "info");
+            addNotification("新しいメッセージが届きました", "info", { type: "trade", id: msgs[0].id });
+          }
+          apps.forEach(t => window._seenTradeIds.add(t.id));
+          myTrades.forEach(t => window._seenTradeIds.add(t.id));
+          myTrades.forEach(t => { window._tradeMsgAt[t.id] = tsMillis(t.lastMessageAt); });
         }
         prevUnreadCount = unread;
-        prevTradeCountAsOwner = ownerNegotiating;
         updateBadge();
         renderSellTab();
         scheduleHealSoldPosts();
