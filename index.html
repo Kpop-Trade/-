@@ -7848,40 +7848,7 @@ function getAiCardVectors() {
         window._sheetCropParent.insertBefore(area, window._sheetCropNext || null);
       }
     };
-    window.openBundleFrameEditor = function() {
-            const p0 = (typeof postPhotos !== "undefined" && postPhotos[0]) || null;
-            const domImgs = Array.from(document.querySelectorAll("#post-photo-preview img, #bundle-box img")).filter(el => el.src && !el.closest("#sheet-crop-area"));
-            const src = (p0 && (p0.full || p0.url || p0.dataUrl || p0.thumb || (typeof p0 === "string" ? p0 : "")))
-              || window._pendingRecogImage
-              || (domImgs[0] && domImgs[0].src)
-              || "";
-            if (!src) {
-              alert("先に「カメラで撮る」または「アルバムから選択」から写真を1枚入れてください。");
-              return;
-            }
-            window.__isBulkMode = true;
-            if (typeof mountBundleCropTool === "function") mountBundleCropTool(true);
-            const box = document.getElementById("bundle-box");
-            if (box) box.classList.remove("hidden");
-            const area = document.getElementById("sheet-crop-area");
-            const host = document.getElementById("bundle-crop-host");
-            if (area) {
-              if (host && area.parentElement !== host) host.appendChild(area);
-              area.classList.remove("hidden");
-              area.style.display = "block";
-              area.dataset.mode = "bundle";
-            }
-            const img = new Image();
-            img.crossOrigin = "anonymous";
-            img.onload = () => {
-              sheetCropState.img = img;
-              sheetCropState.fileName = "bundle";
-              sheetCropState.boxes = [];
-              if (typeof rerunSheetAutoDetect === "function") rerunSheetAutoDetect();
-              if (area && area.scrollIntoView) setTimeout(() => area.scrollIntoView({ block: "nearest", behavior: "smooth" }), 50);
-            };
-            img.src = src;
-          };
+    
     function paintBundleCrops(list) {
       const el = document.getElementById("bundle-crop-preview");
       if (!el) return;
