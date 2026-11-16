@@ -1141,10 +1141,10 @@
           </select>
         </div>
         <div><label class="block font-medium text-gray-700 mb-1">説明文・備考（任意）</label><textarea id="input-desc" maxlength="200" rows="2" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></textarea></div>
-        <div id="bundle-box" class="hidden bg-white border border-gray-200 rounded-xl p-3 text-[12px] text-gray-600 leading-relaxed">
-          並べたカードの枠を検知します。赤い枠をドラッグで直し、感度で絞れます。
-          <div id="bundle-detect" class="mt-1 font-medium text-gray-800"></div>
-          <button type="button" id="bundle-edit-btn" onclick="openBundleFrameEditor()" class="hidden mt-2 w-full py-2 rounded-xl bg-white border border-gray-200 text-[12px] text-gray-800">枠を直す</button>
+        <div id="bundle-box" class="hidden space-y-2">
+          <div id="bundle-crop-host"></div>
+          <div id="bundle-crop-preview" class="grid grid-cols-4 gap-1"></div>
+          <div id="bundle-detect" class="text-[12px] font-medium text-gray-800"></div>
         </div>
                 
 
@@ -3442,7 +3442,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       if (bundleBtn) bundleBtn.className = "py-2 rounded-full text-[13px] font-medium " + (bundle ? "bg-white text-gray-900 shadow-sm" : "text-gray-500");
       const guide = document.getElementById("exchange-style-guide");
       if (guide) guide.textContent = bundle
-        ? "カードを並べた写真を1枚撮ってください。赤い枠が各トレカです。感度で絞って、枠はドラッグで直せます。"
+        ? "カードを並べた写真を入れてください。まとめ切り抜きと同じ画面で、感度・枠の追加・解除・切り抜きができます。"
         : "1枚を机に置いて、明るくして、真上から撮ってください。近いカードを自動で入れます。";
       const figure = document.getElementById("post-guide-figure");
       if (figure) figure.classList.toggle("hidden", bundle);
@@ -3456,9 +3456,11 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       if (suggest && bundle) { suggest.classList.add("hidden"); suggest.innerHTML = ""; }
       const box = document.getElementById("bundle-box");
       if (box) box.classList.toggle("hidden", !bundle);
-      if (!bundle) window._pendingBundleBoxes = [];
+      if (typeof mountBundleCropTool === "function") mountBundleCropTool(bundle);
+      if (!bundle) { window._pendingBundleBoxes = []; window._bundleCrops = []; }
     };
     window.closePostModal = function() {
+      if (typeof mountBundleCropTool === "function") mountBundleCropTool(false);
       document.getElementById("post-modal").classList.add("hidden");
       selectedPostCard = null;
     };
@@ -3549,14 +3551,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           runCardImageRecognition(window._pendingRecogImage);
         }
         if (isFirstPhoto && postMode === "exchange" && window.exchangeStyle === "bundle" && postPhotos[0]) {
-          detectBundleBoxes(postPhotos[0].full).then(boxes => {
-            window._pendingBundleBoxes = boxes;
-            const el = document.getElementById("bundle-detect");
-            const editBtn = document.getElementById("bundle-edit-btn");
-            if (el) el.textContent = boxes.length ? (boxes.length + "枚の枠を検知しました。違えば枠を直せます") : "枠が見つかりません。枠を直すから追加できます";
-            if (editBtn) editBtn.classList.remove("hidden");
-            if (typeof openBundleFrameEditor === "function") openBundleFrameEditor();
-          });
+          if (typeof openBundleFrameEditor === "function") openBundleFrameEditor();
         }
       } catch(e) {} finally { processingPhotos = false; renderPostPhotoPreview(); }
     };
@@ -3646,9 +3641,17 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         }
         let bundleBoxes = [];
         if (isExchange && window.exchangeStyle === "bundle" && postPhotos[0]) {
-          bundleBoxes = Array.isArray(window._pendingBundleBoxes) && window._pendingBundleBoxes.length
-            ? window._pendingBundleBoxes
-            : await detectBundleBoxes(postPhotos[0].full);
+          const live = sheetCropState && sheetCropState.img && Array.isArray(sheetCropState.boxes) ? sheetCropState.boxes : [];
+          if (live.length) {
+            const img = sheetCropState.img;
+            bundleBoxes = live.filter(b => b && b.active !== false && b.w > 8 && b.h > 8).map(b => ({
+              x: b.x / img.width, y: b.y / img.height, w: b.w / img.width, h: b.h / img.height, state: "open"
+            }));
+          } else {
+            bundleBoxes = Array.isArray(window._pendingBundleBoxes) && window._pendingBundleBoxes.length
+              ? window._pendingBundleBoxes
+              : await detectBundleBoxes(postPhotos[0].full);
+          }
         }
         for (const item of items) {
           const useBundle = isExchange && bundleBoxes.length >= 2 && item === items[0];
@@ -7744,54 +7747,90 @@ function getAiCardVectors() {
       reader.readAsDataURL(file);
     };
 
+    window.mountBundleCropTool = function(on) {
+      const area = document.getElementById("sheet-crop-area");
+      const host = document.getElementById("bundle-crop-host");
+      if (!area) return;
+      if (!window._sheetCropParent) {
+        window._sheetCropParent = area.parentNode;
+        window._sheetCropNext = area.nextSibling;
+      }
+      const btn = document.getElementById("sheet-crop-confirm-btn");
+      if (on && host) {
+        host.appendChild(area);
+        area.classList.remove("hidden");
+        area.dataset.mode = "bundle";
+        area.style.cssText = "";
+        if (btn) { btn.textContent = "✂️ 有効な枠を切り抜く"; btn.onclick = cropBundleSheet; }
+      } else if (window._sheetCropParent) {
+        area.classList.add("hidden");
+        area.dataset.mode = "";
+        area.style.cssText = "";
+        if (btn) { btn.textContent = "✂️ 有効な枠を切り抜いてZIPリストへ追加"; btn.onclick = window.confirmAndNextSheet; }
+        window._sheetCropParent.insertBefore(area, window._sheetCropNext || null);
+      }
+    };
     window.openBundleFrameEditor = function() {
-      const src = postPhotos[0] && postPhotos[0].full;
-      if (!src) return alert("先に写真を追加してください。");
+      const src = (postPhotos[0] && postPhotos[0].full) || window._pendingRecogImage;
+      if (!src) return;
+      if (typeof mountBundleCropTool === "function") mountBundleCropTool(true);
       const img = new Image();
       img.onload = () => {
         sheetCropState.img = img;
         sheetCropState.fileName = "bundle";
-        sheetCropState.boxes = (window._pendingBundleBoxes || []).map(b => ({
-          x: b.x * img.width, y: b.y * img.height, w: b.w * img.width, h: b.h * img.height, active: true, member: ""
-        }));
+        sheetCropState.boxes = [];
         const area = document.getElementById("sheet-crop-area");
-        if (!area) return;
-        if (!area.dataset.homeParent) {
-          area.dataset.homeParent = "1";
-          window._sheetCropParent = area.parentNode;
-          window._sheetCropNext = area.nextSibling;
-        }
-        document.body.appendChild(area);
-        area.classList.remove("hidden");
-        area.dataset.mode = "bundle";
-        area.style.cssText = "position:fixed;left:12px;right:12px;top:12px;bottom:12px;z-index:80;overflow:auto;background:#fff;border-radius:16px;padding:12px;";
-        const btn = document.getElementById("sheet-crop-confirm-btn");
-        if (btn) { btn.textContent = "この枠で使う"; btn.onclick = confirmBundleFrames; }
-        if (sheetCropState.boxes.length) drawSheetCropPreview();
-        else if (typeof rerunSheetAutoDetect === "function") rerunSheetAutoDetect();
+        if (area) { area.classList.remove("hidden"); area.dataset.mode = "bundle"; }
+        if (typeof rerunSheetAutoDetect === "function") rerunSheetAutoDetect();
       };
       img.src = src;
     };
-    function confirmBundleFrames() {
+    function paintBundleCrops(list) {
+      const el = document.getElementById("bundle-crop-preview");
+      if (!el) return;
+      el.innerHTML = (list || []).map(src => `<img src="${src}" alt="" class="w-full aspect-[3/4] object-cover rounded-md border border-gray-200">`).join("");
+    }
+    async function cropBundleSheet() {
       const img = sheetCropState && sheetCropState.img;
-      const boxes = ((sheetCropState && sheetCropState.boxes) || []).filter(b => b && b.active !== false && b.w > 8 && b.h > 8).map(b => ({
+      const boxes = ((sheetCropState && sheetCropState.boxes) || []).filter(b => b && b.active !== false && b.w > 8 && b.h > 8);
+      if (!img || !boxes.length) return alert("有効な枠がありません。");
+      const btn = document.getElementById("sheet-crop-confirm-btn");
+      if (btn) { btn.disabled = true; btn.textContent = "切り抜き中..."; }
+      const crops = [];
+      for (let i = 0; i < boxes.length; i++) {
+        const b = boxes[i];
+        if (btn) btn.textContent = "切り抜き中... (" + (i + 1) + "/" + boxes.length + ")";
+        await new Promise(r => setTimeout(r, 10));
+        const sx = Math.max(0, Math.round(Number(b.x) || 0));
+        const sy = Math.max(0, Math.round(Number(b.y) || 0));
+        const cropW = Math.max(1, Math.min(img.naturalWidth || img.width, Math.round(Number(b.w) || 1)));
+        const cropH = Math.max(1, Math.min(img.naturalHeight || img.height, Math.round(Number(b.h) || 1)));
+        const canvas = document.createElement("canvas");
+        canvas.width = cropW;
+        canvas.height = cropH;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, cropW, cropH);
+        ctx.drawImage(img, sx, sy, cropW, cropH, 0, 0, cropW, cropH);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+        canvas.width = 0; canvas.height = 0;
+        if (isJpegData(dataUrl) || (typeof dataUrl === "string" && dataUrl.indexOf("data:image/jpeg") === 0)) crops.push(dataUrl);
+      }
+      window._bundleCrops = crops;
+      window._pendingBundleBoxes = boxes.map(b => ({
         x: b.x / img.width, y: b.y / img.height, w: b.w / img.width, h: b.h / img.height, state: "open"
       }));
-      window._pendingBundleBoxes = boxes;
-      const el = document.getElementById("bundle-detect");
-      if (el) el.textContent = boxes.length ? (boxes.length + "枚の枠を使います") : "有効な枠がありません";
-      closeBundleFrameEditor();
+      paintBundleCrops(crops.map(src => {
+        try {
+          return src;
+        } catch (_) { return src; }
+      }));
+      const note = document.getElementById("bundle-detect");
+      if (note) note.textContent = crops.length + "枚を写真から切り抜きました";
+      if (btn) { btn.disabled = false; btn.textContent = "✂️ 有効な枠を切り抜く"; }
+      showToast(crops.length + "枚を切り抜きました", "success");
     }
-    function closeBundleFrameEditor() {
-      const area = document.getElementById("sheet-crop-area");
-      if (!area) return;
-      area.classList.add("hidden");
-      area.dataset.mode = "";
-      area.style.cssText = "";
-      const btn = document.getElementById("sheet-crop-confirm-btn");
-      if (btn) { btn.textContent = "✂️ 有効な枠を切り抜いてZIPリストへ追加"; btn.onclick = confirmAndNextSheet; }
-      if (window._sheetCropParent) window._sheetCropParent.insertBefore(area, window._sheetCropNext || null);
-    }
+    function confirmBundleFrames() { return cropBundleSheet(); }
     window.closeSheetCropArea = function() {
       sheetCropState.img = null;
       sheetCropState.boxes = [];
@@ -11187,15 +11226,7 @@ window.confirmAndNextSheet = function() {
 
 window.closeSheetCropArea = function() {
   const area = document.getElementById("sheet-crop-area");
-  if (area && area.dataset.mode === "bundle") {
-    area.classList.add("hidden");
-    area.dataset.mode = "";
-    area.style.cssText = "";
-    const btn = document.getElementById("sheet-crop-confirm-btn");
-    if (btn) { btn.textContent = "✂️ 有効な枠を切り抜いてZIPリストへ追加"; btn.onclick = window.confirmAndNextSheet; }
-    if (window._sheetCropParent) window._sheetCropParent.insertBefore(area, window._sheetCropNext || null);
-    return;
-  }
+  if (area && area.dataset.mode === "bundle") return;
   sheetCropState.img = null;
   sheetCropState.boxes = [];
   if (area) area.classList.add("hidden");
