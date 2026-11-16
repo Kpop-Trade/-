@@ -284,13 +284,15 @@
     @media (max-width: 767px) { #detail-modal { bottom: 96px; } }
     #detail-photos .detail-film { display: flex; gap: 0; overflow-x: auto; scroll-snap-type: x mandatory; padding: 8px 0 4px; }
     #detail-photos .detail-film .shot { flex: 0 0 100%; scroll-snap-align: center; display: flex; justify-content: center; align-items: center; }
-    #detail-photos .detail-film img { flex: 0 0 auto; width: auto; max-width: 72%; height: auto; max-height: 42vh; margin: 0; object-fit: contain; background: transparent; filter: drop-shadow(0 10px 18px rgba(0,0,0,.14)); border-radius: 10px; }
+    #detail-photos .detail-film img { flex: 0 0 auto; width: auto; max-width: 72%; height: auto; max-height: 100%; margin: 0; object-fit: contain; background: transparent; filter: drop-shadow(0 10px 18px rgba(0,0,0,.14)); border-radius: 10px; }
     #detail-actions { display: block; flex-shrink: 0; padding: 8px 16px 10px; background: transparent; border: 0; }
     #detail-modal .detail-sheet { width: 100%; height: 100%; min-height: 0; max-width: none; margin: 0; background: #f5f5f5; display: flex; flex-direction: column; }
     #detail-modal .detail-scroll { min-height: 0; }
     .detail-card { background: #fff; border: 1px solid #e8e8e8; border-radius: 16px; padding: 14px; margin: 12px 16px 0; box-sizing: border-box; }
     button.detail-card { display: flex; width: calc(100% - 32px); }
-    #detail-photos { margin: 0; border: 0; background: transparent; overflow: visible; }
+    #detail-photos { margin: 0; border: 0; background: transparent; overflow: hidden; height: 42vh; }
+    #detail-photos .detail-film,
+    #detail-photos .detail-film .shot { height: 100%; }
     #detail-photo-wrap { position: relative; margin: 8px 0 0; background: transparent; }
     #detail-price-box { display: block; }
     #detail-price-box.hidden { display: none !important; }
@@ -3740,7 +3742,7 @@ const ILLIT_CARD_ALBUMS = [
         else if (p.deadline) subInfo = "期限 " + escapeHtml(p.deadline);
 
         return `
-          <div onclick="openDetailModal(${index})" class="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${dim ? 'opacity-60' : ''} group relative">
+          <div onclick="openDetailModal(${index})" class="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 cursor-pointer ${dim ? 'opacity-60' : ''} group relative">
             <div class="relative aspect-square bg-gray-50 overflow-hidden">
               ${ribbon}
               <button onclick="event.stopPropagation(); toggleDetailLikeFromCard('${p.id}')" class="absolute top-1.5 right-1.5 z-10 px-2 h-7 flex items-center gap-1 rounded-full bg-white/90 backdrop-blur border border-gray-200 shadow-sm text-[11px] font-bold ${isLiked ? 'text-pink-500 border-pink-200 bg-pink-50/80' : 'text-gray-500'} hover:scale-105 hover:border-pink-300 transition">
@@ -4073,7 +4075,12 @@ const ILLIT_CARD_ALBUMS = [
       document.getElementById("detail-menu")?.classList.add("hidden");
       const moreBtn = document.getElementById("detail-more-btn");
       if (moreBtn) moreBtn.classList.toggle("hidden", !!(currentUser && p.userId === currentUser.uid));
-      document.getElementById("detail-modal").classList.remove("hidden"); loadDetailPhotos(p, index); if (p.userId) loadRating(p.userId, index); renderDetailRails(p); loadPostComments(p.id);
+      const modal = document.getElementById("detail-modal");
+      const sheet = modal.querySelector(".detail-sheet");
+      if (sheet) { sheet.style.transition = "none"; sheet.style.transform = ""; }
+      const scroller = modal.querySelector(".detail-scroll");
+      if (scroller) scroller.scrollTop = 0;
+      modal.classList.remove("hidden"); loadDetailPhotos(p, index); if (p.userId) loadRating(p.userId, index); renderDetailRails(p); loadPostComments(p.id);
       if (isGroup && currentUser && !joinsFresh[p.id]) {
         joinsFresh[p.id] = true;
         loadJoins(p.id).then(() => {
@@ -4082,7 +4089,14 @@ const ILLIT_CARD_ALBUMS = [
         });
       }
     };
-    window.closeDetailModal = function() { document.getElementById("detail-modal").classList.add("hidden"); currentDetailIndex = -1; currentDetailId = null; };
+    window.closeDetailModal = function() {
+      const modal = document.getElementById("detail-modal");
+      const sheet = modal && modal.querySelector(".detail-sheet");
+      if (sheet) { sheet.style.transition = "none"; sheet.style.transform = ""; }
+      modal.classList.add("hidden");
+      currentDetailIndex = -1;
+      currentDetailId = null;
+    };
 
     function renderDetailRails(p) {
       const sellerEl = document.getElementById("detail-seller-items");
