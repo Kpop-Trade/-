@@ -5147,7 +5147,8 @@ function getAiCardVectors() {
                     for (const p of pending) {
                       try {
                         const out = await extractor(p.dataUrl, { pooling: "mean", normalize: true });
-                        const arr = Array.from(out.data);
+                        const arr = poolImageEmbedding(out);
+                        if (!arr) continue;
                         base[p.id] = arr;
                         if (typeof setDoc === "function" && typeof doc === "function") {
                           setDoc(doc(db, "cardVectors", p.id), { vector: arr, updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
@@ -5289,6 +5290,46 @@ function getAiCardVectors() {
       return true;
     });
 
+    // DINOv2 は [1, tokens, 768] を返す。平均して正規化しないと保存ベクトル(768)と長さが合わず0件になる。
+    function poolImageEmbedding(out) {
+      if (!out) return null;
+      const data = out.data || out;
+      if (!data || !data.length) return null;
+      const dims = out.dims;
+      let seq = 0;
+      let dim = 0;
+      if (dims && dims.length === 3) {
+        seq = dims[1];
+        dim = dims[2];
+      } else if (data.length > 768 && data.length % 768 === 0) {
+        dim = 768;
+        seq = data.length / 768;
+      }
+      let vec;
+      if (seq > 1 && dim > 0 && data.length >= seq * dim) {
+        vec = new Float32Array(dim);
+        for (let t = 0; t < seq; t++) {
+          const off = t * dim;
+          for (let i = 0; i < dim; i++) vec[i] += data[off + i];
+        }
+        for (let i = 0; i < dim; i++) vec[i] /= seq;
+      } else if (data.length > 0 && data.length <= 4096) {
+        vec = Float32Array.from(data);
+      } else {
+        return null;
+      }
+      let norm = 0;
+      for (let i = 0; i < vec.length; i++) norm += vec[i] * vec[i];
+      norm = Math.sqrt(norm) || 1;
+      const arr = new Array(vec.length);
+      for (let i = 0; i < vec.length; i++) arr[i] = vec[i] / norm;
+      return arr;
+    }
+
+    function dinov2MatchScore(dot) {
+      return Math.max(1, Math.min(99, Math.round(((dot - 0.88) / 0.12) * 70 + 29)));
+    }
+
     async function findSimilarCardsWithAI(dataUrl) {
       try {
         return await _findSimilarCardsWithAIRaw(dataUrl);
@@ -5304,7 +5345,8 @@ function getAiCardVectors() {
       if (resEl) resEl.textContent = "🤖 AIモデル準備＆解析中（初回のみ数秒）...";
       const extractor = await getAiClipExtractor();
       const out = await extractor(dataUrl, { pooling: "mean", normalize: true });
-      const qVec = out.data;
+      const qVec = poolImageEmbedding(out);
+      if (!qVec) return null;
 
       const allCards = [];
       const seen = new Set();
@@ -5320,17 +5362,19 @@ function getAiCardVectors() {
         if (!v || v.length !== qVec.length) continue;
         let dot = 0;
         for (let i = 0; i < qVec.length; i++) dot += qVec[i] * v[i];
-        const pct = Math.max(0, Math.min(100, Math.round(((dot - 0.70) / 0.28) * 100)));
-        if (dot >= 0.72) scored.push({ card: c, score: pct, raw: dot });
+        if (dot >= 0.8) scored.push({ card: c, score: dinov2MatchScore(dot), raw: dot });
       }
       scored.sort((a, b) => b.raw - a.raw);
-      return scored.slice(0, 24);
+      if (!scored.length) return [];
+      const best = scored[0].raw;
+      const near = scored.filter(s => best - s.raw <= 0.045);
+      return (near.length ? near : scored).slice(0, 6);
     }
 
     async function findSimilarCards(uploadedDataUrl) {
       try {
         const aiHits = await findSimilarCardsWithAI(uploadedDataUrl);
-        if (Array.isArray(aiHits)) return aiHits;
+        if (Array.isArray(aiHits) && aiHits.length) return aiHits;
       } catch (aiErr) {
         console.warn("AI search fallback:", aiErr);
       }
@@ -5415,7 +5459,7 @@ function getAiCardVectors() {
     function renderAiCandidates(container, matches) {
       if (!container) return;
       const esc = window.escapeHtml || ((s) => String(s || "").replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m] || m)));
-      if (!Array.isArray(matches)) {
+      if (!Array.isArray(matches) || matches.length === 0) {
         container.classList.remove("hidden");
         container.innerHTML = `<div class="text-[11px] text-gray-400 py-1.5 text-center">一致する候補が見つかりませんでした（手動で選択してください）</div>`;
         return;
@@ -5482,7 +5526,7 @@ function getAiCardVectors() {
               if (!vecMap || !Object.keys(vecMap).length) return null;
 
               const out = await extractor(smallUrl, { pooling: "mean", normalize: true });
-              const qVec = out.data;
+              const qVec = poolImageEmbedding(out);
               if (!qVec || !qVec.length) return null;
 
               const allCards = [];
@@ -5503,16 +5547,19 @@ function getAiCardVectors() {
                 if (!v || v.length !== qVec.length) continue;
                 let dot = 0;
                 for (let i = 0; i < qVec.length; i++) dot += qVec[i] * v[i];
-                if (dot >= 0.35) {
-    scored.push({
-      card: c,
-      score: Math.max(30, Math.min(99, Math.round(((dot - 0.35) / 0.55) * 69 + 30))),
-      raw: dot
-    });
-  }
+                if (dot >= 0.8) {
+                  scored.push({
+                    card: c,
+                    score: dinov2MatchScore(dot),
+                    raw: dot
+                  });
+                }
               }
               scored.sort((a, b) => b.raw - a.raw);
-              return scored.slice(0, 6);
+              if (!scored.length) return [];
+              const best = scored[0].raw;
+              const near = scored.filter(s => best - s.raw <= 0.045);
+              return (near.length ? near : scored).slice(0, 6);
             })(),
             overallTimeout
           ]);

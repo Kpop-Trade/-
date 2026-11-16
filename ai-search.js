@@ -67,6 +67,45 @@ function shrinkForModel(dataUrl) {
   });
 }
 
+function poolImageEmbedding(out) {
+  if (!out) return null;
+  const data = out.data || out;
+  if (!data || !data.length) return null;
+  const dims = out.dims;
+  let seq = 0;
+  let dim = 0;
+  if (dims && dims.length === 3) {
+    seq = dims[1];
+    dim = dims[2];
+  } else if (data.length > 768 && data.length % 768 === 0) {
+    dim = 768;
+    seq = data.length / 768;
+  }
+  let vec;
+  if (seq > 1 && dim > 0 && data.length >= seq * dim) {
+    vec = new Float32Array(dim);
+    for (let t = 0; t < seq; t++) {
+      const off = t * dim;
+      for (let i = 0; i < dim; i++) vec[i] += data[off + i];
+    }
+    for (let i = 0; i < dim; i++) vec[i] /= seq;
+  } else if (data.length > 0 && data.length <= 4096) {
+    vec = Float32Array.from(data);
+  } else {
+    return null;
+  }
+  let norm = 0;
+  for (let i = 0; i < vec.length; i++) norm += vec[i] * vec[i];
+  norm = Math.sqrt(norm) || 1;
+  const arr = new Array(vec.length);
+  for (let i = 0; i < vec.length; i++) arr[i] = vec[i] / norm;
+  return arr;
+}
+
+function dinov2MatchScore(dot) {
+  return Math.max(1, Math.min(99, Math.round(((dot - 0.88) / 0.12) * 70 + 29)));
+}
+
 export async function findSimilarCardsWithAI(uploadedDataUrl, progressCb) {
   if (typeof window.ensureCatalogCardsLoaded === "function") {
     await window.ensureCatalogCardsLoaded();
@@ -78,7 +117,7 @@ export async function findSimilarCardsWithAI(uploadedDataUrl, progressCb) {
   const extractor = await getAiClipExtractor(progressCb);
   if (progressCb) progressCb({ status: "トレカ画像をAI解析中" });
   const out = await extractor(smallUrl, { pooling: "mean", normalize: true });
-  const qVec = out.data;
+  const qVec = poolImageEmbedding(out);
   if (!qVec || !qVec.length) return [];
 
   const allCards = [];
@@ -100,17 +139,19 @@ export async function findSimilarCardsWithAI(uploadedDataUrl, progressCb) {
     if (!v || v.length !== qVec.length) continue;
     let dot = 0;
     for (let i = 0; i < qVec.length; i++) dot += qVec[i] * v[i];
-    // DINOv2向けに閾値を引き上げ（0.70以上のみ）
-    if (dot >= 0.70) {
+    if (dot >= 0.8) {
       scored.push({
         card: c,
-        score: Math.max(10, Math.min(99, Math.round(((dot - 0.68) / 0.30) * 100))),
+        score: dinov2MatchScore(dot),
         raw: dot
       });
     }
   }
   scored.sort((a, b) => b.raw - a.raw);
-  return scored.slice(0, 6);
+  if (!scored.length) return [];
+  const best = scored[0].raw;
+  const near = scored.filter(s => best - s.raw <= 0.045);
+  return (near.length ? near : scored).slice(0, 6);
 }
 
 export async function runCardImageRecognition(uploadedDataUrl) {
