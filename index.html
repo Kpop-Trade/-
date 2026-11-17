@@ -12086,5 +12086,86 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
 })();
 </script>
 
+
+<!-- === Bulk Trade Guide Frame Controller === -->
+<script>
+(function syncBulkTradeGuideFrames() {
+  function applyBulkGuideVisibility() {
+    const bundleBox = document.getElementById("bundle-box");
+    const bulkSetupBox = document.getElementById("bulk-slot-setup-box");
+    const inlineCamBox = document.getElementById("inline-guide-cam-box");
+    const singleGuideBtns = document.querySelectorAll("#manual-cam-start, #snap-guide-cam, [data-single-guide-btn]");
+
+    const isBulk = Boolean(
+      window.__isBulkMode ||
+      (bundleBox && !bundleBox.classList.contains("hidden")) ||
+      (bulkSetupBox && !bulkSetupBox.classList.contains("hidden"))
+    );
+
+    if (isBulk) {
+      // 交換のまとめ時：1枚用のガイド枠・カメラUIを完全に隠す
+      if (inlineCamBox) {
+        inlineCamBox.classList.add("hidden");
+        inlineCamBox.style.display = "none";
+      }
+      singleGuideBtns.forEach((btn) => {
+        btn.style.display = "none";
+      });
+      // まとめ用のガイド枠・枠設定ツールを復活表示
+      if (bundleBox) {
+        bundleBox.classList.remove("hidden");
+        bundleBox.style.display = "";
+      }
+      if (bulkSetupBox) {
+        bulkSetupBox.classList.remove("hidden");
+        bulkSetupBox.style.display = "";
+      }
+    } else {
+      // 通常の1枚出品時：1枚用ガイド枠を復元
+      if (inlineCamBox) {
+        inlineCamBox.classList.remove("hidden");
+        inlineCamBox.style.display = "";
+      }
+      singleGuideBtns.forEach((btn) => {
+        btn.style.display = "";
+      });
+    }
+  }
+
+  // openPostModal やまとめボタン押下・DOM変化を監視して即座に反映
+  const origOpenPostModal = window.openPostModal;
+  if (typeof origOpenPostModal === "function") {
+    window.openPostModal = function(...args) {
+      const res = origOpenPostModal.apply(this, args);
+      setTimeout(applyBulkGuideVisibility, 0);
+      setTimeout(applyBulkGuideVisibility, 80);
+      return res;
+    };
+  }
+
+  document.addEventListener("click", (e) => {
+    if (e.target.closest("button, [onclick]")) {
+      setTimeout(applyBulkGuideVisibility, 0);
+      setTimeout(applyBulkGuideVisibility, 80);
+    }
+  }, true);
+
+  const observer = new MutationObserver(() => applyBulkGuideVisibility());
+  function startObserve() {
+    ["bundle-box", "bulk-slot-setup-box", "post-modal"].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) observer.observe(el, { attributes: true, attributeFilter: ["class", "style"] });
+    });
+    applyBulkGuideVisibility();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", startObserve);
+  } else {
+    startObserve();
+  }
+})();
+</script>
+
 </body>
 </html>
