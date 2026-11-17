@@ -12091,50 +12091,31 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
 <script>
 (function syncBulkTradeGuideFrames() {
   let isApplying = false;
-
-  function detectCurrentPostMode() {
-    const activeBtn = document.querySelector("#post-modal button.bg-black, #post-modal button.bg-pink-500, #post-modal button.bg-pink-600, #post-modal button[aria-selected='true'], #post-modal .mode-btn.active");
-    const txt = activeBtn ? activeBtn.textContent : "";
-    if (txt.includes("買取") || txt.includes("譲渡") || txt.includes("販売")) return "sell";
-    if (txt.includes("交換")) return "exchange";
-    const sellInputs = document.querySelector("#price-input, #sell-price-box");
-    if (sellInputs && !sellInputs.classList.contains("hidden") && sellInputs.offsetParent !== null) return "sell";
-    return "exchange";
-  }
-
   function applyBulkGuideVisibility() {
     if (isApplying) return;
     isApplying = true;
     try {
-      const modal = document.getElementById("post-modal");
-      if (!modal || modal.classList.contains("hidden")) return;
-
       const bundleBox = document.getElementById("bundle-box");
       const bulkSetupBox = document.getElementById("bulk-slot-setup-box");
       const inlineCamBox = document.getElementById("inline-guide-cam-box");
       const singleGuideBtns = document.querySelectorAll("#manual-cam-start, #snap-guide-cam, [data-single-guide-btn]");
 
-      const currentMode = detectCurrentPostMode();
-      if (currentMode !== "exchange") {
+      const isExchangeMode = (typeof postMode !== "undefined" && postMode === "exchange");
+      if (!isExchangeMode) {
         window.__isBulkMode = false;
       }
-      const isBulk = (currentMode === "exchange") && Boolean(window.__isBulkMode);
+      const isTradeBulk = isExchangeMode && Boolean(window.__isBulkMode);
 
-      if (currentMode === "sell") {
-        if (bundleBox) bundleBox.classList.add("hidden");
-        if (bulkSetupBox) bulkSetupBox.classList.add("hidden");
+      if (isTradeBulk) {
         if (inlineCamBox) inlineCamBox.classList.add("hidden");
-        singleGuideBtns.forEach((btn) => { btn.style.setProperty("display", "none", "important"); });
-      } else if (isBulk) {
-        if (inlineCamBox) inlineCamBox.classList.add("hidden");
-        singleGuideBtns.forEach((btn) => { btn.style.setProperty("display", "none", "important"); });
+        singleGuideBtns.forEach((btn) => { btn.style.display = "none"; });
         if (bundleBox) bundleBox.classList.remove("hidden");
         if (bulkSetupBox) bulkSetupBox.classList.remove("hidden");
       } else {
         if (bundleBox) bundleBox.classList.add("hidden");
         if (bulkSetupBox) bulkSetupBox.classList.add("hidden");
         if (inlineCamBox) inlineCamBox.classList.remove("hidden");
-        singleGuideBtns.forEach((btn) => { btn.style.removeProperty("display"); });
+        singleGuideBtns.forEach((btn) => { btn.style.display = ""; });
       }
     } finally {
       isApplying = false;
@@ -12142,15 +12123,9 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
   }
 
   document.addEventListener("click", (e) => {
-    const btn = e.target.closest("button, [onclick], input[type='checkbox']");
-    if (!btn) return;
-    const label = btn.textContent || "";
-    if (label.includes("まとめ")) {
-      window.__isBulkMode = !window.__isBulkMode;
-    } else if (label.includes("1枚") || label.includes("単体") || label.includes("買取") || label.includes("譲渡")) {
-      window.__isBulkMode = false;
+    if (e.target.closest("button, [onclick], input[type='checkbox']")) {
+      setTimeout(applyBulkGuideVisibility, 50);
     }
-    setTimeout(applyBulkGuideVisibility, 60);
   }, true);
 })();
 </script>
