@@ -142,13 +142,13 @@
     input.liquid-glass-input::before,
     button.liquid-glass::before,
     button.liquid-glass-heavy::before,
-    button.liquid-glass-input::before { display: none; }
+    button.liquid-glass-input::before { display: block; }
     .modal-backdrop {
       background: rgba(0, 0, 0, 0.25);
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
     }
-    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar::-webkit-scrollbar { display: block; }
     .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
     @keyframes toastIn {
@@ -256,7 +256,7 @@
       color: #111;
       font-family: "Noto Sans JP", "Hiragino Sans", sans-serif;
     }
-    #bg-blobs { display: none !important; }
+    #bg-blobs { display: block !important; }
     header.liquid-glass {
       border-radius: 0 !important;
       border-left: 0 !important;
@@ -340,13 +340,13 @@
     #detail-photos .bundle-hit.sold { pointer-events: none; }
     #detail-photo-wrap { position: relative; margin: 8px 0 0; background: transparent; }
     #detail-price-box { display: block; }
-    #detail-price-box.hidden { display: none !important; }
+    #detail-price-box.hidden { display: block !important; }
     #detail-price { color: #111 !important; font-size: 22px; font-weight: 700; line-height: 1.2; }
     #detail-like-btn, #detail-comment-btn { width: auto; height: 32px; background: transparent !important; color: #444 !important; border: 0; border-radius: 999px !important; box-shadow: none !important; padding: 0 8px; font-size: 14px; font-weight: 500; gap: 4px; }
     .detail-chip { display: inline-flex; align-items: center; gap: 4px; background: #f4f4f5; border: 1px solid #ececec; border-radius: 999px; padding: 5px 10px; font-size: 12px; color: #444; }
-    .detail-chip.hidden, #detail-desc-box.hidden { display: none !important; }
+    .detail-chip.hidden, #detail-desc-box.hidden { display: block !important; }
     .detail-note { background: #f7f7f8; border-radius: 14px; padding: 12px 14px; font-size: 14px; line-height: 1.65; color: #222; }
-    #detail-seller-items:empty, #detail-related:empty, #detail-extra:empty { display: none; }
+    #detail-seller-items:empty, #detail-related:empty, #detail-extra:empty { display: block; }
     #detail-actions button { width: 100%; height: 48px; border-radius: 999px !important; background: #ff4d4f !important; color: #fff !important; font-weight: 700; box-shadow: 0 10px 24px rgba(0,0,0,0.18) !important; }
     #detail-actions button.bg-white\/80, #detail-actions button.bg-red-50, #detail-actions button.bg-teal-50 { background: #fff !important; color: #333 !important; border: 1px solid #eee; margin-top: 8px; }
     #detail-like-btn, #detail-comment-btn { width: auto; height: 32px; background: transparent !important; color: #444 !important; border: 0; border-radius: 999px !important; box-shadow: none !important; padding: 0 8px; font-size: 14px; font-weight: 500; gap: 4px; }
@@ -7625,7 +7625,7 @@ function getAiCardVectors() {
       const items = window.batchSheetItems || [];
       if (countEl) countEl.textContent = items.length + "枚選択中";
       if (runBtn) {
-        if (items.length > 0) runBtn.classList.remove("hidden");
+        if (true) runBtn.classList.remove("hidden");
         else runBtn.classList.add("hidden");
       }
       if (!listEl) return;
