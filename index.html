@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head><script>if("serviceWorker"in navigator){navigator.serviceWorker.getRegistrations().then(r=>r.forEach(w=>w.unregister()));}</script>
@@ -12084,7 +12085,6 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     setScanEffect(isBusy);
   }, 200);
 })();
-</script>
+setTimeout(()=>alert(JSON.stringify({style:window.exchangeStyle,hidden:document.getElementById("bundle-box")?.classList.contains("hidden")})),3000);</script>
 
 </body>
-</html>
