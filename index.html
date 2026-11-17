@@ -4490,7 +4490,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           const btnLabel = isGroup ? "応募する" : (p.isSell ? "購入する" : "申し込む");
           const btnGrad = isGroup ? "from-teal-400 to-teal-500" : "from-illit-purple to-illit-accent";
           const onclick = isGroup ? `joinGroup(${index})` : (p.isSell ? `confirmPurchase(${index})` : `applyToPost(${index})`);
-          const offerBtn = p.isSell ? `<button onclick="proposePriceCut(${index})" class="bg-white/80">値下げを提案</button>` : "";
+          const offerBtn = (p.isSell && (!currentUser || p.userId !== currentUser.uid)) ? `<button type="button" onclick="proposePriceCutById('${escapeHtml(p.id)}')" class="bg-white/80">値下げを提案</button>` : "";
           actions.innerHTML = `<button onclick="${onclick}" class="w-full bg-gradient-to-r ${btnGrad} text-white font-medium py-3 rounded-full shadow-md border border-white/30">${btnLabel}</button>${offerBtn}`;
         }
       }
@@ -4641,35 +4641,71 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         }).join("");
       } catch (e) {}
     }
-    window.proposePriceCut = async function(index) {
-      if (!currentUser) return /* alert hidden */ console.log("ログインが必要です。");
-      const p = allPosts[index];
-      if (!p || !p.isSell) return;
-      const now = Number(p.price || 0);
-      const raw = prompt("希望価格を入力（今の価格 " + now.toLocaleString() + "円より低く）", "");
-      if (raw == null) return;
-      const price = Math.floor(Number(String(raw).replace(/,/g, "")));
-      if (!price || price <= 0 || price >= now) return /* alert hidden */ console.log("今の価格より低い金額にしてください。");
-      try {
-        const snap = await getDocs(collection(db, "posts", p.id, "offers"));
-        const mine = snap.docs.find(d => d.data().userId === currentUser.uid && d.data().status === "pending");
-        if (mine) await updateDoc(doc(db, "posts", p.id, "offers", mine.id), { price, createdAt: serverTimestamp() });
-        else await addDoc(collection(db, "posts", p.id, "offers"), {
+    window.proposePriceCutById = async function(postId) {
+    if (!currentUser) {
+      if (typeof showToast === "function") showToast("ログインが必要です", "error");
+      return;
+    }
+    const p = allPosts.find(x => x.id === postId);
+    if (!p || !p.isSell) return;
+    if (p.userId === currentUser.uid) {
+      if (typeof showToast === "function") showToast("自分の出品には提案できません", "error");
+      return;
+    }
+    const now = Number(p.price || 0);
+    const raw = prompt("希望価格を入力（今の価格 " + now.toLocaleString() + "円より低く）", "");
+    if (raw == null) return;
+    const normalized = String(raw).replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)).replace(/[,，円\s]/g, "");
+    const price = Math.floor(Number(normalized));
+    if (!price || price <= 0 || price >= now) {
+      if (typeof showToast === "function") showToast("今の価格より低い金額を入力してください", "error");
+      return;
+    }
+    try {
+      const snap = await getDocs(collection(db, "posts", p.id, "offers"));
+      const mine = snap.docs.find(d => d.data().userId === currentUser.uid && d.data().status === "pending");
+      if (mine) {
+        await updateDoc(doc(db, "posts", p.id, "offers", mine.id), { price, createdAt: serverTimestamp() });
+      } else {
+        await addDoc(collection(db, "posts", p.id, "offers"), {
           userId: currentUser.uid, userName: getMyDisplayName(), price, status: "pending", createdAt: serverTimestamp()
         });
-        showToast("値下げを提案しました", "success");
-        loadSellOffers(p);
-      } catch (e) { /* alert hidden */ console.log("提案を送れませんでした"); }
-    };
-    window.acceptPriceOffer = async function(postId, offerId, price) {
-      try {
-        await updateDoc(doc(db, "posts", postId), { price: Number(price) });
-        await updateDoc(doc(db, "posts", postId, "offers", offerId), { status: "accepted" });
-        const i = allPosts.findIndex(x => x.id === postId);
-        if (i >= 0) allPosts[i].price = Number(price);
-        showToast("価格を更新しました", "success");
-        if (i >= 0) openDetailModal(i);
-      } catch (e) { /* alert hidden */ console.log("更新できませんでした"); }
+      }
+      if (typeof showToast === "function") showToast("値下げを提案しました", "success");
+      if (typeof loadSellOffers === "function") loadSellOffers(p);
+    } catch (e) {
+      console.error("proposePriceCut error:", e);
+      if (typeof showToast === "function") showToast("提案を送れませんでした（権限または通信エラー）", "error");
+    }
+  };
+  window.proposePriceCut = function(index) {
+    const p = allPosts[index];
+    if (p && p.id) window.proposePriceCutById(p.id);
+  };
+  window.acceptPriceOffer = async function(postId, offerId, price) {
+    try {
+      await updateDoc(doc(db, "posts", postId), { price: Number(price) });
+      await updateDoc(doc(db, "posts", postId, "offers", offerId), { status: "accepted" });
+      const i = allPosts.findIndex(x => x.id === postId);
+      if (i >= 0) allPosts[i].price = Number(price);
+      if (typeof showToast === "function") showToast("値下げに同意し、価格を更新しました", "success");
+      if (i >= 0) openDetailModal(i);
+    } catch (e) {
+      console.error("acceptPriceOffer error:", e);
+      if (typeof showToast === "function") showToast("価格を更新できませんでした", "error");
+    }
+  };
+  window.declinePriceOffer = async function(postId, offerId) {
+    try {
+      await updateDoc(doc(db, "posts", postId, "offers", offerId), { status: "rejected" });
+      const i = allPosts.findIndex(x => x.id === postId);
+      if (typeof showToast === "function") showToast("値下げ提案を拒否しました", "info");
+      if (i >= 0) openDetailModal(i);
+    } catch (e) {
+      console.error("declinePriceOffer error:", e);
+      if (typeof showToast === "function") showToast("拒否処理に失敗しました", "error");
+    }
+  };
     };
     window.declinePriceOffer = async function(postId, offerId) {
       try {
