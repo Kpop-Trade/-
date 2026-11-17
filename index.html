@@ -3536,7 +3536,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         ? "カードを並べた写真を入れてください。まとめ切り抜きと同じ画面で、感度・枠の追加・解除・切り抜きができます。"
         : "1枚を机に置いて、明るくして、真上から撮ってください。近いカードを自動で入れます。";
       const figure = document.getElementById("post-guide-figure");
-      if (figure) figure.classList.toggle("hidden", bundle);
+      if (figure) figure.classList.remove("hidden");
       const photoLabel = document.getElementById("photo-section-label");
       if (photoLabel && postMode === "exchange") {
         photoLabel.innerHTML = bundle
