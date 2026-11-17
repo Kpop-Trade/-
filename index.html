@@ -3752,8 +3752,13 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       if (isAlbum) kind = "album";
       else if (isDearlit) kind = "dearlit";
       const member = document.getElementById("input-member").value;
-      const give = document.getElementById("input-give").value.trim();
-      const want = document.getElementById("input-want").value.trim();
+      const isBulkBundle = !!(window.__isBulkMode || window.exchangeStyle === "bundle");
+      let give = document.getElementById("input-give").value.trim();
+      let want = document.getElementById("input-want").value.trim();
+      if (isBulkBundle) {
+        if (!give) give = "まとめ出品";
+        if (!want) want = "複数希望（枠指定）";
+      }
       const price = (isBuy || isSell) ? Number(document.getElementById("input-price").value) : 0;
       const desc = document.getElementById("input-desc").value.trim().slice(0, 200);
       const condition = document.getElementById("input-condition").value;
@@ -12366,6 +12371,27 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
   document.addEventListener('click', () => setTimeout(toggleMemberFieldForBundle, 50), true);
   document.addEventListener('change', () => setTimeout(toggleMemberFieldForBundle, 50), true);
   setInterval(toggleMemberFieldForBundle, 500);
+})();
+</script>
+
+
+<script>
+(function() {
+  function syncInputMemberVisibility() {
+    const isBulkBundle = !!(window.__isBulkMode || window.exchangeStyle === "bundle");
+    const inputMember = document.getElementById("input-member");
+    if (inputMember) {
+      const box = inputMember.closest("div") || inputMember;
+      if (isBulkBundle) {
+        box.style.display = "none";
+        inputMember.value = "指定なし";
+      } else {
+        box.style.display = "";
+      }
+    }
+  }
+  document.addEventListener("click", () => setTimeout(syncInputMemberVisibility, 30), true);
+  setInterval(syncInputMemberVisibility, 300);
 })();
 </script>
 
