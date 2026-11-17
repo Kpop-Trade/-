@@ -6143,17 +6143,25 @@ window.openAzukariApp = function() {
       };
     }
 
-    function extractImageFeatures(imgSrc) {
+    async function extractImageFeatures(imgSrc) {
+      if (!imgSrc || typeof imgSrc !== "string") return null;
+      let resolvedSrc = imgSrc;
+      if (!imgSrc.startsWith("data:") && !imgSrc.startsWith("blob:")) {
+        try {
+          const res = await fetch(imgSrc, { mode: "cors" });
+          if (res.ok) {
+            const blob = await res.blob();
+            resolvedSrc = URL.createObjectURL(blob);
+          }
+        } catch (_) {}
+      }
       return new Promise((resolve) => {
-        if (!imgSrc || typeof imgSrc !== "string") {
-          resolve(null);
-          return;
-        }
         const img = new Image();
-        if (!imgSrc.startsWith("data:")) {
+        if (!resolvedSrc.startsWith("data:") && !resolvedSrc.startsWith("blob:")) {
           try { img.crossOrigin = "anonymous"; } catch (_) {}
         }
-        const timer = setTimeout(() => resolve(null), 15000);
+        const cleanup = () => { if (resolvedSrc.startsWith("blob:")) try { URL.revokeObjectURL(resolvedSrc); } catch (_) {} };
+    const timer = setTimeout(() => { cleanup(); resolve(null); }, 15000);
         img.onload = () => {
           clearTimeout(timer);
           try {
@@ -6176,7 +6184,7 @@ window.openAzukariApp = function() {
           }
         };
         img.onerror = () => { clearTimeout(timer); resolve(null); };
-        img.src = imgSrc;
+        img.src = resolvedSrc;
       });
     }
 
