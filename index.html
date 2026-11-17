@@ -12010,26 +12010,11 @@ window.openBundleFrameEditor=function(){const src=gSrc();if(!src)return alert("�
     }
 
     if (!isBulk) {
-      // 1枚モード：スマホを縦に持ったまま撮りやすい縦長カメラ（3:4）＋真ん中1枚枠
-      camBox.style.maxWidth = "340px";
-      camBox.style.marginLeft = "auto";
-      camBox.style.marginRight = "auto";
-      if (vidWrap) {
-        vidWrap.style.aspectRatio = "3 / 4";
-        vidWrap.style.height = "auto";
-        vidWrap.style.maxHeight = "440px";
-      }
-      if (vid) {
-        vid.style.width = "100%";
-        vid.style.height = "100%";
-        vid.style.objectFit = "cover";
-      }
-      const btn1x1 = camBox.querySelector("[data-g=\"1x1\"]");
-      if (btn1x1 && !btn1x1.dataset.forcedSingle) {
-        btn1x1.dataset.forcedSingle = "1";
-        btn1x1.click();
-      }
-    } else {
+      camBox.style.display = "none";
+      return;
+    }
+    camBox.style.display = "";
+    if (true) {
       // まとめ売りモード：複数枚を並べて撮れる横ワイドカメラに戻す
       camBox.style.maxWidth = "";
       camBox.style.marginLeft = "";
