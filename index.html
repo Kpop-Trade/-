@@ -12424,7 +12424,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       <div class="flex justify-between items-end">
         <div>
           <span class="text-[11px] text-gray-600">現在の参加人数</span>
-          <div class="text-xl font-black text-purple-900"><span id="ag-total-count">0</span> <span class="text-xs font-normal text-gray-500">/ 50人（最低20人で発動）</span></div>
+          <div class="text-xl font-black text-purple-900"><span id="ag-total-count">0</span> <span class="text-xs font-normal text-gray-500">/ <span id="ag-target-count">48</span>人（最低20人で発動）</span></div>
         </div>
         <div class="text-right">
           <span id="ag-status-badge" class="text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800">募集中（あと20人で発動）</span>
@@ -12434,7 +12434,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden relative">
         <div id="ag-progress-bar" class="bg-gradient-to-r from-purple-600 to-pink-500 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
       </div>
-      <p class="text-[10px] text-gray-600 leading-relaxed">※20人達成で即開催確定＆購入URLを自動配布。50人達成で確保率91%超！各メンバー10枠上限で偏りを完全防止します。</p>
+      <p class="text-[10px] text-gray-600 leading-relaxed">※20人達成で即開催確定＆購入URLを自動配布。定員達成で確保率92%超！各メンバー均等上限で偏りを完全防止します。</p>
     </div>
 
     <!-- 自分の参加ステータス＆自動URL配布エリア -->
@@ -12459,15 +12459,19 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
 
 <script>
 (function() {
-  const POOL_ID = new URLSearchParams(location.search).get("pool") || "illit_auto_go_main";
-  const MEMBERS = ["ウォンヒ (Wonhee)", "ミンジュ (Minju)", "モカ (Moka)", "イロハ (Iroha)", "ユナ (Yuna)"];
+  const POOL_ID = new URLSearchParams(location.search).get("pool") || "illit_auto_go_4mem";
+  const DEFAULT_MEMBERS = ["ウォンヒ (Wonhee)", "ミンジュ (Minju)", "モカ (Moka)", "ユナ (Yuna)"];
   const DEFAULT_CAPS = {
-    "ウォンヒ (Wonhee)": 10,
-    "ミンジュ (Minju)": 10,
-    "モカ (Moka)": 10,
-    "イロハ (Iroha)": 10,
-    "ユナ (Yuna)": 10
+    "ウォンヒ (Wonhee)": 12,
+    "ミンジュ (Minju)": 12,
+    "モカ (Moka)": 12,
+    "ユナ (Yuna)": 12
   };
+  function getActiveMembers() {
+    return (currentPoolData && Array.isArray(currentPoolData.members) && currentPoolData.members.length)
+      ? currentPoolData.members
+      : DEFAULT_MEMBERS;
+  }
   let currentPoolData = null;
   let currentEntryData = null;
   let unsubPool = null;
@@ -12494,14 +12498,14 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
         title: "ILLIT 特典トレカ Auto-GO（全体プール）",
         status: "recruiting",
         minParticipants: 20,
-        targetParticipants: 50,
+        targetParticipants: 48,
+        members: DEFAULT_MEMBERS,
         totalCount: 0,
         memberCaps: DEFAULT_CAPS,
         memberCounts: {
           "ウォンヒ (Wonhee)": 0,
           "ミンジュ (Minju)": 0,
           "モカ (Moka)": 0,
-          "イロハ (Iroha)": 0,
           "ユナ (Yuna)": 0
         },
         purchaseUrl: "https://weverseshop.io/",
@@ -12544,6 +12548,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
 
     document.getElementById("ag-pool-title").textContent = currentPoolData.title || "Auto-GO 全体プール";
     document.getElementById("ag-total-count").textContent = total;
+    const tEl = document.getElementById("ag-target-count"); if (tEl) tEl.textContent = targetP;
     document.getElementById("ag-progress-bar").style.width = pct + "%";
     document.getElementById("ag-prob-text").textContent = prob;
 
@@ -12586,7 +12591,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
           <p class="text-[11px] font-bold text-purple-900">📦 CD到着後、72時間以内に開封結果を登録してください（未登録は自動除外＆利用制限）</p>
           <select id="ag-pulled-select" class="w-full border border-gray-300 rounded-lg p-2 text-xs">
             <option value="">実際に引いたメンバーを選択...</option>
-            ${MEMBERS.map(m => `<option value="${m}">${m}</option>`).join("")}
+            ${getActiveMembers().map(m => `<option value="${m}">${m}</option>`).join("")}
           </select>
           <button onclick="submitAutoGoReveal()" class="w-full bg-pink-600 text-white text-xs font-bold py-2 rounded-lg">開封結果を登録して自動マッチング</button>
         </div>`;
@@ -12611,8 +12616,8 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     const grid = document.getElementById("ag-member-grid");
     const caps = currentPoolData.memberCaps || DEFAULT_CAPS;
     const counts = currentPoolData.memberCounts || {};
-    grid.innerHTML = MEMBERS.map(m => {
-      const cap = caps[m] ?? 10;
+    grid.innerHTML = getActiveMembers().map(m => {
+      const cap = caps[m] ?? 12;
       const cnt = counts[m] ?? 0;
       const rem = Math.max(0, cap - cnt);
       const isFull = rem === 0;
@@ -12647,7 +12652,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
         if (entrySnap.exists()) throw new Error("すでにエントリー済みです");
 
         const p = poolSnap.data();
-        const cap = (p.memberCaps && p.memberCaps[memberName]) ?? 10;
+        const cap = (p.memberCaps && p.memberCaps[memberName]) ?? 12;
         const cur = (p.memberCounts && p.memberCounts[memberName]) ?? 0;
         if (cur >= cap) throw new Error("タッチの差で満員になりました！");
 
