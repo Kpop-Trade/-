@@ -3642,10 +3642,10 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         if (isFirstPhoto && window._pendingRecogImage && typeof runCardImageRecognition === "function" && !(postMode === "exchange" && window.exchangeStyle === "bundle")) {
           runCardImageRecognition(window._pendingRecogImage);
         }
-        if (isFirstPhoto && postMode === "exchange" && window.exchangeStyle === "bundle" && postPhotos[0]) {
+        if (isFirstPhoto && postMode === "exchange" && window.exchangeStyle === "bundle" && postPhotos[0] && !window.__fromGuide) {
           if (typeof openBundleFrameEditor === "function") openBundleFrameEditor();
         }
-      } catch(e) {} finally { processingPhotos = false; renderPostPhotoPreview(); }
+      } catch(e) {} finally { window.__fromGuide = false; processingPhotos = false; renderPostPhotoPreview(); }
     };
 
     window.removePostPhoto = function(i) { postPhotos.splice(i, 1); renderPostPhotoPreview(); };
@@ -11987,10 +11987,10 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       closeSingleGuideCam();
       if(singleMode === "mycards"){
         const inp = document.querySelector("input[onchange*='runMyCardsImageSearch']");
-        if(inp){ inp.files = dt.files; inp.dispatchEvent(new Event("change", { bubbles: true })); }
+        if(inp){ window.__fromGuide=true; inp.files = dt.files; inp.dispatchEvent(new Event("change", { bubbles: true })); }
       } else {
         const inp = document.getElementById("post-photo-input") || document.getElementById("post-camera-input");
-        if(inp){ inp.files = dt.files; inp.dispatchEvent(new Event("change", { bubbles: true })); }
+        if(inp){ window.__fromGuide=true; inp.files = dt.files; inp.dispatchEvent(new Event("change", { bubbles: true })); }
       }
     }, "image/jpeg", 0.92);
   };
