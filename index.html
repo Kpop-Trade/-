@@ -5303,7 +5303,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           const ps = await tx.get(postRef);
           if (!ps.exists()) throw new Error("notfound");
           if (ps.data().status !== "active") throw new Error("notactive");
-          tx.update(postRef, { status: "traded", soldAt: serverTimestamp() });
+          tx.update(postRef, { status: "traded" });
         });
         if (!p.isBulk) { claimed = true; p.status = "traded"; renderPosts(); }
       } catch (claimErr) {
@@ -5967,14 +5967,14 @@ window.openAzukariApp = function() {
             }
             const updatedSlots = slots.map(s => targetIds.has(s.id) ? { ...s, sold: true, tradeId: t.id } : s);
             const allSold = updatedSlots.length > 0 && updatedSlots.every(s => s.sold);
-            tx.update(postRef, { bulkSlots: updatedSlots, ...(allSold ? { status: "traded", soldAt: serverTimestamp() } : {}) });
+            tx.update(postRef, { bulkSlots: updatedSlots, ...(allSold ? { status: "traded" } : {}) });
             const localPost = allPosts.find(x => x.id === t.postId);
             if (localPost) { localPost.bulkSlots = updatedSlots; if (allSold) localPost.status = "traded"; }
           });
-          await updateDoc(doc(db, "trades", t.id), { agreed: { [t.ownerId]: true, [t.applicantId]: true }, status: "shipping", updatedAt: serverTimestamp() });
+          await updateDoc(doc(db, "trades", t.id), { [`agreed.${currentUser.uid}`]: true, status: "shipping", updatedAt: serverTimestamp() });
           showToast("交換に合意しました！選択された枠が成約確定しました。", "success");
           renderPosts();
-        } catch (err) { /* alert hidden */ console.log(err?.message || "合意処理に失敗しました。"); }
+        } catch (err) { console.error("approveBulkTradeByOwner error:", err); showToast("合意エラー: " + (err?.code || err?.message || "失敗しました"), "error"); }
       };
       window.cancelTrade = async function() {
       const t = currentTrade; if (!t || cancellingTrade) return;
