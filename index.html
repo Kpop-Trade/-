@@ -12090,80 +12090,43 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
 <!-- === Bulk Trade Guide Frame Controller === -->
 <script>
 (function syncBulkTradeGuideFrames() {
+  let isApplying = false;
   function applyBulkGuideVisibility() {
-    const bundleBox = document.getElementById("bundle-box");
-    const bulkSetupBox = document.getElementById("bulk-slot-setup-box");
-    const inlineCamBox = document.getElementById("inline-guide-cam-box");
-    const singleGuideBtns = document.querySelectorAll("#manual-cam-start, #snap-guide-cam, [data-single-guide-btn]");
+    if (isApplying) return;
+    isApplying = true;
+    try {
+      const bundleBox = document.getElementById("bundle-box");
+      const bulkSetupBox = document.getElementById("bulk-slot-setup-box");
+      const inlineCamBox = document.getElementById("inline-guide-cam-box");
+      const singleGuideBtns = document.querySelectorAll("#manual-cam-start, #snap-guide-cam, [data-single-guide-btn]");
 
-    const isBulk = Boolean(
-      window.__isBulkMode ||
-      (bundleBox && !bundleBox.classList.contains("hidden")) ||
-      (bulkSetupBox && !bulkSetupBox.classList.contains("hidden"))
-    );
+      const isExchangeMode = (typeof postMode !== "undefined" && postMode === "exchange");
+      if (!isExchangeMode) {
+        window.__isBulkMode = false;
+      }
+      const isTradeBulk = isExchangeMode && Boolean(window.__isBulkMode);
 
-    if (isBulk) {
-      // 交換のまとめ時：1枚用のガイド枠・カメラUIを完全に隠す
-      if (inlineCamBox) {
-        inlineCamBox.classList.add("hidden");
-        inlineCamBox.style.display = "none";
+      if (isTradeBulk) {
+        if (inlineCamBox) inlineCamBox.classList.add("hidden");
+        singleGuideBtns.forEach((btn) => { btn.style.display = "none"; });
+        if (bundleBox) bundleBox.classList.remove("hidden");
+        if (bulkSetupBox) bulkSetupBox.classList.remove("hidden");
+      } else {
+        if (bundleBox) bundleBox.classList.add("hidden");
+        if (bulkSetupBox) bulkSetupBox.classList.add("hidden");
+        if (inlineCamBox) inlineCamBox.classList.remove("hidden");
+        singleGuideBtns.forEach((btn) => { btn.style.display = ""; });
       }
-      singleGuideBtns.forEach((btn) => {
-        btn.style.display = "none";
-      });
-      // まとめ用のガイド枠・枠設定ツールを復活表示
-      if (bundleBox) {
-        bundleBox.classList.remove("hidden");
-        bundleBox.style.display = "";
-      }
-      if (bulkSetupBox) {
-        bulkSetupBox.classList.remove("hidden");
-        bulkSetupBox.style.display = "";
-      }
-    } else {
-      // 通常の1枚出品時：1枚用ガイド枠を復元
-      if (inlineCamBox) {
-        inlineCamBox.classList.remove("hidden");
-        inlineCamBox.style.display = "";
-      }
-      singleGuideBtns.forEach((btn) => {
-        btn.style.display = "";
-      });
+    } finally {
+      isApplying = false;
     }
-  }
-
-  // openPostModal やまとめボタン押下・DOM変化を監視して即座に反映
-  const origOpenPostModal = window.openPostModal;
-  if (typeof origOpenPostModal === "function") {
-    window.openPostModal = function(...args) {
-      const res = origOpenPostModal.apply(this, args);
-      setTimeout(applyBulkGuideVisibility, 0);
-      setTimeout(applyBulkGuideVisibility, 80);
-      return res;
-    };
   }
 
   document.addEventListener("click", (e) => {
-    if (e.target.closest("button, [onclick]")) {
-      setTimeout(applyBulkGuideVisibility, 0);
-      setTimeout(applyBulkGuideVisibility, 80);
+    if (e.target.closest("button, [onclick], input[type='checkbox']")) {
+      setTimeout(applyBulkGuideVisibility, 50);
     }
   }, true);
-
-  const observer = new MutationObserver(() => applyBulkGuideVisibility());
-  function startObserve() {
-    ["bundle-box", "bulk-slot-setup-box", "post-modal"].forEach((id) => {
-      const el = document.getElementById(id);
-      if (el) observer.observe(el, { attributes: true, attributeFilter: ["class", "style"] });
-    });
-    applyBulkGuideVisibility();
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", startObserve);
-  } else {
-    startObserve();
-  }
 })();
 </script>
 
