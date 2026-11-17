@@ -320,27 +320,27 @@
       width: auto;
       max-width: 480px;
       margin: 0 auto;
-      bottom: calc(102px + env(safe-area-inset-bottom));
-      z-index: 35;
+      bottom: calc(118px + env(safe-area-inset-bottom));
+      z-index: 45;
       padding: 0;
       background: transparent;
       border: 0;
       box-shadow: none;
     }
-    #detail-modal .detail-scroll { min-height: 0; padding-bottom: 84px; }
-    #detail-modal .detail-sheet { width: 100%; height: 100%; min-height: 0; max-width: none; margin: 0; background: #f5f5f5; display: flex; flex-direction: column; }
+    #detail-modal .detail-scroll { min-height: 0; padding-bottom: 150px; overflow-x: hidden; }
+    #detail-modal .detail-sheet { width: 100%; height: 100%; min-height: 0; max-width: 100%; margin: 0; background: #f5f5f5; display: flex; flex-direction: column; overflow-x: hidden; }
     .detail-card { background: #fff; border: 1px solid #e8e8e8; border-radius: 16px; padding: 14px; margin: 12px 16px 0; box-sizing: border-box; }
     button.detail-card { display: flex; width: calc(100% - 32px); }
-    #detail-photos { margin: 0; border: 0; background: transparent; overflow: hidden; height: 42vh; }
-    #detail-photos .detail-film { display: flex; gap: 0; overflow-x: auto; scroll-snap-type: x mandatory; height: 100%; }
-    #detail-photos .detail-film .shot { flex: 0 0 100%; height: 100%; scroll-snap-align: center; display: flex; justify-content: center; align-items: center; }
+    #detail-photos { margin: 0; border: 0; background: transparent; overflow: hidden; height: 42vh; width: 100%; max-width: 100%; }
+    #detail-photos .detail-film { display: flex; gap: 0; overflow-x: auto; scroll-snap-type: x mandatory; height: 100%; width: 100%; max-width: 100%; }
+    #detail-photos .detail-film .shot { flex: 0 0 100%; height: 100%; scroll-snap-align: center; display: flex; justify-content: center; align-items: center; min-width: 0; }
     #detail-photos .detail-film img { width: auto; max-width: 72%; height: auto; max-height: 100%; object-fit: contain; background: transparent; filter: drop-shadow(0 10px 18px rgba(0,0,0,.14)); border-radius: 10px; }
-    #detail-photos .bundle-frame { position: relative; display: inline-block; max-width: 92%; max-height: 100%; line-height: 0; }
+    #detail-photos .bundle-frame { position: relative; display: inline-block; max-width: 92%; max-height: 100%; line-height: 0; overflow: hidden; }
     #detail-photos .detail-film .bundle-frame img { display: block; width: auto; height: auto; max-width: 100% !important; max-height: 62vh; }
-    #detail-photos .bundle-hit { position: absolute; z-index: 2; border: 2px solid rgba(225,29,72,.85); background: rgba(225,29,72,.08); padding: 0; }
-    #detail-photos .bundle-hit.on, #detail-photos .bundle-hit.sold { background: rgba(225,29,72,.16); }
-    #detail-photos .bundle-hit span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #e11d48; font-size: 28px; font-weight: 700; line-height: 1; }
-    #detail-photos .bundle-hit.sold { pointer-events: none; }
+    #detail-photos .bundle-hit { position: absolute; z-index: 2; border: 2px solid rgba(225,29,72,.9); background: rgba(225,29,72,.12); padding: 0; box-sizing: border-box; }
+    #detail-photos .bundle-hit.on, #detail-photos .bundle-hit.sold, #detail-photos .bundle-hit.hold { background: rgba(225,29,72,.42); border-color: #e11d48; }
+    #detail-photos .bundle-hit span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 34px; font-weight: 800; line-height: 1; text-shadow: 0 1px 2px rgba(136, 8, 32, .7); }
+    #detail-photos .bundle-hit.sold, #detail-photos .bundle-hit.hold { pointer-events: none; }
     #detail-photo-wrap { position: relative; margin: 8px 0 0; background: transparent; }
     #detail-price-box { display: block; }
     #detail-price-box.hidden { display: none !important; }
@@ -1382,6 +1382,15 @@ html, body {
   </div>
 
   <!-- 詳細モーダル -->
+  <div id="price-offer-modal" class="fixed inset-0 bg-black/40 hidden z-[80] flex items-end justify-center" onclick="if(event.target===this)closePriceOffer()">
+    <div class="bg-white w-full max-w-md rounded-t-3xl p-5 pb-8 space-y-3">
+      <div class="text-[16px] font-bold text-gray-900">値下げを提案</div>
+      <p id="price-offer-now" class="text-[13px] text-gray-500"></p>
+      <input id="price-offer-input" type="number" inputmode="numeric" min="1" class="w-full border border-gray-200 rounded-2xl px-4 py-3 text-[16px] outline-none" placeholder="希望価格（円）">
+      <button type="button" onclick="submitPriceOffer()" class="w-full h-12 rounded-full bg-[#ff4d4f] text-white font-bold">この値段で提案</button>
+    </div>
+  </div>
+
   <div id="detail-modal" class="fixed inset-0 bg-[#f5f5f5] hidden z-50 flex flex-col">
     <div class="detail-sheet">
       <div class="flex items-center gap-2 px-3 h-12 bg-white shrink-0">
@@ -3778,16 +3787,22 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         }
         let bundleBoxes = [];
         if (isExchange && window.exchangeStyle === "bundle" && postPhotos[0]) {
-          const live = sheetCropState && sheetCropState.img && Array.isArray(sheetCropState.boxes) ? sheetCropState.boxes : [];
-          if (live.length) {
-            const img = sheetCropState.img;
-            bundleBoxes = live.filter(b => b && b.active !== false && b.w > 8 && b.h > 8).map(b => ({
-              x: b.x / img.width, y: b.y / img.height, w: b.w / img.width, h: b.h / img.height, state: "open"
-            }));
+          if (Array.isArray(window.__bulkSlots) && window.__bulkSlots.length) {
+            bundleBoxes = asUnitBoxes(window.__bulkSlots).map(b => ({ x: b.x, y: b.y, w: b.w, h: b.h, state: "open" }));
           } else {
-            bundleBoxes = Array.isArray(window._pendingBundleBoxes) && window._pendingBundleBoxes.length
-              ? window._pendingBundleBoxes
-              : await detectBundleBoxes(postPhotos[0].full);
+            const live = sheetCropState && sheetCropState.img && Array.isArray(sheetCropState.boxes) ? sheetCropState.boxes : [];
+            if (live.length) {
+              const img = sheetCropState.img;
+              bundleBoxes = live.filter(b => b && b.active !== false && b.w > 8 && b.h > 8).map(b => ({
+                x: b.x / img.width, y: b.y / img.height, w: b.w / img.width, h: b.h / img.height, state: "open"
+              }));
+            } else {
+              bundleBoxes = asUnitBoxes(
+                Array.isArray(window._pendingBundleBoxes) && window._pendingBundleBoxes.length
+                  ? window._pendingBundleBoxes
+                  : await detectBundleBoxes(postPhotos[0].full)
+              ).map(b => ({ x: b.x, y: b.y, w: b.w, h: b.h, state: "open" }));
+            }
           }
         }
         for (const item of items) {
@@ -4346,6 +4361,24 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     window.loadMorePosts = function() { loadPosts(false); };
     window.refreshPosts = async function() { await loadPosts(true); showToast("最新の情報に更新しました。", "info"); };
 
+    function asUnitBoxes(list) {
+      return (Array.isArray(list) ? list : []).map(function(b) {
+        let x = Number(b && b.x) || 0, y = Number(b && b.y) || 0, w = Number(b && b.w) || 0, h = Number(b && b.h) || 0;
+        if (Math.max(x, y, w, h) > 1.5) { x /= 100; y /= 100; w /= 100; h /= 100; }
+        x = Math.max(0, Math.min(0.96, x));
+        y = Math.max(0, Math.min(0.96, y));
+        w = Math.max(0.03, Math.min(1 - x, w));
+        h = Math.max(0.03, Math.min(1 - y, h));
+        const state = (b && b.sold) ? "sold" : ((b && b.state) || "open");
+        return { x: x, y: y, w: w, h: h, state: state };
+      });
+    }
+    function listingBoxes(p) {
+      if (!p) return [];
+      if (Array.isArray(p.bundleBoxes) && p.bundleBoxes.length) return asUnitBoxes(p.bundleBoxes);
+      if (Array.isArray(p.bulkSlots) && p.bulkSlots.length > 1) return asUnitBoxes(p.bulkSlots);
+      return [];
+    }
     async function getPhotos(postId) {
       if (photoCache[postId]) return photoCache[postId];
       try { const snap = await getDocs(collection(db, "posts", postId, "photos")); const list = snap.docs.map(d => d.data()).filter(d => d.role !== "base").sort((a,b)=>(a.order||0)-(b.order||0)).map(d=>d.data).filter(isJpegData); photoCache[postId] = list; return list; } catch(e) { return []; }
@@ -4356,21 +4389,23 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       if (p.kind === "serial" || !p.photoCount) { el.innerHTML = ""; return; }
       const paint = function (list) {
         if (!list.length) { el.innerHTML = ""; return; }
-        const boxes = Array.isArray(p.bundleBoxes) ? p.bundleBoxes : [];
+        const boxes = listingBoxes(p);
         const picks = window._bundlePick || new Set();
         const shots = list.map((src, i) => {
           if (i === 0 && boxes.length > 1) {
             const hits = boxes.map((b, bi) => {
-              const taken = b.state && b.state !== "open";
-              const on = !taken && picks.has(bi);
-              return `<button type="button" class="bundle-hit ${taken ? "sold" : (on ? "on" : "")}" style="left:${(b.x||0)*100}%;top:${(b.y||0)*100}%;width:${(b.w||0)*100}%;height:${(b.h||0)*100}%" onclick="event.stopPropagation(); toggleBundleBox(${bi})">${taken || on ? "<span>×</span>" : ""}</button>`;
+              const sold = b.state === "sold";
+              const hold = b.state === "hold";
+              const on = !sold && !hold && picks.has(bi);
+              const cls = sold ? "sold" : (hold ? "hold" : (on ? "on" : ""));
+              return `<button type="button" class="bundle-hit ${cls}" style="left:${b.x * 100}%;top:${b.y * 100}%;width:${b.w * 100}%;height:${b.h * 100}%" onclick="event.stopPropagation(); toggleBundleBox(${bi})">${sold || hold || on ? "<span>×</span>" : ""}</button>`;
             }).join("");
             el.style.height = "64vh";
             return `<div class="shot"><div class="bundle-frame"><img src="${src}" alt="">${hits}</div></div>`;
           }
           return `<div class="shot"><img src="${src}" alt="" onclick="viewPhoto('detail', ${i})"></div>`;
         }).join("");
-        if (!(Array.isArray(p.bundleBoxes) && p.bundleBoxes.length > 1)) el.style.height = "";
+        if (!(boxes.length > 1)) el.style.height = "";
         el.innerHTML = `<div class="detail-film">${shots}</div>`;
       };
       const first = isJpegData(p.thumb) ? p.thumb : "";
@@ -4454,7 +4489,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       const joins = isGroup ? joinsOf(p.id) : []; const target = Number(p.target || 0); const joinCount = isGroup ? Math.max(0, typeof p.joinsCount === "number" ? p.joinsCount : joins.length) : 0; const full = isGroup && target > 0 && joinCount >= target; const closed = isGroup && p.status === "closed"; const isSold = p.status === "traded"; const joined = !!(isGroup && currentUser && joins.some(j => j.id === currentUser.uid));
       let extra = "";
       if (p.kind === "serial" && p.deadline) extra += `<div>有効期限: <b>${escapeHtml(p.deadline)}</b></div>`;
-      if (Array.isArray(p.bundleBoxes) && p.bundleBoxes.length > 1) extra += `<div>欲しいカードの枠をタップするとバツが付きます。残り <b>${Number(p.bundleLeft ?? p.bundleBoxes.filter(b => !b.state || b.state === "open").length)}</b> / ${p.bundleBoxes.length}枚</div>`;
+      if (listingBoxes(p).length > 1) extra += `<div>欲しいカードの枠をタップすると、赤くバツが付きます。残り <b>${Number(p.bundleLeft ?? listingBoxes(p).filter(b => !b.state || b.state === "open").length)}</b> / ${listingBoxes(p).length}枚</div>`;
       if (isGroup) {
         if (p.deadline) extra += `<div>締切: <b>${escapeHtml(p.deadline)}</b></div>`;
         extra += `<div>👥 参加: <b>${joinCount} / ${target}人</b></div>`;
@@ -4483,11 +4518,12 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           actions.innerHTML = `<p class="text-xs text-gray-500 font-medium text-center bg-white/50 p-2 rounded-xl border border-white">終了または満員です</p>`;
         } else if (isExpired(p)) {
           actions.innerHTML = `<p class="text-xs text-red-400 font-medium text-center bg-white/50 p-2 rounded-xl border border-white">期限切れです</p>`;
-        } else if (Array.isArray(p.bundleBoxes) && p.bundleBoxes.length > 1) {
-          const left = Number(p.bundleLeft ?? p.bundleBoxes.filter(b => !b.state || b.state === "open").length);
+        } else if (listingBoxes(p).length > 1) {
+          const boxesNow = listingBoxes(p);
+          const left = Number(p.bundleLeft ?? boxesNow.filter(b => !b.state || b.state === "open").length);
           actions.innerHTML = left <= 0 || p.status === "closed"
             ? `<p class="text-xs text-gray-500 font-medium text-center bg-white/50 p-2 rounded-xl border border-white">この募集は停止しています</p>`
-            : `<button onclick="applyBundlePost(${index})" class="w-full bg-gradient-to-r from-illit-purple to-illit-accent text-white font-medium py-3 rounded-full shadow-md border border-white/30">バツを付けたカードを交換申し込み</button>`;
+            : `<button type="button" onclick="applyBundlePost(${index})" class="w-full bg-gradient-to-r from-illit-purple to-illit-accent text-white font-medium py-3 rounded-full shadow-md border border-white/30">バツを付けたカードを申し込む</button>`;
         } else {
           const btnLabel = isGroup ? "応募する" : (p.isSell ? "購入する" : "申し込む");
           const btnGrad = isGroup ? "from-teal-400 to-teal-500" : "from-illit-purple to-illit-accent";
@@ -4509,7 +4545,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       const sheet = modal.querySelector(".detail-sheet");
       if (sheet) { sheet.style.transition = "none"; sheet.style.transform = ""; }
       const scroller = modal.querySelector(".detail-scroll");
-      if (scroller) scroller.scrollTop = 0;
+      if (scroller) { scroller.scrollTop = 0; scroller.scrollLeft = 0; }
       modal.classList.remove("hidden"); loadDetailPhotos(p, index); if (p.userId) loadRating(p.userId, index); renderDetailRails(p); loadPostComments(p.id); loadSellOffers(p);
       if (isGroup && currentUser && !joinsFresh[p.id]) {
         joinsFresh[p.id] = true;
@@ -4643,77 +4679,67 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         }).join("");
       } catch (e) {}
     }
-    window.proposePriceCutById = async function(postId) {
-    if (!currentUser) {
-      if (typeof showToast === "function") showToast("ログインが必要です", "error");
-      return;
-    }
-    const p = allPosts.find(x => x.id === postId);
-    if (!p || !p.isSell) return;
-    if (p.userId === currentUser.uid) {
-      if (typeof showToast === "function") showToast("自分の出品には提案できません", "error");
-      return;
-    }
-    const now = Number(p.price || 0);
-    const raw = prompt("希望価格を入力（今の価格 " + now.toLocaleString() + "円より低く）", "");
-    if (raw == null) return;
-    const normalized = String(raw).replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)).replace(/[,，円\s]/g, "");
-    const price = Math.floor(Number(normalized));
-    if (!price || price <= 0 || price >= now) {
-      if (typeof showToast === "function") showToast("今の価格より低い金額を入力してください", "error");
-      return;
-    }
-    try {
-      const snap = await getDocs(collection(db, "posts", p.id, "offers"));
-      const mine = snap.docs.find(d => d.data().userId === currentUser.uid && d.data().status === "pending");
-      if (mine) {
-        await updateDoc(doc(db, "posts", p.id, "offers", mine.id), { price, createdAt: serverTimestamp() });
-      } else {
-        await addDoc(collection(db, "posts", p.id, "offers"), {
+    window.proposePriceCutById = function(postId) {
+      if (!currentUser) { showToast("ログインが必要です", "info"); return; }
+      const p = allPosts.find(x => x.id === postId);
+      if (!p || !p.isSell) return;
+      if (p.userId === currentUser.uid) { showToast("自分の出品には提案できません", "info"); return; }
+      window._priceOfferPostId = p.id;
+      const now = Number(p.price || 0);
+      const label = document.getElementById("price-offer-now");
+      const input = document.getElementById("price-offer-input");
+      if (label) label.textContent = "いまの価格 " + now.toLocaleString() + "円より低い金額を入力";
+      if (input) input.value = "";
+      const modal = document.getElementById("price-offer-modal");
+      if (!modal) { showToast("入力欄を開けませんでした", "error"); return; }
+      modal.classList.remove("hidden");
+      if (input) setTimeout(function(){ input.focus(); }, 50);
+    };
+    window.proposePriceCut = function(index) {
+      const p = allPosts[index];
+      if (p && p.id) window.proposePriceCutById(p.id);
+    };
+    window.closePriceOffer = function() {
+      const modal = document.getElementById("price-offer-modal");
+      if (modal) modal.classList.add("hidden");
+    };
+    window.submitPriceOffer = async function() {
+      const p = allPosts.find(x => x.id === window._priceOfferPostId);
+      const input = document.getElementById("price-offer-input");
+      if (!currentUser || !p || !p.isSell) return;
+      const now = Number(p.price || 0);
+      const normalized = String(input && input.value || "").replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)).replace(/[,，円\s]/g, "");
+      const price = Math.floor(Number(normalized));
+      if (!price || price <= 0 || price >= now) { showToast("今の価格より低い金額にしてください", "info"); return; }
+      try {
+        const snap = await getDocs(collection(db, "posts", p.id, "offers"));
+        const mine = snap.docs.find(d => d.data().userId === currentUser.uid && d.data().status === "pending");
+        if (mine) await updateDoc(doc(db, "posts", p.id, "offers", mine.id), { price, createdAt: serverTimestamp() });
+        else await addDoc(collection(db, "posts", p.id, "offers"), {
           userId: currentUser.uid, userName: getMyDisplayName(), price, status: "pending", createdAt: serverTimestamp()
         });
-      }
-      if (typeof showToast === "function") showToast("値下げを提案しました", "success");
-      if (typeof loadSellOffers === "function") loadSellOffers(p);
-    } catch (e) {
-      console.error("proposePriceCut error:", e);
-      if (typeof showToast === "function") showToast("提案を送れませんでした（権限または通信エラー）", "error");
-    }
-  };
-  window.proposePriceCut = function(index) {
-    const p = allPosts[index];
-    if (p && p.id) window.proposePriceCutById(p.id);
-  };
-  window.acceptPriceOffer = async function(postId, offerId, price) {
-    try {
-      await updateDoc(doc(db, "posts", postId), { price: Number(price) });
-      await updateDoc(doc(db, "posts", postId, "offers", offerId), { status: "accepted" });
-      const i = allPosts.findIndex(x => x.id === postId);
-      if (i >= 0) allPosts[i].price = Number(price);
-      if (typeof showToast === "function") showToast("値下げに同意し、価格を更新しました", "success");
-      if (i >= 0) openDetailModal(i);
-    } catch (e) {
-      console.error("acceptPriceOffer error:", e);
-      if (typeof showToast === "function") showToast("価格を更新できませんでした", "error");
-    }
-  };
-  window.declinePriceOffer = async function(postId, offerId) {
-    try {
-      await updateDoc(doc(db, "posts", postId, "offers", offerId), { status: "rejected" });
-      const i = allPosts.findIndex(x => x.id === postId);
-      if (typeof showToast === "function") showToast("値下げ提案を拒否しました", "info");
-      if (i >= 0) openDetailModal(i);
-    } catch (e) {
-      console.error("declinePriceOffer error:", e);
-      if (typeof showToast === "function") showToast("拒否処理に失敗しました", "error");
-    }
-  };
+        closePriceOffer();
+        showToast("値下げを提案しました", "success");
+        loadSellOffers(p);
+      } catch (e) { showToast("提案を送れませんでした", "error"); }
+    };
+    window.acceptPriceOffer = async function(postId, offerId, price) {
+      try {
+        await updateDoc(doc(db, "posts", postId), { price: Number(price) });
+        await updateDoc(doc(db, "posts", postId, "offers", offerId), { status: "accepted" });
+        const i = allPosts.findIndex(x => x.id === postId);
+        if (i >= 0) allPosts[i].price = Number(price);
+        showToast("値下げに同意し、価格を更新しました", "success");
+        if (i >= 0) openDetailModal(i);
+      } catch (e) { showToast("価格を更新できませんでした", "error"); }
+    };
     window.declinePriceOffer = async function(postId, offerId) {
       try {
-        await updateDoc(doc(db, "posts", postId, "offers", offerId), { status: "declined" });
-        const p = allPosts.find(x => x.id === postId);
-        if (p) loadSellOffers(p);
-      } catch (e) { /* alert hidden */ console.log("更新できませんでした"); }
+        await updateDoc(doc(db, "posts", postId, "offers", offerId), { status: "rejected" });
+        const i = allPosts.findIndex(x => x.id === postId);
+        showToast("値下げ提案を拒否しました", "info");
+        if (i >= 0) openDetailModal(i);
+      } catch (e) { showToast("拒否処理に失敗しました", "error"); }
     };
 
     async function loadRating(userId, index) {
@@ -4983,12 +5009,14 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           boxes.forEach(b => {
             if (!b || b.state === "open") return;
             const x = b.x * img.width, y = b.y * img.height, w = b.w * img.width, h = b.h * img.height;
-            ctx.strokeStyle = "#e11d48";
+            ctx.fillStyle = "rgba(225,29,72,0.38)";
+            ctx.fillRect(x, y, w, h);
+            ctx.strokeStyle = "#ffffff";
             ctx.lineWidth = Math.max(8, Math.min(w, h) * 0.08);
             ctx.lineCap = "round";
             ctx.beginPath();
-            ctx.moveTo(x + w * 0.2, y + h * 0.2); ctx.lineTo(x + w * 0.8, y + h * 0.8);
-            ctx.moveTo(x + w * 0.8, y + h * 0.2); ctx.lineTo(x + w * 0.2, y + h * 0.8);
+            ctx.moveTo(x + w * 0.22, y + h * 0.22); ctx.lineTo(x + w * 0.78, y + h * 0.78);
+            ctx.moveTo(x + w * 0.78, y + h * 0.22); ctx.lineTo(x + w * 0.22, y + h * 0.78);
             ctx.stroke();
           });
           resolve(c.toDataURL("image/jpeg", 0.72));
@@ -5035,7 +5063,8 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     }
     window.toggleBundleBox = function(i) {
       const p = allPosts[currentDetailIndex];
-      if (!p || !p.bundleBoxes || !p.bundleBoxes[i] || (p.bundleBoxes[i].state && p.bundleBoxes[i].state !== "open")) return;
+      const boxes = listingBoxes(p);
+      if (!p || !boxes[i] || (boxes[i].state && boxes[i].state !== "open")) return;
       if (currentUser && p.userId === currentUser.uid) return;
       window._bundlePick = window._bundlePick || new Set();
       if (window._bundlePick.has(i)) window._bundlePick.delete(i); else window._bundlePick.add(i);
@@ -5046,23 +5075,49 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         hits[i].innerHTML = on ? "<span>×</span>" : "";
       }
     };
+    async function releaseBundleHolds(postId, indexes) {
+      const pref = doc(db, "posts", postId);
+      const ps = await getDoc(pref);
+      if (!ps.exists() || !Array.isArray(ps.data().bundleBoxes)) return null;
+      const boxes = ps.data().bundleBoxes.map(b => ({ x: b.x, y: b.y, w: b.w, h: b.h, state: b.state || "open" }));
+      indexes.forEach(i => { if (boxes[i] && boxes[i].state === "hold") boxes[i].state = "open"; });
+      const left = boxes.filter(b => b.state === "open").length;
+      await updateDoc(pref, { bundleBoxes: boxes, bundleLeft: left, status: "active" });
+      const lp = allPosts.find(x => x.id === postId);
+      if (lp) { lp.bundleBoxes = boxes; lp.bundleLeft = left; lp.status = "active"; }
+      return boxes;
+    }
     async function revertBundleTrade(t) {
       if (!t || !t.postId || !Array.isArray(t.bundleIndexes) || !t.bundleIndexes.length) return;
       const pref = doc(db, "posts", t.postId);
       const ps = await getDoc(pref);
       if (!ps.exists() || !Array.isArray(ps.data().bundleBoxes)) return;
       const boxes = ps.data().bundleBoxes.map(b => ({ x: b.x, y: b.y, w: b.w, h: b.h, state: b.state || "open" }));
-      t.bundleIndexes.forEach(i => { if (boxes[i]) boxes[i].state = "open"; });
+      t.bundleIndexes.forEach(i => { if (boxes[i] && boxes[i].state !== "open") boxes[i].state = "open"; });
       const left = boxes.filter(b => b.state === "open").length;
       await updateDoc(pref, { bundleBoxes: boxes, bundleLeft: left, status: "active" });
-      const hist = await getDocs(collection(db, "posts", t.postId, "photoHistory"));
-      const newest = hist.docs.slice().sort((a, b) => ((b.data().createdAt && b.data().createdAt.toMillis) ? b.data().createdAt.toMillis() : 0) - ((a.data().createdAt && a.data().createdAt.toMillis) ? a.data().createdAt.toMillis() : 0))[0];
-      if (newest && isJpegData(newest.data().data)) {
-        await saveBundleDisplay(t.postId, newest.data().data);
-        try { await deleteDoc(newest.ref); } catch (_) {}
+      if (t.bundlePhotoApplied) {
+        const hist = await getDocs(collection(db, "posts", t.postId, "photoHistory"));
+        const newest = hist.docs.slice().sort((a, b) => ((b.data().createdAt && b.data().createdAt.toMillis) ? b.data().createdAt.toMillis() : 0) - ((a.data().createdAt && a.data().createdAt.toMillis) ? a.data().createdAt.toMillis() : 0))[0];
+        if (newest && isJpegData(newest.data().data)) {
+          await saveBundleDisplay(t.postId, newest.data().data);
+          try { await deleteDoc(newest.ref); } catch (_) {}
+        }
       }
       const lp = allPosts.find(x => x.id === t.postId);
       if (lp) { lp.bundleBoxes = boxes; lp.bundleLeft = left; lp.status = "active"; renderPosts(); }
+    }
+    async function bundleMarkedJpeg(baseUrl, boxes) {
+      const raw = await drawBundleMarks(baseUrl, boxes);
+      if (!isJpegData(raw)) return raw;
+      const img = await new Promise((resolve) => {
+        const el = new Image();
+        el.onload = () => resolve(el);
+        el.onerror = () => resolve(null);
+        el.src = raw;
+      });
+      if (!img) return raw;
+      try { return compressFromImage(img, { maxSide: 900, quality: 0.68, maxChars: 220000 }) || raw; } catch (_) { return raw; }
     }
     window.applyBundlePost = async function(index) {
       if (typeof checkCancelAccountLock === "function" && checkCancelAccountLock()) return;
@@ -5070,8 +5125,10 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       if (!currentUser || !p) return;
       if (!requireShippingInfo()) return;
       if (!(await checkDeviceLock())) return;
-      const picks = [...(window._bundlePick || [])].map(Number).filter(i => p.bundleBoxes && p.bundleBoxes[i] && (!p.bundleBoxes[i].state || p.bundleBoxes[i].state === "open"));
-      if (!picks.length) return /* alert hidden */ console.log("欲しいトレカの枠をタップしてください。");
+      const boxesNow = listingBoxes(p);
+      const picks = [...(window._bundlePick || [])].map(Number).filter(i => boxesNow[i] && (!boxesNow[i].state || boxesNow[i].state === "open"));
+      if (!picks.length) { showToast("欲しいトレカの枠をタップしてください", "info"); return; }
+      let held = false;
       try {
         let nextBoxes = null;
         await runTransaction(db, async (tx) => {
@@ -5079,47 +5136,124 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           const ps = await tx.get(postRef);
           if (!ps.exists()) throw new Error("notfound");
           const cur = ps.data();
-          if (cur.status !== "active") throw new Error("notactive");
-          const boxes = (cur.bundleBoxes || []).map(b => ({ x: b.x, y: b.y, w: b.w, h: b.h, state: b.state || "open" }));
+          if (cur.status && cur.status !== "active") throw new Error("notactive");
+          const boxes = asUnitBoxes(cur.bundleBoxes && cur.bundleBoxes.length ? cur.bundleBoxes : boxesNow).map(b => ({ x: b.x, y: b.y, w: b.w, h: b.h, state: b.state || "open" }));
           for (const i of picks) {
             if (!boxes[i] || boxes[i].state !== "open") throw new Error("taken");
-            boxes[i].state = "sold";
+            boxes[i].state = "hold";
           }
           const left = boxes.filter(b => b.state === "open").length;
           nextBoxes = boxes;
-          tx.update(postRef, { bundleBoxes: boxes, bundleLeft: left, status: left === 0 ? "closed" : "active" });
+          tx.update(postRef, { bundleBoxes: boxes, bundleLeft: left, status: "active" });
         });
+        held = true;
         const docs = await bundlePhotoDocs(p.id);
         const base = docs.find(d => d.role === "base") || docs.filter(d => d.role !== "base").sort((a, b) => (a.order || 0) - (b.order || 0))[0];
-        const shown = docs.filter(d => d.role !== "base").sort((a, b) => (a.order || 0) - (b.order || 0))[0];
-        if (shown && isJpegData(shown.data)) await rememberBundlePhoto(p.id, shown.data);
-        const source = base && isJpegData(base.data) ? base.data : (shown && shown.data);
-        if (source) {
-          const marked = await drawBundleMarks(source, nextBoxes);
-          await saveBundleDisplay(p.id, marked);
-        }
-        p.bundleBoxes = nextBoxes;
-        p.bundleLeft = nextBoxes.filter(b => b.state === "open").length;
-        p.status = p.bundleLeft === 0 ? "closed" : "active";
+        const source = base && isJpegData(base.data) ? base.data : (isJpegData(p.thumb) ? p.thumb : "");
+        const previewBoxes = (nextBoxes || []).map((b, i) => ({ x: b.x, y: b.y, w: b.w, h: b.h, state: picks.indexOf(i) >= 0 ? "sold" : "open" }));
+        const preview = source ? await bundleMarkedJpeg(source, previewBoxes) : "";
         const ref = await addDoc(collection(db, "trades"), {
-          ...(p.isBulk ? { isBulk: true, selectedSlotIds: __chosenBulkSlotIds || [] } : {}),
-          kind: p.kind, isBuy: false, isSell: false, postId: p.id,
-          postGive: p.give, postWant: p.want || "", postPrice: 0, postMember: p.member || "指定なし",
-          bundleIndexes: picks, paymentMethod: p.paymentMethod || "azukari",
+          kind: p.kind, isBuy: false, isSell: !!p.isSell, isBundle: true, postId: p.id,
+          postGive: p.give, postWant: p.want || "", postPrice: p.price || 0, postMember: p.member || "指定なし",
+          bundleIndexes: picks, bundlePhotoApplied: false, paymentMethod: p.paymentMethod || "azukari",
           ownerId: p.userId, ownerName: p.userName, applicantId: currentUser.uid, applicantName: getMyDisplayName(),
-          participants: [p.userId, currentUser.uid], status: "shipping",
-          agreed: { [p.userId]: true, [currentUser.uid]: true }, shipped: {}, received: {}, disputed: {},
+          participants: [p.userId, currentUser.uid], status: "negotiating",
+          agreed: {}, shipped: {}, received: {}, disputed: {},
           lastMessageAt: serverTimestamp(), lastSenderId: currentUser.uid,
           createdAt: serverTimestamp(), updatedAt: serverTimestamp(), deviceId: getOrCreateDeviceId()
         });
+        if (isJpegData(preview)) {
+          await addDoc(collection(db, "trades", ref.id, "messages"), {
+            senderId: currentUser.uid, senderName: getMyDisplayName(),
+            text: "枠 " + picks.map(i => i + 1).join("、") + " で申し込みます",
+            image: preview, createdAt: serverTimestamp(), deviceId: getOrCreateDeviceId()
+          });
+        }
+        p.bundleBoxes = nextBoxes;
+        p.bundleLeft = nextBoxes.filter(b => b.state === "open").length;
+        window._bundlePick = new Set();
         renderPosts();
         closeDetailModal();
         openTrade(ref.id);
-        showToast(p.bundleLeft === 0 ? "成立しました。バツ付きの写真に更新し、募集を停止しました" : "成立しました。バツ付きの写真に更新しました", "success");
+        showToast("申し込みました。出品者の合意を待っています", "success");
       } catch (e) {
-        if (e && (e.message === "taken" || e.message === "notactive")) return /* alert hidden */ console.log("そのカードは、さきほど選ばれました。");
-        /* alert hidden */ console.log("申し込みに失敗しました");
+        if (held) { try { await releaseBundleHolds(p.id, picks); } catch (_) {} }
+        if (e && (e.message === "taken" || e.message === "notactive")) { showToast("そのカードは、さきほど選ばれました", "info"); return; }
+        console.error(e);
+        showToast("申し込みに失敗しました", "error");
       }
+    };
+    window.agreeBundleTrade = async function() {
+      const t = currentTrade;
+      if (!t || !currentUser || t.ownerId !== currentUser.uid || t.status !== "negotiating") return;
+      const picks = Array.isArray(t.bundleIndexes) ? t.bundleIndexes.map(Number) : [];
+      if (!picks.length || !t.postId) return;
+      try {
+        let nextBoxes = null;
+        await runTransaction(db, async (tx) => {
+          const postRef = doc(db, "posts", t.postId);
+          const ps = await tx.get(postRef);
+          if (!ps.exists()) throw new Error("notfound");
+          const boxes = asUnitBoxes(ps.data().bundleBoxes || []).map(b => ({ x: b.x, y: b.y, w: b.w, h: b.h, state: b.state || "open" }));
+          for (const i of picks) {
+            if (!boxes[i] || (boxes[i].state !== "hold" && boxes[i].state !== "open")) throw new Error("taken");
+            boxes[i].state = "sold";
+          }
+          nextBoxes = boxes;
+          const left = boxes.filter(b => b.state === "open").length;
+          tx.update(postRef, { bundleBoxes: boxes, bundleLeft: left, status: left === 0 ? "closed" : "active" });
+        });
+        const docs = await bundlePhotoDocs(t.postId);
+        const base = docs.find(d => d.role === "base");
+        const shown = docs.filter(d => d.role !== "base").sort((a, b) => (a.order || 0) - (b.order || 0))[0];
+        if (shown && isJpegData(shown.data)) await rememberBundlePhoto(t.postId, shown.data);
+        const source = base && isJpegData(base.data) ? base.data : (shown && shown.data);
+        if (source) {
+          const marked = await bundleMarkedJpeg(source, nextBoxes.map(b => ({ x: b.x, y: b.y, w: b.w, h: b.h, state: b.state === "sold" ? "sold" : "open" })));
+          await saveBundleDisplay(t.postId, marked);
+        }
+        await updateDoc(doc(db, "trades", t.id), {
+          status: "shipping",
+          bundlePhotoApplied: true,
+          agreed: { [t.ownerId]: true, [t.applicantId]: true },
+          updatedAt: serverTimestamp()
+        });
+        const lp = allPosts.find(x => x.id === t.postId);
+        if (lp) {
+          lp.bundleBoxes = nextBoxes;
+          lp.bundleLeft = nextBoxes.filter(b => b.state === "open").length;
+          lp.status = lp.bundleLeft === 0 ? "closed" : "active";
+        }
+        renderPosts();
+        showToast("合意しました。バツの付いた写真に更新しました", "success");
+      } catch (e) {
+        console.error(e);
+        showToast(e && e.message === "taken" ? "その枠はもう選べません" : "合意に失敗しました", "error");
+      }
+    };
+    window.declineBundleTrade = async function() {
+      const t = currentTrade;
+      if (!t || !currentUser || t.ownerId !== currentUser.uid || t.status !== "negotiating") return;
+      if (!(await appConfirm("この申し込みには合意しません。枠を空けます。", "合意しない", true))) return;
+      try {
+        await updateDoc(doc(db, "trades", t.id), { status: "cancelled", updatedAt: serverTimestamp() });
+        if (Array.isArray(t.bundleIndexes)) await releaseBundleHolds(t.postId, t.bundleIndexes.map(Number));
+        renderPosts();
+        showToast("合意しませんでした", "info");
+        closeRoom();
+      } catch (e) { showToast("処理に失敗しました", "error"); }
+    };
+    window.withdrawBundleTrade = async function() {
+      const t = currentTrade;
+      if (!t || !currentUser || t.applicantId !== currentUser.uid || t.status !== "negotiating") return;
+      if (!(await appConfirm("申し込みを取り下げますか？", "取り下げる", true))) return;
+      try {
+        await updateDoc(doc(db, "trades", t.id), { status: "cancelled", updatedAt: serverTimestamp() });
+        if (Array.isArray(t.bundleIndexes)) await releaseBundleHolds(t.postId, t.bundleIndexes.map(Number));
+        renderPosts();
+        showToast("申し込みを取り下げました", "info");
+        closeRoom();
+      } catch (e) { showToast("取り下げに失敗しました", "error"); }
     };
 
     window.applyToPost = async function(index) {
@@ -5687,8 +5821,9 @@ window.openAzukariApp = function() {
       const on = payFlow ? "bg-gradient-to-r from-pink-400 to-pink-500 text-white shadow-md border border-white/50" : "bg-gradient-to-r from-illit-purple to-illit-accent text-white shadow-md border border-white/50";
       let idx = order.indexOf(t.status);
       if (t.status === "negotiating") {
-        idx = 1;
-        if (!t._skipAgree) {
+        const bundleWait = Array.isArray(t.bundleIndexes) && t.bundleIndexes.length;
+        idx = bundleWait ? 0 : 1;
+        if (!bundleWait && !t._skipAgree) {
           t._skipAgree = true;
           updateDoc(doc(db, "trades", t.id), {
             status: "shipping",
@@ -5711,7 +5846,10 @@ window.openAzukariApp = function() {
           ${isInitiator ? '<p class="text-[11px]">相手の同意をお待ちください。</p>' : `<button onclick="agreeCancel()" class="${btn} bg-red-500 text-white hover:bg-red-600">キャンセルに同意する</button>`}
         </div>`;
       }
-      if (t.status === "shipping" || t.status === "negotiating") {
+      if (t.status === "negotiating" && Array.isArray(t.bundleIndexes) && t.bundleIndexes.length) {
+        const nums = t.bundleIndexes.map(n => Number(n) + 1).join("、");
+        html += `<div class="bg-white border border-rose-200 rounded-2xl p-3 text-[13px] text-gray-800 space-y-2"><div>選ばれた枠: <b>${nums}</b></div><div class="text-[12px] text-gray-500">赤くバツの付いた写真を確認して、合意するか決めてください。</div>${iAmOwner ? `<button type="button" onclick="agreeBundleTrade()" class="${primary}">この枠で合意する</button><button type="button" onclick="declineBundleTrade()" class="${btn} bg-white text-gray-700 border border-gray-200">合意しない</button>` : `<p class="text-[12px] text-gray-500">出品者の合意を待っています</p><button type="button" onclick="withdrawBundleTrade()" class="${btn} bg-white text-gray-700 border border-gray-200">申し込みを取り下げる</button>`}</div>`;
+      } else if (t.status === "shipping" || t.status === "negotiating") {
         const myS = flag(t, "shipped", uid), otherS = flag(t, "shipped", otherId);
         const myR = flag(t, "received", uid), otherR = flag(t, "received", otherId);
         html += `<div class="text-xs text-gray-700 font-medium bg-white/50 p-3 rounded-lg border border-white shadow-inner space-y-1"><div>決済/発送: あなた ${mark(myS)} ／ 相手 ${mark(otherS)}</div><div>受取確認: あなた ${mark(myR)} ／ 相手 ${mark(otherR)}</div></div>${!myS ? `<button onclick="tradeAction('shipped')" class="${payFlow ? pinkBtn : primary} mt-2">${payFlow ? (usesAzukariPayment(t) ? (iAmPayer ? 'アズカリ支払い完了' : '発送した・支払い確認') : (iAmPayer ? '送金した' : '送った・確認した')) : '発送した'}</button>` : ''}${otherS && !myR ? `<button onclick="tradeAction('received')" class="${btn} bg-gradient-to-r from-green-400 to-green-500 text-white hover:opacity-90 mt-2">完了確認</button>` : ''}`;
