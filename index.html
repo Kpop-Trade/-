@@ -4706,7 +4706,6 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       if (typeof showToast === "function") showToast("拒否処理に失敗しました", "error");
     }
   };
-    };
     window.declinePriceOffer = async function(postId, offerId) {
       try {
         await updateDoc(doc(db, "posts", postId, "offers", offerId), { status: "declined" });
