@@ -632,9 +632,10 @@
           <label class="shrink-0 bg-white border border-gray-200 rounded-full px-4 py-2.5 text-[13px] font-medium text-gray-800 text-center cursor-pointer">
             画像で探す
             <input type="file" accept="image/*" class="hidden" onchange="runMyCardsImageSearch(this)">
-          </label><button type="button" id="mycards-single-guide-btn" onclick="openSingleGuideCam('mycards')" class="shrink-0 bg-purple-600 text-white font-bold rounded-full px-3.5 py-2.5 text-[12px] shadow-sm active:scale-95 transition">📷 1枚ガイド枠</button>
+          </label><button type="button" onclick="openSingleGuideCam('mycards')" class="shrink-0 bg-purple-600 text-white font-bold py-2.5 px-3 rounded-full text-[13px] shadow-sm active:scale-95 transition">📷 ガイド枠</button>
           <button type="button" id="mycards-image-search-clear" onclick="clearMyCardsImageSearch()" class="hidden shrink-0 px-2 py-2 text-[12px] text-gray-500">クリア</button>
         </div>
+          <img src="./guide-pictogram.svg?v=12" alt="机に置いて、明るくして、真上から撮る" class="w-full h-auto object-contain rounded-xl border border-gray-200 bg-white">
         <div id="mycards-image-search-result" class="hidden"></div>
         <div class="flex items-start gap-3">
           <div class="flex-1 min-w-0 space-y-2">
@@ -1164,7 +1165,7 @@
                     <div class="grid grid-cols-2 gap-2">
                         <button type="button" onclick="document.getElementById('post-camera-input').click()" class="bg-gradient-to-r from-illit-purple to-illit-accent text-white font-bold py-2.5 px-3 rounded-xl shadow-sm active:scale-95 transition flex items-center justify-center gap-1.5 text-xs">
                             <span>📸</span><span>カメラで撮る</span>
-            </button><button type="button" id="post-single-guide-btn" onclick="openSingleGuideCam('post')" class="col-span-2 bg-zinc-900 border border-purple-500/40 text-purple-200 font-bold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition"><span>📷</span><span>1枚専用ガイド枠で撮る</span></button>
+                        </button><button type="button" onclick="openSingleGuideCam('post')" class="col-span-2 bg-zinc-900 border border-purple-400/60 text-white font-bold py-2 px-3 rounded-xl shadow-sm active:scale-95 transition flex items-center justify-center gap-1.5 text-xs"><span>📷</span><span>ガイド枠（1枚）で撮影してAI検索</span></button>
                         <button type="button" onclick="document.getElementById('post-photo-input').click()" class="bg-white text-gray-700 border border-purple-200 font-bold py-2.5 px-3 rounded-xl shadow-sm active:scale-95 transition flex items-center justify-center gap-1.5 text-xs">
                             <span>🖼️</span><span>アルバムから選択</span>
                         </button>
@@ -1172,7 +1173,7 @@
                     <input id="post-camera-input" type="file" accept="image/*" capture="environment" class="hidden" onchange="addPostPhotos(this)">
                     <input id="post-photo-input" type="file" accept="image/*" multiple class="hidden" onchange="addPostPhotos(this)">
                     <div id="post-photo-preview" class="flex flex-wrap gap-2"></div>
-          <div id="inline-guide-cam-box" class="hidden mb-3 rounded-2xl overflow-hidden bg-zinc-950 border border-purple-400/40 shadow-md"><div class="flex items-center justify-between px-2.5 py-1.5 bg-zinc-900 text-white text-xs"><div class="flex gap-1" id="cam-grid-btns"><button type="button" data-g="1x3" class="px-2 py-0.5 rounded bg-white/15 font-bold">1×3</button><button type="button" data-g="2x2" class="px-2 py-0.5 rounded bg-white/15 font-bold">2×2</button><button type="button" data-g="2x3" class="px-2 py-0.5 rounded bg-purple-600 font-bold">2×3</button><button type="button" data-g="3x3" class="px-2 py-0.5 rounded bg-white/15 font-bold">3×3</button></div><div class="flex items-center gap-1 bg-white/10 px-1.5 py-0.5 rounded"><span class="text-[10px] text-white/80">枚数</span><button type="button" id="cam-cnt-minus" class="px-1.5 bg-white/20 rounded font-bold">-</button><span id="cam-cnt-val" class="w-4 text-center font-bold text-cyan-300">6</span><button type="button" id="cam-cnt-plus" class="px-1.5 bg-white/20 rounded font-bold">+</button></div><button type="button" id="cam-torch-btn" class="px-2 py-0.5 rounded bg-white/15 font-bold">🔦 ライト</button></div><div class="relative w-full aspect-[4/3] bg-black flex items-center justify-center"><video id="guide-cam-vid" autoplay playsinline muted class="w-full h-full object-cover"></video><div id="guide-cam-ov" class="absolute inset-0 pointer-events-none"></div><div id="cam-start-msg" class="absolute inset-0 flex flex-col items-center justify-center bg-black/75 text-white text-xs gap-2"><button type="button" id="manual-cam-start" class="px-4 py-2 rounded-full bg-purple-600 font-bold shadow active:scale-95">📷 ガイド枠カメラを起動</button><span class="text-[10px] text-white/70">トレカを枠に合わせて撮影できます</span></div></div><div class="flex items-center justify-between gap-2 px-3 py-2 bg-zinc-900 text-white text-xs"><div class="flex items-center gap-1.5 flex-1"><span>☀️</span><input type="range" id="cam-bright" min="70" max="180" value="115" class="w-full accent-yellow-400"><span id="cam-bright-val" class="w-8 font-mono">115%</span></div><button type="button" id="snap-guide-cam" class="px-4 py-1.5 rounded-full bg-gradient-to-r from-cyan-500 to-purple-600 font-bold text-white shadow active:scale-95 shrink-0">📸 枠ごと撮影</button></div></div><div id="bulk-slot-setup-box" class="hidden mt-2 p-3 rounded-2xl bg-purple-50/90 border border-purple-200 space-y-2">
+          <div id="inline-guide-cam-box" class="mb-3 rounded-2xl overflow-hidden bg-zinc-950 border border-purple-400/40 shadow-md"><div class="flex items-center justify-between px-2.5 py-1.5 bg-zinc-900 text-white text-xs"><div class="flex gap-1" id="cam-grid-btns"><button type="button" data-g="1x3" class="px-2 py-0.5 rounded bg-white/15 font-bold">1×3</button><button type="button" data-g="2x2" class="px-2 py-0.5 rounded bg-white/15 font-bold">2×2</button><button type="button" data-g="2x3" class="px-2 py-0.5 rounded bg-purple-600 font-bold">2×3</button><button type="button" data-g="3x3" class="px-2 py-0.5 rounded bg-white/15 font-bold">3×3</button></div><div class="flex items-center gap-1 bg-white/10 px-1.5 py-0.5 rounded"><span class="text-[10px] text-white/80">枚数</span><button type="button" id="cam-cnt-minus" class="px-1.5 bg-white/20 rounded font-bold">-</button><span id="cam-cnt-val" class="w-4 text-center font-bold text-cyan-300">6</span><button type="button" id="cam-cnt-plus" class="px-1.5 bg-white/20 rounded font-bold">+</button></div><button type="button" id="cam-torch-btn" class="px-2 py-0.5 rounded bg-white/15 font-bold">🔦 ライト</button></div><div class="relative w-full aspect-[4/3] bg-black flex items-center justify-center"><video id="guide-cam-vid" autoplay playsinline muted class="w-full h-full object-cover"></video><div id="guide-cam-ov" class="absolute inset-0 pointer-events-none"></div><div id="cam-start-msg" class="absolute inset-0 flex flex-col items-center justify-center bg-black/75 text-white text-xs gap-2"><button type="button" id="manual-cam-start" class="px-4 py-2 rounded-full bg-purple-600 font-bold shadow active:scale-95">📷 ガイド枠カメラを起動</button><span class="text-[10px] text-white/70">トレカを枠に合わせて撮影できます</span></div></div><div class="flex items-center justify-between gap-2 px-3 py-2 bg-zinc-900 text-white text-xs"><div class="flex items-center gap-1.5 flex-1"><span>☀️</span><input type="range" id="cam-bright" min="70" max="180" value="115" class="w-full accent-yellow-400"><span id="cam-bright-val" class="w-8 font-mono">115%</span></div><button type="button" id="snap-guide-cam" class="px-4 py-1.5 rounded-full bg-gradient-to-r from-cyan-500 to-purple-600 font-bold text-white shadow active:scale-95 shrink-0">📸 枠ごと撮影</button></div></div><div id="bulk-slot-setup-box" class="hidden mt-2 p-3 rounded-2xl bg-purple-50/90 border border-purple-200 space-y-2">
             <div class="flex items-center justify-between">
               <span class="text-xs font-bold text-purple-900">📦 まとめて出品：トレカ枠設定</span>
               <span id="bulk-slot-count-badge" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-purple-600 text-white">0枠設定中</span>
@@ -3519,7 +3520,6 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       if (_pm) {
         _pm.classList.remove("hidden");
         _pm.style.display = "";
-        if (typeof syncPostGuideCams === "function") syncPostGuideCams();
       } else {
         alert("エラー: post-modal が見つかりません");
       }
@@ -3549,7 +3549,6 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       if (box) box.classList.toggle("hidden", !bundle);
       if (typeof mountBundleCropTool === "function") mountBundleCropTool(bundle);
       if (!bundle) { window._pendingBundleBoxes = []; window._bundleCrops = []; }
-      if (typeof syncPostGuideCams === "function") syncPostGuideCams();
     };
     window.closePostModal = function() {
       if (typeof mountBundleCropTool === "function") mountBundleCropTool(false);
@@ -11998,30 +11997,13 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
 </script>
 
 <script>
-window.syncPostGuideCams = function() {
-  const bundle = (typeof postMode !== "undefined" && postMode === "exchange" && window.exchangeStyle === "bundle");
-  const singleBtn = document.getElementById("post-single-guide-btn");
-  const cam = document.getElementById("inline-guide-cam-box");
-  if (singleBtn) singleBtn.classList.toggle("hidden", bundle);
-  if (cam) cam.classList.toggle("hidden", !bundle);
-  if (!bundle) {
-    const vd = document.getElementById("guide-cam-vid");
-    if (vd && vd.srcObject) {
-      vd.srcObject.getTracks().forEach(function(t){ t.stop(); });
-      vd.srcObject = null;
-    }
-    const msg = document.getElementById("cam-start-msg");
-    if (msg) msg.style.display = "";
-  }
-};
-</script>
-<script>
 (function(){
   function syncGuideCamByMode() {
     const camBox = document.getElementById("inline-guide-cam-box");
     const gridBtns = document.getElementById("cam-grid-btns");
     if (!camBox) return;
-    const isBulk = window.exchangeStyle === "bundle" || !!(window.__isBulkMode || window.isBulkMode);
+    const isBulk = !!(window.__isBulkMode || window.isBulkMode || (document.getElementById("bulk-mode-panel") && !document.getElementById("bulk-mode-panel").classList.contains("hidden")));
+    document.querySelectorAll("[onclick*=\"openSingleGuideCam('post')\"]").forEach(b => b.style.display = isBulk ? "none" : "");
     const vid = camBox.querySelector("video");
     const vidWrap = vid ? vid.parentElement : null;
 
@@ -12101,149 +12083,6 @@ window.syncPostGuideCams = function() {
     const isBusy = /(AI検索中|AI解析中|AI認識中|画像解析中|照合中|スキャン中|Searching|Analyzing)/i.test(bodyText);
     setScanEffect(isBusy);
   }, 200);
-})();
-</script>
-
-
-<!-- === Bulk Trade Guide Frame Controller === -->
-<script>
-(function initFourScreenGuideController() {
-  function getPostModeSafe() {
-    const activeTab = document.querySelector("#post-modal [data-mode].bg-black, #post-modal [data-mode].bg-pink-500, #post-modal [data-mode].bg-pink-600, #post-modal button.active");
-    if (activeTab) {
-      const m = activeTab.getAttribute("data-mode") || activeTab.textContent || "";
-      if (m.includes("sell") || m.includes("買取") || m.includes("譲渡")) return "sell";
-      if (m.includes("exchange") || m.includes("交換")) return "exchange";
-    }
-    const btns = document.querySelectorAll("#post-modal button");
-    for (const b of btns) {
-      const t = (b.textContent || "").trim();
-      if ((t === "買取 / 譲渡" || t === "買取/譲渡" || t === "買取・譲渡") && (b.classList.contains("bg-black") || b.classList.contains("bg-pink-500") || b.classList.contains("bg-pink-600") || b.classList.contains("text-white"))) {
-        return "sell";
-      }
-    }
-    const priceBox = document.getElementById("sell-price-box") || document.getElementById("price-input");
-    if (priceBox && !priceBox.classList.contains("hidden") && priceBox.offsetParent !== null) {
-      return "sell";
-    }
-    return "exchange";
-  }
-
-  function isBulkCheckedSafe() {
-    if (typeof postMode !== "undefined" && postMode === "exchange") return window.exchangeStyle === "bundle";
-    if (window.exchangeStyle === "bundle") return true;
-    const bulkPanel = document.getElementById("bulk-mode-panel");
-    if (bulkPanel && !bulkPanel.classList.contains("hidden")) return true;
-    const bulkToggle = document.querySelector("#post-modal input[type='checkbox'][id*='bulk'], #post-modal input[type='checkbox'][onchange*='Bulk']");
-    if (bulkToggle) return bulkToggle.checked;
-    return Boolean(window.__isBulkMode);
-  }
-
-  function syncAllGuideFrames() {
-    const modal = document.getElementById("post-modal");
-    if (!modal || modal.classList.contains("hidden")) return;
-
-    const singleBtn = document.getElementById("post-single-guide-btn");
-    const inlineCamBox = document.getElementById("inline-guide-cam-box");
-    const bundleBox = document.getElementById("bundle-box");
-    const bulkSetupBox = document.getElementById("bulk-slot-setup-box");
-
-    const mode = getPostModeSafe();
-    const isBulk = (mode === "exchange") && isBulkCheckedSafe();
-
-    if (mode === "sell") {
-      // 買取／譲渡：ガイド枠はどちらも出さない
-      if (singleBtn) singleBtn.style.setProperty("display", "none", "important");
-      if (inlineCamBox) inlineCamBox.style.setProperty("display", "none", "important");
-      if (bundleBox) bundleBox.classList.add("hidden");
-      if (bulkSetupBox) bulkSetupBox.classList.add("hidden");
-    } else if (isBulk) {
-      // 交換（まとめ）：まとめ用ガイド枠を復活させ、1枚用は隠す
-      if (singleBtn) singleBtn.style.setProperty("display", "none", "important");
-      if (inlineCamBox) {
-        inlineCamBox.classList.remove("hidden");
-        inlineCamBox.style.removeProperty("display");
-      }
-      if (bundleBox) bundleBox.classList.remove("hidden");
-      if (bulkSetupBox) bulkSetupBox.classList.remove("hidden");
-    } else {
-      // 交換（1枚）：1枚用ガイド枠を復活させ、まとめ用は隠す
-      if (singleBtn) singleBtn.style.removeProperty("display");
-      if (inlineCamBox) inlineCamBox.style.setProperty("display", "none", "important");
-      if (bundleBox) bundleBox.classList.add("hidden");
-      if (bulkSetupBox) bulkSetupBox.classList.add("hidden");
-    }
-  }
-
-  window.syncAllGuideFrames = syncAllGuideFrames;
-
-  document.addEventListener("click", (e) => {
-    const target = e.target.closest("button, label, input[type='checkbox'], [onclick]");
-    if (!target) return;
-    const txt = (target.textContent || "").trim();
-    if (txt === "まとめ" || txt === "1枚") {
-      setTimeout(() => {
-        window.__isBulkMode = window.exchangeStyle === "bundle";
-        syncAllGuideFrames();
-      }, 60);
-      return;
-    }
-    if (txt.includes("1枚") || txt.includes("買取") || txt.includes("譲渡") || txt.includes("交換") || txt.includes("出品")) {
-      if (txt.includes("買取") || txt.includes("譲渡") || txt.includes("1枚")) {
-        window.__isBulkMode = false;
-      }
-      setTimeout(syncAllGuideFrames, 60);
-    }
-  }, true);
-
-  setInterval(syncAllGuideFrames, 400);
-})();
-</script>
-
-
-<!-- === BulkSlots <-> BundleBoxes Trade System Bridge === -->
-<script>
-(function bridgeBulkSlotsToTradeSystem() {
-  function normalizePostBundles(p) {
-    if (!p || typeof p !== "object") return;
-    if ((!Array.isArray(p.bundleBoxes) || p.bundleBoxes.length === 0) && Array.isArray(p.bulkSlots) && p.bulkSlots.length > 0) {
-      p.bundleBoxes = p.bulkSlots.map(s => ({
-        x: Number(s.x) || 0,
-        y: Number(s.y) || 0,
-        w: Number(s.w) || 20,
-        h: Number(s.h) || 30,
-        r: Number(s.r) || 0,
-        state: s.sold ? "sold" : "open"
-      }));
-      p.bundleLeft = p.bundleBoxes.filter(b => b.state === "open").length;
-    }
-  }
-
-  const origOpenDetail = window.openDetailModal;
-  if (typeof origOpenDetail === "function") {
-    window.openDetailModal = function(index) {
-      if (Array.isArray(window.allPosts) && window.allPosts[index]) {
-        normalizePostBundles(window.allPosts[index]);
-      }
-      return origOpenDetail.apply(this, arguments);
-    };
-  }
-
-  const origApplyBundle = window.applyBundlePost;
-  if (typeof origApplyBundle === "function") {
-    window.applyBundlePost = async function(index) {
-      if (Array.isArray(window.allPosts) && window.allPosts[index]) {
-        normalizePostBundles(window.allPosts[index]);
-      }
-      return origApplyBundle.apply(this, arguments);
-    };
-  }
-
-  setInterval(() => {
-    if (Array.isArray(window.allPosts)) {
-      window.allPosts.forEach(normalizePostBundles);
-    }
-  }, 1200);
 })();
 </script>
 
