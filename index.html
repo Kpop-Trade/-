@@ -1103,7 +1103,7 @@
                       <figcaption class="px-2.5 py-1.5 text-[11px] text-gray-600">机に置いて、明るくして、真上から撮る</figcaption>
                     </figure>
                     <div class="grid grid-cols-2 gap-2">
-                        <button type="button" onclick="openSingleGuideCam('post')" class="bg-gradient-to-r from-illit-purple to-illit-accent text-white font-bold py-2.5 px-3 rounded-xl shadow-sm active:scale-95 transition flex items-center justify-center gap-1.5 text-xs">
+                        <button type="button" onclick="document.getElementById('post-camera-input').click()" class="bg-gradient-to-r from-illit-purple to-illit-accent text-white font-bold py-2.5 px-3 rounded-xl shadow-sm active:scale-95 transition flex items-center justify-center gap-1.5 text-xs">
                             <span>📸</span><span>カメラで撮る</span>
                         </button><button type="button" onclick="openSingleGuideCam('post')" class="col-span-2 bg-zinc-900 border border-purple-400/60 text-white font-bold py-2 px-3 rounded-xl shadow-sm active:scale-95 transition flex items-center justify-center gap-1.5 text-xs"><span>📷</span><span>ガイド枠（1枚）で撮影してAI検索</span></button>
                         <button type="button" onclick="document.getElementById('post-photo-input').click()" class="bg-white text-gray-700 border border-purple-200 font-bold py-2.5 px-3 rounded-xl shadow-sm active:scale-95 transition flex items-center justify-center gap-1.5 text-xs">
@@ -1113,7 +1113,7 @@
                     <input id="post-camera-input" type="file" accept="image/*" capture="environment" class="hidden" onchange="addPostPhotos(this)">
                     <input id="post-photo-input" type="file" accept="image/*" multiple class="hidden" onchange="addPostPhotos(this)">
                     <div id="post-photo-preview" class="flex flex-wrap gap-2"></div>
-          <div id="inline-guide-cam-box" class="hidden mb-3 rounded-2xl overflow-hidden bg-zinc-950 border border-purple-400/40 shadow-md"><div class="flex items-center justify-between px-2.5 py-1.5 bg-zinc-900 text-white text-xs"><div class="flex gap-1" id="cam-grid-btns"><button type="button" data-g="1x3" class="px-2 py-0.5 rounded bg-white/15 font-bold">1×3</button><button type="button" data-g="2x2" class="px-2 py-0.5 rounded bg-white/15 font-bold">2×2</button><button type="button" data-g="2x3" class="px-2 py-0.5 rounded bg-purple-600 font-bold">2×3</button><button type="button" data-g="3x3" class="px-2 py-0.5 rounded bg-white/15 font-bold">3×3</button></div><div class="flex items-center gap-1 bg-white/10 px-1.5 py-0.5 rounded"><span class="text-[10px] text-white/80">枚数</span><button type="button" id="cam-cnt-minus" class="px-1.5 bg-white/20 rounded font-bold">-</button><span id="cam-cnt-val" class="w-4 text-center font-bold text-cyan-300">6</span><button type="button" id="cam-cnt-plus" class="px-1.5 bg-white/20 rounded font-bold">+</button></div><button type="button" id="cam-torch-btn" class="px-2 py-0.5 rounded bg-white/15 font-bold">🔦 ライト</button></div><div class="relative w-full aspect-[4/3] bg-black flex items-center justify-center"><video id="guide-cam-vid" autoplay playsinline muted class="w-full h-full object-cover"></video><div id="guide-cam-ov" class="absolute inset-0 pointer-events-none"></div><div id="cam-start-msg" class="absolute inset-0 flex flex-col items-center justify-center bg-black/75 text-white text-xs gap-2"><button type="button" id="manual-cam-start" class="px-4 py-2 rounded-full bg-purple-600 font-bold shadow active:scale-95">📷 ガイド枠カメラを起動</button><span class="text-[10px] text-white/70">トレカを枠に合わせて撮影できます</span></div></div><div class="flex items-center justify-between gap-2 px-3 py-2 bg-zinc-900 text-white text-xs"><div class="flex items-center gap-1.5 flex-1"><span>☀️</span><input type="range" id="cam-bright" min="70" max="180" value="115" class="w-full accent-yellow-400"><span id="cam-bright-val" class="w-8 font-mono">115%</span></div><button type="button" id="snap-guide-cam" class="px-4 py-1.5 rounded-full bg-gradient-to-r from-cyan-500 to-purple-600 font-bold text-white shadow active:scale-95 shrink-0">📸 枠ごと撮影</button></div></div><div id="bulk-slot-setup-box" class="hidden mt-2 p-3 rounded-2xl bg-purple-50/90 border border-purple-200 space-y-2">
+          <div id="inline-guide-cam-box" class="mb-3 rounded-2xl overflow-hidden bg-zinc-950 border border-purple-400/40 shadow-md"><div class="flex items-center justify-between px-2.5 py-1.5 bg-zinc-900 text-white text-xs"><div class="flex gap-1" id="cam-grid-btns"><button type="button" data-g="1x3" class="px-2 py-0.5 rounded bg-white/15 font-bold">1×3</button><button type="button" data-g="2x2" class="px-2 py-0.5 rounded bg-white/15 font-bold">2×2</button><button type="button" data-g="2x3" class="px-2 py-0.5 rounded bg-purple-600 font-bold">2×3</button><button type="button" data-g="3x3" class="px-2 py-0.5 rounded bg-white/15 font-bold">3×3</button></div><div class="flex items-center gap-1 bg-white/10 px-1.5 py-0.5 rounded"><span class="text-[10px] text-white/80">枚数</span><button type="button" id="cam-cnt-minus" class="px-1.5 bg-white/20 rounded font-bold">-</button><span id="cam-cnt-val" class="w-4 text-center font-bold text-cyan-300">6</span><button type="button" id="cam-cnt-plus" class="px-1.5 bg-white/20 rounded font-bold">+</button></div><button type="button" id="cam-torch-btn" class="px-2 py-0.5 rounded bg-white/15 font-bold">🔦 ライト</button></div><div class="relative w-full aspect-[4/3] bg-black flex items-center justify-center"><video id="guide-cam-vid" autoplay playsinline muted class="w-full h-full object-cover"></video><div id="guide-cam-ov" class="absolute inset-0 pointer-events-none"></div><div id="cam-start-msg" class="absolute inset-0 flex flex-col items-center justify-center bg-black/75 text-white text-xs gap-2"><button type="button" id="manual-cam-start" class="px-4 py-2 rounded-full bg-purple-600 font-bold shadow active:scale-95">📷 ガイド枠カメラを起動</button><span class="text-[10px] text-white/70">トレカを枠に合わせて撮影できます</span></div></div><div class="flex items-center justify-between gap-2 px-3 py-2 bg-zinc-900 text-white text-xs"><div class="flex items-center gap-1.5 flex-1"><span>☀️</span><input type="range" id="cam-bright" min="70" max="180" value="115" class="w-full accent-yellow-400"><span id="cam-bright-val" class="w-8 font-mono">115%</span></div><button type="button" id="snap-guide-cam" class="px-4 py-1.5 rounded-full bg-gradient-to-r from-cyan-500 to-purple-600 font-bold text-white shadow active:scale-95 shrink-0">📸 枠ごと撮影</button></div></div><div id="bulk-slot-setup-box" class="hidden mt-2 p-3 rounded-2xl bg-purple-50/90 border border-purple-200 space-y-2">
             <div class="flex items-center justify-between">
               <span class="text-xs font-bold text-purple-900">📦 まとめて出品：トレカ枠設定</span>
               <span id="bulk-slot-count-badge" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-purple-600 text-white">0枠設定中</span>
@@ -2617,7 +2617,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         const tradeSnap = await getDoc(doc(db, "trades", tradeId));
         if(tradeSnap.exists()) {
           const tData = tradeSnap.data();
-          if (typeof revertBulkSlotsOnCancel === "function" && currentTrade && currentTrade.isBulk) { await revertBulkSlotsOnCancel(currentTrade.postId, currentTrade.id); } await restorePostToActive(tData.postId, tData.kind, tData.applicantId);
+          await restorePostToActive(tData.postId, tData.kind, tData.applicantId);
         }
         alert("取引を強制キャンセルしました。");
         loadAdminData();
@@ -4994,172 +4994,91 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
               if (typeof window.applyTrade === "function") window.applyTrade(index);
               else if (typeof applyTrade === "function") applyTrade(index);
             };
-            window.openBulkSelectModal = function(postId) {
-  const p = allPosts.find(x => x.id === postId);
-  if (!p || !Array.isArray(p.bulkSlots) || p.bulkSlots.length === 0) return;
-  window.__bulkSelectTargetPost = p;
-  window.__bulkSelectedSlotIds = [];
-  const img = document.getElementById("bulk-select-img");
-  if (img) {
-    img.src = (p.photos && p.photos[0]) || p.photo || "";
-    img.onload = () => renderBulkSelectOverlay();
-  }
-  const modal = document.getElementById("bulk-select-modal");
-  if (modal) modal.classList.remove("hidden");
-  renderBulkSelectOverlay();
-};
-
-window.closeBulkSelectModal = function() {
-  const modal = document.getElementById("bulk-select-modal");
-  if (modal) modal.classList.add("hidden");
-  window.__bulkSelectTargetPost = null;
-  window.__bulkSelectedSlotIds = [];
-};
-
-function renderBulkSelectOverlay() {
-  const p = window.__bulkSelectTargetPost;
-  const ov = document.getElementById("bulk-select-overlay");
-  if (!p || !ov) return;
-  const sel = new Set(window.__bulkSelectedSlotIds || []);
-  ov.innerHTML = (p.bulkSlots || []).map((s, idx) => {
-    const sid = s.id || ("slot_" + idx);
-    const isSold = s.status === "sold";
-    const isPicked = sel.has(sid);
-    const border = isSold ? "1px solid rgba(239,68,68,0.65)" : (isPicked ? "2px solid #ef4444" : "1px solid rgba(255,255,255,0.55)");
-    const bg = isSold ? "rgba(0,0,0,0.45)" : (isPicked ? "rgba(239,68,68,0.20)" : "transparent");
-    const mark = (isSold || isPicked)
-      ? `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">
-           <span style="color:#ef4444;font-weight:900;font-size:clamp(22px,6vw,38px);text-shadow:0 0 4px #fff,0 1px 3px rgba(0,0,0,0.8);">✕</span>
-         </div>`
-      : "";
-    return `<div data-slot-id="${sid}" style="position:absolute;left:${s.x}%;top:${s.y}%;width:${s.w}%;height:${s.h}%;border:${border};background:${bg};border-radius:6px;box-sizing:border-box;cursor:${isSold ? "not-allowed" : "pointer"};">${mark}</div>`;
-  }).join("");
-
-  ov.querySelectorAll("[data-slot-id]").forEach(el => {
-    el.onclick = () => {
-      const sid = el.dataset.slotId;
-      const slot = (p.bulkSlots || []).find((x, i) => (x.id || ("slot_" + i)) === sid);
-      if (!slot || slot.status === "sold") return;
-      const arr = window.__bulkSelectedSlotIds || [];
-      const pos = arr.indexOf(sid);
-      if (pos >= 0) arr.splice(pos, 1); else arr.push(sid);
-      window.__bulkSelectedSlotIds = arr;
-      renderBulkSelectOverlay();
-    };
-  });
-
-  const cntEl = document.getElementById("bulk-select-count");
-  if (cntEl) cntEl.textContent = (window.__bulkSelectedSlotIds || []).length + "枚選択中";
-}
-
-async function buildBulkMarkedDataUrl(imgUrl, slots, selectedIds) {
-  return new Promise((resolve) => {
-    const im = new Image();
-    im.crossOrigin = "anonymous";
-    im.onload = () => {
-      try {
-        const cv = document.createElement("canvas");
-        const maxW = 900;
-        const scale = im.width > maxW ? (maxW / im.width) : 1;
-        cv.width = Math.round(im.width * scale);
-        cv.height = Math.round(im.height * scale);
-        const cx = cv.getContext("2d");
-        cx.drawImage(im, 0, 0, cv.width, cv.height);
-        const selSet = new Set(selectedIds);
-        (slots || []).forEach((s, idx) => {
-          const sid = s.id || ("slot_" + idx);
-          if (s.status === "sold" || selSet.has(sid)) {
-            const rx = (s.x / 100) * cv.width;
-            const ry = (s.y / 100) * cv.height;
-            const rw = (s.w / 100) * cv.width;
-            const rh = (s.h / 100) * cv.height;
-            cx.fillStyle = "rgba(0,0,0,0.35)";
-            cx.fillRect(rx, ry, rw, rh);
-            cx.strokeStyle = "#ef4444";
-            cx.lineWidth = Math.max(4, Math.min(rw, rh) * 0.12);
-            cx.lineCap = "round";
-            const pad = Math.min(rw, rh) * 0.22;
-            cx.beginPath();
-            cx.moveTo(rx + pad, ry + pad);
-            cx.lineTo(rx + rw - pad, ry + rh - pad);
-            cx.moveTo(rx + rw - pad, ry + pad);
-            cx.lineTo(rx + pad, ry + rh - pad);
-            cx.stroke();
+            window.openBulkSelectModal(p);
+            return;
           }
+        }
+        const __chosenBulkSlotIds = window.__pendingBulkSlotIds || null;
+        window.__pendingBulkSlotIds = null;
+        const existing = myTrades.find(t => t.postId === p.id && t.applicantId === currentUser.uid && t.status !== "cancelled");
+      if (existing) {
+        alert("すでにこの出品に対する取引ルームが存在します。");
+        closeDetailModal();
+        openTrade(existing.id);
+        return;
+      }
+
+      const deviceId = getOrCreateDeviceId();
+      // 先着：出品が active のときだけ traded にして確保（同時申込の二重取引を防ぐ）
+      let claimed = false;
+      try {
+        await runTransaction(db, async (tx) => {
+          const postRef = doc(db, "posts", p.id);
+          const ps = await tx.get(postRef);
+          if (!ps.exists()) throw new Error("notfound");
+          if (ps.data().status !== "active") throw new Error("notactive");
+          tx.update(postRef, { status: "traded", soldAt: serverTimestamp() });
         });
-        resolve(cv.toDataURL("image/jpeg", 0.82));
-      } catch (e) { resolve(""); }
+        if (!p.isBulk) { claimed = true; p.status = "traded"; renderPosts(); }
+      } catch (claimErr) {
+        if (claimErr && (claimErr.message === "notactive" || claimErr.message === "notfound")) {
+          return alert("この出品はすでに取引中、または終了しています。");
+        }
+        console.warn("post claim failed:", claimErr?.code || claimErr); // 権限などは従来どおり続行
+      }
+      try {
+        // 売却は合意ステップをスキップし、即「取引・発送中」でルームを開く
+        const direct = true;
+        const agreedMap = { [p.userId]: true, [currentUser.uid]: true };
+        const ref = await addDoc(collection(db, "trades"), {
+          kind: p.kind,
+          isBuy: !!p.isBuy,
+          isSell: !!p.isSell,
+          postId: p.id,
+          postGive: p.give,
+          postWant: p.want || "",
+          postPrice: p.price || 0,
+          postMember: p.member || "指定なし",
+          postDeadline: p.deadline || "",
+          postPhotoCount: p.photoCount || 0,
+          postCondition: p.condition || "",
+          paymentMethod: p.paymentMethod || (usesAzukariPayment(p) ? "azukari" : "paypay"),
+          ownerId: p.userId,
+          ownerName: p.userName,
+          applicantId: currentUser.uid,
+          applicantName: getMyDisplayName(),
+          participants: [p.userId, currentUser.uid],
+          status: "shipping",
+          agreed: agreedMap,
+          shipped: {},
+          received: {},
+          disputed: {},
+          lastMessageAt: serverTimestamp(),
+          lastSenderId: currentUser.uid,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          deviceId: deviceId
+        });
+
+        claimed = false; // 取引作成まで成功
+
+        closeDetailModal();
+        openTrade(ref.id);
+        showToast("申し込みが完了しました。取引ルームで決済・発送を進めてください。", "success");
+      } catch (e) {
+        console.error("applyToPost error:", e);
+        if (claimed) restorePostToActive(p.id, p.kind, null); // 取引が作れなかったら確保を戻す
+        const msg = e?.code || e?.message || String(e);
+        if (msg.includes("permission-denied") || msg.includes("PERMISSION_DENIED")) {
+          alert("処理に失敗しました。\n（権限エラー）\nページを再読み込みしてからもう一度お試しください。");
+        } else if (msg.includes("device") || msg.includes("Device")) {
+          alert("処理に失敗しました。\n（デバイス認証エラー）\n一度ログアウト→ログインしてから再度お試しください。");
+        } else {
+          alert("処理に失敗しました。\n" + msg);
+        }
+      }
     };
-    im.onerror = () => resolve("");
-    im.src = imgUrl;
-  });
-}
-
-window.confirmBulkSelectionAndApply = async function() {
-  const p = window.__bulkSelectTargetPost;
-  const selIds = [...(window.__bulkSelectedSlotIds || [])];
-  if (!p) return;
-  if (!currentUser) return alert("ログインが必要です");
-  if (selIds.length === 0) return alert("欲しいトレカの枠をタップして選択してください");
-  if (typeof requireShippingInfo === "function" && !requireShippingInfo()) return;
-
-  try {
-    const baseImg = (p.photos && p.photos[0]) || p.photo || "";
-    const markedImage = await buildBulkMarkedDataUrl(baseImg, p.bulkSlots, selIds);
-    const selectedLabels = (p.bulkSlots || [])
-      .map((s, idx) => ({ s, sid: s.id || ("slot_" + idx), no: idx + 1 }))
-      .filter(x => selIds.includes(x.sid))
-      .map(x => x.s.label || ("枠#" + x.no));
-
-    const agreedMap = { [currentUser.uid]: true };
-    const ref = await addDoc(collection(db, "trades"), {
-      kind: p.kind,
-      isBuy: !!p.isBuy,
-      isSell: !!p.isSell,
-      isBulk: true,
-      selectedSlotIds: selIds,
-      selectedSlotLabels: selectedLabels,
-      bulkMarkedImage: markedImage,
-      postId: p.id,
-      postUserId: p.userId,
-      postUserName: p.userName || "",
-      applicantId: currentUser.uid,
-      applicantName: typeof getMyDisplayName === "function" ? getMyDisplayName() : (currentUser.displayName || ""),
-      postGive: p.give || ("まとめ出品 (" + selectedLabels.join(", ") + ")"),
-      postWant: p.want || "",
-      postPrice: p.price || 0,
-      postMember: p.member || "指定なし",
-      participants: [p.userId, currentUser.uid],
-      status: "shipping",
-      agreed: agreedMap,
-      shipped: {},
-      received: {},
-      disputed: {},
-      lastMessageAt: serverTimestamp(),
-      lastSenderId: currentUser.uid,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    });
-
-    if (markedImage) {
-      await addDoc(collection(db, "trades", ref.id, "messages"), {
-        senderId: currentUser.uid,
-        text: "【希望枠の申し込み】" + selectedLabels.join(" / ") + "\n内容をご確認のうえ、問題なければ「取引に同意する」を押してください。",
-        imageUrl: markedImage,
-        createdAt: serverTimestamp()
-      });
-    }
-
-    closeBulkSelectModal();
-    if (typeof closeDetailModal === "function") closeDetailModal();
-    openTrade(ref.id);
-    if (typeof showToast === "function") showToast("希望枠の写真付きで申し込みました！売り手の同意をお待ちください。", "success");
-  } catch (e) {
-    console.error("confirmBulkSelectionAndApply error:", e);
-    alert("申し込みに失敗しました: " + (e.message || e));
-  }
-};
-window.joinGroup = async function(index) {
+    window.joinGroup = async function(index) {
       if (typeof checkCancelAccountLock === "function" && checkCancelAccountLock()) return;
       const p = allPosts[index]; if (!currentUser || !p || !p.userId || p.kind !== "group" || !(await checkDeviceLock())) return;
       if (!requireShippingInfo()) return;
@@ -11940,7 +11859,7 @@ window.openBundleFrameEditor=function(){const src=gSrc();if(!src)return alert("�
   </div>
   <div class="relative flex-1 my-3 rounded-2xl overflow-hidden bg-zinc-950 flex items-center justify-center">
     <video id="single-guide-vid" autoplay playsinline muted class="w-full h-full object-cover"></video>
-    <div id="single-guide-frame" style="left:50%;top:50%;transform:translate(-50%,-50%);position:absolute;width:54%;aspect-ratio:1/1.55;max-height:76%;border:2.5px dashed #22d3ee;background:rgba(34,211,238,0.10);border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,0.45);pointer-events:none;">
+    <div id="single-guide-frame" style="position:absolute;width:54%;aspect-ratio:1/1.55;max-height:76%;border:2.5px dashed #22d3ee;background:rgba(34,211,238,0.10);border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,0.45);pointer-events:none;">
       <span style="position:absolute;top:6px;left:8px;background:rgba(0,0,0,0.75);color:#22d3ee;font-size:11px;font-weight:bold;padding:2px 6px;border-radius:6px;">枠内にトレカ1枚を合わせる</span>
     </div>
   </div>
@@ -12013,134 +11932,6 @@ window.openBundleFrameEditor=function(){const src=gSrc();if(!src)return alert("�
       }
     }, "image/jpeg", 0.92);
   };
-})();
-</script>
-
-<script>
-(function(){
-  // 売り手が「同意する」を押したときの確定処理
-  window.agreeBulkTradeAsSeller = async function() {
-    const t = window.currentTrade;
-    if (!t || !t.isBulk || !currentUser) return;
-    if (t.postUserId !== currentUser.uid) return alert("売り手のみ同意できます");
-    if (!confirm("この内容で取引に同意（成立）しますか？\n同意すると該当の枠に「✕」が付き、全枠が埋まると自動で募集終了になります。")) return;
-
-    try {
-      const postRef = doc(db, "posts", t.postId);
-      const selSet = new Set(t.selectedSlotIds || []);
-      let allSoldNow = false;
-
-      await runTransaction(db, async (tx) => {
-        const ps = await tx.get(postRef);
-        if (!ps.exists()) throw new Error("投稿が見つかりません");
-        const pData = ps.data();
-        const slots = Array.isArray(pData.bulkSlots) ? [...pData.bulkSlots] : [];
-        const updatedSlots = slots.map((s, idx) => {
-          const sid = s.id || ("slot_" + idx);
-          if (selSet.has(sid)) {
-            if (s.status === "sold" && s.soldTradeId && s.soldTradeId !== t.id) {
-              throw new Error("選択された枠の一部はすでに他の取引で成立済みです");
-            }
-            return { ...s, id: sid, status: "sold", soldTradeId: t.id };
-          }
-          return { ...s, id: sid };
-        });
-        allSoldNow = updatedSlots.length > 0 && updatedSlots.every(s => s.status === "sold");
-        tx.update(postRef, {
-          bulkSlots: updatedSlots,
-          status: allSoldNow ? "traded" : "active",
-          updatedAt: serverTimestamp()
-        });
-      });
-
-      const nextAgreed = { ...(t.agreed || {}), [currentUser.uid]: true };
-      await updateDoc(doc(db, "trades", t.id), {
-        agreed: nextAgreed,
-        sellerAgreedAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      });
-
-      await addDoc(collection(db, "trades", t.id, "messages"), {
-        senderId: currentUser.uid,
-        text: "✅ 売り手が取引に同意しました！投稿写真の該当枠に「✕」が反映されました。" + (allSoldNow ? "\n🎉 すべての枠が埋まったため、この投稿は自動で募集終了になりました。" : ""),
-        createdAt: serverTimestamp()
-      });
-
-      if (typeof showToast === "function") showToast("取引に同意しました！", "success");
-    } catch (e) {
-      console.error("agreeBulkTradeAsSeller error:", e);
-      alert("同意処理に失敗しました: " + (e.message || e));
-    }
-  };
-
-  // キャンセル確定時に、該当取引で✕になった枠だけを1個前の状態（open）へ戻す
-  window.revertBulkSlotsOnCancel = async function(postId, tradeId) {
-    if (!postId || !tradeId) return;
-    try {
-      const postRef = doc(db, "posts", postId);
-      await runTransaction(db, async (tx) => {
-        const ps = await tx.get(postRef);
-        if (!ps.exists()) return;
-        const pData = ps.data();
-        if (!Array.isArray(pData.bulkSlots)) return;
-        const revertedSlots = pData.bulkSlots.map(s =>
-          (s.soldTradeId === tradeId) ? { ...s, status: "open", soldTradeId: null } : s
-        );
-        const anyOpen = revertedSlots.some(s => s.status !== "sold");
-        tx.update(postRef, {
-          bulkSlots: revertedSlots,
-          status: anyOpen ? "active" : (pData.status || "active"),
-          updatedAt: serverTimestamp()
-        });
-      });
-    } catch (e) {
-      console.warn("revertBulkSlotsOnCancel error:", e);
-    }
-  };
-
-  // 取引ルーム描画時にまとめ売り用の「バツ付き確認写真」と「売り手専用・同意ボタン」を自動挿入
-  const origRenderRoom = window.renderRoom;
-  if (typeof origRenderRoom === "function") {
-    window.renderRoom = function() {
-      origRenderRoom.apply(this, arguments);
-      const t = window.currentTrade;
-      const roomMsgs = document.getElementById("room-messages");
-      if (!t || !t.isBulk || !roomMsgs) return;
-
-      let banner = document.getElementById("bulk-trade-consent-banner");
-      if (!banner) {
-        banner = document.createElement("div");
-        banner.id = "bulk-trade-consent-banner";
-        roomMsgs.parentElement.insertBefore(banner, roomMsgs);
-      }
-
-      const isSeller = currentUser && (t.postUserId === currentUser.uid);
-      const sellerAgreed = !!(t.agreed && t.agreed[t.postUserId]);
-      const isCancelled = (t.status === "cancelled");
-      const labelsText = Array.isArray(t.selectedSlotLabels) ? t.selectedSlotLabels.join(" / ") : "";
-
-      let actionHtml = "";
-      if (isCancelled) {
-        actionHtml = `<div class="text-xs font-bold text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">この取引はキャンセルされました（投稿写真の該当枠は1つ前の状態に戻りました）</div>`;
-      } else if (sellerAgreed) {
-        actionHtml = `<div class="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">✅ 取引成立済み（投稿写真の売れた枠に「✕」が付いています）</div>`;
-      } else if (isSeller) {
-        actionHtml = `<button type="button" onclick="agreeBulkTradeAsSeller()" class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold text-xs shadow-md active:scale-95 transition">🤝 この内容で取引に同意する（成立して枠に✕を付ける）</button>`;
-      } else {
-        actionHtml = `<div class="text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">⏳ 売り手の同意待ちです（下のチャットで写真やメッセージを送って交渉できます）</div>`;
-      }
-
-      banner.className = "mx-3 mt-2 mb-1 p-3 rounded-2xl bg-white border border-purple-200 shadow-sm space-y-2";
-      banner.innerHTML = `
-        <div class="flex items-center justify-between text-xs">
-          <span class="font-bold text-purple-700">📦 まとめ出品の希望枠</span>
-          <span class="font-bold text-gray-700">${labelsText}</span>
-        </div>
-        ${t.bulkMarkedImage ? `<img src="${t.bulkMarkedImage}" class="w-full max-h-40 object-contain rounded-xl border border-gray-200 bg-black/5">` : ""}
-        ${actionHtml}
-      `;
-    };
-  }
 })();
 </script>
 </body>
