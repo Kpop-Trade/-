@@ -441,40 +441,6 @@
 }
 </style>
 
-  <!-- Site Icons & Manifest (Google Search / Safari / PWA) -->
-  <link rel="manifest" href="./manifest.json">
-  <link rel="icon" href="./favicon.ico" sizes="any">
-  <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
-  <link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png">
-  <link rel="apple-touch-icon" sizes="192x192" href="./icon-192.png">
-  <meta property="og:image" content="./icon-512.png">
-  <meta name="theme-color" content="#b794f4">
-  <!-- Canonical & Domain Unification (Google Search / OGP) -->
-  <link rel="canonical" href="https://kpop-trade.jp/">
-  <meta property="og:site_name" content="ILLIT Trade">
-  <meta property="og:title" content="ILLIT Trade | トレカ・アルバム交換・買取・共同購入">
-  <meta property="og:url" content="https://kpop-trade.jp/">
-  <meta property="og:image" content="https://kpop-trade.jp/icon-512.png">
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    "name": "ILLIT Trade",
-    "alternateName": ["ILLITトレカ交換", "kpop-trade.jp"],
-    "url": "https://kpop-trade.jp/"
-  }
-  </script>
-  <script>
-  (function() {
-    var targetHost = "kpop-trade.jp";
-    var h = window.location.hostname;
-    if (false && h !== targetHost && h !== "localhost" && h !== "127.0.0.1" && h.indexOf("github.dev") === -1 && h.indexOf("web.app") === -1) {
-      var search = window.location.search || "";
-      var hash = window.location.hash || "";
-      window.location.replace("https://" + targetHost + "/" + search + hash);
-    }
-  })();
-  </script>
 </head>
 <body class="bg-illit-bg min-h-screen text-gray-800 relative overflow-x-hidden">
   <div id="bg-blobs" class="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
