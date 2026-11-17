@@ -12167,5 +12167,52 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
 })();
 </script>
 
+
+<!-- === BulkSlots <-> BundleBoxes Trade System Bridge === -->
+<script>
+(function bridgeBulkSlotsToTradeSystem() {
+  function normalizePostBundles(p) {
+    if (!p || typeof p !== "object") return;
+    if ((!Array.isArray(p.bundleBoxes) || p.bundleBoxes.length === 0) && Array.isArray(p.bulkSlots) && p.bulkSlots.length > 0) {
+      p.bundleBoxes = p.bulkSlots.map(s => ({
+        x: Number(s.x) || 0,
+        y: Number(s.y) || 0,
+        w: Number(s.w) || 20,
+        h: Number(s.h) || 30,
+        r: Number(s.r) || 0,
+        state: s.sold ? "sold" : "open"
+      }));
+      p.bundleLeft = p.bundleBoxes.filter(b => b.state === "open").length;
+    }
+  }
+
+  const origOpenDetail = window.openDetailModal;
+  if (typeof origOpenDetail === "function") {
+    window.openDetailModal = function(index) {
+      if (Array.isArray(window.allPosts) && window.allPosts[index]) {
+        normalizePostBundles(window.allPosts[index]);
+      }
+      return origOpenDetail.apply(this, arguments);
+    };
+  }
+
+  const origApplyBundle = window.applyBundlePost;
+  if (typeof origApplyBundle === "function") {
+    window.applyBundlePost = async function(index) {
+      if (Array.isArray(window.allPosts) && window.allPosts[index]) {
+        normalizePostBundles(window.allPosts[index]);
+      }
+      return origApplyBundle.apply(this, arguments);
+    };
+  }
+
+  setInterval(() => {
+    if (Array.isArray(window.allPosts)) {
+      window.allPosts.forEach(normalizePostBundles);
+    }
+  }, 1200);
+})();
+</script>
+
 </body>
 </html>
