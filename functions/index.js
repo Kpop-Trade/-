@@ -160,34 +160,3 @@ exports.adminBroadcast = onCall({ timeoutSeconds: 300, memory: "512MiB" }, async
   }
   return { count: users.size };
 });
-
-
-// ===== 売却・成約済み(traded)から30日経過した投稿を毎日自動削除 =====
-const { onSchedule } = require("firebase-functions/v2/scheduler");
-exports.cleanupSoldPosts30d = onSchedule(
-  { schedule: "every day 03:00", timeZone: "Asia/Tokyo", region: "asia-northeast1" },
-  async () => {
-    const cutoffMs = Date.now() - 30 * 24 * 60 * 60 * 1000;
-    const snap = await db.collection("posts").where("status", "==", "traded").get();
-    if (snap.empty) return;
-    let batch = db.batch();
-    let count = 0;
-    for (const docSnap of snap.docs) {
-      const d = docSnap.data() || {};
-      const ts = d.soldAt || d.updatedAt || d.createdAt;
-      const ms = ts && typeof ts.toMillis === "function" ? ts.toMillis() : 0;
-      if (ms > 0 && ms <= cutoffMs) {
-        batch.delete(docSnap.ref);
-        count++;
-        if (count % 400 === 0) {
-          await batch.commit();
-          batch = db.batch();
-        }
-      }
-    }
-    if (count % 400 !== 0) {
-      await batch.commit();
-    }
-    console.log("Deleted expired traded posts (30d+):", count);
-  }
-);

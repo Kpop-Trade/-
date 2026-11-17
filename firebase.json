@@ -1,15 +1,4 @@
-
 {
-  "hosting": {
-    "public": ".",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**",
-      "functions/**",
-      "scripts/**"
-    ]
-  },
   "functions": [
     {
       "source": "functions",
@@ -18,8 +7,7 @@
         "node_modules",
         ".git",
         "firebase-debug.log",
-        "firebase-debug.*",
-        "*.local"
+        "firebase-debug.*.log"
       ]
     }
   ]

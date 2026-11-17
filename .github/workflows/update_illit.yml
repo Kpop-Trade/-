@@ -1,18 +1,27 @@
-name: Deploy to Firebase Hosting
+name: Update ILLIT Schedule
 on:
-  push:
-    branches: [ main ]
+  schedule:
+    - cron: '0 23 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
 jobs:
-  build_and_deploy:
+  update:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Deploy to Firebase Hosting
-        uses: FirebaseExtended/action-hosting-deploy@v0
+      - uses: actions/setup-node@v4
         with:
-          repoToken: '${{ secrets.GITHUB_TOKEN }}'
-          firebaseServiceAccount: '${{ secrets.FIREBASE_TOKEN }}'
-          channelId: live
+          node-version: '20'
+      - name: Fetch ILLIT Schedule via Tavily + Groq
         env:
-          FIREBASE_CLI_PREVIEWS: hostingchannels
-
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+        run: node scripts/fetch_illit.js
+      - name: Commit and Push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add illit_calendar.json
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update ILLIT schedule" && git push)
