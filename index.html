@@ -10705,6 +10705,7 @@ window.buildAndDownloadCardPackZip = async function() {
           <div class="text-center space-y-0.5">
             <div class="text-[12px] text-gray-600">${escapeHtml(album.name || "")}${card.member ? "　" + escapeHtml(String(card.member).split(" ")[0]) : ""}</div>
             <h3 class="text-base font-bold text-gray-900">${escapeHtml(card.name)}</h3>
+                        <div class="pt-0.5"><button type="button" onclick="navigator.clipboard?.writeText('${escapeHtml(card.id)}');this.textContent='ID: ${escapeHtml(card.id)} (コピー済)'" class="inline-block text-[11px] font-mono text-gray-500 bg-gray-100 hover:bg-gray-200 px-2 py-0.5 rounded-md border border-gray-200">ID: ${escapeHtml(card.id)}</button></div>
           </div>
 
           <div class="space-y-1.5">
