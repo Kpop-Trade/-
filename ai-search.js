@@ -6,7 +6,7 @@ let _aiExtractorPromise = null;
 
 export async function getAiCardVectors() {
   if (!_aiCardVectorsPromise) {
-    _aiCardVectorsPromise = fetch("./card_vectors.json?v=20261117a", { cache: "no-store" })
+    _aiCardVectorsPromise = fetch("./card_vectors.json?v=20261117b", { cache: "no-store" })
       .then(r => {
         if (!r.ok) throw new Error("card_vectors.json の読み込みに失敗しました");
         return r.json();

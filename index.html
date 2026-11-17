@@ -6239,7 +6239,7 @@ window.openAzukariApp = function() {
 function getAiCardVectors() {
       if (!_aiCardVectorsPromise) {
         _aiCardVectorsPromise = (async () => {
-          const base = await fetch("./card_vectors.json?v=20261117a", { cache: "no-store" })
+          const base = await fetch("./card_vectors.json?v=20261117b", { cache: "no-store" })
             .then(r => r.ok ? r.json() : null)
             .then(d => (d && d.vectors) ? { ...d.vectors } : {})
             .catch(() => ({}));
