@@ -6618,14 +6618,26 @@ function getAiCardVectors() {
       const targetVec = await extractImageFeatures(uploadedDataUrl);
       if (!targetVec) return [];
 
+      if (typeof _bootStaticPackPromise !== "undefined" && _bootStaticPackPromise) {
+        try { await _bootStaticPackPromise; } catch (e) {}
+      }
       const allCards = [];
       const seenIds = new Set();
+      const albumNameMap = {};
       for (const a of ILLIT_CARD_ALBUMS) {
+        albumNameMap[a.id] = a.name;
         getAlbumCards(a.id).forEach(c => {
           if (c.custom) return;
           if (seenIds.has(c.id)) return;
           seenIds.add(c.id);
           allCards.push({ ...c, albumName: a.name });
+        });
+      }
+      if (typeof staticPackCards !== "undefined" && Array.isArray(staticPackCards)) {
+        staticPackCards.forEach(c => {
+          if (!c || !c.id || seenIds.has(c.id)) return;
+          seenIds.add(c.id);
+          allCards.push({ ...c, albumName: albumNameMap[c.albumId] || c.albumName || c.albumId || "" });
         });
       }
 
