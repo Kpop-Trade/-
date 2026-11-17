@@ -12017,7 +12017,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       camBox.style.display = "none";
       return;
     }
-    camBox.style.display = "";
+    camBox.style.display = ""; var _fs=document.getElementById("cam-fs-btn"); if(_fs) _fs.style.display = isBulk ? "" : "none"; if(!isBulk && camBox.__fs && typeof window.toggleCamFullscreen==="function") window.toggleCamFullscreen();
     if (true) {
       // まとめ売りモード：複数枚を並べて撮れる横ワイドカメラに戻す
       camBox.style.maxWidth = "";
