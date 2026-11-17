@@ -1174,7 +1174,7 @@
                     <input id="post-camera-input" type="file" accept="image/*" capture="environment" class="hidden" onchange="addPostPhotos(this)">
                     <input id="post-photo-input" type="file" accept="image/*" multiple class="hidden" onchange="addPostPhotos(this)">
                     <div id="post-photo-preview" class="flex flex-wrap gap-2"></div>
-          <div id="inline-guide-cam-box" class="mb-3 rounded-2xl overflow-hidden bg-zinc-950 border border-purple-400/40 shadow-md"><div class="flex items-center justify-between px-2.5 py-1.5 bg-zinc-900 text-white text-xs"><button type="button" id="cam-fs-btn" onclick="toggleCamFullscreen()" class="px-2 py-0.5 rounded-lg bg-purple-600 text-white text-[11px] font-bold">⛶ 全画面</button><div class="flex gap-1" id="cam-grid-btns"><button type="button" data-g="1x3" class="px-2 py-0.5 rounded bg-white/15 font-bold">1×3</button><button type="button" data-g="2x2" class="px-2 py-0.5 rounded bg-white/15 font-bold">2×2</button><button type="button" data-g="2x3" class="px-2 py-0.5 rounded bg-purple-600 font-bold">2×3</button><button type="button" data-g="3x3" class="px-2 py-0.5 rounded bg-white/15 font-bold">3×3</button></div><div class="flex items-center gap-1 bg-white/10 px-1.5 py-0.5 rounded"><span class="text-[10px] text-white/80">枚数</span><button type="button" id="cam-cnt-minus" class="px-1.5 bg-white/20 rounded font-bold">-</button><span id="cam-cnt-val" class="w-4 text-center font-bold text-cyan-300">6</span><button type="button" id="cam-cnt-plus" class="px-1.5 bg-white/20 rounded font-bold">+</button></div><button type="button" id="cam-torch-btn" class="px-2 py-0.5 rounded bg-white/15 font-bold">🔦 ライト</button></div><div class="relative w-full aspect-[4/3] bg-black flex items-center justify-center"><video id="guide-cam-vid" autoplay playsinline muted class="w-full h-full object-cover"></video><div id="guide-cam-ov" class="absolute inset-0 pointer-events-none"></div><div id="cam-start-msg" class="absolute inset-0 flex flex-col items-center justify-center bg-black/75 text-white text-xs gap-2"><button type="button" id="manual-cam-start" class="px-4 py-2 rounded-full bg-purple-600 font-bold shadow active:scale-95">📷 ガイド枠カメラを起動</button><span class="text-[10px] text-white/70">トレカを枠に合わせて撮影できます</span></div></div><div class="flex items-center justify-between gap-2 px-3 py-2 bg-zinc-900 text-white text-xs"><div class="flex items-center gap-1.5 flex-1"><span>☀️</span><input type="range" id="cam-bright" min="70" max="180" value="115" class="w-full accent-yellow-400"><span id="cam-bright-val" class="w-8 font-mono">115%</span></div><button type="button" id="snap-guide-cam" class="px-4 py-1.5 rounded-full bg-gradient-to-r from-cyan-500 to-purple-600 font-bold text-white shadow active:scale-95 shrink-0">📸 枠ごと撮影</button></div></div><div id="bulk-slot-setup-box" class="hidden mt-2 p-3 rounded-2xl bg-purple-50/90 border border-purple-200 space-y-2">
+          <div id="inline-guide-cam-box" class="mb-3 rounded-2xl overflow-hidden bg-zinc-950 border border-purple-400/40 shadow-md"><div class="flex items-center justify-between px-2.5 py-1.5 bg-zinc-900 text-white text-xs"><div class="flex gap-1" id="cam-grid-btns"><button type="button" data-g="1x3" class="px-2 py-0.5 rounded bg-white/15 font-bold">1×3</button><button type="button" data-g="2x2" class="px-2 py-0.5 rounded bg-white/15 font-bold">2×2</button><button type="button" data-g="2x3" class="px-2 py-0.5 rounded bg-purple-600 font-bold">2×3</button><button type="button" data-g="3x3" class="px-2 py-0.5 rounded bg-white/15 font-bold">3×3</button></div><div class="flex items-center gap-1 bg-white/10 px-1.5 py-0.5 rounded"><span class="text-[10px] text-white/80">枚数</span><button type="button" id="cam-cnt-minus" class="px-1.5 bg-white/20 rounded font-bold">-</button><span id="cam-cnt-val" class="w-4 text-center font-bold text-cyan-300">6</span><button type="button" id="cam-cnt-plus" class="px-1.5 bg-white/20 rounded font-bold">+</button></div><button type="button" id="cam-torch-btn" class="px-2 py-0.5 rounded bg-white/15 font-bold">🔦 ライト</button></div><div class="relative w-full aspect-[4/3] bg-black flex items-center justify-center"><video id="guide-cam-vid" autoplay playsinline muted class="w-full h-full object-cover"></video><div id="guide-cam-ov" class="absolute inset-0 pointer-events-none"></div><div id="cam-start-msg" class="absolute inset-0 flex flex-col items-center justify-center bg-black/75 text-white text-xs gap-2"><button type="button" id="manual-cam-start" class="px-4 py-2 rounded-full bg-purple-600 font-bold shadow active:scale-95">📷 ガイド枠カメラを起動</button><span class="text-[10px] text-white/70">トレカを枠に合わせて撮影できます</span></div></div><div class="flex items-center justify-between gap-2 px-3 py-2 bg-zinc-900 text-white text-xs"><div class="flex items-center gap-1.5 flex-1"><span>☀️</span><input type="range" id="cam-bright" min="70" max="180" value="115" class="w-full accent-yellow-400"><span id="cam-bright-val" class="w-8 font-mono">115%</span></div><button type="button" id="snap-guide-cam" class="px-4 py-1.5 rounded-full bg-gradient-to-r from-cyan-500 to-purple-600 font-bold text-white shadow active:scale-95 shrink-0">📸 枠ごと撮影</button></div></div><div id="bulk-slot-setup-box" class="hidden mt-2 p-3 rounded-2xl bg-purple-50/90 border border-purple-200 space-y-2">
             <div class="flex items-center justify-between">
               <span class="text-xs font-bold text-purple-900">📦 まとめて出品：トレカ枠設定</span>
               <span id="bulk-slot-count-badge" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-purple-600 text-white">0枠設定中</span>
@@ -12017,7 +12017,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       camBox.style.display = "none";
       return;
     }
-    camBox.style.display = ""; var _fs=document.getElementById("cam-fs-btn"); if(_fs) _fs.style.display = isBulk ? "" : "none"; if(!isBulk && camBox.__fs && typeof window.toggleCamFullscreen==="function") window.toggleCamFullscreen();
+    camBox.style.display = "";
     if (true) {
       // まとめ売りモード：複数枚を並べて撮れる横ワイドカメラに戻す
       camBox.style.maxWidth = "";
@@ -12087,20 +12087,4 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
   }, 200);
 })();
 
-<script>
-window.toggleCamFullscreen=function(){
-  var b=document.getElementById("inline-guide-cam-box");
-  var btn=document.getElementById("cam-fs-btn");
-  if(!b)return;
-  var on=!b.__fs;
-  b.__fs=on;
-  if(on){
-    b.style.cssText+=";position:fixed;inset:0;z-index:9999;margin:0;border-radius:0;max-width:none;width:100vw;height:100vh;overflow:auto;background:#000;";
-    if(btn)btn.textContent="✕ 閉じる";
-  }else{
-    b.style.position="";b.style.inset="";b.style.zIndex="";b.style.margin="";b.style.borderRadius="";b.style.maxWidth="";b.style.width="";b.style.height="";b.style.overflow="";b.style.background="";
-    if(btn)btn.textContent="⛶ 全画面";
-  }
-};
-</script>
 </body>
