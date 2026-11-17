@@ -5207,12 +5207,14 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           if (!ps.exists()) throw new Error("notfound");
           const boxes = asUnitBoxes(ps.data().bundleBoxes || []).map(b => ({ x: b.x, y: b.y, w: b.w, h: b.h, state: b.state || "open" }));
           for (const i of picks) {
-            if (!boxes[i] || (boxes[i].state !== "hold" && boxes[i].state !== "open")) throw new Error("taken");
-            boxes[i].state = "sold";
+            if (!boxes[i]) throw new Error("taken");
+      if (boxes[i].state === "sold" && boxes[i].tradeId && boxes[i].tradeId !== t.id) throw new Error("taken");
+      boxes[i].state = "sold";
+      boxes[i].tradeId = t.id;
           }
           nextBoxes = boxes;
           const left = boxes.filter(b => b.state === "open").length;
-          tx.update(postRef, { bundleBoxes: boxes, bundleLeft: left, status: left === 0 ? "closed" : "active" });
+          tx.update(postRef, { bundleBoxes: boxes, bundleLeft: left, status: left === 0 ? "traded" : "active" });
         });
         const docs = await bundlePhotoDocs(t.postId);
         const base = docs.find(d => d.role === "base");
@@ -5224,11 +5226,10 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           await saveBundleDisplay(t.postId, marked);
         }
         await updateDoc(doc(db, "trades", t.id), {
-          status: "shipping",
-          bundlePhotoApplied: true,
-          agreed: { [t.ownerId]: true, [t.applicantId]: true },
-          updatedAt: serverTimestamp()
-        });
+    status: "shipping",
+    [`agreed.${currentUser.uid}`]: true,
+    updatedAt: serverTimestamp()
+  });
         const lp = allPosts.find(x => x.id === t.postId);
         if (lp) {
           lp.bundleBoxes = nextBoxes;
