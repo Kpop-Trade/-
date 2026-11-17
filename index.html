@@ -468,7 +468,7 @@
   (function() {
     var targetHost = "kpop-trade.jp";
     var h = window.location.hostname;
-    if (h && h !== targetHost && h !== "localhost" && h !== "127.0.0.1" && h.indexOf("github.dev") === -1 && h.indexOf("web.app") === -1) {
+    if (false && h && h !== targetHost) {
       var search = window.location.search || "";
       var hash = window.location.hash || "";
       window.location.replace("https://" + targetHost + "/" + search + hash);
