@@ -12410,40 +12410,92 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
 
 <!-- Auto-GO メインモーダル -->
 <div id="autogo-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-end md:items-center justify-center p-0 md:p-4 bg-black/60">
-  <div class="liquid-glass-heavy bg-white/95 backdrop-blur-xl w-full max-w-md rounded-t-[2rem] md:rounded-[2rem] p-5 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
-    <div class="flex justify-between items-center border-b border-purple-200/60 pb-3">
-      <div>
-        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">抱き合わせゼロ・定価共同購入</span>
-        <h3 id="ag-pool-title" class="font-bold text-base text-gray-900 mt-1">ILLIT 最新特典 Auto-GOプール</h3>
+  <div class="liquid-glass-heavy bg-white/95 backdrop-blur-xl w-full max-w-md rounded-t-[2rem] md:rounded-[2rem] p-5 space-y-3.5 shadow-2xl max-h-[92vh] overflow-y-auto">
+    <!-- ヘッダー＆管理者作成トグル -->
+    <div class="flex justify-between items-center border-b border-purple-200/60 pb-2.5">
+      <div class="flex items-center gap-2">
+        <span class="text-xs font-black text-purple-900">⚡ Auto-GO 全体プール</span>
+        <button onclick="toggleAutoGoAdminForm()" class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-zinc-900 text-white hover:bg-zinc-700 transition">＋ 管理者作成</button>
       </div>
       <button onclick="closeAutoGoModal()" class="text-gray-400 hover:text-gray-700 text-2xl leading-none">&times;</button>
     </div>
 
-    <!-- 20人発動 / 50人確率ゲージ -->
+    <!-- 開催中プール切替リスト -->
+    <div id="ag-pool-tabs" class="flex gap-1.5 overflow-x-auto pb-1"></div>
+
+    <!-- 管理者用：新規プール作成フォーム -->
+    <div id="ag-admin-form" class="hidden bg-zinc-50 border border-zinc-200 rounded-2xl p-3.5 space-y-2.5">
+      <div class="flex justify-between items-center">
+        <span class="text-xs font-bold text-zinc-900">🛠️ 新規 Auto-GO プール作成</span>
+        <button onclick="toggleAutoGoAdminForm()" class="text-[11px] text-zinc-500">閉じる</button>
+      </div>
+      <div>
+        <label class="block text-[11px] font-bold text-gray-700 mb-0.5">タイトル（イベント・特典名）*</label>
+        <input type="text" id="ag-new-title" placeholder="例: ILLIT [bomb] Weverse Shop特典" class="w-full border border-gray-300 rounded-xl p-2 text-xs bg-white">
+      </div>
+      <div>
+        <label class="block text-[11px] font-bold text-gray-700 mb-0.5">特典・アルバム参考写真</label>
+        <input type="file" id="ag-new-photo" accept="image/*" class="w-full text-xs text-gray-600 file:mr-2 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-purple-100 file:text-purple-700">
+      </div>
+      <div>
+        <label class="block text-[11px] font-bold text-gray-700 mb-0.5">詳細説明・参加ルール</label>
+        <textarea id="ag-new-desc" rows="2" placeholder="例: CD1枚定価購入・抱き合わせなし。到着後72時間以内に開封登録をお願いします。" class="w-full border border-gray-300 rounded-xl p-2 text-xs bg-white"></textarea>
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label class="block text-[11px] font-bold text-gray-700 mb-0.5">メンバー構成</label>
+          <select id="ag-new-preset" class="w-full border border-gray-300 rounded-xl p-2 text-xs bg-white">
+            <option value="4">4人編成（各12枠 / 計48人）</option>
+            <option value="5">5人編成（各10枠 / 計50人）</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[11px] font-bold text-gray-700 mb-0.5">最低発動人数</label>
+          <input type="number" id="ag-new-min" value="20" min="4" max="50" class="w-full border border-gray-300 rounded-xl p-2 text-xs bg-white">
+        </div>
+      </div>
+      <div>
+        <label class="block text-[11px] font-bold text-gray-700 mb-0.5">公式ショップ購入URL（発動時に自動配布）</label>
+        <input type="url" id="ag-new-url" placeholder="https://weverseshop.io/..." class="w-full border border-gray-300 rounded-xl p-2 text-xs bg-white">
+      </div>
+      <button id="ag-create-btn" onclick="createNewAutoGoPool()" class="w-full bg-gradient-to-r from-purple-600 to-pink-500 text-white font-bold text-xs py-2.5 rounded-full shadow">この内容でプールを公開＆招待URL発行</button>
+    </div>
+
+    <!-- 選択中プールの写真・タイトル・詳細カード -->
+    <div id="ag-pool-detail-card" class="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+      <img id="ag-pool-image" src="" alt="" class="hidden w-full h-40 object-cover bg-gray-100">
+      <div class="p-3 space-y-1">
+        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">抱き合わせゼロ・定価共同購入</span>
+        <h3 id="ag-pool-title" class="font-bold text-sm text-gray-900">プールを読み込み中...</h3>
+        <p id="ag-pool-desc" class="text-[11px] text-gray-600 whitespace-pre-line leading-relaxed"></p>
+      </div>
+    </div>
+
+    <!-- 20人発動 / 定員確率ゲージ -->
     <div class="bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-2xl p-3.5 space-y-2">
       <div class="flex justify-between items-end">
         <div>
           <span class="text-[11px] text-gray-600">現在の参加人数</span>
-          <div class="text-xl font-black text-purple-900"><span id="ag-total-count">0</span> <span class="text-xs font-normal text-gray-500">/ <span id="ag-target-count">48</span>人（最低20人で発動）</span></div>
+          <div class="text-xl font-black text-purple-900"><span id="ag-total-count">0</span> <span class="text-xs font-normal text-gray-500">/ <span id="ag-target-count">48</span>人（最低<span id="ag-min-count">20</span>人で発動）</span></div>
         </div>
         <div class="text-right">
-          <span id="ag-status-badge" class="text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800">募集中（あと20人で発動）</span>
+          <span id="ag-status-badge" class="text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800">募集中</span>
           <div class="text-[11px] font-bold text-pink-600 mt-1">推し確保期待値: <span id="ag-prob-text">78%</span></div>
         </div>
       </div>
       <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden relative">
         <div id="ag-progress-bar" class="bg-gradient-to-r from-purple-600 to-pink-500 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
       </div>
-      <p class="text-[10px] text-gray-600 leading-relaxed">※20人達成で即開催確定＆購入URLを自動配布。定員達成で確保率92%超！各メンバー均等上限で偏りを完全防止します。</p>
+      <p class="text-[10px] text-gray-600 leading-relaxed">※最低発動人数に達した瞬間に購入URLが自動送信されます。各メンバー均等上限枠で人気メンバーへの偏りを防止します。</p>
     </div>
 
     <!-- 自分の参加ステータス＆自動URL配布エリア -->
     <div id="ag-my-status-box" class="hidden bg-indigo-50 border border-indigo-200 rounded-2xl p-3.5 space-y-2.5"></div>
 
     <!-- エントリー枠選択（未参加時） -->
-    <div id="ag-entry-section" class="space-y-2.5">
+    <div id="ag-entry-section" class="space-y-2">
       <div class="flex justify-between items-center">
-        <span class="text-xs font-bold text-gray-800">希望メンバー枠を選択（各上限10枠）</span>
+        <span class="text-xs font-bold text-gray-800">希望メンバー枠を選択</span>
         <span class="text-[10px] text-purple-600 font-bold">予約無料・発動まで決済なし</span>
       </div>
       <div id="ag-member-grid" class="grid grid-cols-1 gap-2"></div>
@@ -12459,29 +12511,123 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
 
 <script>
 (function() {
-  const POOL_ID = new URLSearchParams(location.search).get("pool") || "illit_auto_go_4mem";
-  const DEFAULT_MEMBERS = ["ウォンヒ (Wonhee)", "ミンジュ (Minju)", "モカ (Moka)", "ユナ (Yuna)"];
-  const DEFAULT_CAPS = {
-    "ウォンヒ (Wonhee)": 12,
-    "ミンジュ (Minju)": 12,
-    "モカ (Moka)": 12,
-    "ユナ (Yuna)": 12
-  };
+  const PRESET_4 = ["ウォンヒ (Wonhee)", "ミンジュ (Minju)", "モカ (Moka)", "ユナ (Yuna)"];
+  const PRESET_5 = ["ウォンヒ (Wonhee)", "ミンジュ (Minju)", "モカ (Moka)", "イロハ (Iroha)", "ユナ (Yuna)"];
+
+  let activePoolId = new URLSearchParams(location.search).get("pool") || "";
+  let allPools = [];
+  let currentPoolData = null;
+  let currentEntryData = null;
+  let unsubPoolsList = null;
+  let unsubPool = null;
+  let unsubEntry = null;
+
   function getActiveMembers() {
     return (currentPoolData && Array.isArray(currentPoolData.members) && currentPoolData.members.length)
       ? currentPoolData.members
-      : DEFAULT_MEMBERS;
+      : PRESET_4;
   }
-  let currentPoolData = null;
-  let currentEntryData = null;
-  let unsubPool = null;
-  let unsubEntry = null;
+
+  window.toggleAutoGoAdminForm = function() {
+    const form = document.getElementById("ag-admin-form");
+    if (form) form.classList.toggle("hidden");
+  };
+
+  // 画像を軽量リサイズ（Base64 JPEG）してFirestoreへ直接保存できるように変換
+  function compressPoolImage(file) {
+    return new Promise((resolve) => {
+      if (!file) { resolve(""); return; }
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const maxW = 720;
+          const scale = Math.min(1, maxW / img.width);
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.round(img.width * scale);
+          canvas.height = Math.round(img.height * scale);
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL("image/jpeg", 0.78));
+        };
+        img.onerror = () => resolve("");
+        img.src = e.target.result;
+      };
+      reader.onerror = () => resolve("");
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // 管理者による新規Auto-GOプール作成
+  window.createNewAutoGoPool = async function() {
+    const { db, auth, doc, setDoc, serverTimestamp } = window.__autoGoRefs;
+    const user = auth.currentUser;
+    if (!user) { alert("先にログインしてください"); return; }
+
+    const title = document.getElementById("ag-new-title").value.trim();
+    if (!title) { alert("タイトルを入力してください"); return; }
+
+    const desc = document.getElementById("ag-new-desc").value.trim();
+    const preset = document.getElementById("ag-new-preset").value;
+    const minP = Math.max(4, Number(document.getElementById("ag-new-min").value) || 20);
+    const purchaseUrl = document.getElementById("ag-new-url").value.trim() || "https://weverseshop.io/";
+    const fileInput = document.getElementById("ag-new-photo");
+    const file = fileInput && fileInput.files ? fileInput.files[0] : null;
+
+    const btn = document.getElementById("ag-create-btn");
+    btn.disabled = true;
+    btn.textContent = "作成中...";
+
+    try {
+      const imageUrl = await compressPoolImage(file);
+      const members = preset === "5" ? PRESET_5 : PRESET_4;
+      const capPerMember = preset === "5" ? 10 : 12;
+      const targetParticipants = members.length * capPerMember;
+      const memberCaps = {};
+      const memberCounts = {};
+      members.forEach(m => { memberCaps[m] = capPerMember; memberCounts[m] = 0; });
+
+      const newId = "pool_" + Date.now();
+      await setDoc(doc(db, "auto_go_pools", newId), {
+        title,
+        description: desc,
+        imageUrl,
+        purchaseUrl,
+        members,
+        memberCaps,
+        memberCounts,
+        minParticipants: minP,
+        targetParticipants,
+        totalCount: 0,
+        status: "recruiting",
+        createdBy: user.uid,
+        createdAt: serverTimestamp()
+      });
+
+      document.getElementById("ag-new-title").value = "";
+      document.getElementById("ag-new-desc").value = "";
+      if (fileInput) fileInput.value = "";
+      document.getElementById("ag-admin-form").classList.add("hidden");
+
+      await selectAutoGoPool(newId);
+      const shareUrl = `${location.origin}/?pool=${newId}`;
+      navigator.clipboard?.writeText(shareUrl);
+      alert("✅ 新規Auto-GOプールを作成しました！
+招待URLをクリップボードにコピーしました:
+" + shareUrl);
+    } catch (e) {
+      alert("作成に失敗しました: " + (e.message || e));
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "この内容でプールを公開＆招待URL発行";
+    }
+  };
 
   window.openAutoGoModal = async function() {
     const modal = document.getElementById("autogo-modal");
     if (!modal) return;
     modal.classList.remove("hidden");
-    await initAutoGoListeners();
+    await initPoolsListListener();
   };
 
   window.closeAutoGoModal = function() {
@@ -12489,40 +12635,52 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     if (modal) modal.classList.add("hidden");
   };
 
-  async function ensurePoolExists() {
-    const { db, doc, getDoc, setDoc, serverTimestamp } = window.__autoGoRefs;
-    const poolRef = doc(db, "auto_go_pools", POOL_ID);
-    const snap = await getDoc(poolRef);
-    if (!snap.exists()) {
-      await setDoc(poolRef, {
-        title: "ILLIT 特典トレカ Auto-GO（全体プール）",
-        status: "recruiting",
-        minParticipants: 20,
-        targetParticipants: 48,
-        members: DEFAULT_MEMBERS,
-        totalCount: 0,
-        memberCaps: DEFAULT_CAPS,
-        memberCounts: {
-          "ウォンヒ (Wonhee)": 0,
-          "ミンジュ (Minju)": 0,
-          "モカ (Moka)": 0,
-          "ユナ (Yuna)": 0
-        },
-        purchaseUrl: "https://weverseshop.io/",
-        azukariGuideUrl: "https://azukari.jp/",
-        revealDeadlineHours: 72,
-        createdAt: serverTimestamp()
-      });
-    }
+  async function initPoolsListListener() {
+    if (!window.__autoGoRefs) return;
+    const { db, collection, query, orderBy, limit, onSnapshot } = window.__autoGoRefs;
+
+    if (unsubPoolsList) unsubPoolsList();
+    const q = query(collection(db, "auto_go_pools"), orderBy("createdAt", "desc"), limit(10));
+    unsubPoolsList = onSnapshot(q, async (snap) => {
+      allPools = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderPoolTabs();
+
+      if (!activePoolId || (!snap.docs.some(d => d.id === activePoolId) && allPools.length > 0)) {
+        if (allPools.length > 0) {
+          await selectAutoGoPool(allPools[0].id);
+        } else {
+          document.getElementById("ag-pool-title").textContent = "まだ開催中のプールがありません";
+          document.getElementById("ag-pool-desc").textContent = "右上の「＋ 管理者作成」から写真と詳細を登録してプールを作成してください。";
+          document.getElementById("ag-member-grid").innerHTML = "";
+        }
+      } else if (activePoolId) {
+        await selectAutoGoPool(activePoolId);
+      }
+    });
   }
 
-  async function initAutoGoListeners() {
-    if (!window.__autoGoRefs) return;
+  function renderPoolTabs() {
+    const tabsEl = document.getElementById("ag-pool-tabs");
+    if (!tabsEl) return;
+    if (!allPools.length) {
+      tabsEl.innerHTML = "";
+      return;
+    }
+    tabsEl.innerHTML = allPools.map(p => {
+      const isSelected = p.id === activePoolId;
+      return `<button onclick="selectAutoGoPool('${p.id}')" class="shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold border transition ${isSelected ? 'bg-purple-600 text-white border-purple-600 shadow-sm' : 'bg-white text-gray-700 border-gray-200 hover:bg-purple-50'}">
+        ${p.title} (${p.totalCount || 0}/${p.targetParticipants || 48})
+      </button>`;
+    }).join("");
+  }
+
+  window.selectAutoGoPool = async function(poolId) {
+    activePoolId = poolId;
+    renderPoolTabs();
     const { db, auth, doc, onSnapshot } = window.__autoGoRefs;
-    await ensurePoolExists();
 
     if (unsubPool) unsubPool();
-    unsubPool = onSnapshot(doc(db, "auto_go_pools", POOL_ID), (snap) => {
+    unsubPool = onSnapshot(doc(db, "auto_go_pools", poolId), (snap) => {
       if (!snap.exists()) return;
       currentPoolData = snap.data();
       renderAutoGoUI();
@@ -12531,30 +12689,40 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     const user = auth.currentUser;
     if (user) {
       if (unsubEntry) unsubEntry();
-      unsubEntry = onSnapshot(doc(db, "auto_go_pools", POOL_ID, "entries", user.uid), (snap) => {
+      unsubEntry = onSnapshot(doc(db, "auto_go_pools", poolId, "entries", user.uid), (snap) => {
         currentEntryData = snap.exists() ? snap.data() : null;
         renderAutoGoUI();
       });
     }
-  }
+  };
 
   function renderAutoGoUI() {
     if (!currentPoolData) return;
     const total = currentPoolData.totalCount || 0;
     const minP = currentPoolData.minParticipants || 20;
-    const targetP = currentPoolData.targetParticipants || 50;
+    const targetP = currentPoolData.targetParticipants || 48;
     const pct = Math.min(100, Math.round((total / targetP) * 100));
-    const prob = total >= 45 ? "92%" : total >= 30 ? "87%" : total >= 20 ? "82%" : "76%（20人達成で確定）";
+    const prob = total >= Math.round(targetP * 0.9) ? "92%" : total >= Math.round(targetP * 0.6) ? "87%" : total >= minP ? "82%" : `78%（${minP}人達成で確定）`;
 
     document.getElementById("ag-pool-title").textContent = currentPoolData.title || "Auto-GO 全体プール";
+    document.getElementById("ag-pool-desc").textContent = currentPoolData.description || "";
+    const imgEl = document.getElementById("ag-pool-image");
+    if (currentPoolData.imageUrl) {
+      imgEl.src = currentPoolData.imageUrl;
+      imgEl.classList.remove("hidden");
+    } else {
+      imgEl.classList.add("hidden");
+    }
+
     document.getElementById("ag-total-count").textContent = total;
-    const tEl = document.getElementById("ag-target-count"); if (tEl) tEl.textContent = targetP;
+    document.getElementById("ag-target-count").textContent = targetP;
+    document.getElementById("ag-min-count").textContent = minP;
     document.getElementById("ag-progress-bar").style.width = pct + "%";
     document.getElementById("ag-prob-text").textContent = prob;
 
     const badge = document.getElementById("ag-status-badge");
     if (total >= targetP) {
-      badge.textContent = "🔥 50人満員・開催確定";
+      badge.textContent = "🔥 満員御礼・開催確定";
       badge.className = "text-[11px] font-bold px-2.5 py-1 rounded-full bg-pink-600 text-white";
     } else if (total >= minP) {
       badge.textContent = "✅ 開催確定（URL自動配布中）";
@@ -12564,7 +12732,6 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       badge.className = "text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800";
     }
 
-    // 自分の参加状況＆自動URL送信ボックス
     const statusBox = document.getElementById("ag-my-status-box");
     const entrySec = document.getElementById("ag-entry-section");
 
@@ -12579,10 +12746,10 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       </div>`;
 
       if (!isActivated) {
-        html += `<p class="text-[11px] text-indigo-800">仮予約完了！あと <b>${minP - total}人</b> 集まった瞬間に購入・決済URLが自動送信されます。</p>`;
+        html += `<p class="text-[11px] text-indigo-800">仮予約完了！あと <b>${minP - total}人</b> 集まった瞬間に購入URLが自動送信されます。</p>`;
       } else if (currentEntryData.status === "reserved") {
         html += `<div class="bg-white rounded-xl p-2.5 border border-indigo-200 space-y-2">
-          <p class="text-[11px] font-bold text-emerald-700">🎉 20人達成！専用購入・アズカリURLが発行されました</p>
+          <p class="text-[11px] font-bold text-emerald-700">🎉 ${minP}人達成！専用購入URLが発行されました</p>
           <a href="${currentPoolData.purchaseUrl || '#'}" target="_blank" rel="noopener" class="block text-center bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-bold py-2 rounded-lg">1. 公式ショップで購入する ↗</a>
           <button onclick="markAutoGoPurchased()" class="w-full bg-emerald-600 text-white text-xs font-bold py-2 rounded-lg">2. 購入完了を報告する（枠確定）</button>
         </div>`;
@@ -12612,9 +12779,8 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       entrySec.classList.remove("hidden");
     }
 
-    // メンバー別残枠ボタン描画
     const grid = document.getElementById("ag-member-grid");
-    const caps = currentPoolData.memberCaps || DEFAULT_CAPS;
+    const caps = currentPoolData.memberCaps || {};
     const counts = currentPoolData.memberCounts || {};
     grid.innerHTML = getActiveMembers().map(m => {
       const cap = caps[m] ?? 12;
@@ -12635,14 +12801,14 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     }).join("");
   }
 
-  // トランザクションで定員10枠を厳守しつつ仮予約
   window.reserveAutoGoMember = async function(memberName) {
+    if (!activePoolId) return;
     const { db, auth, doc, runTransaction, serverTimestamp } = window.__autoGoRefs;
     const user = auth.currentUser;
     if (!user) { alert("先にログインしてください"); return; }
 
-    const poolRef = doc(db, "auto_go_pools", POOL_ID);
-    const entryRef = doc(db, "auto_go_pools", POOL_ID, "entries", user.uid);
+    const poolRef = doc(db, "auto_go_pools", activePoolId);
+    const entryRef = doc(db, "auto_go_pools", activePoolId, "entries", user.uid);
 
     try {
       await runTransaction(db, async (tx) => {
@@ -12678,26 +12844,26 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
   };
 
   window.markAutoGoPurchased = async function() {
+    if (!activePoolId) return;
     const { db, auth, doc, updateDoc, serverTimestamp } = window.__autoGoRefs;
     const user = auth.currentUser;
     if (!user) return;
-    await updateDoc(doc(db, "auto_go_pools", POOL_ID, "entries", user.uid), {
+    await updateDoc(doc(db, "auto_go_pools", activePoolId, "entries", user.uid), {
       status: "purchased",
       purchasedAt: serverTimestamp()
     });
   };
 
-  // 開封登録＆先着即時相互マッチング
   window.submitAutoGoReveal = async function() {
+    if (!activePoolId) return;
     const pulled = document.getElementById("ag-pulled-select")?.value;
     if (!pulled) { alert("引いたメンバーを選択してください"); return; }
     const { db, auth, doc, collection, query, where, getDocs, runTransaction, serverTimestamp } = window.__autoGoRefs;
     const user = auth.currentUser;
     if (!user || !currentEntryData) return;
 
-    const myEntryRef = doc(db, "auto_go_pools", POOL_ID, "entries", user.uid);
+    const myEntryRef = doc(db, "auto_go_pools", activePoolId, "entries", user.uid);
 
-    // 1. 自引き判定
     if (pulled === currentEntryData.wantedMember) {
       await runTransaction(db, async (tx) => {
         tx.update(myEntryRef, {
@@ -12709,8 +12875,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       return;
     }
 
-    // 2. プール内の相互一致相手（相手が欲しい＝自分が引いた ＆ 相手が引いた＝自分が欲しい）を検索
-    const entriesCol = collection(db, "auto_go_pools", POOL_ID, "entries");
+    const entriesCol = collection(db, "auto_go_pools", activePoolId, "entries");
     const q = query(
       entriesCol,
       where("status", "==", "waiting_match"),
@@ -12721,8 +12886,8 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     const candidate = snap.docs.find(d => d.id !== user.uid);
 
     if (candidate) {
-      const roomId = `ag_${POOL_ID}_${Date.now()}`;
-      const partnerRef = doc(db, "auto_go_pools", POOL_ID, "entries", candidate.id);
+      const roomId = `ag_${activePoolId}_${Date.now()}`;
+      const partnerRef = doc(db, "auto_go_pools", activePoolId, "entries", candidate.id);
       await runTransaction(db, async (tx) => {
         const pSnap = await tx.get(partnerRef);
         if (!pSnap.exists() || pSnap.data().status !== "waiting_match") {
@@ -12750,26 +12915,29 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
   };
 
   window.copyAutoGoInviteUrl = function() {
-    const url = `${location.origin}/?pool=${POOL_ID}`;
+    if (!activePoolId) return;
+    const url = `${location.origin}/?pool=${activePoolId}`;
     navigator.clipboard?.writeText(url);
     alert("招待URLをコピーしました:
 " + url);
   };
 
   window.shareAutoGoToX = function() {
-    const total = currentPoolData ? currentPoolData.totalCount : 0;
-    const rem = Math.max(0, 20 - total);
+    if (!activePoolId || !currentPoolData) return;
+    const total = currentPoolData.totalCount || 0;
+    const minP = currentPoolData.minParticipants || 20;
+    const rem = Math.max(0, minP - total);
     const text = encodeURIComponent(
       `【抱き合わせゼロ・定価共同購入】
-ILLIT Auto-GO全体プール開催中！現在${total}人参加（${rem > 0 ? `あと${rem}人で発動！` : "開催確定・50人達成で確保率91%超！"}）
+${currentPoolData.title}
+現在${total}人参加（${rem > 0 ? `あと${rem}人で発動！` : "開催確定・参加者募集中！"}）
 #ILLIT #トレカ交換 #共同購入
 `
     );
-    const url = encodeURIComponent(`${location.origin}/?pool=${POOL_ID}`);
+    const url = encodeURIComponent(`${location.origin}/?pool=${activePoolId}`);
     window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, "_blank");
   };
 
-  // URLパラメータ ?pool=... で開かれた場合は自動でモーダルを開く
   window.addEventListener("DOMContentLoaded", () => {
     if (new URLSearchParams(location.search).has("pool")) {
       setTimeout(() => window.openAutoGoModal(), 600);
