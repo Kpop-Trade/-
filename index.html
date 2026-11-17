@@ -1581,9 +1581,9 @@ getRedirectResult(auth)
   .catch((error) => {
     console.error("Redirect result error:", error);
     if (error.code === 'auth/account-exists-with-different-credential') {
-      alert("このメールアドレスは既に別の方法で登録されています。");
+      /* alert hidden */ console.log("このメールアドレスは既に別の方法で登録されています。");
     } else if (error.code && error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
-      alert("ログイン処理でエラーが発生しました: " + (error.message || error.code));
+      /* alert hidden */ console.log("ログイン処理でエラーが発生しました: " + (error.message || error.code));
     }
   });
     const ADMIN_UIDS = ["Ay6VCS8HTgM3RqjDYZ0wKdHrSKz1", "GvVhAmT56GZjsWrl1YRaStB81im1"];
@@ -1697,7 +1697,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     }
     function requireShippingInfo() {
       if (hasShippingInfo()) return true;
-      alert("申し込み・参加には、お名前・郵便番号・住所の登録が必要です。\n先に「住所・配送先」を登録してください。");
+      /* alert hidden */ console.log("申し込み・参加には、お名前・郵便番号・住所の登録が必要です。\n先に「住所・配送先」を登録してください。");
       closeDetailModal();
       openProfileModal("address");
       return false;
@@ -1932,7 +1932,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     window.closePwaGuideModal = function() { document.getElementById("pwa-modal").classList.add("hidden"); };
 
     window.openNotificationsModal = function() {
-      if (!currentUser) return alert("ログインが必要です。");
+      if (!currentUser) return /* alert hidden */ console.log("ログインが必要です。");
       renderNotificationsList();
       document.getElementById("notifications-modal").classList.remove("hidden");
     };
@@ -2004,7 +2004,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     window.openPrivacy = function() { document.getElementById("privacy-modal").classList.remove("hidden"); };
     window.closePrivacy = function() { document.getElementById("privacy-modal").classList.add("hidden"); };
     window.openInquiry = function() {
-      if (!currentUser) return alert("ログインが必要です。");
+      if (!currentUser) return /* alert hidden */ console.log("ログインが必要です。");
       document.getElementById("inquiry-body").value = "";
       document.getElementById("inquiry-subject").value = "other";
       document.getElementById("inquiry-modal").classList.remove("hidden");
@@ -2014,8 +2014,8 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       if (!currentUser) return;
       const subject = document.getElementById("inquiry-subject").value;
       const body = document.getElementById("inquiry-body").value.trim();
-      if (!body) return alert("内容を入力してください。");
-      if (body.length < 10) return alert("もう少し詳しくご記入ください。");
+      if (!body) return /* alert hidden */ console.log("内容を入力してください。");
+      if (body.length < 10) return /* alert hidden */ console.log("もう少し詳しくご記入ください。");
       const btn = document.getElementById("inquiry-submit-btn");
       btn.disabled = true; btn.innerText = "送信中…";
       try {
@@ -2025,7 +2025,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         });
         showToast("お問い合わせを送信しました。返信をお待ちください。", "success");
         closeInquiry();
-      } catch (e) { alert("送信に失敗しました。"); }
+      } catch (e) { /* alert hidden */ console.log("送信に失敗しました。"); }
       finally { btn.disabled = false; btn.innerText = "送信する"; }
     };
 
@@ -2047,7 +2047,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
 
     window.switchTab = function(tab) {
       if ((tab === 'mycards' || tab === 'mypage') && !currentUser) {
-        alert("ログインが必要です。");
+        /* alert hidden */ console.log("ログインが必要です。");
         return;
       }
       const showList = tab === 'home' || tab === 'likes';
@@ -2109,7 +2109,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         try {
           const banSnap = await getDoc(doc(db, "deviceBans", deviceId));
           if (banSnap.exists()) {
-            alert("⚠️ この端末は利用が制限されています。\n運営にお問い合わせください。");
+            /* alert hidden */ console.log("⚠️ この端末は利用が制限されています。\n運営にお問い合わせください。");
             return false;
           }
         } catch (_) {}
@@ -2123,7 +2123,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           try { await updateDoc(ref, { updatedAt: serverTimestamp() }); } catch (_) {}
           return true;
         }
-        alert("⚠️ セキュリティ制限\nこの端末からはすでに別のアカウントで登録が行われています。");
+        /* alert hidden */ console.log("⚠️ セキュリティ制限\nこの端末からはすでに別のアカウントで登録が行われています。");
         return false;
       } catch (e) {
         console.warn("checkDeviceLock error:", e);
@@ -2596,20 +2596,20 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         });
         if (list.length > MAX_NOTIFICATIONS) list.length = MAX_NOTIFICATIONS;
         await updateDoc(userRef, { notifications: list });
-        alert("警告を送信しました。");
-      } catch (e) { alert("送信に失敗しました。"); }
+        /* alert hidden */ console.log("警告を送信しました。");
+      } catch (e) { /* alert hidden */ console.log("送信に失敗しました。"); }
     };
 
     // 通報者・問い合わせ者などへの個別返信（通知に届く）
     window.adminReplyUser = async function(uid, name) {
-      if (!uid) return alert("送信先ユーザーが不明です。");
+      if (!uid) return /* alert hidden */ console.log("送信先ユーザーが不明です。");
       const label = name || "ユーザー";
       const msg = prompt(`【${label}】への返信を入力してください:\n(相手の通知一覧に「運営からの返信」として届きます)`);
       if (!msg || !msg.trim()) return;
       try {
         const userRef = doc(db, "users", uid);
         const snap = await getDoc(userRef);
-        if (!snap.exists()) return alert("ユーザーデータが見つかりません。");
+        if (!snap.exists()) return /* alert hidden */ console.log("ユーザーデータが見つかりません。");
         const data = snap.data() || {};
         const list = Array.isArray(data.notifications) ? [...data.notifications] : [];
         list.unshift({
@@ -2621,11 +2621,11 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         });
         if (typeof MAX_NOTIFICATIONS === "number" && list.length > MAX_NOTIFICATIONS) list.length = MAX_NOTIFICATIONS;
         await updateDoc(userRef, { notifications: list });
-        alert("返信を送信しました。相手の通知一覧に届きます。");
+        /* alert hidden */ console.log("返信を送信しました。相手の通知一覧に届きます。");
       } catch (e) {
         console.error("buildAndDownloadCardPackZip error:", e);
-        alert("ZIP生成エラー: " + (e && e.stack ? e.stack : (e.message || e)));
-        alert("返信の送信に失敗しました。\n" + (e?.message || e));
+        /* alert hidden */ console.log("ZIP生成エラー: " + (e && e.stack ? e.stack : (e.message || e)));
+        /* alert hidden */ console.log("返信の送信に失敗しました。\n" + (e?.message || e));
       }
     };
 
@@ -2635,9 +2635,9 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       try {
         await setDoc(doc(db, "suspensions", uid), { reason, name, createdAt: serverTimestamp() });
         await logAdminAction("user_suspend", uid, reason);
-        alert("アカウントを停止しました。");
+        /* alert hidden */ console.log("アカウントを停止しました。");
         loadAdminData();
-      } catch(e) { alert("失敗しました。"); }
+      } catch(e) { /* alert hidden */ console.log("失敗しました。"); }
     };
 
     window.adminUnsuspendUser = async function(uid) {
@@ -2645,9 +2645,9 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       try {
         await deleteDoc(doc(db, "suspensions", uid));
         await logAdminAction("user_unsuspend", uid, "");
-        alert("停止を解除しました。");
+        /* alert hidden */ console.log("停止を解除しました。");
         loadAdminData();
-      } catch(e) { alert("失敗しました。"); }
+      } catch(e) { /* alert hidden */ console.log("失敗しました。"); }
     };
 
     window.adminDeletePost = async function(postId) {
@@ -2661,9 +2661,9 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         await deleteDoc(doc(db, "posts", postId)); 
         delete photoCache[postId];
         await logAdminAction("post_delete", postId, "");
-        alert("削除しました。"); 
+        /* alert hidden */ console.log("削除しました。"); 
         loadAdminData();
-      } catch(e){ alert("削除に失敗しました。"); }
+      } catch(e){ /* alert hidden */ console.log("削除に失敗しました。"); }
     };
 
     window.adminForceCancelTrade = async function(tradeId) {
@@ -2680,9 +2680,9 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           const tData = tradeSnap.data();
           await restorePostToActive(tData.postId, tData.kind, tData.applicantId);
         }
-        alert("取引を強制キャンセルしました。");
+        /* alert hidden */ console.log("取引を強制キャンセルしました。");
         loadAdminData();
-      } catch(e) { alert("処理に失敗しました。"); }
+      } catch(e) { /* alert hidden */ console.log("処理に失敗しました。"); }
     };
 
         window.markInquiryDone = async function(id) {
@@ -2691,7 +2691,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         await updateDoc(doc(db, "inquiries", id), { status: "done", doneAt: serverTimestamp() });
         await logAdminAction("inquiry_done", id, "");
         loadAdminData();
-      } catch(e) { alert("更新に失敗しました。"); }
+      } catch(e) { /* alert hidden */ console.log("更新に失敗しました。"); }
     };
 
 
@@ -2702,9 +2702,9 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         const lp = allPosts.find(x => x.id === postId); if (lp) lp.status = "hidden";
         renderPosts();
         await logAdminAction("post_hide", postId, "");
-        alert("一時非公開にしました。");
+        /* alert hidden */ console.log("一時非公開にしました。");
         loadAdminData();
-      } catch(e) { alert("失敗しました。"); }
+      } catch(e) { /* alert hidden */ console.log("失敗しました。"); }
     };
     window.adminUnhidePost = async function(postId) {
       if (!(await appConfirm("この投稿を再公開しますか？"))) return;
@@ -2713,9 +2713,9 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         const lp = allPosts.find(x => x.id === postId); if (lp) lp.status = "active";
         renderPosts();
         await logAdminAction("post_unhide", postId, "");
-        alert("再公開しました。");
+        /* alert hidden */ console.log("再公開しました。");
         loadAdminData();
-      } catch(e) { alert("失敗しました。"); }
+      } catch(e) { /* alert hidden */ console.log("失敗しました。"); }
     };
 
     window.adminReplyInquiry = async function(inquiryId, uid) {
@@ -2738,9 +2738,9 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           await updateDoc(userRef, { notifications: list });
         }
         await logAdminAction("inquiry_reply", inquiryId, msg.trim().slice(0, 80));
-        alert("返信しました。");
+        /* alert hidden */ console.log("返信しました。");
         loadAdminData();
-      } catch(e) { console.error(e); alert("返信に失敗しました。"); }
+      } catch(e) { console.error(e); /* alert hidden */ console.log("返信に失敗しました。"); }
     };
 
     window.adminReplyReport = async function(reportId, reporterId) {
@@ -2762,9 +2762,9 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           await updateDoc(userRef, { notifications: list });
         }
         await logAdminAction("report_reply", reportId, msg.trim().slice(0, 80));
-        alert("返信しました。");
+        /* alert hidden */ console.log("返信しました。");
         loadAdminData();
-      } catch(e) { console.error(e); alert("返信に失敗しました。"); }
+      } catch(e) { console.error(e); /* alert hidden */ console.log("返信に失敗しました。"); }
     };
 
     window.saveSiteAnnouncement = async function() {
@@ -2779,7 +2779,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         showToast("固定お知らせを保存しました", "success");
       } catch(e) {
         if (st) st.textContent = "保存に失敗しました";
-        alert("保存に失敗しました。Firestoreルールを確認してください。");
+        /* alert hidden */ console.log("保存に失敗しました。Firestoreルールを確認してください。");
       }
     };
 
@@ -2876,8 +2876,8 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       try {
         await setDoc(doc(db, "deviceBans", deviceId), { reason, uid: uid || "", by: currentUser.uid, createdAt: serverTimestamp() });
         await logAdminAction("device_ban", deviceId, reason);
-        alert("端末をBANしました。");
-      } catch(e) { alert("BANに失敗しました。"); }
+        /* alert hidden */ console.log("端末をBANしました。");
+      } catch(e) { /* alert hidden */ console.log("BANに失敗しました。"); }
     };
     window.adminUnbanDevice = async function(deviceId) {
       if (!deviceId) return;
@@ -2885,8 +2885,8 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       try {
         await deleteDoc(doc(db, "deviceBans", deviceId));
         await logAdminAction("device_unban", deviceId, "");
-        alert("BANを解除しました。");
-      } catch(e) { alert("解除に失敗しました。"); }
+        /* alert hidden */ console.log("BANを解除しました。");
+      } catch(e) { /* alert hidden */ console.log("解除に失敗しました。"); }
     };
 
     window.sendBroadcast = async function() {
@@ -2896,8 +2896,8 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       const btn = document.getElementById("broadcast-send-btn");
       if (!msgEl) return;
       const message = msgEl.value.trim();
-      if (!message) return alert("メッセージを入力してください。");
-      if (message.length > 300) return alert("300文字以内で入力してください。");
+      if (!message) return /* alert hidden */ console.log("メッセージを入力してください。");
+      if (message.length > 300) return /* alert hidden */ console.log("300文字以内で入力してください。");
       if (!(await appConfirm(`以下の内容を全ユーザーに通知します。よろしいですか？\n\n「${message}」`))) return;
       btn.disabled = true; btn.innerText = "送信中…"; statusEl.innerText = "ユーザーを取得しています…";
       try {
@@ -2924,7 +2924,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         msgEl.value = "";
       } catch (e) {
         statusEl.innerText = "送信に失敗しました。";
-        alert("送信に失敗しました。");
+        /* alert hidden */ console.log("送信に失敗しました。");
       } finally {
         btn.disabled = false; btn.innerText = "📢 全員に通知を送信する";
       }
@@ -2966,7 +2966,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       if (!isAdmin()) return;
       const r = lastLikeAudit.find(x => x.id === postId); if (!r) return;
       if (!(await appConfirm(`「${r.give}」のいいねを ${r.shown} → ${r.real} に補正します。よろしいですか？`))) return;
-      try { await fixLikesRow(r); alert("補正しました。"); loadAdminData(); } catch (e) { console.error(e); alert("補正に失敗しました。"); }
+      try { await fixLikesRow(r); /* alert hidden */ console.log("補正しました。"); loadAdminData(); } catch (e) { console.error(e); /* alert hidden */ console.log("補正に失敗しました。"); }
     };
     window.adminFixAllLikes = async function() {
       if (!isAdmin()) return;
@@ -2975,7 +2975,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       if (!(await appConfirm(`${targets.length} 件の投稿を、記録のある実数に補正します。\n旧方式で付いたいいね数は0に戻ります。よろしいですか？`))) return;
       let ok = 0, ng = 0;
       for (const r of targets) { try { await fixLikesRow(r); ok++; } catch (e) { ng++; console.error(e); } }
-      alert(`補正完了: 成功 ${ok} 件 / 失敗 ${ng} 件`);
+      /* alert hidden */ console.log(`補正完了: 成功 ${ok} 件 / 失敗 ${ng} 件`);
       loadAdminData();
     };
 
@@ -2985,7 +2985,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         const snap = await getDocs(collection(db, "posts", postId, "photos")); await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
         const js = await getDocs(collection(db, "posts", postId, "joins")); await Promise.all(js.docs.map(d => deleteDoc(d.ref)));
         await deleteDoc(doc(db, "posts", postId)); delete photoCache[postId];
-        await deleteDoc(doc(db, "reports", reportId)); alert("削除しました。"); loadAdminData();
+        await deleteDoc(doc(db, "reports", reportId)); /* alert hidden */ console.log("削除しました。"); loadAdminData();
       } catch(e){}
     };
     
@@ -3006,12 +3006,12 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       if (!currentUser || !userId || !(await appConfirm(`「${userName}」さんをブロックしますか？`, "ブロックする", true))) return;
       const list = [...getBlockedUsers()];
       if (!list.includes(userId)) { list.push(userId); userData.blocked = list; try { await saveUserData({ blocked: list }); } catch(e){return;} }
-      alert("ブロックしました。"); closeDetailModal(); renderPosts();
+      /* alert hidden */ console.log("ブロックしました。"); closeDetailModal(); renderPosts();
     };
     window.clearBlockedUsers = async function() {
       if (!currentUser || !(await appConfirm("ブロックをすべて解除しますか？", "解除する"))) return;
       userData.blocked = []; try { await saveUserData({ blocked: [] }); } catch(e){}
-      alert("解除しました。"); renderBlockedBox(); renderPosts();
+      /* alert hidden */ console.log("解除しました。"); renderBlockedBox(); renderPosts();
     };
     function renderBlockedBox() { const el = document.getElementById("blocked-users-box"); if (el) el.innerText = getBlockedUsers().length === 0 ? "なし" : `${getBlockedUsers().length}人をブロック中`; }
     function getMyLikes() { return userData.likes || []; }
@@ -3044,7 +3044,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       });
     }
     async function doToggleLike(p) {
-      if (!currentUser) return alert("ログインが必要です。");
+      if (!currentUser) return /* alert hidden */ console.log("ログインが必要です。");
       if (!p || likeBusy.has(p.id)) return;
       if (!(await checkDeviceLockCached())) return;
       likeBusy.add(p.id);
@@ -3113,7 +3113,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         const preview = document.getElementById("profile-photo-preview");
         preview.innerHTML = `<img src="${data}" class="w-full h-full object-cover">`;
         document.getElementById("profile-photo-clear").classList.remove("hidden");
-      } catch (e) { alert("画像の処理に失敗しました。"); }
+      } catch (e) { /* alert hidden */ console.log("画像の処理に失敗しました。"); }
     };
     window.clearProfilePhoto = function() {
       pendingProfilePhoto = "";
@@ -3135,8 +3135,8 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           address2: document.getElementById("profile-address2").value.trim(),
           phone: document.getElementById("profile-phone").value.trim()
         };
-        if (!p.name || !p.zip || !p.address1) return alert("お名前・郵便番号・住所は必須です。");
-        if (!/^\d{3}-?\d{4}$/.test(p.zip)) return alert("郵便番号は7桁の数字で入力してください。（例: 123-4567）");
+        if (!p.name || !p.zip || !p.address1) return /* alert hidden */ console.log("お名前・郵便番号・住所は必須です。");
+        if (!/^\d{3}-?\d{4}$/.test(p.zip)) return /* alert hidden */ console.log("郵便番号は7桁の数字で入力してください。（例: 123-4567）");
       } else if (profileSection === "basic") {
         p = {
           nickname: document.getElementById("profile-nickname").value.trim()
@@ -3173,7 +3173,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         await saveUserData({ profile: userData.profile });
       } catch (e) {
         console.error(e);
-        return alert("失敗しました。\n" + (e?.code || e?.message || ""));
+        return /* alert hidden */ console.log("失敗しました。\n" + (e?.code || e?.message || ""));
       }
       showToast("設定を保存しました！", "success");
       closeProfileModal();
@@ -3189,10 +3189,10 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
 
     window.sendMyAddress = async function() {
       if (!currentTrade || !currentUser) return;
-      const p = getMyProfile(); if (!p || !p.zip || !p.address1 || !p.name) { alert("マイページから住所を入力してください。"); openProfileModal("address"); return; }
+      const p = getMyProfile(); if (!p || !p.zip || !p.address1 || !p.name) { /* alert hidden */ console.log("マイページから住所を入力してください。"); openProfileModal("address"); return; }
       try { await postMessage({ senderId: currentUser.uid, senderName: getMyDisplayName(), text: `【配送先情報】\nお名前: ${p.name}\n郵便番号: 〒${p.zip}\n住所: ${p.address1} ${p.address2 || ''}\n電話番号: ${p.phone || 'なし'}`, createdAt: serverTimestamp() }); } catch(e){}
     };
-    window.copyPayPayId = function(idStr) { navigator.clipboard.writeText(idStr).then(()=>alert("コピーしました！")).catch(()=>{}); };
+    window.copyPayPayId = function(idStr) { navigator.clipboard.writeText(idStr).then(()=>/* alert hidden */ console.log("コピーしました！")).catch(()=>{}); };
 
     function loadImageFromFile(file) {
       return new Promise((res, rej) => {
@@ -3338,17 +3338,17 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
 
     window.enablePush = async function() {
       if (!currentUser || !("Notification" in window) || !("serviceWorker" in navigator)) {
-        return alert("お使いのブラウザはプッシュ通知に対応していません。");
+        return /* alert hidden */ console.log("お使いのブラウザはプッシュ通知に対応していません。");
       }
 
       if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
-        return alert("プッシュ通知はHTTPS通信（またはlocalhost）環境でのみ動作します。");
+        return /* alert hidden */ console.log("プッシュ通知はHTTPS通信（またはlocalhost）環境でのみ動作します。");
       }
 
       const perm = await Notification.requestPermission();
       if (perm !== "granted") {
         markPushPromptAsked();
-        return alert("通知権限が拒否されています。ブラウザの設定から通知を許可してください。");
+        return /* alert hidden */ console.log("通知権限が拒否されています。ブラウザの設定から通知を許可してください。");
       }
 
       try { 
@@ -3358,7 +3358,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         renderSellTab(); showToast("通知をオンにしました！", "success");
       } catch(e){ 
         console.error("プッシュ通知設定エラー:", e);
-        alert("設定失敗: " + (e.message || e)); 
+        /* alert hidden */ console.log("設定失敗: " + (e.message || e)); 
       }
     };
 
@@ -3436,7 +3436,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
          window.loginWithGoogle = function() { 
       // iPhoneのホーム画面アプリでもSafariでも、小窓（ポップアップ）方式に統一
       signInWithPopup(auth, provider).catch(e => {
-        alert("ログインエラー: " + (e.message || e));
+        /* alert hidden */ console.log("ログインエラー: " + (e.message || e));
       });
     };
    
@@ -3469,7 +3469,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     });
 
     window.openPostModal = async function(mode) {
-      if (!currentUser) return alert("ログインが必要です。");
+      if (!currentUser) return /* alert hidden */ console.log("ログインが必要です。");
       try {
         if (typeof checkDeviceLock === "function" && !(await checkDeviceLock())) return;
       } catch (lockErr) {
@@ -3522,7 +3522,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         _pm.classList.remove("hidden");
         _pm.style.display = "";
       } else {
-        alert("エラー: post-modal が見つかりません");
+        /* alert hidden */ console.log("エラー: post-modal が見つかりません");
       }
     };
     window.setExchangeStyle = function(style) {
@@ -3670,7 +3670,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         </div>`).join("");
     }
     window.addBundleRow = function() {
-      if (bundleExtras.length >= 7) return alert("一度に追加できるのは8枚までです。");
+      if (bundleExtras.length >= 7) return /* alert hidden */ console.log("一度に追加できるのは8枚までです。");
       bundleExtras.push({ give: "", want: "", full: "", thumb: "" });
       renderBundleList();
     };
@@ -3684,7 +3684,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         bundleExtras[i].full = compressFromImage(img, PHOTO_FULL);
         bundleExtras[i].thumb = compressFromImage(img, PHOTO_THUMB);
         renderBundleList();
-      } catch (e) { alert("写真を読み込めませんでした"); }
+      } catch (e) { /* alert hidden */ console.log("写真を読み込めませんでした"); }
     };
 
     window.submitPost = async function() {
@@ -3703,16 +3703,16 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       const price = (isBuy || isSell) ? Number(document.getElementById("input-price").value) : 0;
       const desc = document.getElementById("input-desc").value.trim().slice(0, 200);
       const condition = document.getElementById("input-condition").value;
-      if (!give) return alert("内容を入力してください。");
-      if (!isBuy && !isSell && !want) return alert("【求】を入力してください。");
-      if ((isBuy || isSell) && (!price || price <= 0)) return alert("価格を正しく入力してください。");
-      if (!condition) return alert("商品の状態を選択してください。");
-      if (!isBuy && postPhotos.length < 1) return alert("写真を1枚以上追加してください。");
+      if (!give) return /* alert hidden */ console.log("内容を入力してください。");
+      if (!isBuy && !isSell && !want) return /* alert hidden */ console.log("【求】を入力してください。");
+      if ((isBuy || isSell) && (!price || price <= 0)) return /* alert hidden */ console.log("価格を正しく入力してください。");
+      if (!condition) return /* alert hidden */ console.log("商品の状態を選択してください。");
+      if (!isBuy && postPhotos.length < 1) return /* alert hidden */ console.log("写真を1枚以上追加してください。");
       const isExchange = postMode === "exchange";
       if (isExchange) {
         for (const row of bundleExtras) {
           if (!String(row.give || "").trim() || !String(row.want || "").trim() || !row.full) {
-            return alert("追加したカードは、出すもの・希望・写真をすべて入れてください。");
+            return /* alert hidden */ console.log("追加したカードは、出すもの・希望・写真をすべて入れてください。");
           }
         }
       }
@@ -3749,7 +3749,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           const useBundle = isExchange && bundleBoxes.length >= 2 && item === items[0];
           if (window.__isBulkMode && (!window.__bulkSlots || window.__bulkSlots.length === 0)) {
           btn.disabled = false; btn.innerText = "出品する";
-          return alert("まとめて出品では「写真の枠を設定・編集する」から枠を1つ以上設定してください。");
+          return /* alert hidden */ console.log("まとめて出品では「写真の枠を設定・編集する」から枠を1つ以上設定してください。");
         }
         const __bulkExtra = (window.__isBulkMode && window.__bulkSlots.length > 0)
           ? { isBulk: true, bulkSlots: JSON.parse(JSON.stringify(window.__bulkSlots)) }
@@ -3775,7 +3775,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         }
         showToast(items.length > 1 ? items.length + "件出品しました" : "出品が完了しました！詳細画面からXでシェアできます", "success");
         closePostModal(); loadPosts(true); switchTab('home');
-      } catch(e) { alert("失敗しました"); } finally { submittingPost = false; btn.disabled = false; btn.innerText = "出品する"; }
+      } catch(e) { /* alert hidden */ console.log("失敗しました"); } finally { submittingPost = false; btn.disabled = false; btn.innerText = "出品する"; }
     };
 
     async function notifyCardWatchers(cardId, cardName, postId) {
@@ -3810,7 +3810,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     }
 
     window.openSerialPostModal = async function(mode) {
-      if (!currentUser) return alert("ログインが必要です。");
+      if (!currentUser) return /* alert hidden */ console.log("ログインが必要です。");
       try {
         if (typeof checkDeviceLock === "function" && !(await checkDeviceLock())) return;
       } catch (lockErr) {
@@ -3829,7 +3829,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       if (submittingSerial || !(await checkDeviceLock())) return;
       const isSell = postMode === "sell", isBuy = postMode === "buy";
       const member = document.getElementById("serial-member").value, give = document.getElementById("serial-give").value.trim(), want = document.getElementById("serial-want").value.trim(), price = Number(document.getElementById("serial-price").value), dl = document.getElementById("serial-deadline").value, note = document.getElementById("serial-note").value.trim().slice(0, 200);
-      if (!give || (!isBuy && !isSell && !want) || ((isBuy || isSell) && (!price || price <= 0)) || (dl && dl < todayStr())) return alert("正しく入力してください。");
+      if (!give || (!isBuy && !isSell && !want) || ((isBuy || isSell) && (!price || price <= 0)) || (dl && dl < todayStr())) return /* alert hidden */ console.log("正しく入力してください。");
       submittingSerial = true; const sbtn = document.getElementById("serial-submit-btn"); if (sbtn) sbtn.disabled = true;
       try {
         await addDoc(collection(db, "posts"), {
@@ -3844,12 +3844,12 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         showToast("出品が完了しました！詳細画面からXでシェアできます", "success");
         
         closeSerialPostModal(); loadPosts(true); switchTab('home');
-      } catch(e) { alert("失敗しました"); } finally { submittingSerial = false; if (sbtn) sbtn.disabled = false; }
+      } catch(e) { /* alert hidden */ console.log("失敗しました"); } finally { submittingSerial = false; if (sbtn) sbtn.disabled = false; }
     };
 
     window.onGroupBundleChange = function() { document.getElementById("group-bundle-note-box").classList.toggle("hidden", document.getElementById("group-bundle").value === "ng"); };
     window.openGroupPostModal = async function() {
-      if (!currentUser) return alert("ログインが必要です。");
+      if (!currentUser) return /* alert hidden */ console.log("ログインが必要です。");
       if (!(await checkDeviceLock())) return;
       document.getElementById("group-give").value = ""; document.getElementById("group-price").value = ""; document.getElementById("group-target").value = ""; document.getElementById("group-deadline").value = ""; document.getElementById("group-bundle").value = "ok"; document.getElementById("group-bundle-note").value = ""; document.getElementById("group-desc").value = "";
       postPhotos = []; renderPostPhotoPreview(); onGroupBundleChange();
@@ -3862,9 +3862,9 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     window.submitGroupPost = async function() {
       if (submittingGroup || processingPhotos || !(await checkDeviceLock())) return;
       const member = document.getElementById("group-member").value, give = document.getElementById("group-give").value.trim(), price = Number(document.getElementById("group-price").value), target = Number(document.getElementById("group-target").value), bundle = document.getElementById("group-bundle").value, bundleNote = document.getElementById("group-bundle-note").value.trim().slice(0, 100), ship = document.getElementById("group-shipping").value, dl = document.getElementById("group-deadline").value, desc = document.getElementById("group-desc").value.trim().slice(0, 200);
-      if (!give || !price || price <= 0 || !Number.isInteger(target) || target < 1 || target > 100) return alert("正しく入力してください。");
-      if (!dl) return alert("募集締切を設定してください。");
-      if (dl < todayStr()) return alert("締切は今日以降の日付を指定してください。");
+      if (!give || !price || price <= 0 || !Number.isInteger(target) || target < 1 || target > 100) return /* alert hidden */ console.log("正しく入力してください。");
+      if (!dl) return /* alert hidden */ console.log("募集締切を設定してください。");
+      if (dl < todayStr()) return /* alert hidden */ console.log("締切は今日以降の日付を指定してください。");
       submittingGroup = true; const btn = document.getElementById("group-submit-btn"); btn.disabled = true; btn.innerText = "投稿中…";
       try {
         const ref = await addDoc(collection(db, "posts"), {
@@ -3881,7 +3881,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         showToast("共同購入の募集を開始しました！詳細画面からXでシェアできます", "success");
         
         closeGroupPostModal(); loadPosts(true); switchTab('home');
-      } catch(e) { alert("失敗しました"); } finally { submittingGroup = false; btn.disabled = false; btn.innerText = "主催する"; }
+      } catch(e) { /* alert hidden */ console.log("失敗しました"); } finally { submittingGroup = false; btn.disabled = false; btn.innerText = "主催する"; }
     };
 
     function renderFilters() {
@@ -3941,7 +3941,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     }
 
     window.openPostTypeSheet = function() {
-      if (!currentUser) return alert("ログインが必要です。");
+      if (!currentUser) return /* alert hidden */ console.log("ログインが必要です。");
       document.getElementById("post-type-sheet").classList.remove("hidden");
     };
     window.closePostTypeSheet = function() { document.getElementById("post-type-sheet").classList.add("hidden"); };
@@ -4544,7 +4544,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           preview.classList.remove("hidden");
           preview.innerHTML = `<div class="flex items-center gap-2"><img src="${pendingCommentImage}" alt="" class="h-16 rounded-lg"><button type="button" onclick="clearCommentPhoto()" class="text-[12px] text-gray-500">取り消す</button></div>`;
         }
-      } catch (e) { alert("画像を読み込めませんでした"); }
+      } catch (e) { /* alert hidden */ console.log("画像を読み込めませんでした"); }
     };
     window.clearCommentPhoto = function() {
       pendingCommentImage = "";
@@ -4553,7 +4553,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     };
     window.submitPostComment = async function(ev) {
       if (ev) ev.preventDefault();
-      if (!currentUser) return alert("ログインが必要です。");
+      if (!currentUser) return /* alert hidden */ console.log("ログインが必要です。");
       const input = document.getElementById("detail-comment-input");
       const text = (input && input.value || "").trim();
       const postId = currentDetailId;
@@ -4572,7 +4572,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         });
         loadPostComments(postId);
       } catch (e) {
-        alert("コメントを送れませんでした。");
+        /* alert hidden */ console.log("コメントを送れませんでした。");
       }
     };
 
@@ -4599,14 +4599,14 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       } catch (e) {}
     }
     window.proposePriceCut = async function(index) {
-      if (!currentUser) return alert("ログインが必要です。");
+      if (!currentUser) return /* alert hidden */ console.log("ログインが必要です。");
       const p = allPosts[index];
       if (!p || !p.isSell) return;
       const now = Number(p.price || 0);
       const raw = prompt("希望価格を入力（今の価格 " + now.toLocaleString() + "円より低く）", "");
       if (raw == null) return;
       const price = Math.floor(Number(String(raw).replace(/,/g, "")));
-      if (!price || price <= 0 || price >= now) return alert("今の価格より低い金額にしてください。");
+      if (!price || price <= 0 || price >= now) return /* alert hidden */ console.log("今の価格より低い金額にしてください。");
       try {
         const snap = await getDocs(collection(db, "posts", p.id, "offers"));
         const mine = snap.docs.find(d => d.data().userId === currentUser.uid && d.data().status === "pending");
@@ -4616,7 +4616,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         });
         showToast("値下げを提案しました", "success");
         loadSellOffers(p);
-      } catch (e) { alert("提案を送れませんでした"); }
+      } catch (e) { /* alert hidden */ console.log("提案を送れませんでした"); }
     };
     window.acceptPriceOffer = async function(postId, offerId, price) {
       try {
@@ -4626,14 +4626,14 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         if (i >= 0) allPosts[i].price = Number(price);
         showToast("価格を更新しました", "success");
         if (i >= 0) openDetailModal(i);
-      } catch (e) { alert("更新できませんでした"); }
+      } catch (e) { /* alert hidden */ console.log("更新できませんでした"); }
     };
     window.declinePriceOffer = async function(postId, offerId) {
       try {
         await updateDoc(doc(db, "posts", postId, "offers", offerId), { status: "declined" });
         const p = allPosts.find(x => x.id === postId);
         if (p) loadSellOffers(p);
-      } catch (e) { alert("更新できませんでした"); }
+      } catch (e) { /* alert hidden */ console.log("更新できませんでした"); }
     };
 
     async function loadRating(userId, index) {
@@ -4756,7 +4756,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     window.deletePost = async function(index) {
       const p = allPosts[index]; if (!p) return;
       if (myTrades.some(t => t.postId === p.id && (t.status === "negotiating" || t.status === "shipping"))) {
-        return alert("進行中の取引があるため削除できません。先に取引を完了またはキャンセルしてください。");
+        return /* alert hidden */ console.log("進行中の取引があるため削除できません。先に取引を完了またはキャンセルしてください。");
       }
       if (!(await appConfirm("この投稿を削除しますか？", "削除する", true))) return;
       try {
@@ -4766,7 +4766,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         delete photoCache[p.id];
         allPosts = allPosts.filter(x => x.id !== p.id);
         closeDetailModal(); renderPosts();
-      } catch(e) { alert("失敗しました。"); }
+      } catch(e) { /* alert hidden */ console.log("失敗しました。"); }
     };
     window.blockPostOwner = function(index) { const p = allPosts[index]; if (p) blockUser(p.userId, p.userName); };
     window.toggleDetailMenu = function(ev) {
@@ -4784,14 +4784,14 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       reportPost(currentDetailIndex);
     };
     window.toggleSellerNotify = async function(userId) {
-      if (!currentUser) return alert("ログインが必要です。");
+      if (!currentUser) return /* alert hidden */ console.log("ログインが必要です。");
       if (!userId) return;
       const list = Array.isArray(userData.watchSellers) ? [...userData.watchSellers] : [];
       const on = list.includes(userId);
       if (on) list.splice(list.indexOf(userId), 1);
       else list.push(userId);
       userData.watchSellers = list;
-      try { await saveUserData({ watchSellers: list }); } catch (e) { return alert("保存できませんでした。"); }
+      try { await saveUserData({ watchSellers: list }); } catch (e) { return /* alert hidden */ console.log("保存できませんでした。"); }
       if (!on) {
         const seen = new Set(JSON.parse(localStorage.getItem("gllit_watch_seen") || "[]"));
         allPosts.forEach(function (p) { if (p.userId === userId) seen.add(p.id); });
@@ -4821,7 +4821,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       try {
         await addDoc(collection(db, "reports"), { reporterId: currentUser.uid, reporterName: getMyDisplayName(), postId: p.id, postGive: p.give || "", postUserId: p.userId || "", reason: reason.trim().slice(0, 200), status: "open", replies: [], createdAt: serverTimestamp(), deviceId: getOrCreateDeviceId() });
         showToast("通報を送信しました。ご協力ありがとうございます。", "success");
-      } catch(e) { alert("通報の送信に失敗しました。"); }
+      } catch(e) { /* alert hidden */ console.log("通報の送信に失敗しました。"); }
     };
     window.toggleGroupClosed = async function(index) {
       const p = allPosts[index]; if (!p || !currentUser || p.userId !== currentUser.uid) return;
@@ -4847,15 +4847,15 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     window.submitEditPost = async function() {
       const p = allPosts.find(x => x.id === editingPostId); if (!p || !currentUser || (p.userId !== currentUser.uid && !isAdmin())) return;
       const data = { give: document.getElementById("edit-give").value.trim(), want: (!!p.isBuy || p.kind === "group" || !!p.isSell) ? "" : document.getElementById("edit-want").value.trim(), price: (!!p.isBuy || p.kind === "group" || !!p.isSell) ? Number(document.getElementById("edit-price").value) : 0, description: document.getElementById("edit-desc").value.trim().slice(0, 200), editedAt: serverTimestamp() };
-      if (!data.give) return alert("内容を入力してください。");
+      if (!data.give) return /* alert hidden */ console.log("内容を入力してください。");
       if (needsCondition(p.kind)) {
         data.condition = document.getElementById("edit-condition").value;
-        if (!data.condition) return alert("状態を選択してください。");
+        if (!data.condition) return /* alert hidden */ console.log("状態を選択してください。");
       }
       if (p.kind === "serial" || p.kind === "group") data.deadline = document.getElementById("edit-deadline").value;
       if (p.kind === "group") { data.target = Number(document.getElementById("edit-target").value); data.bundle = document.getElementById("edit-bundle").value; data.bundleNote = data.bundle === "ng" ? "" : document.getElementById("edit-bundle-note").value.trim().slice(0, 100); }
       data.updatedAt = serverTimestamp();
-      try { await updateDoc(doc(db, "posts", p.id), data); alert("更新しました！"); closeEditModal(); loadPosts(true); } catch(e) { alert("更新失敗"); }
+      try { await updateDoc(doc(db, "posts", p.id), data); /* alert hidden */ console.log("更新しました！"); closeEditModal(); loadPosts(true); } catch(e) { /* alert hidden */ console.log("更新失敗"); }
     };
 
     // 売却出品の「購入を確定」確認ステップ
@@ -4991,7 +4991,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       if (!requireShippingInfo()) return;
       if (!(await checkDeviceLock())) return;
       const picks = [...(window._bundlePick || [])].map(Number).filter(i => p.bundleBoxes && p.bundleBoxes[i] && (!p.bundleBoxes[i].state || p.bundleBoxes[i].state === "open"));
-      if (!picks.length) return alert("欲しいトレカの枠をタップしてください。");
+      if (!picks.length) return /* alert hidden */ console.log("欲しいトレカの枠をタップしてください。");
       try {
         let nextBoxes = null;
         await runTransaction(db, async (tx) => {
@@ -5037,8 +5037,8 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         openTrade(ref.id);
         showToast(p.bundleLeft === 0 ? "成立しました。バツ付きの写真に更新し、募集を停止しました" : "成立しました。バツ付きの写真に更新しました", "success");
       } catch (e) {
-        if (e && (e.message === "taken" || e.message === "notactive")) return alert("そのカードは、さきほど選ばれました。");
-        alert("申し込みに失敗しました");
+        if (e && (e.message === "taken" || e.message === "notactive")) return /* alert hidden */ console.log("そのカードは、さきほど選ばれました。");
+        /* alert hidden */ console.log("申し込みに失敗しました");
       }
     };
 
@@ -5063,7 +5063,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         window.__pendingBulkSlotIds = null;
         const existing = myTrades.find(t => t.postId === p.id && t.applicantId === currentUser.uid && t.status !== "cancelled");
       if (existing) {
-        alert("すでにこの出品に対する取引ルームが存在します。");
+        /* alert hidden */ console.log("すでにこの出品に対する取引ルームが存在します。");
         closeDetailModal();
         openTrade(existing.id);
         return;
@@ -5083,7 +5083,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         if (!p.isBulk) { claimed = true; p.status = "traded"; renderPosts(); }
       } catch (claimErr) {
         if (claimErr && (claimErr.message === "notactive" || claimErr.message === "notfound")) {
-          return alert("この出品はすでに取引中、または終了しています。");
+          return /* alert hidden */ console.log("この出品はすでに取引中、または終了しています。");
         }
         console.warn("post claim failed:", claimErr?.code || claimErr); // 権限などは従来どおり続行
       }
@@ -5131,11 +5131,11 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         if (claimed) restorePostToActive(p.id, p.kind, null); // 取引が作れなかったら確保を戻す
         const msg = e?.code || e?.message || String(e);
         if (msg.includes("permission-denied") || msg.includes("PERMISSION_DENIED")) {
-          alert("処理に失敗しました。\n（権限エラー）\nページを再読み込みしてからもう一度お試しください。");
+          /* alert hidden */ console.log("処理に失敗しました。\n（権限エラー）\nページを再読み込みしてからもう一度お試しください。");
         } else if (msg.includes("device") || msg.includes("Device")) {
-          alert("処理に失敗しました。\n（デバイス認証エラー）\n一度ログアウト→ログインしてから再度お試しください。");
+          /* alert hidden */ console.log("処理に失敗しました。\n（デバイス認証エラー）\n一度ログアウト→ログインしてから再度お試しください。");
         } else {
-          alert("処理に失敗しました。\n" + msg);
+          /* alert hidden */ console.log("処理に失敗しました。\n" + msg);
         }
       }
     };
@@ -5143,19 +5143,19 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       if (typeof checkCancelAccountLock === "function" && checkCancelAccountLock()) return;
       const p = allPosts[index]; if (!currentUser || !p || !p.userId || p.kind !== "group" || !(await checkDeviceLock())) return;
       if (!requireShippingInfo()) return;
-      if (p.status === "closed" || isExpired(p)) return alert("募集終了。");
+      if (p.status === "closed" || isExpired(p)) return /* alert hidden */ console.log("募集終了。");
       
       const existing = myTrades.find(t => t.postId === p.id && t.status !== "cancelled");
       if (existing) {
-        alert("すでにこの共同購入に参加しています。");
+        /* alert hidden */ console.log("すでにこの共同購入に参加しています。");
         closeDetailModal();
         openTrade(existing.id);
         return;
       }
 
-      const joins = joinsOf(p.id); if (joins.some(j => j.id === currentUser.uid)) return alert("参加済みです。");
+      const joins = joinsOf(p.id); if (joins.some(j => j.id === currentUser.uid)) return /* alert hidden */ console.log("参加済みです。");
       const localCount = Math.max(0, typeof p.joinsCount === "number" ? p.joinsCount : joins.length);
-      if (localCount >= Number(p.target || 0)) return alert("満員です。");
+      if (localCount >= Number(p.target || 0)) return /* alert hidden */ console.log("満員です。");
       const bc = p.bundle === "ng" ? "none" : (p.bundle === "only" ? "want" : "none");
       try {
         const postRef = doc(db, "posts", p.id);
@@ -5194,19 +5194,19 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         showToast("応募が完了しました。取引ルームで決済・発送を進めてください。", "success");
       } catch(e) {
         const msg = e && e.message;
-        if (msg === "full") alert("満員です。");
-        else if (msg === "already") alert("参加済みです。");
-        else if (msg === "closed" || msg === "expired") alert("募集終了。");
-        else alert("失敗しました。");
+        if (msg === "full") /* alert hidden */ console.log("満員です。");
+        else if (msg === "already") /* alert hidden */ console.log("参加済みです。");
+        else if (msg === "closed" || msg === "expired") /* alert hidden */ console.log("募集終了。");
+        else /* alert hidden */ console.log("失敗しました。");
       }
     };
     window.openMyGroupTrade = function(index) {
       const p = allPosts[index]; if (!p || !currentUser) return;
       const t = myTrades.find(x => x.postId === p.id && x.applicantId === currentUser.uid && x.status !== "cancelled");
-      if (t) { closeDetailModal(); openTrade(t.id); } else alert("取引ルームが見つかりません。");
+      if (t) { closeDetailModal(); openTrade(t.id); } else /* alert hidden */ console.log("取引ルームが見つかりません。");
     };
 
-    window.openWalletModal = function() { if (!currentUser) return alert("ログインが必要です。"); renderWallet(); document.getElementById("wallet-modal").classList.remove("hidden"); };
+    window.openWalletModal = function() { if (!currentUser) return /* alert hidden */ console.log("ログインが必要です。"); renderWallet(); document.getElementById("wallet-modal").classList.remove("hidden"); };
     window.closeWalletModal = function() { document.getElementById("wallet-modal").classList.add("hidden"); };
     function renderWallet() {
       const now = new Date(); let totalCompleted = 0, totalPending = 0, completedCount = 0;
@@ -5419,27 +5419,27 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     window.sendPayPayLink = async function() {
       if (!currentTrade || !currentUser) return;
       const url = document.getElementById("chat-paypay-link")?.value.trim();
-      if (!PAYPAY_LINK_RE.test(url)) return alert("PayPayのリンクを貼り付けてください。");
+      if (!PAYPAY_LINK_RE.test(url)) return /* alert hidden */ console.log("PayPayのリンクを貼り付けてください。");
       try {
         await postMessage({
           senderId: currentUser.uid, senderName: getMyDisplayName(),
           text: `【PayPay請求リンク】\n${url}\n金額: ￥${Number(currentTrade.postPrice || 0).toLocaleString()}`,
           createdAt: serverTimestamp()
         });
-        alert("送信しました！");
+        /* alert hidden */ console.log("送信しました！");
       } catch (e) {}
     };
     window.sendMyPayPayId = async function() {
       if (!currentTrade || !currentUser) return;
       const idVal = document.getElementById("chat-paypay-input")?.value.trim();
-      if (!idVal) return alert("PayPay IDを入力してください。");
+      if (!idVal) return /* alert hidden */ console.log("PayPay IDを入力してください。");
       try {
         await postMessage({
           senderId: currentUser.uid, senderName: getMyDisplayName(),
           text: `【PayPay受取用 ID】\n${idVal}\n（タップしてコピーしてください）`,
           createdAt: serverTimestamp()
         });
-        alert("送信しました！");
+        /* alert hidden */ console.log("送信しました！");
       } catch (e) {}
     };
 window.openAzukariApp = function() {
@@ -5468,7 +5468,7 @@ window.openAzukariApp = function() {
     };
     
 
-    window.copyAmount = function(amt) { navigator.clipboard.writeText(String(amt)).then(()=>alert(`コピー完了`)).catch(()=>{}); };
+    window.copyAmount = function(amt) { navigator.clipboard.writeText(String(amt)).then(()=>/* alert hidden */ console.log(`コピー完了`)).catch(()=>{}); };
 
     window.openTrade = function(id) {
       closeTradesModal(); closeDetailModal(); cleanupRoom();
@@ -5517,11 +5517,11 @@ window.openAzukariApp = function() {
     window.submitCancelRequest = async function() {
       if (!currentTrade || !currentUser) return;
       const reason = document.getElementById("cancel-reason").value;
-      if (!reason) return alert("理由を選択してください。");
+      if (!reason) return /* alert hidden */ console.log("理由を選択してください。");
       let reasonText = CANCEL_REASON_LABEL[reason] || reason;
       if (reason === "other") {
         const other = document.getElementById("cancel-other").value.trim();
-        if (!other) return alert("理由を入力してください。");
+        if (!other) return /* alert hidden */ console.log("理由を入力してください。");
         reasonText = other;
       }
       if (!(await appConfirm("キャンセルを申請しますか？\n申請した側にペナルティが付きます。", "申請する", true))) return;
@@ -5533,7 +5533,7 @@ window.openAzukariApp = function() {
         applyCancelPenalty(currentUser.uid, currentTrade.id).catch(() => {});
         closeCancelModal();
         showToast("キャンセルを申請しました。相手の同意をお待ちください。", "info");
-      } catch (e) { alert("申請に失敗しました。"); }
+      } catch (e) { /* alert hidden */ console.log("申請に失敗しました。"); }
     };
 
     window.agreeCancel = async function() {
@@ -5551,7 +5551,7 @@ window.openAzukariApp = function() {
         await revertBundleTrade(currentTrade);
 
         showToast("取引がキャンセルされました。", "info");
-      } catch (e) { alert("処理に失敗しました。"); }
+      } catch (e) { /* alert hidden */ console.log("処理に失敗しました。"); }
     };
 
     // 申請者が申請時に「自分の」記録へ書き込む（他人のドキュメントは書けないため）
@@ -5682,13 +5682,13 @@ window.openAzukariApp = function() {
     window.sendQuickMsg = async function(text) { if (!currentTrade || currentTrade.status === "cancelled") return; try { await postMessage({ senderId: currentUser.uid, senderName: getMyDisplayName(), text: text, createdAt: serverTimestamp(), deviceId: getOrCreateDeviceId() }); } catch(e){} };
     window.sendImage = async function(inputEl) {
       const file = inputEl.files && inputEl.files[0]; inputEl.value = ""; if (!file || !currentTrade || currentTrade.status === "cancelled" || sendingImage) return;
-      sendingImage = true; try { const dataUrl = await compressImage(file, CHAT_PHOTO); await postMessage({ senderId: currentUser.uid, senderName: getMyDisplayName(), text: "", image: dataUrl, createdAt: serverTimestamp(), deviceId: getOrCreateDeviceId() }); } catch(e) { alert("送信失敗"); } finally { sendingImage = false; }
+      sendingImage = true; try { const dataUrl = await compressImage(file, CHAT_PHOTO); await postMessage({ senderId: currentUser.uid, senderName: getMyDisplayName(), text: "", image: dataUrl, createdAt: serverTimestamp(), deviceId: getOrCreateDeviceId() }); } catch(e) { /* alert hidden */ console.log("送信失敗"); } finally { sendingImage = false; }
     };
     window.viewImage = function(i) { const m = roomMessages[i]; if (!m || !isJpegData(m.image)) return; document.getElementById("image-viewer-img").src = m.image; document.getElementById("image-viewer").classList.remove("hidden"); };
     window.closeImageViewer = function() { document.getElementById("image-viewer").classList.add("hidden"); };
 
     window.tradeAction = async function(field) {
-      if (!currentTrade) return; try { const updateData = {}; updateData[`${field}.${currentUser.uid}`] = true; updateData.updatedAt = serverTimestamp(); await updateDoc(doc(db, "trades", currentTrade.id), updateData); } catch(e) { alert("失敗しました。"); }
+      if (!currentTrade) return; try { const updateData = {}; updateData[`${field}.${currentUser.uid}`] = true; updateData.updatedAt = serverTimestamp(); await updateDoc(doc(db, "trades", currentTrade.id), updateData); } catch(e) { /* alert hidden */ console.log("失敗しました。"); }
     };
     window.checkCancelAccountLock = function() {
       if (!currentUser || !userData) return false;
@@ -5699,7 +5699,7 @@ window.openAzukariApp = function() {
         const dd = String(d.getDate()).padStart(2, "0");
         const hh = String(d.getHours()).padStart(2, "0");
         const mi = String(d.getMinutes()).padStart(2, "0");
-        alert(`直近で2回取引をキャンセルしたため、24時間のアカウントロック（利用制限）中です。\n\n解除予定： ${mm}/${dd} ${hh}:${mi}\n※ロック期間中は新規出品・購入確定・取引申し込みができません。`);
+        /* alert hidden */ console.log(`直近で2回取引をキャンセルしたため、24時間のアカウントロック（利用制限）中です。\n\n解除予定： ${mm}/${dd} ${hh}:${mi}\n※ロック期間中は新規出品・購入確定・取引申し込みができません。`);
         return true;
       }
       return false;
@@ -5724,7 +5724,7 @@ window.openAzukariApp = function() {
     
       window.approveBulkTradeByOwner = async function() {
         const t = currentTrade;
-        if (!t || !currentUser || t.ownerId !== currentUser.uid) return alert("この操作は出品者のみ実行できます。");
+        if (!t || !currentUser || t.ownerId !== currentUser.uid) return /* alert hidden */ console.log("この操作は出品者のみ実行できます。");
         try {
           const postRef = doc(db, "posts", t.postId);
           await runTransaction(db, async (tx) => {
@@ -5745,7 +5745,7 @@ window.openAzukariApp = function() {
           await updateDoc(doc(db, "trades", t.id), { agreed: { [t.ownerId]: true, [t.applicantId]: true }, status: "shipping", updatedAt: serverTimestamp() });
           showToast("交換に合意しました！選択された枠が成約確定しました。", "success");
           renderPosts();
-        } catch (err) { alert(err?.message || "合意処理に失敗しました。"); }
+        } catch (err) { /* alert hidden */ console.log(err?.message || "合意処理に失敗しました。"); }
       };
       window.cancelTrade = async function() {
       const t = currentTrade; if (!t || cancellingTrade) return;
@@ -5758,7 +5758,7 @@ window.openAzukariApp = function() {
         await revertBundleTrade(t);
         const isNowLocked = await recordUserCancelAndMaybeLock();
                 if (isNowLocked) {
-                  alert("⚠️ 直近で2回キャンセルが行われたため、利用規約に基づき24時間のアカウントロックが適用されました。\n（ロック中は新規出品・購入確定・取引申し込みが制限されます）");
+                  /* alert hidden */ console.log("⚠️ 直近で2回キャンセルが行われたため、利用規約に基づき24時間のアカウントロックが適用されました。\n（ロック中は新規出品・購入確定・取引申し込みが制限されます）");
                 } else {
                   showToast("取引をキャンセルしました。（直近2回で24時間ロックとなります）", "info");
                 }
@@ -5771,7 +5771,7 @@ window.openAzukariApp = function() {
 
     window.setRating = function(n) { selectedRating = n; document.querySelectorAll("[data-star]").forEach(b => b.className = "text-3xl transition drop-shadow-sm hover:scale-110 " + (Number(b.dataset.star) <= n ? "text-yellow-400" : "text-gray-300")); };
     window.submitReview = async function() {
-      const t = currentTrade; if (!t) return; if (selectedRating < 1) return alert("星を選んでください。");
+      const t = currentTrade; if (!t) return; if (selectedRating < 1) return /* alert hidden */ console.log("星を選んでください。");
       const toId = currentUser.uid === t.ownerId ? t.applicantId : t.ownerId;
       const commentEl = document.getElementById("review-comment");
       const comment = (commentEl && commentEl.value ? commentEl.value : "").trim().slice(0, 200);
@@ -5789,7 +5789,7 @@ window.openAzukariApp = function() {
         reviewState.done = true;
         renderRoom();
         showToast("評価を送信しました", "success");
-      } catch(e) { alert("失敗しました。"); }
+      } catch(e) { /* alert hidden */ console.log("失敗しました。"); }
     };
 
     // この日時以降に作成された出品・取引はアズカリ表示（既存はPayPay）
@@ -5816,7 +5816,7 @@ window.openAzukariApp = function() {
     };
     window.closeTerms = function() { if (hasAgreedLocally()) document.getElementById("terms-modal").classList.add("hidden"); };
     window.onTermsCheck = function() { document.getElementById("terms-agree-btn").disabled = !document.getElementById("terms-check").checked; };
-    window.declineTerms = function() { alert("利用規約に同意いただけない場合は、本サービスをご利用いただけません。"); };
+    window.declineTerms = function() { /* alert hidden */ console.log("利用規約に同意いただけない場合は、本サービスをご利用いただけません。"); };
     
     window.agreeTerms = async function() {
       if (!document.getElementById("terms-check").checked) return;
@@ -6935,7 +6935,7 @@ function getAiCardVectors() {
         renderStaticPackBulkManager();
       };
       window.applySpBulkMember = function() {
-        if (!window._spBulkSelected.size) return alert("カードを選択してください");
+        if (!window._spBulkSelected.size) return /* alert hidden */ console.log("カードを選択してください");
         const m = document.getElementById("spBulkTargetMember").value;
         staticPackCards.forEach(c => { if (window._spBulkSelected.has(c.id)) c.member = m; });
         window._spBulkSelected.clear();
@@ -6943,7 +6943,7 @@ function getAiCardVectors() {
         try { renderMyCardsList(); renderMyCardsMemberTabs(); } catch (_) {}
       };
       window.applySpBulkAlbum = function() {
-        if (!window._spBulkSelected.size) return alert("カードを選択してください");
+        if (!window._spBulkSelected.size) return /* alert hidden */ console.log("カードを選択してください");
         const a = document.getElementById("spBulkTargetAlbum").value;
         staticPackCards.forEach(c => { if (window._spBulkSelected.has(c.id)) c.albumId = a; });
         window._spBulkSelected.clear();
@@ -7672,11 +7672,11 @@ function getAiCardVectors() {
     window.runBatchSheetsToZip = async function() {
       const items = window.batchSheetItems || [];
       if (!items.length) {
-        alert("まとめ画像を1枚以上追加してください。");
+        /* alert hidden */ console.log("まとめ画像を1枚以上追加してください。");
         return;
       }
       if (typeof JSZip === "undefined") {
-        alert("ZIPライブラリ(JSZip)が読み込まれていません。ページを再読み込みしてください。");
+        /* alert hidden */ console.log("ZIPライブラリ(JSZip)が読み込まれていません。ページを再読み込みしてください。");
         return;
       }
 
@@ -7798,7 +7798,7 @@ function getAiCardVectors() {
         }
 
         if (croppedList.length === 0) {
-          alert("切り抜かれたトレカが0枚でした。各シートの「絞り(感度)」スライダーを調整してください。");
+          /* alert hidden */ console.log("切り抜かれたトレカが0枚でした。各シートの「絞り(感度)」スライダーを調整してください。");
           return;
         }
 
@@ -7857,7 +7857,7 @@ function getAiCardVectors() {
           '</div>';
       } catch (e) {
         console.error("runBatchSheetsToZip error:", e);
-        alert("一括切り抜き中にエラーが発生しました: " + (e && e.message ? e.message : e));
+        /* alert hidden */ console.log("一括切り抜き中にエラーが発生しました: " + (e && e.message ? e.message : e));
       } finally {
         if (btn) {
           btn.disabled = false;
@@ -7920,7 +7920,7 @@ function getAiCardVectors() {
             if (window.__isBulkMode || (areaEl && areaEl.dataset.mode === "bundle")) {
               const img = sheetCropState && sheetCropState.img;
               const boxes = ((sheetCropState && sheetCropState.boxes) || []).filter(b => b && b.active !== false && b.w > 8 && b.h > 8);
-              if (!img || !boxes.length) return alert("有効な枠がありません。感度を下げるか「枠の追加」で枠を設定してください。");
+              if (!img || !boxes.length) return /* alert hidden */ console.log("有効な枠がありません。感度を下げるか「枠の追加」で枠を設定してください。");
               const iw = img.naturalWidth || img.width || 1;
               const ih = img.naturalHeight || img.height || 1;
               window.__bulkSlots = boxes.map((b, idx) => {
@@ -7948,7 +7948,7 @@ function getAiCardVectors() {
             }
       const img = sheetCropState && sheetCropState.img;
       const boxes = ((sheetCropState && sheetCropState.boxes) || []).filter(b => b && b.active !== false && b.w > 8 && b.h > 8);
-      if (!img || !boxes.length) return alert("有効な枠がありません。");
+      if (!img || !boxes.length) return /* alert hidden */ console.log("有効な枠がありません。");
       const btn = document.getElementById("sheet-crop-confirm-btn");
       if (btn) { btn.disabled = true; btn.textContent = "切り抜き中..."; }
       const crops = [];
@@ -8612,11 +8612,11 @@ function getAiCardVectors() {
         const boxes = allBoxes.filter(b => b && b.active !== false);
 
         if (!img) {
-          alert("元画像が読み込まれていません。もう一度画像を選んでください。");
+          /* alert hidden */ console.log("元画像が読み込まれていません。もう一度画像を選んでください。");
           return;
         }
         if (!boxes.length) {
-          alert("有効な枠がありません。\nプレビュー上の枠をタップして赤枠（有効）にしてから再度お試しください。\n検出数: " + allBoxes.length);
+          /* alert hidden */ console.log("有効な枠がありません。\nプレビュー上の枠をタップして赤枠（有効）にしてから再度お試しください。\n検出数: " + allBoxes.length);
           return;
         }
 
@@ -8703,10 +8703,10 @@ function getAiCardVectors() {
           if (typeof showToast === "function") {
             showToast(added + "枚のトレカを切り抜いてZIPリストに追加しました！", "success");
           } else {
-            alert(added + "枚をZIPリストに追加しました。");
+            /* alert hidden */ console.log(added + "枚をZIPリストに追加しました。");
           }
         } else {
-          alert("1枚も切り抜けませんでした。\n" + (errors.length ? errors.join("\n") : "不明なエラー"));
+          /* alert hidden */ console.log("1枚も切り抜けませんでした。\n" + (errors.length ? errors.join("\n") : "不明なエラー"));
         }
         if (errors.length && added > 0) {
           console.warn("一部スキップ:", errors);
@@ -8718,7 +8718,7 @@ function getAiCardVectors() {
         }
       } catch (e) {
         console.error("commitSheetAutoCropsToZip fatal", e);
-        alert("切り抜き処理中にエラーが発生しました:\n" + (e && e.message ? e.message : e));
+        /* alert hidden */ console.log("切り抜き処理中にエラーが発生しました:\n" + (e && e.message ? e.message : e));
         const btn = document.getElementById("sheet-crop-confirm-btn");
         if (btn) {
           btn.disabled = false;
@@ -8801,15 +8801,15 @@ function getAiCardVectors() {
     window.adminExportFirestoreToCatalogZip = async function() {
       try {
         if (typeof isAdmin === "function" && !isAdmin()) {
-          alert("管理者のみ実行できます。");
+          /* alert hidden */ console.log("管理者のみ実行できます。");
           return;
         }
         if (!currentUser) {
-          alert("ログインが必要です。");
+          /* alert hidden */ console.log("ログインが必要です。");
           return;
         }
         if (typeof JSZip === "undefined") {
-          return alert("JSZipライブラリが読み込まれていません。ページを再読み込みしてください。");
+          return /* alert hidden */ console.log("JSZipライブラリが読み込まれていません。ページを再読み込みしてください。");
         }
 
         const scopeAlbumOnly = await appConfirm(
@@ -8854,7 +8854,7 @@ function getAiCardVectors() {
           catalogCardsCache = list.filter(c => c.name).map(c => ({ ...c, admin: true }));
           catalogCardsLoaded = true;
         } catch (e) {
-          alert("cardCatalog の取得に失敗しました。\n" + (e && (e.code || e.message) ? (e.code || e.message) : e));
+          /* alert hidden */ console.log("cardCatalog の取得に失敗しました。\n" + (e && (e.code || e.message) ? (e.code || e.message) : e));
           if (btn) btn.disabled = false;
           return;
         }
@@ -8871,7 +8871,7 @@ function getAiCardVectors() {
         }
 
         if (!list.length) {
-          alert("出力対象のカードがありません。");
+          /* alert hidden */ console.log("出力対象のカードがありません。");
           if (btn) btn.disabled = false;
           if (prog) prog.textContent = "";
           return;
@@ -9056,12 +9056,12 @@ function getAiCardVectors() {
           "（写真なし " + skippedNoPhoto + "）/ catalog合計 " + finalList.length + " 件";
         if (prog) prog.textContent = msg;
         showToast("catalog ZIPをダウンロードしました", "success");
-        alert(msg + "\n\nZIP内の catalog.json と cards/ をGitHubの公開先に配置してください。");
+        /* alert hidden */ console.log(msg + "\n\nZIP内の catalog.json と cards/ をGitHubの公開先に配置してください。");
       } catch (e) {
         console.error(e);
         const prog = document.getElementById("admin-zip-progress");
         if (prog) prog.textContent = "❌ エラー: " + (e && e.message ? e.message : e);
-        alert("出力中にエラーが発生しました。\n" + (e && (e.message || e.code) ? (e.message || e.code) : e));
+        /* alert hidden */ console.log("出力中にエラーが発生しました。\n" + (e && (e.message || e.code) ? (e.message || e.code) : e));
       } finally {
         const btn = document.getElementById("admin-export-fs-catalog-btn");
         if (btn) btn.disabled = false;
@@ -9074,7 +9074,7 @@ function getAiCardVectors() {
 window.buildAndDownloadCardPackZip = async function() {
   if (!adminZipPackFiles.length) return;
   if (typeof JSZip === "undefined") {
-    return alert("JSZipライブラリが読み込まれていません。");
+    return /* alert hidden */ console.log("JSZipライブラリが読み込まれていません。");
   }
   const selectedAlbum = document.getElementById("admin-zip-album")?.value || adminCardsAlbum;
   const prefix = (document.getElementById("admin-zip-prefix")?.value || "").trim();
@@ -9183,7 +9183,7 @@ window.buildAndDownloadCardPackZip = async function() {
   } catch (e) {
     console.error(e);
     if (prog) prog.textContent = "エラー: " + (e.message || e);
-    alert("エラー: " + (e.message || e));
+    /* alert hidden */ console.log("エラー: " + (e.message || e));
   } finally {
     if (btn) btn.disabled = false;
   }
@@ -9199,15 +9199,15 @@ window.buildAndDownloadCardPackZip = async function() {
 
     window.adminRegisterZipPackToFirestore = async function() {
       if (typeof isAdmin === "function" && !isAdmin()) {
-        alert("管理者のみ実行できます。");
+        /* alert hidden */ console.log("管理者のみ実行できます。");
         return;
       }
       if (!adminZipPackFiles || !adminZipPackFiles.length) {
-        alert("登録する画像がありません。先に切り抜きまたは画像追加をしてください。");
+        /* alert hidden */ console.log("登録する画像がありません。先に切り抜きまたは画像追加をしてください。");
         return;
       }
       if (!currentUser) {
-        alert("ログインが必要です。");
+        /* alert hidden */ console.log("ログインが必要です。");
         return;
       }
 
@@ -9309,7 +9309,7 @@ window.buildAndDownloadCardPackZip = async function() {
         if (typeof showToast === "function") {
           showToast(successCount + "枚を登録しました。続けて登録できます", "success");
         } else {
-          alert(successCount + "枚を登録しました。\n続けて別の画像を登録できます。");
+          /* alert hidden */ console.log(successCount + "枚を登録しました。\n続けて別の画像を登録できます。");
         }
         if (errors.length) console.warn("一部スキップ:", errors);
 
@@ -9324,7 +9324,7 @@ window.buildAndDownloadCardPackZip = async function() {
       } catch (e) {
         console.error(e);
         if (prog) prog.textContent = "❌ エラー: " + (e && e.message ? e.message : e);
-        alert("登録中にエラーが発生しました（" + successCount + "枚は登録済み）。\n" + (e && (e.code || e.message) ? (e.code || e.message) : e));
+        /* alert hidden */ console.log("登録中にエラーが発生しました（" + successCount + "枚は登録済み）。\n" + (e && (e.code || e.message) ? (e.code || e.message) : e));
       } finally {
         if (btn) {
           btn.disabled = false;
@@ -9444,7 +9444,7 @@ window.buildAndDownloadCardPackZip = async function() {
         }
       } catch (e) {
         console.error(e);
-        alert(`一括登録中にエラーが発生しました（${successCount}枚は登録済み）。\n` + (e?.code || e?.message || ""));
+        /* alert hidden */ console.log(`一括登録中にエラーが発生しました（${successCount}枚は登録済み）。\n` + (e?.code || e?.message || ""));
       } finally {
         if (btn) {
           btn.disabled = false;
@@ -9593,12 +9593,12 @@ window.buildAndDownloadCardPackZip = async function() {
     window.adminDeleteAllVisibleFiltered = async function() {
       try {
         if (typeof isAdmin === "function" && !isAdmin()) {
-          alert("管理者のみ実行できます。");
+          /* alert hidden */ console.log("管理者のみ実行できます。");
           return;
         }
         const ids = getAdminDeletableVisibleIds();
         if (!ids.length) {
-          alert("この絞り込み条件で削除できるカードがありません。\n（静的パックは削除不可です）");
+          /* alert hidden */ console.log("この絞り込み条件で削除できるカードがありません。\n（静的パックは削除不可です）");
           return;
         }
         const album = (ILLIT_CARD_ALBUMS.find(a => a.id === adminCardsAlbum) || {}).name || adminCardsAlbum;
@@ -9634,7 +9634,7 @@ window.buildAndDownloadCardPackZip = async function() {
           try { await idbDelete("catalog_cards"); } catch (_) {}
         }
         adminSelectedCardIds = new Set();
-        alert("削除完了: " + success + "件" + (fail ? "（失敗 " + fail + "）" : ""));
+        /* alert hidden */ console.log("削除完了: " + success + "件" + (fail ? "（失敗 " + fail + "）" : ""));
         showToast("絞り込み削除: " + success + "件" + (fail ? "（失敗" + fail + "）" : ""), fail ? "error" : "success");
         const el = document.getElementById("admin-content");
         if (el && adminTab === "cards") {
@@ -9654,17 +9654,17 @@ window.buildAndDownloadCardPackZip = async function() {
         }
       } catch (e) {
         console.error(e);
-        alert("削除中にエラーが発生しました。\n" + (e && (e.message || e.code) ? (e.message || e.code) : e));
+        /* alert hidden */ console.log("削除中にエラーが発生しました。\n" + (e && (e.message || e.code) ? (e.message || e.code) : e));
       }
     };
     window.adminDeleteSelectedCards = async function() {
       if (typeof isAdmin === "function" && !isAdmin()) {
-        alert("管理者のみ実行できます。");
+        /* alert hidden */ console.log("管理者のみ実行できます。");
         return;
       }
       const ids = Array.from(adminSelectedCardIds);
       if (!ids.length) {
-        alert("削除するカードを選択してください。");
+        /* alert hidden */ console.log("削除するカードを選択してください。");
         return;
       }
       if (!(await appConfirm(
@@ -9715,11 +9715,11 @@ window.buildAndDownloadCardPackZip = async function() {
     window.adminDeduplicateExactIds = async function() {
       try {
         if (typeof isAdmin === "function" && !isAdmin()) {
-          alert("管理者のみ実行できます。");
+          /* alert hidden */ console.log("管理者のみ実行できます。");
           return;
         }
         if (!currentUser) {
-          alert("ログインが必要です。");
+          /* alert hidden */ console.log("ログインが必要です。");
           return;
         }
 
@@ -9736,7 +9736,7 @@ window.buildAndDownloadCardPackZip = async function() {
     // GitHubパック優先のためFirestore全件再取得をスキップ
 
         if (!list.length) {
-          alert("カタログに登録されたカードがありません。\n（管理者追加のカードが0件です）");
+          /* alert hidden */ console.log("カタログに登録されたカードがありません。\n（管理者追加のカードが0件です）");
           return;
         }
 
@@ -9805,7 +9805,7 @@ window.buildAndDownloadCardPackZip = async function() {
         const toDelete = Array.from(toDeleteMap.values());
 
         if (!toDelete.length) {
-          alert(
+          /* alert hidden */ console.log(
             "削除できる重複は見つかりませんでした。\n\n" +
             "チェック内容:\n" +
             "・同じドキュメントIDの重複\n" +
@@ -9855,7 +9855,7 @@ window.buildAndDownloadCardPackZip = async function() {
           try { await idbDelete("catalog_cards"); } catch (_) {}
         }
 
-        alert("削除完了: " + ok + "件" + (fail ? "（失敗 " + fail + "）" : ""));
+        /* alert hidden */ console.log("削除完了: " + ok + "件" + (fail ? "（失敗 " + fail + "）" : ""));
         showToast("重複削除: " + ok + "件" + (fail ? "（失敗" + fail + "）" : ""), fail ? "error" : "success");
         const el = document.getElementById("admin-content");
         if (el && adminTab === "cards") {
@@ -9875,7 +9875,7 @@ window.buildAndDownloadCardPackZip = async function() {
         }
       } catch (e) {
         console.error("adminDeduplicateExactIds", e);
-        alert("処理中にエラーが発生しました。\n" + (e && (e.message || e.code) ? (e.message || e.code) : e));
+        /* alert hidden */ console.log("処理中にエラーが発生しました。\n" + (e && (e.message || e.code) ? (e.message || e.code) : e));
       }
     };
     window.adminRegisterNewCard = async function() {
@@ -9887,8 +9887,8 @@ window.buildAndDownloadCardPackZip = async function() {
       const name = (nameEl?.value || "").trim();
       const member = (memberEl?.value || "").trim();
       const albumId = albumEl?.value || adminCardsAlbum;
-      if (!name) return alert("カード名を入力してください。");
-      if (!ILLIT_CARD_ALBUMS.some(a => a.id === albumId)) return alert("アルバムを選んでください。");
+      if (!name) return /* alert hidden */ console.log("カード名を入力してください。");
+      if (!ILLIT_CARD_ALBUMS.some(a => a.id === albumId)) return /* alert hidden */ console.log("アルバムを選んでください。");
       try {
         const ref = doc(collection(db, "cardCatalog"));
         const cardId = ref.id;
@@ -9934,7 +9934,7 @@ window.buildAndDownloadCardPackZip = async function() {
         }
       } catch (e) {
         console.error(e);
-        alert("登録に失敗しました。\n" + (e?.code || e?.message || ""));
+        /* alert hidden */ console.log("登録に失敗しました。\n" + (e?.code || e?.message || ""));
       }
     };
 
@@ -10020,11 +10020,11 @@ window.buildAndDownloadCardPackZip = async function() {
     window.adminDeduplicateCatalogCards = async function() {
       try {
         if (typeof isAdmin === "function" && !isAdmin()) {
-          alert("管理者のみ実行できます。");
+          /* alert hidden */ console.log("管理者のみ実行できます。");
           return;
         }
         if (!currentUser) {
-          alert("ログインが必要です。");
+          /* alert hidden */ console.log("ログインが必要です。");
           return;
         }
 
@@ -10052,12 +10052,12 @@ window.buildAndDownloadCardPackZip = async function() {
           catalogCardsLoaded = true;
         } catch (e) {
           console.warn("cardCatalog refresh", e);
-          alert("カタログの取得に失敗しました。\n" + (e && (e.code || e.message) ? (e.code || e.message) : e));
+          /* alert hidden */ console.log("カタログの取得に失敗しました。\n" + (e && (e.code || e.message) ? (e.code || e.message) : e));
           return;
         }
 
         if (!list.length) {
-          alert("カタログに登録されたカードがありません。\n（管理者追加のカードが0件です）");
+          /* alert hidden */ console.log("カタログに登録されたカードがありません。\n（管理者追加のカードが0件です）");
           return;
         }
 
@@ -10107,7 +10107,7 @@ window.buildAndDownloadCardPackZip = async function() {
         }
 
         if (withPhoto.length < 2) {
-          alert(
+          /* alert hidden */ console.log(
             "比較できる写真付きカードが足りません。\n" +
             "カタログ: " + list.length + " 件 / 写真あり: " + withPhoto.length + " 件"
           );
@@ -10161,7 +10161,7 @@ window.buildAndDownloadCardPackZip = async function() {
         }
 
         if (!toDelete.length) {
-          alert(
+          /* alert hidden */ console.log(
             "完全に同一の画像重複は見つかりませんでした。\n\n" +
             "比較した写真: " + withPhoto.length + " 件\n" +
             "ハッシュ成功: " + hashed.length + " 件\n" +
@@ -10205,7 +10205,7 @@ window.buildAndDownloadCardPackZip = async function() {
           try { await idbDelete("catalog_cards"); } catch (_) {}
         }
 
-        alert("画像重複削除 完了: " + ok + "件" + (fail ? "（失敗 " + fail + "）" : ""));
+        /* alert hidden */ console.log("画像重複削除 完了: " + ok + "件" + (fail ? "（失敗 " + fail + "）" : ""));
         showToast("画像重複削除: " + ok + "件" + (fail ? "（失敗" + fail + "）" : ""), fail ? "error" : "success");
         const el = document.getElementById("admin-content");
         if (el && adminTab === "cards" && typeof renderAdminCardsPanel === "function") {
@@ -10217,7 +10217,7 @@ window.buildAndDownloadCardPackZip = async function() {
         }
       } catch (e) {
         console.error("adminDeduplicateCatalogCards", e);
-        alert("処理中にエラーが発生しました。\n" + (e && (e.message || e.code) ? (e.message || e.code) : e));
+        /* alert hidden */ console.log("処理中にエラーが発生しました。\n" + (e && (e.message || e.code) ? (e.message || e.code) : e));
       }
     };
 
@@ -10247,7 +10247,7 @@ window.buildAndDownloadCardPackZip = async function() {
   }
         if (isMyCardsPageOpen()) renderMyCardsList();
       } catch (e) {
-        alert("削除に失敗しました。");
+        /* alert hidden */ console.log("削除に失敗しました。");
       }
     };
     window.adminUploadCardPhoto = async function(cardId, inputEl) {
@@ -10257,7 +10257,7 @@ window.buildAndDownloadCardPackZip = async function() {
       if (!file) return;
       try {
         const dataUrl = await compressCardWithWatermark(file, PHOTO_THUMB);
-        if (!isJpegData(dataUrl)) return alert("画像の処理に失敗しました。");
+        if (!isJpegData(dataUrl)) return /* alert hidden */ console.log("画像の処理に失敗しました。");
         await setDoc(doc(db, "cardPhotos", cardId), {
           data: dataUrl,
           updatedAt: serverTimestamp(),
@@ -10281,7 +10281,7 @@ window.buildAndDownloadCardPackZip = async function() {
         if (isMyCardsPageOpen()) renderMyCardsList();
       } catch (e) {
         console.error(e);
-        alert("登録に失敗しました。\n" + (e?.code || e?.message || ""));
+        /* alert hidden */ console.log("登録に失敗しました。\n" + (e?.code || e?.message || ""));
       }
     };
     window.adminDeleteCardPhoto = async function(cardId) {
@@ -10306,7 +10306,7 @@ window.buildAndDownloadCardPackZip = async function() {
   }
         if (isMyCardsPageOpen()) renderMyCardsList();
       } catch (e) {
-        alert("削除に失敗しました。");
+        /* alert hidden */ console.log("削除に失敗しました。");
       }
     };
 
@@ -10394,7 +10394,7 @@ window.buildAndDownloadCardPackZip = async function() {
       } catch (e) {
         console.error(e);
         if (resultEl) resultEl.innerHTML = '<div class="text-center py-2 text-red-500">検索に失敗しました</div>';
-        alert("画像検索に失敗しました: " + (e && e.message ? e.message : e));
+        /* alert hidden */ console.log("画像検索に失敗しました: " + (e && e.message ? e.message : e));
       }
     };
 
@@ -10820,7 +10820,7 @@ window.buildAndDownloadCardPackZip = async function() {
       const albumId = document.getElementById("add-card-album").value;
       const name = document.getElementById("add-card-name").value.trim();
       const member = document.getElementById("add-card-member").value;
-      if (!name) return alert("カード名を入力してください。");
+      if (!name) return /* alert hidden */ console.log("カード名を入力してください。");
       const id = "custom_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
       const list = [...(userData.customCards || [])];
       list.push({ id, name, member, albumId, custom: true });
@@ -11396,7 +11396,7 @@ window.commitSheetAutoCropsToZip = async function() {
     const allBoxes = (sheetCropState && sheetCropState.boxes) ? sheetCropState.boxes : [];
     const boxes = allBoxes.filter(b => b && b.active !== false);
     if (!img || !boxes.length) {
-      alert("有効な枠がありません。");
+      /* alert hidden */ console.log("有効な枠がありません。");
       return;
     }
     const btn = document.getElementById("sheet-crop-confirm-btn");
@@ -11468,7 +11468,7 @@ window.commitSheetAutoCropsToZip = async function() {
     if (btn) { btn.disabled = false; btn.textContent = "✂️ 切り抜いて次へ"; }
   } catch (e) {
     console.error(e);
-    alert("エラー: " + (e.message || e));
+    /* alert hidden */ console.log("エラー: " + (e.message || e));
   }
 };
 
@@ -11639,7 +11639,7 @@ window.commitSheetAutoCropsToZip = async function() {
 
   window.openBulkSlotEditor = function() {
     const src = getUploadedPhotoSrc();
-    if (!src) return alert("先に「写真を追加」からトレカが写った写真を1枚選択してください！");
+    if (!src) return /* alert hidden */ console.log("先に「写真を追加」からトレカが写った写真を1枚選択してください！");
     document.getElementById("bulk-editor-img").src = src;
     if (window.__bulkSlots.length === 0) window.generateBulkGrid(2, 3);
     else renderBulkEditorOverlay();
@@ -11648,7 +11648,7 @@ window.commitSheetAutoCropsToZip = async function() {
 
   window.closeBulkSlotEditor = function() { document.getElementById("bulk-slot-editor-modal").classList.add("hidden"); };
   window.saveBulkSlotsAndClose = function() {
-    if (window.__bulkSlots.length === 0) return alert("少なくとも1つ以上の枠を設定してください。");
+    if (window.__bulkSlots.length === 0) return /* alert hidden */ console.log("少なくとも1つ以上の枠を設定してください。");
     updateBulkSlotBadge();
     closeBulkSlotEditor();
   };
@@ -11767,7 +11767,7 @@ window.commitSheetAutoCropsToZip = async function() {
   }
 
   window.confirmBulkSelectionAndApply = function() {
-    if (window.__bulkSelectedSlotIds.size === 0) return alert("交換したいトレカの枠を1つ以上タップして「×」をつけてください。");
+    if (window.__bulkSelectedSlotIds.size === 0) return /* alert hidden */ console.log("交換したいトレカの枠を1つ以上タップして「×」をつけてください。");
     window.__pendingBulkSlotIds = Array.from(window.__bulkSelectedSlotIds);
     closeBulkSelectModal();
     if (typeof window.__proceedOriginalTradeApply === "function") window.__proceedOriginalTradeApply();
@@ -11909,11 +11909,11 @@ function det(img,sens){const mw=400,sc=Math.min(1,mw/(img.naturalWidth||img.widt
 const hist=new Map();let bestC=0,br=240,bg=240,bb=240;for(let y=1;y<ht-1;y+=2)for(let i=1;i<w-1;i+=2){const p=(y*w+i)*4,qr=d[p]>>4,qg=d[p+1]>>4,qb=d[p+2]>>4,k=qr+","+qg+","+qb,cnt=(hist.get(k)||0)+1;hist.set(k,cnt);if(cnt>bestC){bestC=cnt;br=qr*16+8;bg=qg*16+8;bb=qb*16+8;}}
 const isWhiteBg=br>225&&bg>225&&bb>225,rawFg=new Uint8Array(w*ht),fg=new Uint8Array(w*ht),vs=new Uint8Array(w*ht),wCut=Math.min(249,Math.max(198,253-sens*0.7)),cTol=Math.max(12,(58-sens)*1.1),eTol=Math.max(10,(58-sens)*0.9);for(let y=2;y<ht-2;y++)for(let i=2;i<w-2;i++){const idx=y*w+i,p=idx*4,r=d[p],g=d[p+1],b=d[p+2];if(isWhiteBg){const lum=(r+g+b)/3,sat=Math.max(r,g,b)-Math.min(r,g,b);if(lum<wCut||sat>16)rawFg[idx]=1;}else{const pR=(idx+2)*4,pD=(idx+w*2)*4,df=Math.sqrt((r-br)**2+(g-bg)**2+(b-bb)**2)*0.62,gx=(Math.abs(r-d[pR])+Math.abs(g-d[pR+1])+Math.abs(b-d[pR+2]))/3,gy=(Math.abs(r-d[pD])+Math.abs(g-d[pD+1])+Math.abs(b-d[pD+2]))/3;if(df>cTol||gx>eTol||gy>eTol)rawFg[idx]=1;}}for(let y=2;y<ht-2;y++)for(let i=2;i<w-2;i++){const idx=y*w+i;let cnt=0;for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++)if(rawFg[(y+dy)*w+(i+dx)])cnt++;if(cnt>=4)fg[idx]=1;}
 const out=[],qx=new Int32Array(w*ht),qy=new Int32Array(w*ht);for(let y=3;y<ht-3;y++)for(let i=3;i<w-3;i++){const idx=y*w+i;if(!fg[idx]||vs[idx])continue;let hd=0,tl=0;qx[tl]=i;qy[tl]=y;tl++;vs[idx]=1;let x0=i,x1=i,y0=y,y1=y,ar=0;while(hd<tl){const cx=qx[hd],cy=qy[hd];hd++;ar++;if(cx<x0)x0=cx;if(cx>x1)x1=cx;if(cy<y0)y0=cy;if(cy>y1)y1=cy;for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]]){const nx=cx+dx,ny=cy+dy;if(nx>2&&nx<w-3&&ny>2&&ny<ht-3){const ni=ny*w+nx;if(fg[ni]&&!vs[ni]){vs[ni]=1;qx[tl]=nx;qy[tl]=ny;tl++;}}}}const bw=x1-x0+1,bh=y1-y0+1,wp=(bw/w)*100,hp=(bh/ht)*100,fill=ar/(bw*bh);if(wp>=5&&hp>=6.5&&fill>=0.38){if(!isWhiteBg&&wp>35&&wp<=92&&hp<=70&&bh/bw<1.25){const cols=wp>62?3:2,cw=wp/cols;for(let k=0;k<cols;k++)out.push({x:+(x0/w*100+cw*k+0.5).toFixed(2),y:+(y0/ht*100).toFixed(2),w:+(cw-1).toFixed(2),h:+hp.toFixed(2),r:0});}else if(wp<=(isWhiteBg?34:48)&&hp<=(isWhiteBg?44:68)&&bh/bw>=0.55&&bh/bw<=2.35){out.push({x:+(x0/w*100).toFixed(2),y:+(y0/ht*100).toFixed(2),w:+wp.toFixed(2),h:+hp.toFixed(2),r:0});}}}if(out.length>=3){const sw=out.map(v=>v.w).sort((a,b)=>a-b)[Math.floor(out.length/2)],sh=out.map(v=>v.h).sort((a,b)=>a-b)[Math.floor(out.length/2)];out.forEach(v=>{if(Math.abs(v.w-sw)<sw*0.3){v.x=+(v.x+(v.w-sw)/2).toFixed(2);v.w=sw;}if(Math.abs(v.h-sh)<sh*0.3){v.y=+(v.y+(v.h-sh)/2).toFixed(2);v.h=sh;}});}out.sort((a,c)=>Math.abs(a.y-c.y)<7?a.x-c.x:a.y-c.y);return out.length?out:[{x:8,y:15,w:26,h:38,r:0},{x:37,y:15,w:26,h:38,r:0},{x:66,y:15,w:26,h:38,r:0}];}
-function rnd(host,src){host.innerHTML=`<div id="inline-bulk-editor" class="bg-white border-2 border-purple-300 rounded-2xl p-3 space-y-2 shadow-md"><div class="bg-amber-50 border border-amber-200 rounded-xl px-2.5 py-2 text-[11px] text-amber-900 space-y-0.5"><div class="font-bold">📸 自動認識しやすくする撮影のコツ</div><div>・<b>無地の背景</b>（白・黒・単色の机など）の上で真上から撮る</div><div>・カード同士は<b>少し隙間を空けて</b>並べる</div><div>・スリーブの<b>光の反射や影</b>がかからないようにする</div></div><div class="flex justify-between text-xs font-bold text-purple-900"><span>🎯 ドラッグ移動・右下でサイズ調整(${b.length}枠)</span><span class="text-pink-600">バラバラOK</span></div><div class="flex items-center gap-2 bg-purple-50 px-2 py-1 rounded-xl"><span class="text-[11px] font-bold text-purple-800">感度</span><input id="ibs" type="range" min="5" max="55" value="${sn}" class="flex-1 accent-purple-600"/><button type="button" id="ibr" class="px-2 py-1 rounded bg-purple-600 text-white text-[11px] font-bold">再検出</button></div><div class="relative mx-auto w-fit max-w-full rounded-xl overflow-hidden border select-none touch-none bg-gray-900"><img src="${src}" class="block max-h-[50vh] w-auto object-contain pointer-events-none"/><div id="ibo" class="absolute inset-0"></div></div><div class="grid grid-cols-3 gap-1.5 text-xs font-bold"><button type="button" id="iba" class="py-2 rounded-xl bg-purple-100 text-purple-900">＋枠追加</button><button type="button" id="ibd" class="py-2 rounded-xl bg-rose-100 text-rose-700">選択解除</button><button type="button" id="ibc" class="py-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-500 text-white">✅ 枠確定</button></div></div>`;const ov=document.getElementById("ibo");ov.style.pointerEvents="auto";ov.addEventListener("click",e=>{if(e.target!==ov)return;const r=ov.getBoundingClientRect(),w=b.length?b[0].w:22,h2=b.length?b[0].h:32,x=Math.max(0,Math.min(100-w,+(((e.clientX-r.left)/r.width)*100-w/2).toFixed(2))),y=Math.max(0,Math.min(100-h2,+(((e.clientY-r.top)/r.height)*100-h2/2).toFixed(2)));b.push({x,y,w,h:h2,r:0});si=b.length-1;drw();});function drw(){ov.innerHTML="";b.forEach((v,i)=>{if(typeof v.r!=="number")v.r=0;const s=i===si,el=document.createElement("div");el.style.cssText=`position:absolute;left:${v.x}%;top:${v.y}%;width:${v.w}%;height:${v.h}%;transform:rotate(${v.r}deg);transform-origin:center center;border:2.5px solid ${s?"#ec4899":"#06b6d4"};background:${s?"rgba(236,72,153,.28)":"rgba(6,182,212,.18)"};border-radius:6px;touch-action:none;cursor:move;z-index:${s?20:10};`;el.innerHTML=`<span style="position:absolute;top:1px;left:2px;background:#000c;color:#fff;font-size:10px;font-weight:bold;padding:0 4px;border-radius:4px;pointer-events:none">#${i+1}</span><div data-rot="1" style="position:absolute;top:-22px;left:50%;transform:translateX(-50%);width:22px;height:22px;background:#3b82f6;border:2px solid #fff;border-radius:50%;touch-action:none;cursor:grab;box-shadow:0 2px 5px #0006;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:bold">↻</div><div data-r="1" style="position:absolute;right:-10px;bottom:-10px;width:24px;height:24px;background:#ec4899;border:2.5px solid #fff;border-radius:50%;touch-action:none;cursor:nwse-resize;box-shadow:0 2px 6px #0006"></div>`;let sx=0,sy=0,ox=v.x,oy=v.y,ow=v.w,oh=v.h,md=0,dg=false;const st=(cx,cy,tg)=>{si=i;md=(tg&&tg.dataset&&tg.dataset.rot==="1")?2:(tg&&tg.dataset&&tg.dataset.r==="1")?1:0;sx=cx;sy=cy;ox=v.x;oy=v.y;ow=v.w;oh=v.h;dg=true;ov.querySelectorAll("div[data-box]").forEach((d,k)=>{const a=k===i;d.style.borderColor=a?"#ec4899":"#06b6d4";d.style.background=a?"rgba(236,72,153,.28)":"rgba(6,182,212,.18)";d.style.zIndex=a?"20":"10";});};const mv=(cx,cy)=>{if(!dg)return;const r=ov.getBoundingClientRect();if(md===2){const bx=r.left+(v.x+v.w/2)/100*r.width,by=r.top+(v.y+v.h/2)/100*r.height;v.r=Math.round(Math.atan2(cy-by,cx-bx)*180/Math.PI+90);el.style.transform=`rotate(${v.r}deg)`;return;}const dx=((cx-sx)/r.width)*100,dy=((cy-sy)/r.height)*100;if(md===1){v.w=Math.max(4,Math.min(100-v.x,+(ow+dx).toFixed(2)));v.h=Math.max(4,Math.min(100-v.y,+(oh+dy).toFixed(2)));}else{v.x=Math.max(0,Math.min(100-v.w,+(ox+dx).toFixed(2)));v.y=Math.max(0,Math.min(100-v.h,+(oy+dy).toFixed(2)));}el.style.left=v.x+"%";el.style.top=v.y+"%";el.style.width=v.w+"%";el.style.height=v.h+"%";};el.dataset.box="1";el.addEventListener("touchstart",e=>{e.preventDefault();e.stopPropagation();const t=e.touches[0];st(t.clientX,t.clientY,e.target);},{passive:false});el.addEventListener("touchmove",e=>{e.preventDefault();e.stopPropagation();const t=e.touches[0];mv(t.clientX,t.clientY);},{passive:false});el.addEventListener("touchend",()=>{dg=false;});el.onpointerdown=e=>{if(e.pointerType==="touch")return;e.stopPropagation();st(e.clientX,e.clientY,e.target);el.setPointerCapture(e.pointerId);};el.onpointermove=e=>{if(e.pointerType==="touch"||!dg)return;mv(e.clientX,e.clientY);};el.onpointerup=()=>{dg=false;};ov.appendChild(el);});}drw();document.getElementById("ibs").oninput=e=>sn=+e.target.value;document.getElementById("ibr").onclick=()=>{if(li){b=det(li,sn);si=b.length?0:-1;rnd(host,src);}};document.getElementById("iba").onclick=()=>{b.push({x:15+(b.length*4)%40,y:15+(b.length*4)%40,w:22,h:32,r:0});si=b.length-1;rnd(host,src);};document.getElementById("ibd").onclick=()=>{if(si>=0&&b[si]){b.splice(si,1);si=b.length?0:-1;rnd(host,src);}else alert("解除したい枠を先にタップしてください");};document.getElementById("ibc").onclick=()=>{if(!b.length)return alert("1つ以上枠を設定してください");window.__isBulkMode=true;window.__bulkSlots=b.map((v,i)=>({id:"slot_"+(i+1),x:v.x,y:v.y,w:v.w,h:v.h,r:v.r||0,sold:false,tradeId:null}));const dt=document.getElementById("bundle-detect");if(dt)dt.innerHTML=`<span class="text-emerald-700 font-bold">✅ ${window.__bulkSlots.length}枠確定！下の「出品する」を押してください</span>`;host.innerHTML="";};}
+function rnd(host,src){host.innerHTML=`<div id="inline-bulk-editor" class="bg-white border-2 border-purple-300 rounded-2xl p-3 space-y-2 shadow-md"><div class="bg-amber-50 border border-amber-200 rounded-xl px-2.5 py-2 text-[11px] text-amber-900 space-y-0.5"><div class="font-bold">📸 自動認識しやすくする撮影のコツ</div><div>・<b>無地の背景</b>（白・黒・単色の机など）の上で真上から撮る</div><div>・カード同士は<b>少し隙間を空けて</b>並べる</div><div>・スリーブの<b>光の反射や影</b>がかからないようにする</div></div><div class="flex justify-between text-xs font-bold text-purple-900"><span>🎯 ドラッグ移動・右下でサイズ調整(${b.length}枠)</span><span class="text-pink-600">バラバラOK</span></div><div class="flex items-center gap-2 bg-purple-50 px-2 py-1 rounded-xl"><span class="text-[11px] font-bold text-purple-800">感度</span><input id="ibs" type="range" min="5" max="55" value="${sn}" class="flex-1 accent-purple-600"/><button type="button" id="ibr" class="px-2 py-1 rounded bg-purple-600 text-white text-[11px] font-bold">再検出</button></div><div class="relative mx-auto w-fit max-w-full rounded-xl overflow-hidden border select-none touch-none bg-gray-900"><img src="${src}" class="block max-h-[50vh] w-auto object-contain pointer-events-none"/><div id="ibo" class="absolute inset-0"></div></div><div class="grid grid-cols-3 gap-1.5 text-xs font-bold"><button type="button" id="iba" class="py-2 rounded-xl bg-purple-100 text-purple-900">＋枠追加</button><button type="button" id="ibd" class="py-2 rounded-xl bg-rose-100 text-rose-700">選択解除</button><button type="button" id="ibc" class="py-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-500 text-white">✅ 枠確定</button></div></div>`;const ov=document.getElementById("ibo");ov.style.pointerEvents="auto";ov.addEventListener("click",e=>{if(e.target!==ov)return;const r=ov.getBoundingClientRect(),w=b.length?b[0].w:22,h2=b.length?b[0].h:32,x=Math.max(0,Math.min(100-w,+(((e.clientX-r.left)/r.width)*100-w/2).toFixed(2))),y=Math.max(0,Math.min(100-h2,+(((e.clientY-r.top)/r.height)*100-h2/2).toFixed(2)));b.push({x,y,w,h:h2,r:0});si=b.length-1;drw();});function drw(){ov.innerHTML="";b.forEach((v,i)=>{if(typeof v.r!=="number")v.r=0;const s=i===si,el=document.createElement("div");el.style.cssText=`position:absolute;left:${v.x}%;top:${v.y}%;width:${v.w}%;height:${v.h}%;transform:rotate(${v.r}deg);transform-origin:center center;border:2.5px solid ${s?"#ec4899":"#06b6d4"};background:${s?"rgba(236,72,153,.28)":"rgba(6,182,212,.18)"};border-radius:6px;touch-action:none;cursor:move;z-index:${s?20:10};`;el.innerHTML=`<span style="position:absolute;top:1px;left:2px;background:#000c;color:#fff;font-size:10px;font-weight:bold;padding:0 4px;border-radius:4px;pointer-events:none">#${i+1}</span><div data-rot="1" style="position:absolute;top:-22px;left:50%;transform:translateX(-50%);width:22px;height:22px;background:#3b82f6;border:2px solid #fff;border-radius:50%;touch-action:none;cursor:grab;box-shadow:0 2px 5px #0006;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:bold">↻</div><div data-r="1" style="position:absolute;right:-10px;bottom:-10px;width:24px;height:24px;background:#ec4899;border:2.5px solid #fff;border-radius:50%;touch-action:none;cursor:nwse-resize;box-shadow:0 2px 6px #0006"></div>`;let sx=0,sy=0,ox=v.x,oy=v.y,ow=v.w,oh=v.h,md=0,dg=false;const st=(cx,cy,tg)=>{si=i;md=(tg&&tg.dataset&&tg.dataset.rot==="1")?2:(tg&&tg.dataset&&tg.dataset.r==="1")?1:0;sx=cx;sy=cy;ox=v.x;oy=v.y;ow=v.w;oh=v.h;dg=true;ov.querySelectorAll("div[data-box]").forEach((d,k)=>{const a=k===i;d.style.borderColor=a?"#ec4899":"#06b6d4";d.style.background=a?"rgba(236,72,153,.28)":"rgba(6,182,212,.18)";d.style.zIndex=a?"20":"10";});};const mv=(cx,cy)=>{if(!dg)return;const r=ov.getBoundingClientRect();if(md===2){const bx=r.left+(v.x+v.w/2)/100*r.width,by=r.top+(v.y+v.h/2)/100*r.height;v.r=Math.round(Math.atan2(cy-by,cx-bx)*180/Math.PI+90);el.style.transform=`rotate(${v.r}deg)`;return;}const dx=((cx-sx)/r.width)*100,dy=((cy-sy)/r.height)*100;if(md===1){v.w=Math.max(4,Math.min(100-v.x,+(ow+dx).toFixed(2)));v.h=Math.max(4,Math.min(100-v.y,+(oh+dy).toFixed(2)));}else{v.x=Math.max(0,Math.min(100-v.w,+(ox+dx).toFixed(2)));v.y=Math.max(0,Math.min(100-v.h,+(oy+dy).toFixed(2)));}el.style.left=v.x+"%";el.style.top=v.y+"%";el.style.width=v.w+"%";el.style.height=v.h+"%";};el.dataset.box="1";el.addEventListener("touchstart",e=>{e.preventDefault();e.stopPropagation();const t=e.touches[0];st(t.clientX,t.clientY,e.target);},{passive:false});el.addEventListener("touchmove",e=>{e.preventDefault();e.stopPropagation();const t=e.touches[0];mv(t.clientX,t.clientY);},{passive:false});el.addEventListener("touchend",()=>{dg=false;});el.onpointerdown=e=>{if(e.pointerType==="touch")return;e.stopPropagation();st(e.clientX,e.clientY,e.target);el.setPointerCapture(e.pointerId);};el.onpointermove=e=>{if(e.pointerType==="touch"||!dg)return;mv(e.clientX,e.clientY);};el.onpointerup=()=>{dg=false;};ov.appendChild(el);});}drw();document.getElementById("ibs").oninput=e=>sn=+e.target.value;document.getElementById("ibr").onclick=()=>{if(li){b=det(li,sn);si=b.length?0:-1;rnd(host,src);}};document.getElementById("iba").onclick=()=>{b.push({x:15+(b.length*4)%40,y:15+(b.length*4)%40,w:22,h:32,r:0});si=b.length-1;rnd(host,src);};document.getElementById("ibd").onclick=()=>{if(si>=0&&b[si]){b.splice(si,1);si=b.length?0:-1;rnd(host,src);}else /* alert hidden */ console.log("解除したい枠を先にタップしてください");};document.getElementById("ibc").onclick=()=>{if(!b.length)return /* alert hidden */ console.log("1つ以上枠を設定してください");window.__isBulkMode=true;window.__bulkSlots=b.map((v,i)=>({id:"slot_"+(i+1),x:v.x,y:v.y,w:v.w,h:v.h,r:v.r||0,sold:false,tradeId:null}));const dt=document.getElementById("bundle-detect");if(dt)dt.innerHTML=`<span class="text-emerald-700 font-bold">✅ ${window.__bulkSlots.length}枠確定！下の「出品する」を押してください</span>`;host.innerHTML="";};}
 window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.isBulkMode||(document.getElementById("bulk-mode-panel")&&!document.getElementById("bulk-mode-panel").classList.contains("hidden")));if(!_b){const _bx=document.getElementById("bundle-box");if(_bx)_bx.classList.add("hidden");return;}const src=gSrc();if(!src){const _b2=document.getElementById("bundle-box");if(_b2)_b2.classList.remove("hidden");const _h=document.getElementById("bundle-crop-host");if(_h)_h.innerHTML='<p class="text-xs text-purple-700 font-bold py-2 text-center">写真を1枚入れると枠を自動検出します</p>';return;}const bx=document.getElementById("bundle-box");if(bx)bx.classList.remove("hidden");const host=document.getElementById("bundle-crop-host");if(!host)return;host.innerHTML="<p class=\"text-xs text-purple-700 font-bold py-2 text-center\">🔍 自動検出中...</p>";const im=new Image();im.crossOrigin="anonymous";im.onload=()=>{li=im;b=det(im,sn);si=b.length?0:-1;rnd(host,src);};im.onerror=()=>{b=[{x:10,y:10,w:35,h:45},{x:55,y:10,w:35,h:45}];si=0;rnd(host,src);};im.src=src;};let lastS="";setInterval(()=>{const s=gSrc();if(s&&s!==lastS){lastS=s;window.openBundleFrameEditor();}},600);})();</script>
 
 
-<script>(function(){let st=null,gm="2x3",gCnt=6,gBoxes=[],torchOn=false;const mkBoxes=m=>{const[r,c]=m.split("x").map(Number),ar=4/3,cardRatio=1.55,gx=2.5,gy=3.2,maxW=(86-gx*(c-1))/c,maxH=(86-gy*(r-1))/r;let cw=maxW,ch=cw*ar*cardRatio;if(ch>maxH){ch=maxH;cw=ch/(ar*cardRatio);}cw=+cw.toFixed(2);ch=+ch.toFixed(2);const totW=cw*c+gx*(c-1),totH=ch*r+gy*(r-1),sx=(100-totW)/2,sy=(100-totH)/2,res=[];for(let i=0;i<r;i++)for(let j=0;j<c;j++)res.push({x:+(sx+j*(cw+gx)).toFixed(2),y:+(sy+i*(ch+gy)).toFixed(2),w:cw,h:ch,r:0});return res.slice(0,gCnt);};const drawG=()=>{const ov=document.getElementById("guide-cam-ov");if(!ov)return;gBoxes=mkBoxes(gm);ov.innerHTML=gBoxes.map((v,i)=>`<div style="position:absolute;left:${v.x}%;top:${v.y}%;width:${v.w}%;height:${v.h}%;border:2px dashed #22d3ee;background:rgba(34,211,238,0.12);border-radius:6px"><span style="position:absolute;top:2px;left:4px;background:#000a;color:#fff;font-size:10px;padding:0 4px;border-radius:4px">#${i+1}</span></div>`).join("");};const startCam=async()=>{const vd=document.getElementById("guide-cam-vid"),msg=document.getElementById("cam-start-msg");if(!vd)return;if(st&&vd.srcObject===st)return;try{st=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false});vd.srcObject=st;await vd.play();if(msg)msg.style.display="none";drawG();}catch(e){alert("カメラ起動エラー: "+e.message);}};document.addEventListener("input",e=>{if(e.target&&e.target.id==="cam-bright"){const v=e.target.value,vd=document.getElementById("guide-cam-vid"),vl=document.getElementById("cam-bright-val");if(vl)vl.textContent=v+"%";if(vd)vd.style.filter=`brightness(${v}%) contrast(104%)`;}});document.addEventListener("click",async e=>{const gBtn=e.target.closest("#cam-grid-btns button");if(gBtn){gm=gBtn.dataset.g;const[rr,cc]=gm.split("x").map(Number);gCnt=rr*cc;const cv=document.getElementById("cam-cnt-val");if(cv)cv.textContent=gCnt;document.querySelectorAll("#cam-grid-btns button").forEach(x=>x.className=x===gBtn?"px-2 py-0.5 rounded bg-purple-600 font-bold":"px-2 py-0.5 rounded bg-white/15 font-bold");drawG();return;}if(e.target.closest("#cam-cnt-minus")){gCnt=Math.max(1,gCnt-1);const cv=document.getElementById("cam-cnt-val");if(cv)cv.textContent=gCnt;drawG();return;}if(e.target.closest("#cam-cnt-plus")){const[rr,cc]=gm.split("x").map(Number);gCnt=Math.min(rr*cc,gCnt+1);const cv=document.getElementById("cam-cnt-val");if(cv)cv.textContent=gCnt;drawG();return;}if(e.target.closest("#manual-cam-start")){startCam();return;}if(e.target.closest("#cam-torch-btn")){if(!st)return alert("先にカメラを起動してください");const tr=st.getVideoTracks()[0];if(!tr)return;try{torchOn=!torchOn;await tr.applyConstraints({advanced:[{torch:torchOn}]});const tb=document.getElementById("cam-torch-btn");if(tb)tb.className=torchOn?"px-2 py-0.5 rounded bg-yellow-400 text-black font-bold":"px-2 py-0.5 rounded bg-white/15 font-bold";}catch(err){alert("この端末のブラウザはライト点灯に非対応です");}return;}if(e.target.closest("#snap-guide-cam")){const vd=document.getElementById("guide-cam-vid"),brSl=document.getElementById("cam-bright");if(!vd||!vd.videoWidth)return alert("先に「📷 ガイド枠カメラを起動」を押してください");if(!gBoxes.length)drawG();const cv=document.createElement("canvas");cv.width=vd.videoWidth;cv.height=vd.videoHeight;const cx=cv.getContext("2d");cx.filter=`brightness(${brSl?brSl.value:115}%) contrast(104%)`;cx.drawImage(vd,0,0);window.__presetGuideBoxes=JSON.parse(JSON.stringify(gBoxes));cv.toBlob(bl=>{const f=new File([bl],"guide_shot.jpg",{type:"image/jpeg"}),dt=new DataTransfer();dt.items.add(f);const box=document.getElementById("inline-guide-cam-box");const inp=(box&&box.parentElement?box.parentElement.querySelector("input[type=file]"):null)||document.querySelector("input[type=file]");if(inp){inp.files=dt.files;inp.dispatchEvent(new Event("change",{bubbles:true}));}},"image/jpeg",0.92);}});setTimeout(drawG,300);})();</script>
+<script>(function(){let st=null,gm="2x3",gCnt=6,gBoxes=[],torchOn=false;const mkBoxes=m=>{const[r,c]=m.split("x").map(Number),ar=4/3,cardRatio=1.55,gx=2.5,gy=3.2,maxW=(86-gx*(c-1))/c,maxH=(86-gy*(r-1))/r;let cw=maxW,ch=cw*ar*cardRatio;if(ch>maxH){ch=maxH;cw=ch/(ar*cardRatio);}cw=+cw.toFixed(2);ch=+ch.toFixed(2);const totW=cw*c+gx*(c-1),totH=ch*r+gy*(r-1),sx=(100-totW)/2,sy=(100-totH)/2,res=[];for(let i=0;i<r;i++)for(let j=0;j<c;j++)res.push({x:+(sx+j*(cw+gx)).toFixed(2),y:+(sy+i*(ch+gy)).toFixed(2),w:cw,h:ch,r:0});return res.slice(0,gCnt);};const drawG=()=>{const ov=document.getElementById("guide-cam-ov");if(!ov)return;gBoxes=mkBoxes(gm);ov.innerHTML=gBoxes.map((v,i)=>`<div style="position:absolute;left:${v.x}%;top:${v.y}%;width:${v.w}%;height:${v.h}%;border:2px dashed #22d3ee;background:rgba(34,211,238,0.12);border-radius:6px"><span style="position:absolute;top:2px;left:4px;background:#000a;color:#fff;font-size:10px;padding:0 4px;border-radius:4px">#${i+1}</span></div>`).join("");};const startCam=async()=>{const vd=document.getElementById("guide-cam-vid"),msg=document.getElementById("cam-start-msg");if(!vd)return;if(st&&vd.srcObject===st)return;try{st=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false});vd.srcObject=st;await vd.play();if(msg)msg.style.display="none";drawG();}catch(e){/* alert hidden */ console.log("カメラ起動エラー: "+e.message);}};document.addEventListener("input",e=>{if(e.target&&e.target.id==="cam-bright"){const v=e.target.value,vd=document.getElementById("guide-cam-vid"),vl=document.getElementById("cam-bright-val");if(vl)vl.textContent=v+"%";if(vd)vd.style.filter=`brightness(${v}%) contrast(104%)`;}});document.addEventListener("click",async e=>{const gBtn=e.target.closest("#cam-grid-btns button");if(gBtn){gm=gBtn.dataset.g;const[rr,cc]=gm.split("x").map(Number);gCnt=rr*cc;const cv=document.getElementById("cam-cnt-val");if(cv)cv.textContent=gCnt;document.querySelectorAll("#cam-grid-btns button").forEach(x=>x.className=x===gBtn?"px-2 py-0.5 rounded bg-purple-600 font-bold":"px-2 py-0.5 rounded bg-white/15 font-bold");drawG();return;}if(e.target.closest("#cam-cnt-minus")){gCnt=Math.max(1,gCnt-1);const cv=document.getElementById("cam-cnt-val");if(cv)cv.textContent=gCnt;drawG();return;}if(e.target.closest("#cam-cnt-plus")){const[rr,cc]=gm.split("x").map(Number);gCnt=Math.min(rr*cc,gCnt+1);const cv=document.getElementById("cam-cnt-val");if(cv)cv.textContent=gCnt;drawG();return;}if(e.target.closest("#manual-cam-start")){startCam();return;}if(e.target.closest("#cam-torch-btn")){if(!st)return /* alert hidden */ console.log("先にカメラを起動してください");const tr=st.getVideoTracks()[0];if(!tr)return;try{torchOn=!torchOn;await tr.applyConstraints({advanced:[{torch:torchOn}]});const tb=document.getElementById("cam-torch-btn");if(tb)tb.className=torchOn?"px-2 py-0.5 rounded bg-yellow-400 text-black font-bold":"px-2 py-0.5 rounded bg-white/15 font-bold";}catch(err){/* alert hidden */ console.log("この端末のブラウザはライト点灯に非対応です");}return;}if(e.target.closest("#snap-guide-cam")){const vd=document.getElementById("guide-cam-vid"),brSl=document.getElementById("cam-bright");if(!vd||!vd.videoWidth)return /* alert hidden */ console.log("先に「📷 ガイド枠カメラを起動」を押してください");if(!gBoxes.length)drawG();const cv=document.createElement("canvas");cv.width=vd.videoWidth;cv.height=vd.videoHeight;const cx=cv.getContext("2d");cx.filter=`brightness(${brSl?brSl.value:115}%) contrast(104%)`;cx.drawImage(vd,0,0);window.__presetGuideBoxes=JSON.parse(JSON.stringify(gBoxes));cv.toBlob(bl=>{const f=new File([bl],"guide_shot.jpg",{type:"image/jpeg"}),dt=new DataTransfer();dt.items.add(f);const box=document.getElementById("inline-guide-cam-box");const inp=(box&&box.parentElement?box.parentElement.querySelector("input[type=file]"):null)||document.querySelector("input[type=file]");if(inp){inp.files=dt.files;inp.dispatchEvent(new Event("change",{bubbles:true}));}},"image/jpeg",0.92);}});setTimeout(drawG,300);})();</script>
 <div id="single-guide-modal" class="hidden fixed inset-0 z-[9999] bg-black/95 flex flex-col justify-between p-4 text-white">
   <div class="flex items-center justify-between">
     <span class="text-sm font-bold text-purple-300">📷 1枚専用 ガイド枠カメラ（1:1.55）</span>
@@ -11948,7 +11948,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       vid.srcObject = singleStream;
       await vid.play();
     } catch(e) {
-      alert("カメラを起動できませんでした: " + e.message);
+      /* alert hidden */ console.log("カメラを起動できませんでした: " + e.message);
       closeSingleGuideCam();
     }
   };
