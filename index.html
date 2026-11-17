@@ -12130,22 +12130,21 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     const inlineCamBox = document.getElementById("inline-guide-cam-box");
     const singleGuideBtns = document.querySelectorAll("#manual-cam-start, #snap-guide-cam, [data-single-guide-btn]");
 
-    const isBulk = Boolean(
+    const modalTitle = (document.querySelector("#post-modal h2, #post-modal .modal-title, #post-modal-title")?.textContent || "");
+    const activeTabText = Array.from(document.querySelectorAll("#post-modal .active, #post-modal [aria-selected='true'], .tab-btn.active")).map(el => el.textContent).join(" ");
+    const isMyCard = /myトレカ|マイトレカ|所持/i.test(modalTitle + " " + activeTabText) || window.__postMode === "mycard" || window.__isMyCardMode === true;
+    const isTradeBulk = !isMyCard && Boolean(
       window.__isBulkMode ||
-      (bundleBox && !bundleBox.classList.contains("hidden")) ||
+      /まとめて/i.test(activeTabText) ||
       (bulkSetupBox && !bulkSetupBox.classList.contains("hidden"))
     );
 
-    if (isBulk) {
-      // 交換のまとめ時：1枚用のガイド枠・カメラUIを完全に隠す
+    if (isTradeBulk) {
       if (inlineCamBox) {
         inlineCamBox.classList.add("hidden");
         inlineCamBox.style.display = "none";
       }
-      singleGuideBtns.forEach((btn) => {
-        btn.style.display = "none";
-      });
-      // まとめ用のガイド枠・枠設定ツールを復活表示
+      singleGuideBtns.forEach((btn) => { btn.style.display = "none"; });
       if (bundleBox) {
         bundleBox.classList.remove("hidden");
         bundleBox.style.display = "";
@@ -12155,18 +12154,22 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
         bulkSetupBox.style.display = "";
       }
     } else {
-      // 通常の1枚出品時：1枚用ガイド枠を復元
+      if (bundleBox) {
+        bundleBox.classList.add("hidden");
+        bundleBox.style.display = "none";
+      }
+      if (bulkSetupBox) {
+        bulkSetupBox.classList.add("hidden");
+        bulkSetupBox.style.display = "none";
+      }
       if (inlineCamBox) {
         inlineCamBox.classList.remove("hidden");
         inlineCamBox.style.display = "";
       }
-      singleGuideBtns.forEach((btn) => {
-        btn.style.display = "";
-      });
+      singleGuideBtns.forEach((btn) => { btn.style.display = ""; });
     }
   }
 
-  // openPostModal やまとめボタン押下・DOM変化を監視して即座に反映
   const origOpenPostModal = window.openPostModal;
   if (typeof origOpenPostModal === "function") {
     window.openPostModal = function(...args) {
