@@ -142,13 +142,13 @@
     input.liquid-glass-input::before,
     button.liquid-glass::before,
     button.liquid-glass-heavy::before,
-    button.liquid-glass-input::before { display: block; }
+    button.liquid-glass-input::before { display: none; }
     .modal-backdrop {
       background: rgba(0, 0, 0, 0.25);
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
     }
-    .hide-scrollbar::-webkit-scrollbar { display: block; }
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
     .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
     @keyframes toastIn {
@@ -256,7 +256,7 @@
       color: #111;
       font-family: "Noto Sans JP", "Hiragino Sans", sans-serif;
     }
-    #bg-blobs { display: block !important; }
+    #bg-blobs { display: none !important; }
     header.liquid-glass {
       border-radius: 0 !important;
       border-left: 0 !important;
@@ -340,13 +340,13 @@
     #detail-photos .bundle-hit.sold { pointer-events: none; }
     #detail-photo-wrap { position: relative; margin: 8px 0 0; background: transparent; }
     #detail-price-box { display: block; }
-    #detail-price-box.hidden { display: block !important; }
+    #detail-price-box.hidden { display: none !important; }
     #detail-price { color: #111 !important; font-size: 22px; font-weight: 700; line-height: 1.2; }
     #detail-like-btn, #detail-comment-btn { width: auto; height: 32px; background: transparent !important; color: #444 !important; border: 0; border-radius: 999px !important; box-shadow: none !important; padding: 0 8px; font-size: 14px; font-weight: 500; gap: 4px; }
     .detail-chip { display: inline-flex; align-items: center; gap: 4px; background: #f4f4f5; border: 1px solid #ececec; border-radius: 999px; padding: 5px 10px; font-size: 12px; color: #444; }
-    .detail-chip.hidden, #detail-desc-box.hidden { display: block !important; }
+    .detail-chip.hidden, #detail-desc-box.hidden { display: none !important; }
     .detail-note { background: #f7f7f8; border-radius: 14px; padding: 12px 14px; font-size: 14px; line-height: 1.65; color: #222; }
-    #detail-seller-items:empty, #detail-related:empty, #detail-extra:empty { display: block; }
+    #detail-seller-items:empty, #detail-related:empty, #detail-extra:empty { display: none; }
     #detail-actions button { width: 100%; height: 48px; border-radius: 999px !important; background: #ff4d4f !important; color: #fff !important; font-weight: 700; box-shadow: 0 10px 24px rgba(0,0,0,0.18) !important; }
     #detail-actions button.bg-white\/80, #detail-actions button.bg-red-50, #detail-actions button.bg-teal-50 { background: #fff !important; color: #333 !important; border: 1px solid #eee; margin-top: 8px; }
     #detail-like-btn, #detail-comment-btn { width: auto; height: 32px; background: transparent !important; color: #444 !important; border: 0; border-radius: 999px !important; box-shadow: none !important; padding: 0 8px; font-size: 14px; font-weight: 500; gap: 4px; }
@@ -1173,6 +1173,7 @@
                     <input id="post-camera-input" type="file" accept="image/*" capture="environment" class="hidden" onchange="addPostPhotos(this)">
                     <input id="post-photo-input" type="file" accept="image/*" multiple class="hidden" onchange="addPostPhotos(this)">
                     <div id="post-photo-preview" class="flex flex-wrap gap-2"></div>
+          <div id="inline-guide-cam-box" class="mb-3 rounded-2xl overflow-hidden bg-zinc-950 border border-purple-400/40 shadow-md"><div class="flex items-center justify-between px-2.5 py-1.5 bg-zinc-900 text-white text-xs"><div class="flex gap-1" id="cam-grid-btns"><button type="button" data-g="1x3" class="px-2 py-0.5 rounded bg-white/15 font-bold">1×3</button><button type="button" data-g="2x2" class="px-2 py-0.5 rounded bg-white/15 font-bold">2×2</button><button type="button" data-g="2x3" class="px-2 py-0.5 rounded bg-purple-600 font-bold">2×3</button><button type="button" data-g="3x3" class="px-2 py-0.5 rounded bg-white/15 font-bold">3×3</button></div><div class="flex items-center gap-1 bg-white/10 px-1.5 py-0.5 rounded"><span class="text-[10px] text-white/80">枚数</span><button type="button" id="cam-cnt-minus" class="px-1.5 bg-white/20 rounded font-bold">-</button><span id="cam-cnt-val" class="w-4 text-center font-bold text-cyan-300">6</span><button type="button" id="cam-cnt-plus" class="px-1.5 bg-white/20 rounded font-bold">+</button></div><button type="button" id="cam-torch-btn" class="px-2 py-0.5 rounded bg-white/15 font-bold">🔦 ライト</button></div><div class="relative w-full aspect-[4/3] bg-black flex items-center justify-center"><video id="guide-cam-vid" autoplay playsinline muted class="w-full h-full object-cover"></video><div id="guide-cam-ov" class="absolute inset-0 pointer-events-none"></div><div id="cam-start-msg" class="absolute inset-0 flex flex-col items-center justify-center bg-black/75 text-white text-xs gap-2"><button type="button" id="manual-cam-start" class="px-4 py-2 rounded-full bg-purple-600 font-bold shadow active:scale-95">📷 ガイド枠カメラを起動</button><span class="text-[10px] text-white/70">トレカを枠に合わせて撮影できます</span></div></div><div class="flex items-center justify-between gap-2 px-3 py-2 bg-zinc-900 text-white text-xs"><div class="flex items-center gap-1.5 flex-1"><span>☀️</span><input type="range" id="cam-bright" min="70" max="180" value="115" class="w-full accent-yellow-400"><span id="cam-bright-val" class="w-8 font-mono">115%</span></div><button type="button" id="snap-guide-cam" class="px-4 py-1.5 rounded-full bg-gradient-to-r from-cyan-500 to-purple-600 font-bold text-white shadow active:scale-95 shrink-0">📸 枠ごと撮影</button></div></div><div id="bulk-slot-setup-box" class="hidden mt-2 p-3 rounded-2xl bg-purple-50/90 border border-purple-200 space-y-2">
             <div class="flex items-center justify-between">
               <span class="text-xs font-bold text-purple-900">📦 まとめて出品：トレカ枠設定</span>
               <span id="bulk-slot-count-badge" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-purple-600 text-white">0枠設定中</span>
@@ -7625,7 +7626,7 @@ function getAiCardVectors() {
       const items = window.batchSheetItems || [];
       if (countEl) countEl.textContent = items.length + "枚選択中";
       if (runBtn) {
-        if (true) runBtn.classList.remove("hidden");
+        if (items.length > 0) runBtn.classList.remove("hidden");
         else runBtn.classList.add("hidden");
       }
       if (!listEl) return;
@@ -11911,17 +11912,22 @@ function rnd(host,src){host.innerHTML=`<div id="inline-bulk-editor" class="bg-wh
 window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.isBulkMode||(document.getElementById("bulk-mode-panel")&&!document.getElementById("bulk-mode-panel").classList.contains("hidden")));if(!_b){const _bx=document.getElementById("bundle-box");if(_bx)_bx.classList.add("hidden");return;}const src=gSrc();if(!src)return alert("先に写真を1枚入れてください");const bx=document.getElementById("bundle-box");if(bx)bx.classList.remove("hidden");const host=document.getElementById("bundle-crop-host");if(!host)return;host.innerHTML="<p class=\"text-xs text-purple-700 font-bold py-2 text-center\">🔍 自動検出中...</p>";const im=new Image();im.crossOrigin="anonymous";im.onload=()=>{li=im;b=det(im,sn);si=b.length?0:-1;rnd(host,src);};im.onerror=()=>{b=[{x:10,y:10,w:35,h:45},{x:55,y:10,w:35,h:45}];si=0;rnd(host,src);};im.src=src;};let lastS="";setInterval(()=>{const s=gSrc();if(s&&s!==lastS){lastS=s;window.openBundleFrameEditor();}},600);})();</script>
 
 
+<script>(function(){let st=null,gm="2x3",gCnt=6,gBoxes=[],torchOn=false;const mkBoxes=m=>{const[r,c]=m.split("x").map(Number),ar=4/3,cardRatio=1.55,gx=2.5,gy=3.2,maxW=(86-gx*(c-1))/c,maxH=(86-gy*(r-1))/r;let cw=maxW,ch=cw*ar*cardRatio;if(ch>maxH){ch=maxH;cw=ch/(ar*cardRatio);}cw=+cw.toFixed(2);ch=+ch.toFixed(2);const totW=cw*c+gx*(c-1),totH=ch*r+gy*(r-1),sx=(100-totW)/2,sy=(100-totH)/2,res=[];for(let i=0;i<r;i++)for(let j=0;j<c;j++)res.push({x:+(sx+j*(cw+gx)).toFixed(2),y:+(sy+i*(ch+gy)).toFixed(2),w:cw,h:ch,r:0});return res.slice(0,gCnt);};const drawG=()=>{const ov=document.getElementById("guide-cam-ov");if(!ov)return;gBoxes=mkBoxes(gm);ov.innerHTML=gBoxes.map((v,i)=>`<div style="position:absolute;left:${v.x}%;top:${v.y}%;width:${v.w}%;height:${v.h}%;border:2px dashed #22d3ee;background:rgba(34,211,238,0.12);border-radius:6px"><span style="position:absolute;top:2px;left:4px;background:#000a;color:#fff;font-size:10px;padding:0 4px;border-radius:4px">#${i+1}</span></div>`).join("");};const startCam=async()=>{const vd=document.getElementById("guide-cam-vid"),msg=document.getElementById("cam-start-msg");if(!vd)return;if(st&&vd.srcObject===st)return;try{st=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false});vd.srcObject=st;await vd.play();if(msg)msg.style.display="none";drawG();}catch(e){alert("カメラ起動エラー: "+e.message);}};document.addEventListener("input",e=>{if(e.target&&e.target.id==="cam-bright"){const v=e.target.value,vd=document.getElementById("guide-cam-vid"),vl=document.getElementById("cam-bright-val");if(vl)vl.textContent=v+"%";if(vd)vd.style.filter=`brightness(${v}%) contrast(104%)`;}});document.addEventListener("click",async e=>{const gBtn=e.target.closest("#cam-grid-btns button");if(gBtn){gm=gBtn.dataset.g;const[rr,cc]=gm.split("x").map(Number);gCnt=rr*cc;const cv=document.getElementById("cam-cnt-val");if(cv)cv.textContent=gCnt;document.querySelectorAll("#cam-grid-btns button").forEach(x=>x.className=x===gBtn?"px-2 py-0.5 rounded bg-purple-600 font-bold":"px-2 py-0.5 rounded bg-white/15 font-bold");drawG();return;}if(e.target.closest("#cam-cnt-minus")){gCnt=Math.max(1,gCnt-1);const cv=document.getElementById("cam-cnt-val");if(cv)cv.textContent=gCnt;drawG();return;}if(e.target.closest("#cam-cnt-plus")){const[rr,cc]=gm.split("x").map(Number);gCnt=Math.min(rr*cc,gCnt+1);const cv=document.getElementById("cam-cnt-val");if(cv)cv.textContent=gCnt;drawG();return;}if(e.target.closest("#manual-cam-start")){startCam();return;}if(e.target.closest("#cam-torch-btn")){if(!st)return alert("先にカメラを起動してください");const tr=st.getVideoTracks()[0];if(!tr)return;try{torchOn=!torchOn;await tr.applyConstraints({advanced:[{torch:torchOn}]});const tb=document.getElementById("cam-torch-btn");if(tb)tb.className=torchOn?"px-2 py-0.5 rounded bg-yellow-400 text-black font-bold":"px-2 py-0.5 rounded bg-white/15 font-bold";}catch(err){alert("この端末のブラウザはライト点灯に非対応です");}return;}if(e.target.closest("#snap-guide-cam")){const vd=document.getElementById("guide-cam-vid"),brSl=document.getElementById("cam-bright");if(!vd||!vd.videoWidth)return alert("先に「📷 ガイド枠カメラを起動」を押してください");if(!gBoxes.length)drawG();const cv=document.createElement("canvas");cv.width=vd.videoWidth;cv.height=vd.videoHeight;const cx=cv.getContext("2d");cx.filter=`brightness(${brSl?brSl.value:115}%) contrast(104%)`;cx.drawImage(vd,0,0);window.__presetGuideBoxes=JSON.parse(JSON.stringify(gBoxes));cv.toBlob(bl=>{const f=new File([bl],"guide_shot.jpg",{type:"image/jpeg"}),dt=new DataTransfer();dt.items.add(f);const box=document.getElementById("inline-guide-cam-box");const inp=(box&&box.parentElement?box.parentElement.querySelector("input[type=file]"):null)||document.querySelector("input[type=file]");if(inp){inp.files=dt.files;inp.dispatchEvent(new Event("change",{bubbles:true}));}},"image/jpeg",0.92);}});setTimeout(drawG,300);})();</script>
+<div id="single-guide-modal" class="hidden fixed inset-0 z-[9999] bg-black/95 flex flex-col justify-between p-4 text-white">
   <div class="flex items-center justify-between">
     <span class="text-sm font-bold text-purple-300">📷 1枚専用 ガイド枠カメラ（1:1.55）</span>
     <button type="button" onclick="closeSingleGuideCam()" class="px-3 py-1.5 rounded-full bg-white/15 text-xs font-bold">✕ 閉じる</button>
   </div>
   <div class="relative flex-1 my-3 rounded-2xl overflow-hidden bg-zinc-950 flex items-center justify-center">
+    <video id="single-guide-vid" autoplay playsinline muted class="w-full h-full object-cover"></video>
+    <div id="single-guide-frame" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:68%;max-width:280px;aspect-ratio:1/1.55;max-height:80%;border:3px dashed #22d3ee;background:rgba(34,211,238,0.08);border-radius:14px;box-shadow:0 0 0 9999px rgba(0,0,0,0.45);pointer-events:none;">
       <span style="position:absolute;top:6px;left:8px;background:rgba(0,0,0,0.75);color:#22d3ee;font-size:11px;font-weight:bold;padding:2px 6px;border-radius:6px;">枠内にトレカ1枚を合わせる</span>
     </div>
   </div>
   <div class="space-y-3 pb-2">
     <div class="flex items-center gap-2 text-xs">
       <span>明るさ</span>
+      <input id="single-cam-bright" type="range" min="80" max="150" value="110" oninput="document.getElementById('single-guide-vid').style.filter='brightness('+this.value+'%) contrast(104%)'" class="flex-1">
     </div>
     <button type="button" onclick="snapSingleGuideCam()" class="w-full py-3.5 rounded-full bg-gradient-to-r from-purple-600 to-cyan-500 text-white font-bold text-sm shadow-lg active:scale-95 transition">📸 枠内を撮影して決定</button>
   </div>
@@ -11932,6 +11938,8 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
   let singleMode = "post";
   window.openSingleGuideCam = async function(mode){
     singleMode = mode || "post";
+    const modal = document.getElementById("single-guide-modal");
+    const vid = document.getElementById("single-guide-vid");
     if(!modal || !vid) return;
     modal.classList.remove("hidden");
     try {
@@ -11944,6 +11952,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     }
   };
   window.closeSingleGuideCam = function(){
+    const modal = document.getElementById("single-guide-modal");
     if(modal) modal.classList.add("hidden");
     if(singleStream){
       singleStream.getTracks().forEach(t => t.stop());
@@ -11951,6 +11960,8 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     }
   };
   window.snapSingleGuideCam = function(){
+    const vid = document.getElementById("single-guide-vid");
+    const frame = document.getElementById("single-guide-frame");
     const br = document.getElementById("single-cam-bright");
     if(!vid || !vid.videoWidth) return;
     const vRect = vid.getBoundingClientRect();
@@ -11987,6 +11998,8 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
 
 <script>
 (function(){
+  function syncGuideCamByMode() {
+    const camBox = document.getElementById("inline-guide-cam-box");
     const gridBtns = document.getElementById("cam-grid-btns");
     if (!camBox) return;
     const isBulk = !!(window.__isBulkMode || window.isBulkMode || (document.getElementById("bulk-mode-panel") && !document.getElementById("bulk-mode-panel").classList.contains("hidden")));
@@ -12017,6 +12030,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       if (btn1x1) delete btn1x1.dataset.forcedSingle;
     }
   }
+  setInterval(syncGuideCamByMode, 800);
 })();
 </script>
 
