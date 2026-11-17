@@ -12001,7 +12001,8 @@ window.openBundleFrameEditor=function(){const src=gSrc();if(!src)return alert("å
     const camBox = document.getElementById("inline-guide-cam-box");
     const gridBtns = document.getElementById("cam-grid-btns");
     if (!camBox) return;
-    const isBulk = !!(window.isBulkMode || (document.getElementById("bulk-mode-panel") && !document.getElementById("bulk-mode-panel").classList.contains("hidden")));
+    const isBulk = !!(window.__isBulkMode || window.isBulkMode || (document.getElementById("bulk-mode-panel") && !document.getElementById("bulk-mode-panel").classList.contains("hidden")));
+    document.querySelectorAll("[onclick*=\"openSingleGuideCam('post')\"]").forEach(b => b.style.display = isBulk ? "none" : "");
     const vid = camBox.querySelector("video");
     const vidWrap = vid ? vid.parentElement : null;
 
