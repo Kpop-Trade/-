@@ -12404,13 +12404,13 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
 
 
 <!-- Auto-GO フローティング起動ボタン -->
-<button id="autogo-fab-btn" onclick="openAutoGoModal()" class="fixed bottom-24 right-4 z-40 bg-gradient-to-r from-purple-600 via-pink-500 to-indigo-600 text-white font-bold text-xs px-4 py-3 rounded-full shadow-xl border border-white/40 flex items-center gap-1.5 hover:scale-105 transition">
+<button id="autogo-fab-btn" type="button" onclick="window.openAutoGoModal && window.openAutoGoModal()" class="fixed bottom-24 right-4 z-[9999] bg-gradient-to-r from-purple-600 via-pink-500 to-indigo-600 text-white font-bold text-xs px-4 py-3 rounded-full shadow-xl border border-white/40 flex items-center gap-1.5 hover:scale-105 transition">
   <span>⚡ Auto-GO</span>
   <span class="bg-white/20 px-1.5 py-0.5 rounded-full text-[10px]">全体プール</span>
 </button>
 
 <!-- Auto-GO メインモーダル -->
-<div id="autogo-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-end md:items-center justify-center p-0 md:p-4 bg-black/60">
+<div id="autogo-modal" class="fixed inset-0 modal-backdrop hidden z-[10000] flex items-end md:items-center justify-center p-0 md:p-4 bg-black/60">
   <div class="liquid-glass-heavy bg-white/95 backdrop-blur-xl w-full max-w-md rounded-t-[2rem] md:rounded-[2rem] p-5 space-y-3.5 shadow-2xl max-h-[92vh] overflow-y-auto">
     <!-- ヘッダー＆管理者作成トグル -->
     <div class="flex justify-between items-center border-b border-purple-200/60 pb-2.5">
