@@ -1606,6 +1606,12 @@ html, body {
     };
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
+window.__autoGoRefs = {
+  app, auth,
+  db: getFirestore(app),
+  collection, doc, getDoc, getDocs, setDoc, updateDoc,
+  query, where, orderBy, limit, onSnapshot, serverTimestamp, increment, runTransaction
+};
 
   
     const db = getFirestore(app);
@@ -12392,6 +12398,378 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
   }
   document.addEventListener("click", () => setTimeout(syncInputMemberVisibility, 30), true);
   setInterval(syncInputMemberVisibility, 300);
+})();
+</script>
+
+
+<!-- Auto-GO フローティング起動ボタン -->
+<button id="autogo-fab-btn" onclick="openAutoGoModal()" class="fixed bottom-24 right-4 z-40 bg-gradient-to-r from-purple-600 via-pink-500 to-indigo-600 text-white font-bold text-xs px-4 py-3 rounded-full shadow-xl border border-white/40 flex items-center gap-1.5 hover:scale-105 transition">
+  <span>⚡ Auto-GO</span>
+  <span class="bg-white/20 px-1.5 py-0.5 rounded-full text-[10px]">全体プール</span>
+</button>
+
+<!-- Auto-GO メインモーダル -->
+<div id="autogo-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-end md:items-center justify-center p-0 md:p-4 bg-black/60">
+  <div class="liquid-glass-heavy bg-white/95 backdrop-blur-xl w-full max-w-md rounded-t-[2rem] md:rounded-[2rem] p-5 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+    <div class="flex justify-between items-center border-b border-purple-200/60 pb-3">
+      <div>
+        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">抱き合わせゼロ・定価共同購入</span>
+        <h3 id="ag-pool-title" class="font-bold text-base text-gray-900 mt-1">ILLIT 最新特典 Auto-GOプール</h3>
+      </div>
+      <button onclick="closeAutoGoModal()" class="text-gray-400 hover:text-gray-700 text-2xl leading-none">&times;</button>
+    </div>
+
+    <!-- 20人発動 / 50人確率ゲージ -->
+    <div class="bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-2xl p-3.5 space-y-2">
+      <div class="flex justify-between items-end">
+        <div>
+          <span class="text-[11px] text-gray-600">現在の参加人数</span>
+          <div class="text-xl font-black text-purple-900"><span id="ag-total-count">0</span> <span class="text-xs font-normal text-gray-500">/ 50人（最低20人で発動）</span></div>
+        </div>
+        <div class="text-right">
+          <span id="ag-status-badge" class="text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800">募集中（あと20人で発動）</span>
+          <div class="text-[11px] font-bold text-pink-600 mt-1">推し確保期待値: <span id="ag-prob-text">78%</span></div>
+        </div>
+      </div>
+      <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden relative">
+        <div id="ag-progress-bar" class="bg-gradient-to-r from-purple-600 to-pink-500 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+      </div>
+      <p class="text-[10px] text-gray-600 leading-relaxed">※20人達成で即開催確定＆購入URLを自動配布。50人達成で確保率91%超！各メンバー10枠上限で偏りを完全防止します。</p>
+    </div>
+
+    <!-- 自分の参加ステータス＆自動URL配布エリア -->
+    <div id="ag-my-status-box" class="hidden bg-indigo-50 border border-indigo-200 rounded-2xl p-3.5 space-y-2.5"></div>
+
+    <!-- エントリー枠選択（未参加時） -->
+    <div id="ag-entry-section" class="space-y-2.5">
+      <div class="flex justify-between items-center">
+        <span class="text-xs font-bold text-gray-800">希望メンバー枠を選択（各上限10枠）</span>
+        <span class="text-[10px] text-purple-600 font-bold">予約無料・発動まで決済なし</span>
+      </div>
+      <div id="ag-member-grid" class="grid grid-cols-1 gap-2"></div>
+    </div>
+
+    <!-- X集客用 自動招待URLシェア -->
+    <div class="pt-2 border-t border-gray-200/70 flex gap-2">
+      <button onclick="copyAutoGoInviteUrl()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-bold py-2.5 rounded-full transition">🔗 招待URLをコピー</button>
+      <button onclick="shareAutoGoToX()" class="flex-1 bg-black hover:bg-zinc-800 text-white text-xs font-bold py-2.5 rounded-full transition">𝕏 で他ペンを呼ぶ</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const POOL_ID = new URLSearchParams(location.search).get("pool") || "illit_auto_go_main";
+  const MEMBERS = ["ウォンヒ (Wonhee)", "ミンジュ (Minju)", "モカ (Moka)", "イロハ (Iroha)", "ユナ (Yuna)"];
+  const DEFAULT_CAPS = {
+    "ウォンヒ (Wonhee)": 10,
+    "ミンジュ (Minju)": 10,
+    "モカ (Moka)": 10,
+    "イロハ (Iroha)": 10,
+    "ユナ (Yuna)": 10
+  };
+  let currentPoolData = null;
+  let currentEntryData = null;
+  let unsubPool = null;
+  let unsubEntry = null;
+
+  window.openAutoGoModal = async function() {
+    const modal = document.getElementById("autogo-modal");
+    if (!modal) return;
+    modal.classList.remove("hidden");
+    await initAutoGoListeners();
+  };
+
+  window.closeAutoGoModal = function() {
+    const modal = document.getElementById("autogo-modal");
+    if (modal) modal.classList.add("hidden");
+  };
+
+  async function ensurePoolExists() {
+    const { db, doc, getDoc, setDoc, serverTimestamp } = window.__autoGoRefs;
+    const poolRef = doc(db, "auto_go_pools", POOL_ID);
+    const snap = await getDoc(poolRef);
+    if (!snap.exists()) {
+      await setDoc(poolRef, {
+        title: "ILLIT 特典トレカ Auto-GO（全体プール）",
+        status: "recruiting",
+        minParticipants: 20,
+        targetParticipants: 50,
+        totalCount: 0,
+        memberCaps: DEFAULT_CAPS,
+        memberCounts: {
+          "ウォンヒ (Wonhee)": 0,
+          "ミンジュ (Minju)": 0,
+          "モカ (Moka)": 0,
+          "イロハ (Iroha)": 0,
+          "ユナ (Yuna)": 0
+        },
+        purchaseUrl: "https://weverseshop.io/",
+        azukariGuideUrl: "https://azukari.jp/",
+        revealDeadlineHours: 72,
+        createdAt: serverTimestamp()
+      });
+    }
+  }
+
+  async function initAutoGoListeners() {
+    if (!window.__autoGoRefs) return;
+    const { db, auth, doc, onSnapshot } = window.__autoGoRefs;
+    await ensurePoolExists();
+
+    if (unsubPool) unsubPool();
+    unsubPool = onSnapshot(doc(db, "auto_go_pools", POOL_ID), (snap) => {
+      if (!snap.exists()) return;
+      currentPoolData = snap.data();
+      renderAutoGoUI();
+    });
+
+    const user = auth.currentUser;
+    if (user) {
+      if (unsubEntry) unsubEntry();
+      unsubEntry = onSnapshot(doc(db, "auto_go_pools", POOL_ID, "entries", user.uid), (snap) => {
+        currentEntryData = snap.exists() ? snap.data() : null;
+        renderAutoGoUI();
+      });
+    }
+  }
+
+  function renderAutoGoUI() {
+    if (!currentPoolData) return;
+    const total = currentPoolData.totalCount || 0;
+    const minP = currentPoolData.minParticipants || 20;
+    const targetP = currentPoolData.targetParticipants || 50;
+    const pct = Math.min(100, Math.round((total / targetP) * 100));
+    const prob = total >= 45 ? "92%" : total >= 30 ? "87%" : total >= 20 ? "82%" : "76%（20人達成で確定）";
+
+    document.getElementById("ag-pool-title").textContent = currentPoolData.title || "Auto-GO 全体プール";
+    document.getElementById("ag-total-count").textContent = total;
+    document.getElementById("ag-progress-bar").style.width = pct + "%";
+    document.getElementById("ag-prob-text").textContent = prob;
+
+    const badge = document.getElementById("ag-status-badge");
+    if (total >= targetP) {
+      badge.textContent = "🔥 50人満員・開催確定";
+      badge.className = "text-[11px] font-bold px-2.5 py-1 rounded-full bg-pink-600 text-white";
+    } else if (total >= minP) {
+      badge.textContent = "✅ 開催確定（URL自動配布中）";
+      badge.className = "text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800";
+    } else {
+      badge.textContent = `募集中（あと${minP - total}人で発動）`;
+      badge.className = "text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800";
+    }
+
+    // 自分の参加状況＆自動URL送信ボックス
+    const statusBox = document.getElementById("ag-my-status-box");
+    const entrySec = document.getElementById("ag-entry-section");
+
+    if (currentEntryData) {
+      entrySec.classList.add("hidden");
+      statusBox.classList.remove("hidden");
+      const isActivated = total >= minP || currentPoolData.status === "active";
+
+      let html = `<div class="flex justify-between items-center">
+        <span class="text-xs font-bold text-indigo-950">あなたの希望枠: ${currentEntryData.wantedMember}</span>
+        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-600 text-white">${currentEntryData.status}</span>
+      </div>`;
+
+      if (!isActivated) {
+        html += `<p class="text-[11px] text-indigo-800">仮予約完了！あと <b>${minP - total}人</b> 集まった瞬間に購入・決済URLが自動送信されます。</p>`;
+      } else if (currentEntryData.status === "reserved") {
+        html += `<div class="bg-white rounded-xl p-2.5 border border-indigo-200 space-y-2">
+          <p class="text-[11px] font-bold text-emerald-700">🎉 20人達成！専用購入・アズカリURLが発行されました</p>
+          <a href="${currentPoolData.purchaseUrl || '#'}" target="_blank" rel="noopener" class="block text-center bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-bold py-2 rounded-lg">1. 公式ショップで購入する ↗</a>
+          <button onclick="markAutoGoPurchased()" class="w-full bg-emerald-600 text-white text-xs font-bold py-2 rounded-lg">2. 購入完了を報告する（枠確定）</button>
+        </div>`;
+      } else if (currentEntryData.status === "purchased") {
+        html += `<div class="bg-white rounded-xl p-2.5 border border-purple-200 space-y-2">
+          <p class="text-[11px] font-bold text-purple-900">📦 CD到着後、72時間以内に開封結果を登録してください（未登録は自動除外＆利用制限）</p>
+          <select id="ag-pulled-select" class="w-full border border-gray-300 rounded-lg p-2 text-xs">
+            <option value="">実際に引いたメンバーを選択...</option>
+            ${MEMBERS.map(m => `<option value="${m}">${m}</option>`).join("")}
+          </select>
+          <button onclick="submitAutoGoReveal()" class="w-full bg-pink-600 text-white text-xs font-bold py-2 rounded-lg">開封結果を登録して自動マッチング</button>
+        </div>`;
+      } else if (currentEntryData.status === "self_pulled") {
+        html += `<p class="text-xs font-bold text-emerald-700">🎊 自引き達成おめでとうございます！交換不要で完了です。</p>`;
+      } else if (currentEntryData.status === "waiting_match") {
+        html += `<p class="text-xs text-purple-800">⏳ <b>${currentEntryData.pulledMember}</b> を登録済み。希望一致の相手が登録した瞬間に交換ルームURLが自動発行されます！</p>`;
+      } else if (currentEntryData.status === "matched") {
+        const roomUrl = `${location.origin}/?trade=${currentEntryData.matchRoomId || ""}`;
+        html += `<div class="bg-emerald-50 border border-emerald-300 rounded-xl p-2.5 space-y-1.5">
+          <p class="text-xs font-bold text-emerald-900">🤝 自動マッチング成立！専用交換URLを発行しました</p>
+          <a href="${roomUrl}" class="block text-center bg-emerald-600 text-white text-xs font-bold py-2 rounded-lg">専用交換ルームを開く ↗</a>
+        </div>`;
+      }
+      statusBox.innerHTML = html;
+    } else {
+      statusBox.classList.add("hidden");
+      entrySec.classList.remove("hidden");
+    }
+
+    // メンバー別残枠ボタン描画
+    const grid = document.getElementById("ag-member-grid");
+    const caps = currentPoolData.memberCaps || DEFAULT_CAPS;
+    const counts = currentPoolData.memberCounts || {};
+    grid.innerHTML = MEMBERS.map(m => {
+      const cap = caps[m] ?? 10;
+      const cnt = counts[m] ?? 0;
+      const rem = Math.max(0, cap - cnt);
+      const isFull = rem === 0;
+      return `<div class="flex items-center justify-between p-2.5 rounded-xl border ${isFull ? 'bg-gray-100 border-gray-200' : 'bg-white border-purple-200'}">
+        <div>
+          <div class="text-xs font-bold text-gray-900">${m}</div>
+          <div class="text-[10px] ${isFull ? 'text-red-500 font-bold' : 'text-purple-600'}">
+            ${isFull ? '満員（他枠が埋まると追加解放）' : `残り ${rem} / ${cap} 枠`}
+          </div>
+        </div>
+        <button onclick="reserveAutoGoMember('${m}')" ${isFull ? 'disabled' : ''} class="px-3.5 py-1.5 rounded-full text-xs font-bold ${isFull ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-gradient-to-r from-purple-600 to-pink-500 text-white shadow'}">
+          ${isFull ? '満員' : '仮予約する'}
+        </button>
+      </div>`;
+    }).join("");
+  }
+
+  // トランザクションで定員10枠を厳守しつつ仮予約
+  window.reserveAutoGoMember = async function(memberName) {
+    const { db, auth, doc, runTransaction, serverTimestamp } = window.__autoGoRefs;
+    const user = auth.currentUser;
+    if (!user) { alert("先にログインしてください"); return; }
+
+    const poolRef = doc(db, "auto_go_pools", POOL_ID);
+    const entryRef = doc(db, "auto_go_pools", POOL_ID, "entries", user.uid);
+
+    try {
+      await runTransaction(db, async (tx) => {
+        const poolSnap = await tx.get(poolRef);
+        const entrySnap = await tx.get(entryRef);
+        if (!poolSnap.exists()) throw new Error("プールが存在しません");
+        if (entrySnap.exists()) throw new Error("すでにエントリー済みです");
+
+        const p = poolSnap.data();
+        const cap = (p.memberCaps && p.memberCaps[memberName]) ?? 10;
+        const cur = (p.memberCounts && p.memberCounts[memberName]) ?? 0;
+        if (cur >= cap) throw new Error("タッチの差で満員になりました！");
+
+        const nextTotal = (p.totalCount || 0) + 1;
+        const nextStatus = nextTotal >= (p.minParticipants || 20) ? "active" : "recruiting";
+
+        tx.update(poolRef, {
+          totalCount: nextTotal,
+          status: nextStatus,
+          [`memberCounts.${memberName}`]: cur + 1
+        });
+        tx.set(entryRef, {
+          uid: user.uid,
+          wantedMember: memberName,
+          pulledMember: null,
+          status: "reserved",
+          createdAt: serverTimestamp()
+        });
+      });
+    } catch (e) {
+      alert(e.message || "予約に失敗しました");
+    }
+  };
+
+  window.markAutoGoPurchased = async function() {
+    const { db, auth, doc, updateDoc, serverTimestamp } = window.__autoGoRefs;
+    const user = auth.currentUser;
+    if (!user) return;
+    await updateDoc(doc(db, "auto_go_pools", POOL_ID, "entries", user.uid), {
+      status: "purchased",
+      purchasedAt: serverTimestamp()
+    });
+  };
+
+  // 開封登録＆先着即時相互マッチング
+  window.submitAutoGoReveal = async function() {
+    const pulled = document.getElementById("ag-pulled-select")?.value;
+    if (!pulled) { alert("引いたメンバーを選択してください"); return; }
+    const { db, auth, doc, collection, query, where, getDocs, runTransaction, serverTimestamp } = window.__autoGoRefs;
+    const user = auth.currentUser;
+    if (!user || !currentEntryData) return;
+
+    const myEntryRef = doc(db, "auto_go_pools", POOL_ID, "entries", user.uid);
+
+    // 1. 自引き判定
+    if (pulled === currentEntryData.wantedMember) {
+      await runTransaction(db, async (tx) => {
+        tx.update(myEntryRef, {
+          pulledMember: pulled,
+          status: "self_pulled",
+          revealedAt: serverTimestamp()
+        });
+      });
+      return;
+    }
+
+    // 2. プール内の相互一致相手（相手が欲しい＝自分が引いた ＆ 相手が引いた＝自分が欲しい）を検索
+    const entriesCol = collection(db, "auto_go_pools", POOL_ID, "entries");
+    const q = query(
+      entriesCol,
+      where("status", "==", "waiting_match"),
+      where("wantedMember", "==", pulled),
+      where("pulledMember", "==", currentEntryData.wantedMember)
+    );
+    const snap = await getDocs(q);
+    const candidate = snap.docs.find(d => d.id !== user.uid);
+
+    if (candidate) {
+      const roomId = `ag_${POOL_ID}_${Date.now()}`;
+      const partnerRef = doc(db, "auto_go_pools", POOL_ID, "entries", candidate.id);
+      await runTransaction(db, async (tx) => {
+        const pSnap = await tx.get(partnerRef);
+        if (!pSnap.exists() || pSnap.data().status !== "waiting_match") {
+          tx.update(myEntryRef, { pulledMember: pulled, status: "waiting_match", revealedAt: serverTimestamp() });
+          return;
+        }
+        tx.update(partnerRef, { status: "matched", matchedWithUid: user.uid, matchRoomId: roomId });
+        tx.update(myEntryRef, {
+          pulledMember: pulled,
+          status: "matched",
+          matchedWithUid: candidate.id,
+          matchRoomId: roomId,
+          revealedAt: serverTimestamp()
+        });
+      });
+    } else {
+      await runTransaction(db, async (tx) => {
+        tx.update(myEntryRef, {
+          pulledMember: pulled,
+          status: "waiting_match",
+          revealedAt: serverTimestamp()
+        });
+      });
+    }
+  };
+
+  window.copyAutoGoInviteUrl = function() {
+    const url = `${location.origin}/?pool=${POOL_ID}`;
+    navigator.clipboard?.writeText(url);
+    alert("招待URLをコピーしました:
+" + url);
+  };
+
+  window.shareAutoGoToX = function() {
+    const total = currentPoolData ? currentPoolData.totalCount : 0;
+    const rem = Math.max(0, 20 - total);
+    const text = encodeURIComponent(
+      `【抱き合わせゼロ・定価共同購入】
+ILLIT Auto-GO全体プール開催中！現在${total}人参加（${rem > 0 ? `あと${rem}人で発動！` : "開催確定・50人達成で確保率91%超！"}）
+#ILLIT #トレカ交換 #共同購入
+`
+    );
+    const url = encodeURIComponent(`${location.origin}/?pool=${POOL_ID}`);
+    window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, "_blank");
+  };
+
+  // URLパラメータ ?pool=... で開かれた場合は自動でモーダルを開く
+  window.addEventListener("DOMContentLoaded", () => {
+    if (new URLSearchParams(location.search).has("pool")) {
+      setTimeout(() => window.openAutoGoModal(), 600);
+    }
+  });
 })();
 </script>
 
