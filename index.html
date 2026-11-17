@@ -12130,13 +12130,14 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     const inlineCamBox = document.getElementById("inline-guide-cam-box");
     const singleGuideBtns = document.querySelectorAll("#manual-cam-start, #snap-guide-cam, [data-single-guide-btn]");
 
-    const mode = (typeof postMode !== "undefined" ? postMode : (window.postMode || ""));
-    const isExchangeMode = (mode === "exchange");
-    const isTradeBulk = isExchangeMode && Boolean(window.__isBulkMode);
-
-    if (!isExchangeMode) {
-      window.__isBulkMode = false;
-    }
+    const modalTitle = (document.querySelector("#post-modal h2, #post-modal .modal-title, #post-modal-title")?.textContent || "");
+    const activeTabText = Array.from(document.querySelectorAll("#post-modal .active, #post-modal [aria-selected='true'], .tab-btn.active")).map(el => el.textContent).join(" ");
+    const isMyCard = /myトレカ|マイトレカ|所持/i.test(modalTitle + " " + activeTabText) || window.__postMode === "mycard" || window.__isMyCardMode === true;
+    const isTradeBulk = !isMyCard && Boolean(
+      window.__isBulkMode ||
+      /まとめて/i.test(activeTabText) ||
+      (bulkSetupBox && !bulkSetupBox.classList.contains("hidden"))
+    );
 
     if (isTradeBulk) {
       if (inlineCamBox) {
@@ -12180,7 +12181,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
   }
 
   document.addEventListener("click", (e) => {
-    if (e.target.closest("button, [onclick], input[type='checkbox']")) {
+    if (e.target.closest("button, [onclick]")) {
       setTimeout(applyBulkGuideVisibility, 0);
       setTimeout(applyBulkGuideVisibility, 80);
     }
