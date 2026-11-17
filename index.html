@@ -468,7 +468,7 @@
   (function() {
     var targetHost = "kpop-trade.jp";
     var h = window.location.hostname;
-    if (false && h && h !== targetHost) {
+    if (false && h !== targetHost && h !== "localhost" && h !== "127.0.0.1" && h.indexOf("github.dev") === -1 && h.indexOf("web.app") === -1) {
       var search = window.location.search || "";
       var hash = window.location.hash || "";
       window.location.replace("https://" + targetHost + "/" + search + hash);
@@ -12130,21 +12130,22 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     const inlineCamBox = document.getElementById("inline-guide-cam-box");
     const singleGuideBtns = document.querySelectorAll("#manual-cam-start, #snap-guide-cam, [data-single-guide-btn]");
 
-    const modalTitle = (document.querySelector("#post-modal h2, #post-modal .modal-title, #post-modal-title")?.textContent || "");
-    const activeTabText = Array.from(document.querySelectorAll("#post-modal .active, #post-modal [aria-selected='true'], .tab-btn.active")).map(el => el.textContent).join(" ");
-    const isMyCard = /myトレカ|マイトレカ|所持/i.test(modalTitle + " " + activeTabText) || window.__postMode === "mycard" || window.__isMyCardMode === true;
-    const isTradeBulk = !isMyCard && Boolean(
+    const isBulk = Boolean(
       window.__isBulkMode ||
-      /まとめて/i.test(activeTabText) ||
+      (bundleBox && !bundleBox.classList.contains("hidden")) ||
       (bulkSetupBox && !bulkSetupBox.classList.contains("hidden"))
     );
 
-    if (isTradeBulk) {
+    if (isBulk) {
+      // 交換のまとめ時：1枚用のガイド枠・カメラUIを完全に隠す
       if (inlineCamBox) {
         inlineCamBox.classList.add("hidden");
         inlineCamBox.style.display = "none";
       }
-      singleGuideBtns.forEach((btn) => { btn.style.display = "none"; });
+      singleGuideBtns.forEach((btn) => {
+        btn.style.display = "none";
+      });
+      // まとめ用のガイド枠・枠設定ツールを復活表示
       if (bundleBox) {
         bundleBox.classList.remove("hidden");
         bundleBox.style.display = "";
@@ -12154,22 +12155,18 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
         bulkSetupBox.style.display = "";
       }
     } else {
-      if (bundleBox) {
-        bundleBox.classList.add("hidden");
-        bundleBox.style.display = "none";
-      }
-      if (bulkSetupBox) {
-        bulkSetupBox.classList.add("hidden");
-        bulkSetupBox.style.display = "none";
-      }
+      // 通常の1枚出品時：1枚用ガイド枠を復元
       if (inlineCamBox) {
         inlineCamBox.classList.remove("hidden");
         inlineCamBox.style.display = "";
       }
-      singleGuideBtns.forEach((btn) => { btn.style.display = ""; });
+      singleGuideBtns.forEach((btn) => {
+        btn.style.display = "";
+      });
     }
   }
 
+  // openPostModal やまとめボタン押下・DOM変化を監視して即座に反映
   const origOpenPostModal = window.openPostModal;
   if (typeof origOpenPostModal === "function") {
     window.openPostModal = function(...args) {
