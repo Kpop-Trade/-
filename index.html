@@ -8,7 +8,8 @@
   // エラーを赤い文字で画面に大きく表示する
   window.onerror = function(message, source, lineno, colno, error) {
     const errorDiv = document.createElement('div');
-    errorDiv.style.cssText = `
+    if (!location.search.includes("debug=1")) return;
+      errorDiv.style.cssText = `
       position: fixed;
       top: 0;
       left: 0;
@@ -30,7 +31,8 @@
 
   window.addEventListener('unhandledrejection', function(event) {
     const errorDiv = document.createElement('div');
-    errorDiv.style.cssText = `
+    if (!location.search.includes("debug=1")) return;
+      errorDiv.style.cssText = `
       position: fixed;
       top: 0;
       left: 0;
@@ -11248,7 +11250,7 @@ window.addEventListener("error", function(event) {
     "<br><span class='text-[10px]'>" + 
     (event.filename ? event.filename.split("/").pop() + ":" + event.lineno : "") + 
     "</span>";
-  container.prepend(errDiv);
+  if (location.search.includes("debug=1")) container.prepend(errDiv);
 });
 
 window.addEventListener("unhandledrejection", function(event) {
@@ -11258,7 +11260,7 @@ window.addEventListener("unhandledrejection", function(event) {
   errDiv.className = "p-4 m-4 bg-orange-100 text-orange-700 text-xs rounded-xl border border-orange-300";
   errDiv.innerHTML = "<b>⚠️ 非同期処理エラー:</b> " + 
     (event.reason && event.reason.message ? event.reason.message : event.reason);
-  container.prepend(errDiv);
+  if (location.search.includes("debug=1")) container.prepend(errDiv);
 });
 
 (function() {
