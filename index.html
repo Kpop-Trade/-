@@ -6652,7 +6652,8 @@ function getAiCardVectors() {
       const results = [];
       for (let i = 0; i < allCards.length; i++) {
         const card = allCards[i];
-        const photoUrl = cardPhotoCache[card.id] || card.photoUrl;
+        if ((card.albumId || "").toLowerCase().includes("glitter") || (card.albumName || "").toLowerCase().includes("glitter")) continue;
+    const photoUrl = cardPhotoCache[card.id] || card.photoUrl;
         if (!photoUrl) continue;
 
         if (!_cardFeatureCache[card.id] ||
