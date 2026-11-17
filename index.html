@@ -6653,6 +6653,7 @@ function getAiCardVectors() {
       for (let i = 0; i < allCards.length; i++) {
         const card = allCards[i];
         if ((card.albumId || "").toLowerCase().includes("glitter") || (card.albumName || "").toLowerCase().includes("glitter")) continue;
+    if (/^pk_mwk4is71_00(?:0[1-9]|[1-4][0-9]|5[0-7])$/i.test(String(card.id || ""))) continue;
     const photoUrl = cardPhotoCache[card.id] || card.photoUrl;
         if (!photoUrl) continue;
 
