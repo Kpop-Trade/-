@@ -2617,7 +2617,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         const tradeSnap = await getDoc(doc(db, "trades", tradeId));
         if(tradeSnap.exists()) {
           const tData = tradeSnap.data();
-          await restorePostToActive(tData.postId, tData.kind, tData.applicantId);
+          if (typeof revertBulkSlotsOnCancel === "function" && currentTrade && currentTrade.isBulk) { await revertBulkSlotsOnCancel(currentTrade.postId, currentTrade.id); } await restorePostToActive(tData.postId, tData.kind, tData.applicantId);
         }
         alert("取引を強制キャンセルしました。");
         loadAdminData();
@@ -4994,91 +4994,172 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
               if (typeof window.applyTrade === "function") window.applyTrade(index);
               else if (typeof applyTrade === "function") applyTrade(index);
             };
-            window.openBulkSelectModal(p);
-            return;
-          }
-        }
-        const __chosenBulkSlotIds = window.__pendingBulkSlotIds || null;
-        window.__pendingBulkSlotIds = null;
-        const existing = myTrades.find(t => t.postId === p.id && t.applicantId === currentUser.uid && t.status !== "cancelled");
-      if (existing) {
-        alert("すでにこの出品に対する取引ルームが存在します。");
-        closeDetailModal();
-        openTrade(existing.id);
-        return;
-      }
+            window.openBulkSelectModal = function(postId) {
+  const p = allPosts.find(x => x.id === postId);
+  if (!p || !Array.isArray(p.bulkSlots) || p.bulkSlots.length === 0) return;
+  window.__bulkSelectTargetPost = p;
+  window.__bulkSelectedSlotIds = [];
+  const img = document.getElementById("bulk-select-img");
+  if (img) {
+    img.src = (p.photos && p.photos[0]) || p.photo || "";
+    img.onload = () => renderBulkSelectOverlay();
+  }
+  const modal = document.getElementById("bulk-select-modal");
+  if (modal) modal.classList.remove("hidden");
+  renderBulkSelectOverlay();
+};
 
-      const deviceId = getOrCreateDeviceId();
-      // 先着：出品が active のときだけ traded にして確保（同時申込の二重取引を防ぐ）
-      let claimed = false;
-      try {
-        await runTransaction(db, async (tx) => {
-          const postRef = doc(db, "posts", p.id);
-          const ps = await tx.get(postRef);
-          if (!ps.exists()) throw new Error("notfound");
-          if (ps.data().status !== "active") throw new Error("notactive");
-          tx.update(postRef, { status: "traded", soldAt: serverTimestamp() });
-        });
-        if (!p.isBulk) { claimed = true; p.status = "traded"; renderPosts(); }
-      } catch (claimErr) {
-        if (claimErr && (claimErr.message === "notactive" || claimErr.message === "notfound")) {
-          return alert("この出品はすでに取引中、または終了しています。");
-        }
-        console.warn("post claim failed:", claimErr?.code || claimErr); // 権限などは従来どおり続行
-      }
-      try {
-        // 売却は合意ステップをスキップし、即「取引・発送中」でルームを開く
-        const direct = true;
-        const agreedMap = { [p.userId]: true, [currentUser.uid]: true };
-        const ref = await addDoc(collection(db, "trades"), {
-          kind: p.kind,
-          isBuy: !!p.isBuy,
-          isSell: !!p.isSell,
-          postId: p.id,
-          postGive: p.give,
-          postWant: p.want || "",
-          postPrice: p.price || 0,
-          postMember: p.member || "指定なし",
-          postDeadline: p.deadline || "",
-          postPhotoCount: p.photoCount || 0,
-          postCondition: p.condition || "",
-          paymentMethod: p.paymentMethod || (usesAzukariPayment(p) ? "azukari" : "paypay"),
-          ownerId: p.userId,
-          ownerName: p.userName,
-          applicantId: currentUser.uid,
-          applicantName: getMyDisplayName(),
-          participants: [p.userId, currentUser.uid],
-          status: "shipping",
-          agreed: agreedMap,
-          shipped: {},
-          received: {},
-          disputed: {},
-          lastMessageAt: serverTimestamp(),
-          lastSenderId: currentUser.uid,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-          deviceId: deviceId
-        });
+window.closeBulkSelectModal = function() {
+  const modal = document.getElementById("bulk-select-modal");
+  if (modal) modal.classList.add("hidden");
+  window.__bulkSelectTargetPost = null;
+  window.__bulkSelectedSlotIds = [];
+};
 
-        claimed = false; // 取引作成まで成功
+function renderBulkSelectOverlay() {
+  const p = window.__bulkSelectTargetPost;
+  const ov = document.getElementById("bulk-select-overlay");
+  if (!p || !ov) return;
+  const sel = new Set(window.__bulkSelectedSlotIds || []);
+  ov.innerHTML = (p.bulkSlots || []).map((s, idx) => {
+    const sid = s.id || ("slot_" + idx);
+    const isSold = s.status === "sold";
+    const isPicked = sel.has(sid);
+    const border = isSold ? "1px solid rgba(239,68,68,0.65)" : (isPicked ? "2px solid #ef4444" : "1px solid rgba(255,255,255,0.55)");
+    const bg = isSold ? "rgba(0,0,0,0.45)" : (isPicked ? "rgba(239,68,68,0.20)" : "transparent");
+    const mark = (isSold || isPicked)
+      ? `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">
+           <span style="color:#ef4444;font-weight:900;font-size:clamp(22px,6vw,38px);text-shadow:0 0 4px #fff,0 1px 3px rgba(0,0,0,0.8);">✕</span>
+         </div>`
+      : "";
+    return `<div data-slot-id="${sid}" style="position:absolute;left:${s.x}%;top:${s.y}%;width:${s.w}%;height:${s.h}%;border:${border};background:${bg};border-radius:6px;box-sizing:border-box;cursor:${isSold ? "not-allowed" : "pointer"};">${mark}</div>`;
+  }).join("");
 
-        closeDetailModal();
-        openTrade(ref.id);
-        showToast("申し込みが完了しました。取引ルームで決済・発送を進めてください。", "success");
-      } catch (e) {
-        console.error("applyToPost error:", e);
-        if (claimed) restorePostToActive(p.id, p.kind, null); // 取引が作れなかったら確保を戻す
-        const msg = e?.code || e?.message || String(e);
-        if (msg.includes("permission-denied") || msg.includes("PERMISSION_DENIED")) {
-          alert("処理に失敗しました。\n（権限エラー）\nページを再読み込みしてからもう一度お試しください。");
-        } else if (msg.includes("device") || msg.includes("Device")) {
-          alert("処理に失敗しました。\n（デバイス認証エラー）\n一度ログアウト→ログインしてから再度お試しください。");
-        } else {
-          alert("処理に失敗しました。\n" + msg);
-        }
-      }
+  ov.querySelectorAll("[data-slot-id]").forEach(el => {
+    el.onclick = () => {
+      const sid = el.dataset.slotId;
+      const slot = (p.bulkSlots || []).find((x, i) => (x.id || ("slot_" + i)) === sid);
+      if (!slot || slot.status === "sold") return;
+      const arr = window.__bulkSelectedSlotIds || [];
+      const pos = arr.indexOf(sid);
+      if (pos >= 0) arr.splice(pos, 1); else arr.push(sid);
+      window.__bulkSelectedSlotIds = arr;
+      renderBulkSelectOverlay();
     };
-    window.joinGroup = async function(index) {
+  });
+
+  const cntEl = document.getElementById("bulk-select-count");
+  if (cntEl) cntEl.textContent = (window.__bulkSelectedSlotIds || []).length + "枚選択中";
+}
+
+async function buildBulkMarkedDataUrl(imgUrl, slots, selectedIds) {
+  return new Promise((resolve) => {
+    const im = new Image();
+    im.crossOrigin = "anonymous";
+    im.onload = () => {
+      try {
+        const cv = document.createElement("canvas");
+        const maxW = 900;
+        const scale = im.width > maxW ? (maxW / im.width) : 1;
+        cv.width = Math.round(im.width * scale);
+        cv.height = Math.round(im.height * scale);
+        const cx = cv.getContext("2d");
+        cx.drawImage(im, 0, 0, cv.width, cv.height);
+        const selSet = new Set(selectedIds);
+        (slots || []).forEach((s, idx) => {
+          const sid = s.id || ("slot_" + idx);
+          if (s.status === "sold" || selSet.has(sid)) {
+            const rx = (s.x / 100) * cv.width;
+            const ry = (s.y / 100) * cv.height;
+            const rw = (s.w / 100) * cv.width;
+            const rh = (s.h / 100) * cv.height;
+            cx.fillStyle = "rgba(0,0,0,0.35)";
+            cx.fillRect(rx, ry, rw, rh);
+            cx.strokeStyle = "#ef4444";
+            cx.lineWidth = Math.max(4, Math.min(rw, rh) * 0.12);
+            cx.lineCap = "round";
+            const pad = Math.min(rw, rh) * 0.22;
+            cx.beginPath();
+            cx.moveTo(rx + pad, ry + pad);
+            cx.lineTo(rx + rw - pad, ry + rh - pad);
+            cx.moveTo(rx + rw - pad, ry + pad);
+            cx.lineTo(rx + pad, ry + rh - pad);
+            cx.stroke();
+          }
+        });
+        resolve(cv.toDataURL("image/jpeg", 0.82));
+      } catch (e) { resolve(""); }
+    };
+    im.onerror = () => resolve("");
+    im.src = imgUrl;
+  });
+}
+
+window.confirmBulkSelectionAndApply = async function() {
+  const p = window.__bulkSelectTargetPost;
+  const selIds = [...(window.__bulkSelectedSlotIds || [])];
+  if (!p) return;
+  if (!currentUser) return alert("ログインが必要です");
+  if (selIds.length === 0) return alert("欲しいトレカの枠をタップして選択してください");
+  if (typeof requireShippingInfo === "function" && !requireShippingInfo()) return;
+
+  try {
+    const baseImg = (p.photos && p.photos[0]) || p.photo || "";
+    const markedImage = await buildBulkMarkedDataUrl(baseImg, p.bulkSlots, selIds);
+    const selectedLabels = (p.bulkSlots || [])
+      .map((s, idx) => ({ s, sid: s.id || ("slot_" + idx), no: idx + 1 }))
+      .filter(x => selIds.includes(x.sid))
+      .map(x => x.s.label || ("枠#" + x.no));
+
+    const agreedMap = { [currentUser.uid]: true };
+    const ref = await addDoc(collection(db, "trades"), {
+      kind: p.kind,
+      isBuy: !!p.isBuy,
+      isSell: !!p.isSell,
+      isBulk: true,
+      selectedSlotIds: selIds,
+      selectedSlotLabels: selectedLabels,
+      bulkMarkedImage: markedImage,
+      postId: p.id,
+      postUserId: p.userId,
+      postUserName: p.userName || "",
+      applicantId: currentUser.uid,
+      applicantName: typeof getMyDisplayName === "function" ? getMyDisplayName() : (currentUser.displayName || ""),
+      postGive: p.give || ("まとめ出品 (" + selectedLabels.join(", ") + ")"),
+      postWant: p.want || "",
+      postPrice: p.price || 0,
+      postMember: p.member || "指定なし",
+      participants: [p.userId, currentUser.uid],
+      status: "shipping",
+      agreed: agreedMap,
+      shipped: {},
+      received: {},
+      disputed: {},
+      lastMessageAt: serverTimestamp(),
+      lastSenderId: currentUser.uid,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+
+    if (markedImage) {
+      await addDoc(collection(db, "trades", ref.id, "messages"), {
+        senderId: currentUser.uid,
+        text: "【希望枠の申し込み】" + selectedLabels.join(" / ") + "\n内容をご確認のうえ、問題なければ「取引に同意する」を押してください。",
+        imageUrl: markedImage,
+        createdAt: serverTimestamp()
+      });
+    }
+
+    closeBulkSelectModal();
+    if (typeof closeDetailModal === "function") closeDetailModal();
+    openTrade(ref.id);
+    if (typeof showToast === "function") showToast("希望枠の写真付きで申し込みました！売り手の同意をお待ちください。", "success");
+  } catch (e) {
+    console.error("confirmBulkSelectionAndApply error:", e);
+    alert("申し込みに失敗しました: " + (e.message || e));
+  }
+};
+window.joinGroup = async function(index) {
       if (typeof checkCancelAccountLock === "function" && checkCancelAccountLock()) return;
       const p = allPosts[index]; if (!currentUser || !p || !p.userId || p.kind !== "group" || !(await checkDeviceLock())) return;
       if (!requireShippingInfo()) return;
@@ -11932,6 +12013,134 @@ window.openBundleFrameEditor=function(){const src=gSrc();if(!src)return alert("�
       }
     }, "image/jpeg", 0.92);
   };
+})();
+</script>
+
+<script>
+(function(){
+  // 売り手が「同意する」を押したときの確定処理
+  window.agreeBulkTradeAsSeller = async function() {
+    const t = window.currentTrade;
+    if (!t || !t.isBulk || !currentUser) return;
+    if (t.postUserId !== currentUser.uid) return alert("売り手のみ同意できます");
+    if (!confirm("この内容で取引に同意（成立）しますか？\n同意すると該当の枠に「✕」が付き、全枠が埋まると自動で募集終了になります。")) return;
+
+    try {
+      const postRef = doc(db, "posts", t.postId);
+      const selSet = new Set(t.selectedSlotIds || []);
+      let allSoldNow = false;
+
+      await runTransaction(db, async (tx) => {
+        const ps = await tx.get(postRef);
+        if (!ps.exists()) throw new Error("投稿が見つかりません");
+        const pData = ps.data();
+        const slots = Array.isArray(pData.bulkSlots) ? [...pData.bulkSlots] : [];
+        const updatedSlots = slots.map((s, idx) => {
+          const sid = s.id || ("slot_" + idx);
+          if (selSet.has(sid)) {
+            if (s.status === "sold" && s.soldTradeId && s.soldTradeId !== t.id) {
+              throw new Error("選択された枠の一部はすでに他の取引で成立済みです");
+            }
+            return { ...s, id: sid, status: "sold", soldTradeId: t.id };
+          }
+          return { ...s, id: sid };
+        });
+        allSoldNow = updatedSlots.length > 0 && updatedSlots.every(s => s.status === "sold");
+        tx.update(postRef, {
+          bulkSlots: updatedSlots,
+          status: allSoldNow ? "traded" : "active",
+          updatedAt: serverTimestamp()
+        });
+      });
+
+      const nextAgreed = { ...(t.agreed || {}), [currentUser.uid]: true };
+      await updateDoc(doc(db, "trades", t.id), {
+        agreed: nextAgreed,
+        sellerAgreedAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+
+      await addDoc(collection(db, "trades", t.id, "messages"), {
+        senderId: currentUser.uid,
+        text: "✅ 売り手が取引に同意しました！投稿写真の該当枠に「✕」が反映されました。" + (allSoldNow ? "\n🎉 すべての枠が埋まったため、この投稿は自動で募集終了になりました。" : ""),
+        createdAt: serverTimestamp()
+      });
+
+      if (typeof showToast === "function") showToast("取引に同意しました！", "success");
+    } catch (e) {
+      console.error("agreeBulkTradeAsSeller error:", e);
+      alert("同意処理に失敗しました: " + (e.message || e));
+    }
+  };
+
+  // キャンセル確定時に、該当取引で✕になった枠だけを1個前の状態（open）へ戻す
+  window.revertBulkSlotsOnCancel = async function(postId, tradeId) {
+    if (!postId || !tradeId) return;
+    try {
+      const postRef = doc(db, "posts", postId);
+      await runTransaction(db, async (tx) => {
+        const ps = await tx.get(postRef);
+        if (!ps.exists()) return;
+        const pData = ps.data();
+        if (!Array.isArray(pData.bulkSlots)) return;
+        const revertedSlots = pData.bulkSlots.map(s =>
+          (s.soldTradeId === tradeId) ? { ...s, status: "open", soldTradeId: null } : s
+        );
+        const anyOpen = revertedSlots.some(s => s.status !== "sold");
+        tx.update(postRef, {
+          bulkSlots: revertedSlots,
+          status: anyOpen ? "active" : (pData.status || "active"),
+          updatedAt: serverTimestamp()
+        });
+      });
+    } catch (e) {
+      console.warn("revertBulkSlotsOnCancel error:", e);
+    }
+  };
+
+  // 取引ルーム描画時にまとめ売り用の「バツ付き確認写真」と「売り手専用・同意ボタン」を自動挿入
+  const origRenderRoom = window.renderRoom;
+  if (typeof origRenderRoom === "function") {
+    window.renderRoom = function() {
+      origRenderRoom.apply(this, arguments);
+      const t = window.currentTrade;
+      const roomMsgs = document.getElementById("room-messages");
+      if (!t || !t.isBulk || !roomMsgs) return;
+
+      let banner = document.getElementById("bulk-trade-consent-banner");
+      if (!banner) {
+        banner = document.createElement("div");
+        banner.id = "bulk-trade-consent-banner";
+        roomMsgs.parentElement.insertBefore(banner, roomMsgs);
+      }
+
+      const isSeller = currentUser && (t.postUserId === currentUser.uid);
+      const sellerAgreed = !!(t.agreed && t.agreed[t.postUserId]);
+      const isCancelled = (t.status === "cancelled");
+      const labelsText = Array.isArray(t.selectedSlotLabels) ? t.selectedSlotLabels.join(" / ") : "";
+
+      let actionHtml = "";
+      if (isCancelled) {
+        actionHtml = `<div class="text-xs font-bold text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">この取引はキャンセルされました（投稿写真の該当枠は1つ前の状態に戻りました）</div>`;
+      } else if (sellerAgreed) {
+        actionHtml = `<div class="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">✅ 取引成立済み（投稿写真の売れた枠に「✕」が付いています）</div>`;
+      } else if (isSeller) {
+        actionHtml = `<button type="button" onclick="agreeBulkTradeAsSeller()" class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold text-xs shadow-md active:scale-95 transition">🤝 この内容で取引に同意する（成立して枠に✕を付ける）</button>`;
+      } else {
+        actionHtml = `<div class="text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">⏳ 売り手の同意待ちです（下のチャットで写真やメッセージを送って交渉できます）</div>`;
+      }
+
+      banner.className = "mx-3 mt-2 mb-1 p-3 rounded-2xl bg-white border border-purple-200 shadow-sm space-y-2";
+      banner.innerHTML = `
+        <div class="flex items-center justify-between text-xs">
+          <span class="font-bold text-purple-700">📦 まとめ出品の希望枠</span>
+          <span class="font-bold text-gray-700">${labelsText}</span>
+        </div>
+        ${t.bulkMarkedImage ? `<img src="${t.bulkMarkedImage}" class="w-full max-h-40 object-contain rounded-xl border border-gray-200 bg-black/5">` : ""}
+        ${actionHtml}
+      `;
+    };
+  }
 })();
 </script>
 </body>
