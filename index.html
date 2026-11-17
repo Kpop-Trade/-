@@ -11859,7 +11859,7 @@ window.openBundleFrameEditor=function(){const src=gSrc();if(!src)return alert("�
   </div>
   <div class="relative flex-1 my-3 rounded-2xl overflow-hidden bg-zinc-950 flex items-center justify-center">
     <video id="single-guide-vid" autoplay playsinline muted class="w-full h-full object-cover"></video>
-    <div id="single-guide-frame" style="position:absolute;width:54%;aspect-ratio:1/1.55;max-height:76%;border:2.5px dashed #22d3ee;background:rgba(34,211,238,0.10);border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,0.45);pointer-events:none;">
+    <div id="single-guide-frame" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:68%;max-width:280px;aspect-ratio:1/1.55;max-height:80%;border:3px dashed #22d3ee;background:rgba(34,211,238,0.08);border-radius:14px;box-shadow:0 0 0 9999px rgba(0,0,0,0.45);pointer-events:none;">
       <span style="position:absolute;top:6px;left:8px;background:rgba(0,0,0,0.75);color:#22d3ee;font-size:11px;font-weight:bold;padding:2px 6px;border-radius:6px;">枠内にトレカ1枚を合わせる</span>
     </div>
   </div>
@@ -11942,19 +11942,47 @@ window.openBundleFrameEditor=function(){const src=gSrc();if(!src)return alert("�
     const gridBtns = document.getElementById("cam-grid-btns");
     if (!camBox) return;
     const isBulk = !!(window.isBulkMode || (document.getElementById("bulk-mode-panel") && !document.getElementById("bulk-mode-panel").classList.contains("hidden")));
+    const vid = camBox.querySelector("video");
+    const vidWrap = vid ? vid.parentElement : null;
+
     if (gridBtns) {
       gridBtns.style.display = isBulk ? "flex" : "none";
     }
+
     if (!isBulk) {
+      // 1枚モード：スマホを縦に持ったまま撮りやすい縦長カメラ（3:4）＋真ん中1枚枠
+      camBox.style.maxWidth = "340px";
+      camBox.style.marginLeft = "auto";
+      camBox.style.marginRight = "auto";
+      if (vidWrap) {
+        vidWrap.style.aspectRatio = "3 / 4";
+        vidWrap.style.height = "auto";
+        vidWrap.style.maxHeight = "440px";
+      }
+      if (vid) {
+        vid.style.width = "100%";
+        vid.style.height = "100%";
+        vid.style.objectFit = "cover";
+      }
       const btn1x1 = camBox.querySelector("[data-g=\"1x1\"]");
-      if (btn1x1) btn1x1.click();
+      if (btn1x1 && !btn1x1.dataset.forcedSingle) {
+        btn1x1.dataset.forcedSingle = "1";
+        btn1x1.click();
+      }
+    } else {
+      // まとめ売りモード：複数枚を並べて撮れる横ワイドカメラに戻す
+      camBox.style.maxWidth = "";
+      camBox.style.marginLeft = "";
+      camBox.style.marginRight = "";
+      if (vidWrap) {
+        vidWrap.style.aspectRatio = "";
+        vidWrap.style.height = "";
+        vidWrap.style.maxHeight = "";
+      }
+      const btn1x1 = camBox.querySelector("[data-g=\"1x1\"]");
+      if (btn1x1) delete btn1x1.dataset.forcedSingle;
     }
   }
-  document.addEventListener("click", function(e) {
-    if (e.target && e.target.closest("button")) {
-      setTimeout(syncGuideCamByMode, 50);
-    }
-  });
   setInterval(syncGuideCamByMode, 800);
 })();
 </script>
