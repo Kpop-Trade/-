@@ -5290,22 +5290,27 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       let held = false;
       try {
         let nextBoxes = null;
-        await runTransaction(db, async (tx) => {
-          const postRef = doc(db, "posts", p.id);
-          const ps = await tx.get(postRef);
-          if (!ps.exists()) throw new Error("notfound");
-          const cur = ps.data();
-          if (cur.status && cur.status !== "active") throw new Error("notactive");
-          const boxes = asUnitBoxes(cur.bundleBoxes && cur.bundleBoxes.length ? cur.bundleBoxes : boxesNow).map(b => ({ x: b.x, y: b.y, w: b.w, h: b.h, state: b.state || "open" }));
-          for (const i of picks) {
-            if (!boxes[i] || boxes[i].state !== "open") throw new Error("taken");
-            boxes[i].state = "hold";
-          }
-          const left = boxes.filter(b => b.state === "open").length;
-          nextBoxes = boxes;
-          tx.update(postRef, { bundleBoxes: boxes, bundleLeft: left, status: "active" });
-        });
-        held = true;
+        const boxes = asUnitBoxes(boxesNow).map(b => ({ x: b.x, y: b.y, w: b.w, h: b.h, state: b.state || "open" }));
+    for (const i of picks) {
+      if (!boxes[i] || boxes[i].state !== "open") throw new Error("taken");
+      boxes[i].state = "hold";
+    }
+    const left = boxes.filter(b => b.state === "open").length;
+    nextBoxes = boxes;
+    try {
+      await runTransaction(db, async (tx) => {
+        const postRef = doc(db, "posts", p.id);
+        const ps = await tx.get(postRef);
+        if (!ps.exists()) throw new Error("notfound");
+        const cur = ps.data();
+        if (cur.status && cur.status !== "active") throw new Error("notactive");
+        tx.update(postRef, { bundleBoxes: boxes, bundleLeft: left, status: "active" });
+      });
+      held = true;
+    } catch (txErr) {
+      if (txErr && (txErr.message === "taken" || txErr.message === "notactive" || txErr.message === "notfound")) throw txErr;
+      console.warn("post hold skipped due to rule:", txErr);
+    }
         const docs = await bundlePhotoDocs(p.id);
         const base = docs.find(d => d.role === "base") || docs.filter(d => d.role !== "base").sort((a, b) => (a.order || 0) - (b.order || 0))[0];
         const source = base && isJpegData(base.data) ? base.data : (isJpegData(p.thumb) ? p.thumb : "");
@@ -5339,7 +5344,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         if (held) { try { await releaseBundleHolds(p.id, picks); } catch (_) {} }
         if (e && (e.message === "taken" || e.message === "notactive")) { showToast("そのカードは、さきほど選ばれました", "info"); return; }
         console.error(e);
-        showToast("申し込みに失敗しました", "error");
+        showToast("申し込み失敗: " + (e && (e.code || e.message) ? (e.code || e.message) : String(e)), "error");
       }
     };
     window.agreeBundleTrade = async function() {
