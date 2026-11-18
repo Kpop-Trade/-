@@ -12594,7 +12594,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       <img id="ag-pool-image" src="" alt="" class="hidden w-full h-40 object-cover bg-gray-100">
       <div class="p-3 space-y-1">
         <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">抱き合わせゼロ・定価共同購入</span>
-        <h3 id="ag-pool-title" class="font-bold text-sm text-gray-900">プールを読み込み中...</h3>
+        <h3 id="ag-pool-title" class="font-extrabold text-lg text-gray-900 tracking-tight">Auto-GO</h3>
         <p id="ag-pool-desc" class="text-[11px] text-gray-600 whitespace-pre-line leading-relaxed"></p>
       </div>
     </div>
@@ -13041,7 +13041,8 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     const pct = Math.min(100, Math.round((total / targetP) * 100));
     const prob = total >= Math.round(targetP * 0.9) ? "92%" : total >= Math.round(targetP * 0.6) ? "87%" : total >= minP ? "82%" : `78%（${minP}人達成で確定）`;
 
-    document.getElementById("ag-pool-title").textContent = currentPoolData.title || "Auto-GO 全体プール";
+    const rawTitle = (currentPoolData.title || "Auto-GO").replace(/全体プール/g, "").trim();
+      document.getElementById("ag-pool-title").textContent = rawTitle || "Auto-GO";
     document.getElementById("ag-pool-desc").textContent = currentPoolData.description || "";
     const imgEl = document.getElementById("ag-pool-image");
     if (currentPoolData.imageUrl) {
@@ -13707,15 +13708,27 @@ ${currentPoolData.title}
         updatedAt: window.serverTimestamp ? window.serverTimestamp() : new Date()
       };
 
-      const ref = await window.addDoc(window.collection(window.db, "trades"), tradeDoc);
+      const refs = window.__autoGoRefs || {};
+    const _db = window.db || refs.db;
+    const _col = window.collection || refs.collection;
+    const _add = window.addDoc || refs.addDoc;
+    const _ts = window.serverTimestamp || refs.serverTimestamp;
+    if (!_db || !_col || !_add) {
+      if (typeof showToast === "function") showToast("システム読込中です。数秒後にもう一度お試しください", "error");
+      return;
+    }
+    tradeDoc.createdAt = _ts ? _ts() : new Date();
+    tradeDoc.updatedAt = _ts ? _ts() : new Date();
+    const ref = await _add(_col(_db, "trades"), tradeDoc);
 
-      if (d.m && typeof window.addDoc === "function") {
-        await window.addDoc(window.collection(window.db, "trades", ref.id, "messages"), {
-          senderId: window.currentUser.uid,
-          text: `【X合意ルーム開設】\n条件メモ：${d.m}`,
-          createdAt: window.serverTimestamp ? window.serverTimestamp() : new Date()
-        });
-      }
+    if (d.m) {
+      await _add(_col(_db, "trades", ref.id, "messages"), {
+        senderId: window.currentUser.uid,
+        text: `【X合意ルーム開設】
+条件メモ：${d.m}`,
+        createdAt: _ts ? _ts() : new Date()
+      });
+    }
 
       closeXTradeJoinModal();
       if (typeof showToast === "function") showToast("取引ルームを作成しました！", "success");
