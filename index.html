@@ -12657,7 +12657,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
           </div>
           <div class="bg-purple-50 border border-purple-200 rounded-xl p-2.5 mb-2 text-[11px] text-purple-950 space-y-1">
   <div class="font-extrabold text-purple-800">🎯 第1希望オンリー保証＆最短直送システム</div>
-  <div class="leading-relaxed">選んだ<strong>第1希望メンバーのみ</strong>が割り当てられます（第2希望の押し付けなし）。自引きした場合は<strong>発送ゼロ</strong>、交換が必要な場合もシステムが<strong>1対1の最短直送ペア</strong>を自動マッチングします。</div>
+  <div class="leading-relaxed">選んだ<strong>第1希望メンバーのみ</strong>が割り当てられます（第2希望の押し付けなし）。自引きした場合は<strong>発送ゼロ</strong>、交換が必要な場合もシステムが<strong>システム指定の最短直送ルートペア</strong>を自動マッチングします。</div>
 </div>
 <div id="ag-member-grid" class="grid grid-cols-1 gap-2"></div>
     </div>
@@ -13395,61 +13395,97 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     }
 
     const entriesCol = collection(db, "auto_go_pools", activePoolId, "entries");
-    const q = query(
-      entriesCol,
-      where("status", "==", "waiting_match"),
-      where("wantedMember", "==", pulled),
-      where("pulledMember", "==", currentEntryData.wantedMember)
-    );
-    if (currentPoolData && currentPoolData.matchStartAt && Date.now() < Number(currentPoolData.matchStartAt)) {
-      const dt = new Date(Number(currentPoolData.matchStartAt));
-      const pad = n => String(n).padStart(2, "0");
-      const label = `${dt.getMonth()+1}/${dt.getDate()} ${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
-      if (typeof showToast === "function") {
-        showToast(`マッチングは ${label} から先着順で開始します`, "info");
+  if (currentPoolData && currentPoolData.matchStartAt && Date.now() < Number(currentPoolData.matchStartAt)) {
+    const dt = new Date(Number(currentPoolData.matchStartAt));
+    const pad = n => String(n).padStart(2, "0");
+    const label = `${dt.getMonth()+1}/${dt.getDate()} ${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+    if (typeof showToast === "function") {
+      showToast(`マッチングは ${label} から先着順で開始します`, "info");
+    }
+    return;
+  }
+
+  // 全待機中エントリーを取得し、自分を含めた有向グラフで最短の循環ループ（2〜5人）を探索
+  const waitSnap = await getDocs(query(entriesCol, where("status", "==", "waiting_match")));
+  const poolNodes = [
+    { id: user.uid, wantedMember: currentEntryData.wantedMember, pulledMember: pulled, userName: currentEntryData.userName || "あなた", shippingAddress: currentEntryData.shippingAddress || "" }
+  ];
+  waitSnap.docs.forEach(d => {
+    if (d.id !== user.uid) {
+      poolNodes.push({ id: d.id, ...d.data() });
+    }
+  });
+
+  // DFSで自分(index 0)から始まり自分に戻る最短サイクル(長さ2〜5)を探す
+  let foundCycle = null;
+  function findCycle(path, visited) {
+    if (foundCycle && foundCycle.length <= path.length) return;
+    const curr = path[path.length - 1];
+    // currが引いたカード(pulledMember)を欲しがっている人(wantedMember)が次の送り先
+    for (let i = 0; i < poolNodes.length; i++) {
+      const nextNode = poolNodes[i];
+      if (nextNode.wantedMember !== curr.pulledMember) continue;
+      if (i === 0 && path.length >= 2) {
+        foundCycle = [...path];
+        return;
       }
-      return;
+      if (!visited.has(i) && path.length < 5) {
+        visited.add(i);
+        path.push(nextNode);
+        findCycle(path, visited);
+        path.pop();
+        visited.delete(i);
+      }
     }
-    const snap = await getDocs(q);
-    const sortedDocs = snap.docs
-      .filter(d => d.id !== user.uid)
-      .sort((a, b) => {
-        const ta = a.data().revealedAt?.toMillis?.() || a.data().createdAt?.toMillis?.() || 0;
-        const tb = b.data().revealedAt?.toMillis?.() || b.data().createdAt?.toMillis?.() || 0;
-        return ta - tb;
-      });
-    const candidate = sortedDocs[0];
+  }
+  findCycle([poolNodes[0]], new Set([0]));
 
-    if (candidate) {
-      const roomId = `ag_${activePoolId}_${Date.now()}`;
-      const partnerRef = doc(db, "auto_go_pools", activePoolId, "entries", candidate.id);
-      await runTransaction(db, async (tx) => {
-        const pSnap = await tx.get(partnerRef);
-        if (!pSnap.exists() || pSnap.data().status !== "waiting_match") {
-          tx.update(myEntryRef, { pulledMember: pulled, status: "waiting_match", revealedAt: serverTimestamp() });
-          return;
+  if (foundCycle && foundCycle.length >= 2) {
+    const cycleId = `ag_${activePoolId}_${Date.now()}`;
+    await runTransaction(db, async (tx) => {
+      // 全員の最新状態を確認
+      const refs = foundCycle.map(n => doc(db, "auto_go_pools", activePoolId, "entries", n.id));
+      const snaps = await Promise.all(refs.map(r => tx.get(r)));
+      for (let i = 1; i < snaps.length; i++) {
+        if (!snaps[i].exists() || snaps[i].data().status !== "waiting_match") {
+          throw new Error("RETRY_MATCH");
         }
-        tx.update(partnerRef, { status: "matched", matchedWithUid: user.uid, matchRoomId: roomId });
-        tx.update(myEntryRef, {
-          pulledMember: pulled,
+      }
+      // 各メンバーに「発送先(sendTo)」と「発送元(receiveFrom)」を割り当て
+      const len = foundCycle.length;
+      for (let i = 0; i < len; i++) {
+        const sender = foundCycle[i];
+        const receiver = foundCycle[(i + 1) % len]; // senderが引いたカードを欲しい人
+        const provider = foundCycle[(i - 1 + len) % len]; // senderの推しを引いた人
+        const updatePayload = {
           status: "matched",
-          matchedWithUid: candidate.id,
-          matchRoomId: roomId,
-          revealedAt: serverTimestamp()
-        });
+          matchRoomId: cycleId,
+          cycleSize: len,
+          sendToUid: receiver.id,
+          sendToName: receiver.userName || receiver.displayName || "参加者",
+          shipToAddress: receiver.shippingAddress || "（住所未登録・取引チャットで確認）",
+          receiveFromUid: provider.id,
+          receiveFromName: provider.userName || provider.displayName || "参加者"
+        };
+        if (i === 0) {
+          updatePayload.pulledMember = pulled;
+          updatePayload.revealedAt = serverTimestamp();
+        }
+        tx.update(refs[i], updatePayload);
+      }
+    });
+  } else {
+    await runTransaction(db, async (tx) => {
+      tx.update(myEntryRef, {
+        pulledMember: pulled,
+        status: "waiting_match",
+        revealedAt: serverTimestamp()
       });
-    } else {
-      await runTransaction(db, async (tx) => {
-        tx.update(myEntryRef, {
-          pulledMember: pulled,
-          status: "waiting_match",
-          revealedAt: serverTimestamp()
-        });
-      });
-    }
-  };
+    });
+  }
+};
 
-  window.copyAutoGoInviteUrl = function() {
+window.copyAutoGoInviteUrl = function() {
     if (!activePoolId) return;
     const url = `${location.origin}/?pool=${activePoolId}`;
     navigator.clipboard?.writeText(url);
