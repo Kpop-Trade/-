@@ -12822,7 +12822,17 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
             <textarea id="adm-ag-desc" rows="3" placeholder="例: Weverse Shop Global 予約特典トレカ共同購入です。20人到達で自動成立します。" class="w-full liquid-glass-input rounded-xl p-2.5 text-xs text-gray-900"></textarea>
           </div>
 
-          <button id="adm-ag-submit-btn" type="button" onclick="window.createAdminAutoGoPool()" class="w-full bg-gradient-to-r from-purple-600 to-pink-500 text-white font-black text-xs py-3 rounded-xl shadow-md active:scale-[0.99] transition">
+          <div>
+                  <label class="block text-[11px] font-bold text-gray-700 mb-1">メンバー名（カンマ・読点・改行区切りで登録）</label>
+                  <textarea id="adm-ag-members" rows="2" placeholder="例：ユナ, ミンジュ, モカ, ウォンヒ, イロハ" class="w-full liquid-glass-input px-3 py-2 text-xs">ユナ, ミンジュ, モカ, ウォンヒ, イロハ</textarea>
+                  <p class="text-[10px] text-gray-400 mt-0.5">※ 入力した人数に合わせて自動的に枠数・メンバー選択肢が生成されます</p>
+                </div>
+                <div>
+                  <label class="block text-[11px] font-bold text-gray-700 mb-1">マッチング開始日時（指定時間から先着順）</label>
+                  <input id="adm-ag-match-start" type="datetime-local" class="w-full liquid-glass-input px-3 py-2 text-xs">
+                  <p class="text-[10px] text-gray-400 mt-0.5">※ 未指定の場合は即時マッチング可能になります</p>
+                </div>
+                <button id="adm-ag-submit-btn" type="button" onclick="window.createAdminAutoGoPool()" class="w-full bg-gradient-to-r from-purple-600 to-pink-500 text-white font-black text-xs py-3 rounded-xl shadow-md active:scale-[0.99] transition">
             ＋ この内容で Auto-GO プールを公開する
           </button>
         </div>
@@ -12871,18 +12881,28 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
         });
       }
 
-      const isFour = presetVal === "4";
-      const memberNames = isFour ? ["メンバーA", "メンバーB", "メンバーC", "メンバーD"] : ["ユナ", "ミンジュ", "モカ", "ウォンヒ", "イロハ"];
-      const memberCounts = {};
-      memberNames.forEach(m => memberCounts[m] = 0);
+      const rawMembers = (document.getElementById("adm-ag-members")?.value || "").trim();
+    const parsedMembers = rawMembers
+      ? rawMembers.split(new RegExp("[,、，\n\r]+")).map(s => s.trim()).filter(Boolean)
+      : (presetVal === "4" ? ["メンバーA", "メンバーB", "メンバーC", "メンバーD"] : ["ユナ", "ミンジュ", "モカ", "ウォンヒ", "イロハ"]);
+    const memberNames = Array.from(new Set(parsedMembers));
+    if (memberNames.length < 2) {
+      showToast("メンバーは2名以上登録してください", "error");
+      return;
+    }
+    const matchStartRaw = (document.getElementById("adm-ag-match-start")?.value || "").trim();
+    const matchStartAt = matchStartRaw ? new Date(matchStartRaw).getTime() : 0;
+    const memberCounts = {};
+    memberNames.forEach(m => memberCounts[m] = 0);
 
-      await addDoc(collection(db, "auto_go_pools"), {
-        title,
-        description: desc,
-        imageUrl,
-        memberCountType: isFour ? 4 : 5,
-        memberNames,
-        memberCounts,
+    await addDoc(collection(db, "auto_go_pools"), {
+      title,
+      description: desc,
+      imageUrl,
+      memberCountType: memberNames.length,
+      memberNames,
+      memberCounts,
+      matchStartAt,
         slotPerMember: isFour ? 12 : 10,
         targetParticipants: isFour ? 48 : 50,
         minThreshold: 20,
@@ -13184,8 +13204,24 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       where("wantedMember", "==", pulled),
       where("pulledMember", "==", currentEntryData.wantedMember)
     );
+    if (currentPoolData && currentPoolData.matchStartAt && Date.now() < Number(currentPoolData.matchStartAt)) {
+      const dt = new Date(Number(currentPoolData.matchStartAt));
+      const pad = n => String(n).padStart(2, "0");
+      const label = `${dt.getMonth()+1}/${dt.getDate()} ${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+      if (typeof showToast === "function") {
+        showToast(`マッチングは ${label} から先着順で開始します`, "info");
+      }
+      return;
+    }
     const snap = await getDocs(q);
-    const candidate = snap.docs.find(d => d.id !== user.uid);
+    const sortedDocs = snap.docs
+      .filter(d => d.id !== user.uid)
+      .sort((a, b) => {
+        const ta = a.data().revealedAt?.toMillis?.() || a.data().createdAt?.toMillis?.() || 0;
+        const tb = b.data().revealedAt?.toMillis?.() || b.data().createdAt?.toMillis?.() || 0;
+        return ta - tb;
+      });
+    const candidate = sortedDocs[0];
 
     if (candidate) {
       const roomId = `ag_${activePoolId}_${Date.now()}`;
