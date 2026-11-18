@@ -12427,11 +12427,11 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
 <!-- Auto-GO メインモーダル -->
 <div id="autogo-modal" class="fixed inset-0 modal-backdrop hidden z-[10000] flex items-end md:items-center justify-center p-0 md:p-4 bg-black/60">
   <div class="liquid-glass-heavy bg-white/95 backdrop-blur-xl w-full max-w-md rounded-t-[2rem] md:rounded-[2rem] p-5 space-y-3.5 shadow-2xl max-h-[92vh] overflow-y-auto">
-    <!-- ヘッダー＆管理者作成トグル -->
+    <!-- ヘッダー＆公式開催トグル -->
     <div class="flex justify-between items-center border-b border-purple-200/60 pb-2.5">
       <div class="flex items-center gap-2">
         <span class="text-xs font-black text-purple-900">⚡ Auto-GO 全体プール</span>
-        <button onclick="toggleAutoGoAdminForm()" class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-zinc-900 text-white hover:bg-zinc-700 transition">＋ 管理者作成</button>
+        <button onclick="toggleAutoGoAdminForm()" class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-zinc-900 text-white hover:bg-zinc-700 transition">＋ 公式開催</button>
       </div>
       <button onclick="closeAutoGoModal()" class="text-gray-400 hover:text-gray-700 text-2xl leading-none">&times;</button>
     </div>
@@ -12832,7 +12832,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
           await selectAutoGoPool(allPools[0].id);
         } else {
           document.getElementById("ag-pool-title").textContent = "まだ開催中のプールがありません";
-          document.getElementById("ag-pool-desc").textContent = "右上の「＋ 管理者作成」から写真と詳細を登録して現在募集中の Auto-GO プールはありません。";
+          document.getElementById("ag-pool-desc").textContent = "右上の「＋ 公式開催」の共同購入受付中です現在募集中の Auto-GO プールはありません。";
           document.getElementById("ag-member-grid").innerHTML = "";
         }
       } else if (activePoolId) {
