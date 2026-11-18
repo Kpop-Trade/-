@@ -5216,55 +5216,82 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       }
     };
     window.agreeBundleTrade = async function() {
-      const t = currentTrade;
-      if (!t || !currentUser || t.ownerId !== currentUser.uid || t.status !== "negotiating") return;
-      const picks = Array.isArray(t.bundleIndexes) ? t.bundleIndexes.map(Number) : [];
-      if (!picks.length || !t.postId) return;
-      try {
-        let nextBoxes = null;
-        await runTransaction(db, async (tx) => {
-          const postRef = doc(db, "posts", t.postId);
-          const ps = await tx.get(postRef);
-          if (!ps.exists()) throw new Error("notfound");
-          const boxes = asUnitBoxes(ps.data().bundleBoxes || []).map(b => ({ x: b.x, y: b.y, w: b.w, h: b.h, state: b.state || "open" }));
-          for (const i of picks) {
-            if (!boxes[i]) throw new Error("taken");
-      if (boxes[i].state === "sold" && boxes[i].tradeId && boxes[i].tradeId !== t.id) throw new Error("taken");
-      boxes[i].state = "sold";
-      boxes[i].tradeId = t.id;
-          }
-          nextBoxes = boxes;
-          const left = boxes.filter(b => b.state === "open").length;
-          tx.update(postRef, { bundleBoxes: boxes, bundleLeft: left, status: left === 0 ? "traded" : "active" });
+    const t = currentTrade;
+    if (!t || !currentUser || t.ownerId !== currentUser.uid || t.status !== "negotiating") return;
+    const picks = Array.isArray(t.bundleIndexes) ? t.bundleIndexes.map(Number) : [];
+    if (!picks.length || !t.postId) return;
+    try {
+      let nextBoxes = null;
+      await runTransaction(db, async (tx) => {
+        const pRef = doc(db, "posts", t.postId);
+        const pSnap = await tx.get(pRef);
+        if (!pSnap.exists()) throw new Error("notfound");
+        const data = pSnap.data() || {};
+        const boxes = Array.isArray(data.bundleBoxes) ? data.bundleBoxes.map(b => ({ ...b })) : [];
+        for (const idx of picks) {
+          const b = boxes[idx];
+          if (!b) throw new Error("taken");
+          if (b.state === "sold") throw new Error("taken");
+          if (b.state === "hold" && b.holdBy && b.holdBy !== t.applicantId) throw new Error("taken");
+          b.state = "sold";
+          b.soldTo = t.applicantId;
+          delete b.holdBy;
+          delete b.holdUntil;
+        }
+        nextBoxes = boxes;
+        const left = boxes.filter(b => b.state === "open").length;
+        tx.update(pRef, {
+          bundleBoxes: boxes,
+          bundleLeft: left,
+          status: left === 0 ? "closed" : "active",
+          updatedAt: serverTimestamp()
         });
-        const docs = await bundlePhotoDocs(t.postId);
-        const base = docs.find(d => d.role === "base");
-        const shown = docs.filter(d => d.role !== "base").sort((a, b) => (a.order || 0) - (b.order || 0))[0];
-        if (shown && isJpegData(shown.data)) await rememberBundlePhoto(t.postId, shown.data);
-        const source = base && isJpegData(base.data) ? base.data : (shown && shown.data);
-        if (source) {
-          const marked = await bundleMarkedJpeg(source, nextBoxes.map(b => ({ x: b.x, y: b.y, w: b.w, h: b.h, state: b.state === "sold" ? "sold" : "open" })));
-          await saveBundleDisplay(t.postId, marked);
-        }
-        await updateDoc(doc(db, "trades", t.id), {
-    status: "shipping",
-    [`agreed.${currentUser.uid}`]: true,
-    updatedAt: serverTimestamp()
-  });
-        const lp = allPosts.find(x => x.id === t.postId);
-        if (lp) {
-          lp.bundleBoxes = nextBoxes;
-          lp.bundleLeft = nextBoxes.filter(b => b.state === "open").length;
-          lp.status = lp.bundleLeft === 0 ? "closed" : "active";
-        }
-        renderPosts();
-        showToast("合意しました。バツの付いた写真に更新しました", "success");
-      } catch (e) {
-        console.error(e);
-        showToast(e && e.message === "taken" ? "その枠はもう選べません" : "合意に失敗しました", "error");
+      });
+
+      // 先に取引ステータスを合意済み（shipping）へ確実に更新
+      await updateDoc(doc(db, "trades", t.id), {
+        status: "shipping",
+        [`agreed.${currentUser.uid}`]: true,
+        updatedAt: serverTimestamp()
+      });
+
+      const lp = allPosts.find(x => x.id === t.postId);
+      if (lp && nextBoxes) {
+        lp.bundleBoxes = nextBoxes;
+        lp.bundleLeft = nextBoxes.filter(b => b.state === "open").length;
+        lp.status = lp.bundleLeft === 0 ? "closed" : "active";
       }
-    };
-    window.declineBundleTrade = async function() {
+
+      // バツ印付き画像生成は別try-catch（ローカル画像が無い端末でも合意自体は失敗させない）
+      try {
+        if (nextBoxes && typeof loadBundlePhoto === "function" && typeof bundleMarkedJpeg === "function") {
+          const base = await loadBundlePhoto(t.postId);
+          const shown = await loadBundlePhoto(t.postId + ":shown");
+          if (shown && typeof isJpegData === "function" && isJpegData(shown.data)) {
+            await rememberBundlePhoto(t.postId, shown.data);
+          }
+          const source = base && typeof isJpegData === "function" && isJpegData(base.data) ? base.data : (shown && shown.data);
+          if (source) {
+            const marked = await bundleMarkedJpeg(source, nextBoxes.map(b => ({ x: b.x, y: b.y, w: b.w, h: b.h, state: b.state === "sold" ? "sold" : "open" })));
+            await saveBundleDisplay(t.postId, marked);
+          }
+        }
+      } catch (imgErr) {
+        console.warn("bundle mark skip:", imgErr);
+      }
+
+      renderPosts();
+      showToast("合意しました！", "success");
+    } catch (e) {
+      console.error("agreeBundleTrade error:", e);
+      if (e && e.message === "taken") {
+        showToast("その枠はもう選べません", "error");
+      } else {
+        showToast("合意に失敗しました: " + (e?.code || e?.message || ""), "error");
+      }
+    }
+  };
+  window.declineBundleTrade = async function() {
       const t = currentTrade;
       if (!t || !currentUser || t.ownerId !== currentUser.uid || t.status !== "negotiating") return;
       if (!(await appConfirm("この申し込みには合意しません。枠を空けます。", "合意しない", true))) return;
