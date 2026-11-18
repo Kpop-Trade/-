@@ -12836,6 +12836,11 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
                   <input id="adm-ag-match-start" type="datetime-local" class="w-full liquid-glass-input px-3 py-2 text-xs">
                   <p class="text-[10px] text-gray-400 mt-0.5">※ 未指定の場合は即時マッチング可能になります</p>
                 </div>
+                <div>
+                  <label class="block text-[11px] font-bold text-gray-700 mb-1">募集終了日時（締め切り）</label>
+                  <input id="adm-ag-recruit-end" type="datetime-local" class="w-full liquid-glass-input px-3 py-2 text-xs">
+                  <p class="text-[10px] text-gray-400 mt-0.5">※ 指定日時を過ぎると自動的に新規参加の受付を終了します</p>
+                </div>
                 <button id="adm-ag-submit-btn" type="button" onclick="window.createAdminAutoGoPool()" class="w-full bg-gradient-to-r from-purple-600 to-pink-500 text-white font-black text-xs py-3 rounded-xl shadow-md active:scale-[0.99] transition">
             ＋ この内容で Auto-GO プールを公開する
           </button>
@@ -12896,6 +12901,12 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     }
     const matchStartRaw = (document.getElementById("adm-ag-match-start")?.value || "").trim();
     const matchStartAt = matchStartRaw ? new Date(matchStartRaw).getTime() : 0;
+    const recruitEndRaw = (document.getElementById("adm-ag-recruit-end")?.value || "").trim();
+    const recruitEndAt = recruitEndRaw ? new Date(recruitEndRaw).getTime() : 0;
+    if (matchStartAt > 0 && recruitEndAt > 0 && recruitEndAt <= matchStartAt) {
+      showToast("募集終了日時は開始日時より後の時刻を指定してください", "error");
+      return;
+    }
     const initialCapPerMember = memberNames.length === 5 ? 4 : (memberNames.length === 4 ? 5 : Math.max(1, Math.ceil(20 / memberNames.length)));
     const minParticipants = initialCapPerMember * memberNames.length;
     const memberCounts = {};
@@ -12917,6 +12928,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       minParticipants,
       targetParticipants: minParticipants,
       matchStartAt,
+      recruitEndAt,
         slotPerMember: isFour ? 12 : 10,
         targetParticipants: isFour ? 48 : 50,
         minThreshold: 20,
@@ -13064,6 +13076,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       entrySec.classList.add("hidden");
       statusBox.classList.remove("hidden");
       const isActivated = total >= minP || currentPoolData.status === "active";
+    const isRecruitClosed = !!(currentPoolData.recruitEndAt && Number(currentPoolData.recruitEndAt) > 0 && Date.now() > Number(currentPoolData.recruitEndAt));
 
       let html = `<div class="flex justify-between items-center">
         <span class="text-xs font-bold text-indigo-950">あなたの希望枠: ${currentEntryData.wantedMember}</span>
@@ -13160,6 +13173,11 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
         if (entrySnap.exists()) throw new Error("すでにエントリー済みです");
 
         const p = poolSnap.data();
+          if (p.recruitEndAt && Number(p.recruitEndAt) > 0 && Date.now() > Number(p.recruitEndAt)) {
+            const edt = new Date(Number(p.recruitEndAt));
+            const pad = n => String(n).padStart(2, "0");
+            throw new Error(`募集終了日時（${edt.getMonth()+1}/${edt.getDate()} ${pad(edt.getHours())}:${pad(edt.getMinutes())}）を過ぎたため受付を終了しました`);
+          }
           const mList = Array.isArray(p.members) && p.members.length ? p.members : (Array.isArray(p.memberNames) ? p.memberNames : []);
           const defaultInitCap = mList.length === 5 ? 4 : (mList.length === 4 ? 5 : 4);
           const curCaps = Object.assign({}, p.memberCaps || {});
