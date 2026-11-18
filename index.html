@@ -12431,7 +12431,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     <div class="flex justify-between items-center border-b border-purple-200/60 pb-2.5">
       <div class="flex items-center gap-2">
         <span class="text-xs font-black text-purple-900">⚡ Auto-GO 全体プール</span>
-        <button onclick="toggleAutoGoAdminForm()" class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-zinc-900 text-white hover:bg-zinc-700 transition">＋ 公式開催</button>
+        
       </div>
       <button onclick="closeAutoGoModal()" class="text-gray-400 hover:text-gray-700 text-2xl leading-none">&times;</button>
     </div>
@@ -12441,43 +12441,8 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
 
     <!-- 管理者用：新規プール作成フォーム -->
     <div id="ag-admin-form" class="hidden bg-zinc-50 border border-zinc-200 rounded-2xl p-3.5 space-y-2.5">
-      <div class="flex justify-between items-center">
-        <span class="text-xs font-bold text-zinc-900">🛠️ 新規 Auto-GO プール作成</span>
-        <button onclick="toggleAutoGoAdminForm()" class="text-[11px] text-zinc-500">閉じる</button>
-      </div>
-      <div>
-        <label class="block text-[11px] font-bold text-gray-700 mb-0.5">タイトル（イベント・特典名）*</label>
-        <input type="text" id="ag-new-title" placeholder="例: ILLIT [bomb] Weverse Shop特典" class="w-full border border-gray-300 rounded-xl p-2 text-xs bg-white">
-      </div>
-      <div>
-        <label class="block text-[11px] font-bold text-gray-700 mb-0.5">特典・アルバム参考写真</label>
-        <input type="file" id="ag-new-photo" accept="image/*" class="w-full text-xs text-gray-600 file:mr-2 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-purple-100 file:text-purple-700">
-      </div>
-      <div>
-        <label class="block text-[11px] font-bold text-gray-700 mb-0.5">詳細説明・参加ルール</label>
-        <textarea id="ag-new-desc" rows="2" placeholder="例: CD1枚定価購入・抱き合わせなし。到着後72時間以内に開封登録をお願いします。" class="w-full border border-gray-300 rounded-xl p-2 text-xs bg-white"></textarea>
-      </div>
-      <div class="grid grid-cols-2 gap-2">
-        <div>
-          <label class="block text-[11px] font-bold text-gray-700 mb-0.5">メンバー構成</label>
-          <select id="ag-new-preset" class="w-full border border-gray-300 rounded-xl p-2 text-xs bg-white">
-            <option value="4">4人編成（各12枠 / 計48人）</option>
-            <option value="5">5人編成（各10枠 / 計50人）</option>
-          </select>
-        </div>
-        <div>
-          <label class="block text-[11px] font-bold text-gray-700 mb-0.5">最低発動人数</label>
-          <input type="number" id="ag-new-min" value="20" min="4" max="50" class="w-full border border-gray-300 rounded-xl p-2 text-xs bg-white">
-        </div>
-      </div>
-      <div>
-        <label class="block text-[11px] font-bold text-gray-700 mb-0.5">公式ショップ購入URL（発動時に自動配布）</label>
-        <input type="url" id="ag-new-url" placeholder="https://weverseshop.io/..." class="w-full border border-gray-300 rounded-xl p-2 text-xs bg-white">
-      </div>
-      <button id="ag-create-btn" onclick="createNewAutoGoPool()" class="w-full bg-gradient-to-r from-purple-600 to-pink-500 text-white font-bold text-xs py-2.5 rounded-full shadow">この内容でプールを公開＆招待URL発行</button>
-    </div>
-
-    <!-- 選択中プールの写真・タイトル・詳細カード -->
+      
+        <!-- 選択中プールの写真・タイトル・詳細カード -->
     <div id="ag-pool-detail-card" class="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
       <img id="ag-pool-image" src="" alt="" class="hidden w-full h-40 object-cover bg-gray-100">
       <div class="p-3 space-y-1">
