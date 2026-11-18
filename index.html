@@ -12625,9 +12625,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       await selectAutoGoPool(newId);
       const shareUrl = `${location.origin}/?pool=${newId}`;
       navigator.clipboard?.writeText(shareUrl);
-      alert("✅ 新規Auto-GOプールを作成しました！
-招待URLをクリップボードにコピーしました:
-" + shareUrl);
+      showToast("新規Auto-GOプールを作成しました！", "success");
     } catch (e) {
       alert("作成に失敗しました: " + (e.message || e));
     } finally {
@@ -13092,8 +13090,21 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     if (!activePoolId) return;
     const url = `${location.origin}/?pool=${activePoolId}`;
     navigator.clipboard?.writeText(url);
-    alert("招待URLをコピーしました:
-" + url);
+    const toastEl = document.getElementById("toast");
+    if (toastEl) {
+      toastEl.innerHTML = `招待URLをコピーしました：<a href="${url}" class="underline font-black ml-1 break-all" target="_blank" rel="noopener">${url}</a>`;
+      toastEl.classList.remove("hidden", "opacity-0");
+      setTimeout(() => toastEl.classList.add("hidden"), 6000);
+    } else {
+      showToast("招待URLをコピーしました: " + url, "success");
+    }
+  };
+
+  
+  window.linkifyAutoGoUrl = function(containerId, url) {
+    const box = document.getElementById(containerId);
+    if (!box || !url) return;
+    box.innerHTML = `<a href="${url}" target="_blank" rel="noopener" class="text-purple-700 underline font-bold break-all">${url}</a>`;
   };
 
   window.shareAutoGoToX = function() {
