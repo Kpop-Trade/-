@@ -13239,6 +13239,23 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
               <p class="text-[11px] text-emerald-800 leading-relaxed">
                 あなたが開封した <strong class="underline">${currentEntryData.openedCard || "対象トレカ"}</strong> を、以下の宛先へ直接発送してください（交換交渉は不要です）。<br>
                 <span class="text-[10px] text-emerald-700">※あなたの元には別の参加者から <strong>${currentEntryData.receivingCard || "希望トレカ"}</strong> が届きます。</span>
+                    ${(() => {
+                      const rawReg = currentPoolData && currentPoolData.regDeadline;
+                      if (!rawReg) return '';
+                      const regMs = new Date(rawReg).getTime();
+                      if (isNaN(regMs)) return '<div class="mt-2 p-2 rounded-lg bg-rose-50 border border-rose-200 text-[11px] font-bold text-rose-800">⏰ 発送期限：登録期限から3日後まで</div>';
+                      const shipDeadlineMs = regMs + 3 * 24 * 60 * 60 * 1000;
+                      const d = new Date(shipDeadlineMs);
+                      const pad = n => String(n).padStart(2, '0');
+                      const dLabel = `${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                      return `<div class="mt-2 p-2.5 rounded-lg bg-rose-50 border border-rose-300 text-rose-950 space-y-1">
+                        <div class="flex items-center justify-between text-[11px] font-black text-rose-800">
+                          <span>⏰ 発送期限（登録期限の3日後）</span>
+                          <span>${dLabel} まで</span>
+                        </div>
+                        <div class="text-xs font-black text-rose-600 tabular-nums" data-ship-deadline="${shipDeadlineMs}">⏳ 残り時間を計算中...</div>
+                      </div>`;
+                    })()}
               </p>
               <div class="bg-white border border-emerald-200 rounded-lg p-2.5 text-xs text-gray-800 space-y-0.5 select-all">
                 <div class="font-bold text-gray-900">${currentEntryData.shipToName || "受取人"} 様</div>
@@ -14232,6 +14249,22 @@ window.promptTradePushNudge = function(contextLabel) {
   }
 })();
 
+
+setInterval(() => {
+  document.querySelectorAll('[data-ship-deadline]').forEach(el => {
+    const targetMs = Number(el.getAttribute('data-ship-deadline'));
+    const diff = targetMs - Date.now();
+    if (diff <= 0) {
+      el.textContent = '🚨 発送期限を過ぎています（至急発送してください）';
+      return;
+    }
+    const days = Math.floor(diff / 86400000);
+    const hrs = Math.floor((diff % 86400000) / 3600000);
+    const mins = Math.floor((diff % 3600000) / 60000);
+    const secs = Math.floor((diff % 60000) / 1000);
+    el.textContent = `⏳ 残り ${days}日 ${String(hrs).padStart(2,'0')}時間${String(mins).padStart(2,'0')}分${String(secs).padStart(2,'0')}秒`;
+  });
+}, 1000);
 </script>
 
 </body>
