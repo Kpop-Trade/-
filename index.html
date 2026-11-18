@@ -2120,6 +2120,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     window.closeMyPage = function() { switchTab('home'); };
 
     window.switchTab = function(tab) {
+    if (!currentUser && (tab === "post" || tab === "mycards" || tab === "mypage")) { if (typeof showToast === "function") { showToast("ログインしてください", "error"); } else { alert("ログインしてください"); } return; }
       if ((tab === 'mycards' || tab === 'mypage') && !currentUser) {
         /* alert hidden */ console.log("ログインが必要です。");
         return;
