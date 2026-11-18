@@ -2,6 +2,15 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head><script>if("serviceWorker"in navigator){navigator.serviceWorker.getRegistrations().then(r=>r.forEach(w=>w.unregister()));}
+  window.currentUser = typeof currentUser !== "undefined" ? currentUser : null; window.currentUser = currentUser;
+  window.currentUserProfile = typeof currentUserProfile !== "undefined" ? currentUserProfile : null; window.currentUserProfile = currentUserProfile;
+  if (typeof db !== "undefined") window.db = db;
+  if (typeof collection !== "undefined") window.collection = collection;
+  if (typeof addDoc !== "undefined") window.addDoc = addDoc;
+  if (typeof serverTimestamp !== "undefined") window.serverTimestamp = serverTimestamp;
+  if (typeof openTrade === "function") window.openTrade = openTrade;
+  if (typeof showToast === "function") window.showToast = showToast;
+
   window.currentUser = typeof currentUser !== "undefined" ? currentUser : null;
   window.currentUserProfile = typeof currentUserProfile !== "undefined" ? currentUserProfile : null;
   if (typeof db !== "undefined") window.db = db;
@@ -1734,7 +1743,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       want: "bg-pink-100 text-pink-700 border-pink-200"
     };
 
-    let currentUser = null, allPosts = [], unsubPosts = null, selectedMember = "すべて", kindFilter = "all", sortFilter = "random", bundleFilter = "all", searchText = "", activeOnly = false, currentDetailIndex = -1; window.currentUser = currentUser;
+    let currentUser = null, allPosts = [], unsubPosts = null, selectedMember = "すべて", kindFilter = "all", sortFilter = "random", bundleFilter = "all", searchText = "", activeOnly = false, currentDetailIndex = -1; window.currentUser = currentUser; window.currentUser = currentUser; window.currentUser = currentUser;
     let pendingPostId = new URLSearchParams(location.search).get("post");
     let postMode = "exchange", postPhotos = [], processingPhotos = false, submittingPost = false, submittingGroup = false, detailPhotos = [], roomPhotos = [], roomPhotosFor = null;
     let myTrades = [], unsubTrades = null, groupJoins = {}, unsubJoins = null, currentTrade = null, roomMessages = [], unsubRoom = null, unsubMsgs = null;
@@ -3534,7 +3543,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     window.logout = async function() { closeRoom(); await removePushToken(); signOut(auth); };
 
     onAuthStateChanged(auth, (user) => {
-      currentUser = user; window.currentUser = currentUser;
+      currentUser = user; window.currentUser = currentUser; window.currentUser = currentUser; window.currentUser = currentUser;
       const loginBtn = document.getElementById("login-btn"), userProfile = document.getElementById("user-profile");
       if (user) {
         loginBtn.classList.add("hidden"); userProfile.classList.remove("hidden");
