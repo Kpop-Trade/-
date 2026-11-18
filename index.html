@@ -12466,26 +12466,6 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     <!-- 開催中プール切替リスト -->
     <div id="ag-pool-tabs" class="flex gap-1.5 overflow-x-auto pb-1"></div>
 
-  <!-- Auto-GO 全体プールモーダル（一般ユーザー専用・閲覧＆参加のみ） -->
-  <div id="autogo-modal" class="fixed inset-0 z-50 hidden bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4" onclick="if(event.target===this) closeAutoGoModal()">
-    <div class="bg-white/95 backdrop-blur-xl w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl border border-white max-h-[90vh] flex flex-col overflow-hidden">
-      <!-- ヘッダー -->
-      <div class="px-4 py-3.5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-purple-600 to-pink-500 text-white shrink-0">
-        <div class="flex items-center gap-2">
-          <span class="text-lg">⚡</span>
-          <div>
-            <h2 class="text-sm font-black leading-tight">Auto-GO 全体プール</h2>
-            <p class="text-[10px] text-white/85">抱き合わせゼロ・定価共同購入</p>
-          </div>
-        </div>
-        <button type="button" onclick="closeAutoGoModal()" class="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white font-bold text-lg leading-none">&times;</button>
-      </div>
-
-      <!-- スクロール本体 -->
-      <div class="p-4 overflow-y-auto space-y-3 flex-1">
-        <!-- 開催中プール選択タブ（作成ボタンなし） -->
-        <div id="ag-pool-tabs" class="flex gap-2 overflow-x-auto pb-1 no-scrollbar"></div>
-
         <!-- 選択中プールの写真・タイトル・詳細カード -->
     <div id="ag-pool-detail-card" class="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
       <img id="ag-pool-image" src="" alt="" class="hidden w-full h-40 object-cover bg-gray-100">
