@@ -656,7 +656,20 @@ html, body {
         </div>
       </div>
 
-      <div id="posts-container" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
+      <!-- Auto-GO ホーム上部バナーボタン -->
+<div id="autogo-home-banner-wrap" class="px-3 pt-2 pb-1">
+  <button id="autogo-home-banner" type="button" onclick="window.openAutoGoModal && window.openAutoGoModal()" class="w-full bg-gradient-to-r from-purple-600 via-pink-500 to-indigo-600 text-white rounded-2xl p-3.5 shadow-md border border-white/30 flex items-center justify-between active:scale-[0.99] transition">
+    <div class="text-left">
+      <div class="flex items-center gap-1.5">
+        <span class="text-sm font-black tracking-tight">⚡ Auto-GO 全体プール</span>
+        <span class="bg-white/25 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">抱き合わせゼロ・定価共同購入</span>
+      </div>
+      <p class="text-[11px] text-white/90 mt-0.5 font-medium">希望メンバー枠を選んで仮予約・自動マッチングに参加する</p>
+    </div>
+    <span class="shrink-0 bg-white text-purple-700 font-black text-xs px-3 py-1.5 rounded-full shadow-sm">開く ›</span>
+  </button>
+</div>
+<div id="posts-container" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
         <p class="text-xs text-gray-500 col-span-full text-center py-4 font-bold">読み込み中...</p>
       </div>
       <div id="load-more-wrap" class="hidden text-center pt-2">
@@ -12402,12 +12415,6 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
 })();
 </script>
 
-
-<!-- Auto-GO フローティング起動ボタン -->
-<button id="autogo-fab-btn" type="button" onclick="window.openAutoGoModal && window.openAutoGoModal()" class="fixed bottom-24 right-4 z-[9999] bg-gradient-to-r from-purple-600 via-pink-500 to-indigo-600 text-white font-bold text-xs px-4 py-3 rounded-full shadow-xl border border-white/40 flex items-center gap-1.5 hover:scale-105 transition">
-  <span>⚡ Auto-GO</span>
-  <span class="bg-white/20 px-1.5 py-0.5 rounded-full text-[10px]">全体プール</span>
-</button>
 
 <!-- Auto-GO メインモーダル -->
 <div id="autogo-modal" class="fixed inset-0 modal-backdrop hidden z-[10000] flex items-end md:items-center justify-center p-0 md:p-4 bg-black/60">
