@@ -12640,9 +12640,15 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
   window.renderAdminAutoGoPanel = async function(container) {
     if (!container) container = document.getElementById("admin-content");
     if (!container) return;
-    const snap = await getDocs(collection(db, "auto_go_pools"));
     const pools = [];
-    snap.forEach(d => pools.push({ id: d.id, ...d.data() }));
+    let permWarn = "";
+    try {
+      const snap = await getDocs(collection(db, "auto_go_pools"));
+      snap.forEach(d => pools.push({ id: d.id, ...d.data() }));
+    } catch (err) {
+      console.warn("auto_go_pools read warn:", err);
+      permWarn = `<div class="bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-bold rounded-xl p-2.5">⚠️ Firestoreルールに auto_go_pools の許可を追加してください（${err?.code || "permission-denied"}）</div>`;
+    }
     pools.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
 
     const poolRows = pools.length === 0
@@ -12675,6 +12681,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
 
     container.innerHTML = `
       <div class="space-y-4">
+        ${permWarn}
         <div class="bg-white/90 rounded-2xl p-4 border border-white shadow-sm space-y-3">
           <div class="flex items-center justify-between">
             <h3 class="text-sm font-black text-gray-900">⚡ 新規 Auto-GO プール作成</h3>
