@@ -554,38 +554,44 @@ html, body {
     </section>
 
     <section id="gllit-hub">
-        <style>
-          @keyframes gllitMarquee {
-            0% { transform: translateX(0%); }
-            100% { transform: translateX(-50%); }
-          }
-          .gllit-marquee-track {
-            display: inline-flex;
-            white-space: nowrap;
-            animation: gllitMarquee 22s linear infinite;
-          }
-          .gllit-marquee-track:hover {
-            animation-play-state: paused;
-          }
-        </style>
-        <button type="button" onclick="openIllitCalendar()" class="w-full liquid-glass rounded-2xl px-2.5 py-2 flex items-center gap-2 overflow-hidden border border-white/70 shadow-xs active:scale-[0.99] transition text-left">
-          <span class="shrink-0 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full">✨ 今日のGLLIT</span>
-          <div class="relative flex-1 overflow-hidden">
-            <div id="gllit-ticker-track" class="gllit-marquee-track text-xs font-bold text-gray-800">
-              <span class="pr-10">📅 予定を読み込み中...</span>
-              <span class="pr-10">📅 予定を読み込み中...</span>
-            </div>
-          </div>
-          <span class="shrink-0 text-[10px] font-bold text-indigo-600">予定表 ›</span>
-        </button>
-        <div class="hidden">
-          <div id="gllit-hub-tasks"></div>
-          <div id="gllit-hub-schedule">予定を読み込み中...</div>
-          <div id="gllit-stat-exchange"></div>
-          <div id="gllit-stat-serial"></div>
-          <div id="gllit-stat-group"></div>
-        </div>
-      </section>
+  <style>
+    @keyframes gllitMarquee {
+      0% { transform: translateX(0%); }
+      100% { transform: translateX(-50%); }
+    }
+    .gllit-led-board {
+      background: radial-gradient(rgba(234, 179, 8, 0.08) 1px, transparent 1px), #0a0a0a;
+      background-size: 4px 4px;
+    }
+    .gllit-marquee-track {
+      display: inline-flex;
+      white-space: nowrap;
+      animation: gllitMarquee 22s linear infinite;
+      color: #eab308;
+      text-shadow: 0 0 8px rgba(234, 179, 8, 0.55);
+    }
+    .gllit-marquee-track:hover {
+      animation-play-state: paused;
+    }
+  </style>
+  <button type="button" onclick="openIllitCalendar()" class="gllit-led-board w-full rounded-2xl px-3.5 py-3.5 flex items-center gap-3 overflow-hidden border-2 border-neutral-800 shadow-lg active:scale-[0.99] transition text-left">
+    <span class="shrink-0 bg-amber-500/20 border border-amber-500/50 text-amber-300 text-xs font-black px-2.5 py-1 rounded-lg tracking-wider">✨ 今日のGLLIT</span>
+    <div class="relative flex-1 overflow-hidden py-0.5">
+      <div id="gllit-ticker-track" class="gllit-marquee-track text-sm sm:text-base font-black tracking-wide">
+        <span class="pr-12">📅 予定を読み込み中...</span>
+        <span class="pr-12">📅 予定を読み込み中...</span>
+      </div>
+    </div>
+    <span class="shrink-0 text-xs font-bold text-amber-400/90">予定表 ›</span>
+  </button>
+  <div class="hidden">
+    <div id="gllit-hub-tasks"></div>
+    <div id="gllit-hub-schedule">予定を読み込み中...</div>
+    <div id="gllit-stat-exchange"></div>
+    <div id="gllit-stat-serial"></div>
+    <div id="gllit-stat-group"></div>
+  </div>
+</section>
 
     <section id="post-menu-section" class="hidden space-y-5 pb-28">
       <!-- 件数カード -->
