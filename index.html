@@ -14066,6 +14066,75 @@ window.renderRoomTaskBanner = function() {
   </div>`;
 };
 
+
+
+// === 出品・購入申請後のプッシュ通知オン誘導モーダル（強制ブロックなし） ===
+window.promptTradePushNudge = function(contextLabel) {
+  try {
+    if (typeof Notification !== "undefined" && Notification.permission === "granted") return;
+    const lastAsk = Number(localStorage.getItem("kt_push_nudge_ts") || 0);
+    if (Date.now() - lastAsk < 6 * 3600 * 1000) return; // 6時間以内の連続表示を抑制
+    localStorage.setItem("kt_push_nudge_ts", String(Date.now()));
+
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+
+    let old = document.getElementById("kt-push-nudge-modal");
+    if (old) old.remove();
+
+    const modal = document.createElement("div");
+    modal.id = "kt-push-nudge-modal";
+    modal.className = "fixed inset-0 z-[9999] bg-black/50 flex items-center justify-center p-4";
+    modal.innerHTML = `
+      <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-3 border border-purple-100">
+        <div class="flex items-center gap-2">
+          <span class="text-2xl">🔔</span>
+          <h3 class="text-sm font-extrabold text-gray-900">${contextLabel || "取引"}の通知をオンにしますか？</h3>
+        </div>
+        <p class="text-xs text-gray-600 leading-relaxed">
+          購入申請・アズカリの決済完了・発送催促などをリアルタイムで受け取れます（通知オフでも取引自体はそのまま進められます）。
+        </p>
+        ${(isIOS && !isStandalone) ? `
+          <div class="bg-purple-50 border border-purple-200 rounded-xl p-2.5 text-[11px] text-purple-900 space-y-1">
+            <div class="font-bold">📱 iPhoneでプッシュ通知を受け取る手順</div>
+            <div>画面下の <strong>共有ボタン（□↑）</strong> → <strong>「ホーム画面に追加」</strong> から開くと通知をオンにできます。</div>
+          </div>
+        ` : ""}
+        <div class="flex gap-2 pt-1">
+          <button type="button" onclick="document.getElementById('kt-push-nudge-modal')?.remove()" class="flex-1 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-600">あとで</button>
+          <button type="button" id="kt-push-nudge-ok" class="flex-1 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow">通知をオンにする</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    document.getElementById("kt-push-nudge-ok").onclick = async function() {
+      modal.remove();
+      if (typeof enablePush === "function") {
+        await enablePush();
+      } else if (typeof Notification !== "undefined" && Notification.requestPermission) {
+        await Notification.requestPermission();
+      }
+    };
+  } catch (e) { console.warn(e); }
+};
+
+// 出品完了・購入/交換申請の通知トースト表示時に自動で通知誘導をフック
+(function() {
+  const origShowToast = window.showToast;
+  if (typeof origShowToast === "function" && !window.__pushNudgeHooked) {
+    window.__pushNudgeHooked = true;
+    window.showToast = function(msg, type) {
+      origShowToast.apply(this, arguments);
+      const s = String(msg || "");
+      if (s.includes("出品しました") || s.includes("投稿しました")) {
+        setTimeout(() => window.promptTradePushNudge("出品後"), 600);
+      } else if (s.includes("取引ルームを作成") || s.includes("申請しました") || s.includes("申し込みました")) {
+        setTimeout(() => window.promptTradePushNudge("取引中"), 600);
+      }
+    };
+  }
+})();
+
 </script>
 
 </body>

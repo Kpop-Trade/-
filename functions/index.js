@@ -1,6 +1,7 @@
 const { setGlobalOptions } = require("firebase-functions/v2");
 const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
 const admin = require("firebase-admin");
 admin.initializeApp();
 setGlobalOptions({ region: "asia-northeast1", maxInstances: 10 });
@@ -9,7 +10,7 @@ const db = admin.firestore();
 const FV = admin.firestore.FieldValue;
 
 // ★ 要変更：実際のサイトURL（https・末尾 / まで）
-const SITE = "https://あなたのドメイン/";
+const SITE = "https://kpop-trade.jp/";
 const ADMIN_UIDS = ["Ay6VCS8HTgM3RqjDYZ0wKdHrSKz1", "GvVhAmT56GZjsWrl1YRaStB81im1"];
 const expireAt = () => admin.firestore.Timestamp.fromMillis(Date.now() + 60 * 86400000); // TTL用(60日)
 
@@ -159,4 +160,45 @@ exports.adminBroadcast = onCall({ timeoutSeconds: 300, memory: "512MiB" }, async
     }).catch(() => {});
   }
   return { count: users.size };
+});
+
+// ===== 売却取引：購入から3日未発送で催促、7日未発送で強めの最終警告 =====
+exports.remindUnshippedSales = onSchedule("every 1 hours", async () => {
+  const now = Date.now();
+  const H72 = 72 * 3600 * 1000;
+  const H168 = 168 * 3600 * 1000;
+
+  const snap = await db.collection("trades").where("isSell", "==", true).get();
+  for (const docSnap of snap.docs) {
+    const t = docSnap.data() || {};
+    if (t.status === "done" || t.status === "completed" || t.status === "cancelled" || t.status === "canceled") continue;
+    const ownerId = t.ownerId;
+    if (!ownerId) continue;
+    const shipped = t.shipped || {};
+    if (shipped[ownerId]) continue; // すでに発送完了済み
+
+    const createdMs = t.createdAt && typeof t.createdAt.toMillis === "function"
+      ? t.createdAt.toMillis()
+      : (typeof t.createdAt === "number" ? t.createdAt : 0);
+    if (!createdMs) continue;
+
+    const elapsed = now - createdMs;
+    const itemLabel = t.giveTitle || t.title || "出品トレカ";
+
+    if (elapsed >= H168 && !t.reminded7d) {
+      await notify(ownerId, {
+        title: "🚨【重要・最終警告】発送期限を大幅に超過しています",
+        text: `「${itemLabel}」が購入されてから7日が経過しましたが、まだ発送完了になっていません。早急にアズカリの匿名配送で発送し「発送完了」を押してください。未対応が続く場合、運営介入・アカウント利用制限の対象となります。`,
+        type: "trade"
+      });
+      await docSnap.ref.update({ reminded7d: true, reminded3d: true, updatedAt: FV.serverTimestamp() });
+    } else if (elapsed >= H72 && !t.reminded3d) {
+      await notify(ownerId, {
+        title: "📦【発送のお願い】購入から3日が経過しました",
+        text: `「${itemLabel}」が購入されてから3日が経過しました。アズカリでの入金確認後、匿名配送にて発送し取引画面から「発送完了」を押してください。`,
+        type: "trade"
+      });
+      await docSnap.ref.update({ reminded3d: true, updatedAt: FV.serverTimestamp() });
+    }
+  }
 });
