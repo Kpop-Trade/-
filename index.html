@@ -5223,17 +5223,25 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     if (!picks.length || !t.postId) return;
     try {
       let nextBoxes = null;
+      const lp0 = allPosts.find(x => x.id === t.postId);
       await runTransaction(db, async (tx) => {
         const pRef = doc(db, "posts", t.postId);
         const pSnap = await tx.get(pRef);
         if (!pSnap.exists()) throw new Error("notfound");
         const data = pSnap.data() || {};
-        const boxes = Array.isArray(data.bundleBoxes) ? data.bundleBoxes.map(b => ({ ...b })) : [];
+        const rawBoxes = (Array.isArray(data.bundleBoxes) && data.bundleBoxes.length)
+          ? data.bundleBoxes
+          : (lp0 && Array.isArray(lp0.bundleBoxes) ? lp0.bundleBoxes : []);
+        const normalized = typeof asUnitBoxes === "function" ? asUnitBoxes(rawBoxes) : rawBoxes;
+        const boxes = normalized.map(b => ({ ...b, state: b.state || "open" }));
+
         for (const idx of picks) {
           const b = boxes[idx];
           if (!b) throw new Error("taken");
-          if (b.state === "sold") throw new Error("taken");
-          if (b.state === "hold" && b.holdBy && b.holdBy !== t.applicantId) throw new Error("taken");
+          // 既に別の人に確定済み（sold）の場合のみブロック。hold や open、または同一申込者宛ては確定可能
+          if (b.state === "sold" && b.soldTo && b.soldTo !== t.applicantId) {
+            throw new Error("taken");
+          }
           b.state = "sold";
           b.soldTo = t.applicantId;
           delete b.holdBy;
@@ -5249,7 +5257,6 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         });
       });
 
-      // 先に取引ステータスを合意済み（shipping）へ確実に更新
       await updateDoc(doc(db, "trades", t.id), {
         status: "shipping",
         [`agreed.${currentUser.uid}`]: true,
@@ -5263,7 +5270,6 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         lp.status = lp.bundleLeft === 0 ? "closed" : "active";
       }
 
-      // バツ印付き画像生成は別try-catch（ローカル画像が無い端末でも合意自体は失敗させない）
       try {
         if (nextBoxes && typeof loadBundlePhoto === "function" && typeof bundleMarkedJpeg === "function") {
           const base = await loadBundlePhoto(t.postId);
