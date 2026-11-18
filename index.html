@@ -13663,12 +13663,12 @@ ${currentPoolData.title}
   window.confirmJoinXTrade = async function() {
     if (!pendingXTradePayload) return;
     if (!window.currentUser) {
-      if (typeof showToast === "function") showToast("先にログインしてから入室してください", "error");
+      alert("先にログインしてから入室してください。");
       return;
     }
     const d = pendingXTradePayload;
     if (d.oid === window.currentUser.uid) {
-      if (typeof showToast === "function") showToast("自分で作成した招待URLです。相手に送信してください", "info");
+      alert("これはあなたが作成した招待URLです。\n別のアカウント（取引相手）でこのURLを開くと取引ルームが作成されます。");
       return;
     }
 
@@ -13714,12 +13714,15 @@ ${currentPoolData.title}
     const _add = window.addDoc || refs.addDoc;
     const _ts = window.serverTimestamp || refs.serverTimestamp;
     if (!_db || !_col || !_add) {
-      if (typeof showToast === "function") showToast("システム読込中です。数秒後にもう一度お試しください", "error");
+      alert("システム読込中です。数秒後にもう一度お試しください。");
       return;
     }
     tradeDoc.createdAt = _ts ? _ts() : new Date();
     tradeDoc.updatedAt = _ts ? _ts() : new Date();
-    const ref = await _add(_col(_db, "trades"), tradeDoc);
+    const btn = document.getElementById("xtj-confirm-btn") || event?.target;
+    if (btn) { btn.disabled = true; btn.textContent = "入室処理中..."; }
+    try {
+      const ref = await _add(_col(_db, "trades"), tradeDoc);
 
     if (d.m) {
       await _add(_col(_db, "trades", ref.id, "messages"), {
@@ -13731,6 +13734,12 @@ ${currentPoolData.title}
     }
 
       closeXTradeJoinModal();
+    } catch (err) {
+      console.error(err);
+      alert("取引ルーム作成エラー: " + (err.message || err));
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = "この内容で取引ルームに入る"; }
+    }
       if (typeof showToast === "function") showToast("取引ルームを作成しました！", "success");
       if (typeof window.openTrade === "function") {
         setTimeout(() => window.openTrade(ref.id), 300);
