@@ -553,39 +553,39 @@ html, body {
       </div>
     </section>
 
-    <section id="gllit-hub" class="space-y-3">
-      <div class="flex items-end justify-between px-1">
-        <div>
-          <h3 class="font-bold text-base text-gray-900">今日のGLLIT</h3>
+    <section id="gllit-hub">
+        <style>
+          @keyframes gllitMarquee {
+            0% { transform: translateX(0%); }
+            100% { transform: translateX(-50%); }
+          }
+          .gllit-marquee-track {
+            display: inline-flex;
+            white-space: nowrap;
+            animation: gllitMarquee 22s linear infinite;
+          }
+          .gllit-marquee-track:hover {
+            animation-play-state: paused;
+          }
+        </style>
+        <button type="button" onclick="openIllitCalendar()" class="w-full liquid-glass rounded-2xl px-2.5 py-2 flex items-center gap-2 overflow-hidden border border-white/70 shadow-xs active:scale-[0.99] transition text-left">
+          <span class="shrink-0 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full">✨ 今日のGLLIT</span>
+          <div class="relative flex-1 overflow-hidden">
+            <div id="gllit-ticker-track" class="gllit-marquee-track text-xs font-bold text-gray-800">
+              <span class="pr-10">📅 予定を読み込み中...</span>
+              <span class="pr-10">📅 予定を読み込み中...</span>
+            </div>
+          </div>
+          <span class="shrink-0 text-[10px] font-bold text-indigo-600">予定表 ›</span>
+        </button>
+        <div class="hidden">
+          <div id="gllit-hub-tasks"></div>
+          <div id="gllit-hub-schedule">予定を読み込み中...</div>
+          <div id="gllit-stat-exchange"></div>
+          <div id="gllit-stat-serial"></div>
+          <div id="gllit-stat-group"></div>
         </div>
-        <button type="button" onclick="openIllitCalendar()" class="text-[11px] font-bold text-indigo-700 bg-white/80 border border-white px-3 py-1.5 rounded-full">予定を開く</button>
-      </div>
-      <div id="gllit-hub-tasks" class="space-y-2"></div>
-      <div id="gllit-hub-schedule" class="rounded-2xl p-3 text-xs text-gray-700">予定を読み込み中...</div>
-      <div class="grid grid-cols-2 gap-2">
-        <button type="button" onclick="focusBoard('card_exchange')" class="liquid-glass rounded-2xl p-3 text-left active:scale-[.98]">
-          <div class="text-[11px] text-gray-500">サイト内で完結</div>
-          <div class="font-bold text-sm text-gray-900">トレカ交換</div>
-          <div id="gllit-stat-exchange" class="text-[11px] text-gray-600 mt-0.5">募集を見る</div>
-        </button>
-        <button type="button" onclick="focusBoard('serial_sell')" class="liquid-glass rounded-2xl p-3 text-left active:scale-[.98]">
-          <div class="text-[11px] text-gray-500">サイト内で完結</div>
-          <div class="font-bold text-sm text-gray-900">シリアル</div>
-          <div id="gllit-stat-serial" class="text-[11px] text-gray-600 mt-0.5">相場を見る</div>
-        </button>
-        <button type="button" onclick="focusBoard('group_buy')" class="liquid-glass rounded-2xl p-3 text-left active:scale-[.98]">
-          <div class="text-[11px] text-gray-500">サイト内で完結</div>
-          <div class="font-bold text-sm text-gray-900">共同購入</div>
-          <div id="gllit-stat-group" class="text-[11px] text-gray-600 mt-0.5">募集を見る</div>
-        </button>
-        <button type="button" onclick="switchTab('mycards')" class="liquid-glass rounded-2xl p-3 text-left active:scale-[.98]">
-          <div class="text-[11px] text-gray-500">サイト内で完結</div>
-          <div class="font-bold text-sm text-gray-900">所持・欲しい</div>
-          <div class="text-[11px] text-gray-600 mt-0.5">コンプと通知</div>
-        </button>
-      </div>
-      <div id="gllit-matches" class="space-y-2"></div>
-    </section>
+      </section>
 
     <section id="post-menu-section" class="hidden space-y-5 pb-28">
       <!-- 件数カード -->
@@ -727,6 +727,35 @@ setInterval(() => {
     el.textContent = `⏳ 残り ${days}日 ${String(hrs).padStart(2,'0')}時間${String(mins).padStart(2,'0')}分${String(secs).padStart(2,'0')}秒`;
   });
 }, 1000);
+
+(function(){
+  function updateGllitTicker() {
+    const schedEl = document.getElementById('gllit-hub-schedule');
+    const taskEl = document.getElementById('gllit-hub-tasks');
+    const track = document.getElementById('gllit-ticker-track');
+    if (!track) return;
+    const parts = [];
+    if (taskEl && taskEl.innerText.trim()) {
+      parts.push('🔔 ' + taskEl.innerText.replace(/\s+/g, ' ').trim());
+    }
+    if (schedEl && schedEl.innerText.trim()) {
+      parts.push('📅 ' + schedEl.innerText.replace(/\s+/g, ' ').trim());
+    }
+    const text = parts.length ? parts.join('　／　') : '📅 今日の予定・スケジュールをタップで確認';
+    track.innerHTML = `<span class="pr-10">${text}</span><span class="pr-10">${text}</span>`;
+    const dur = Math.max(14, Math.min(45, Math.round(text.length * 0.35)));
+    track.style.animationDuration = dur + 's';
+  }
+  const obs = new MutationObserver(updateGllitTicker);
+  window.addEventListener('DOMContentLoaded', () => {
+    const sEl = document.getElementById('gllit-hub-schedule');
+    const tEl = document.getElementById('gllit-hub-tasks');
+    if (sEl) obs.observe(sEl, { childList: true, subtree: true, characterData: true });
+    if (tEl) obs.observe(tEl, { childList: true, subtree: true, characterData: true });
+    updateGllitTicker();
+  });
+  setTimeout(updateGllitTicker, 1500);
+})();
 </script>
 
 </body>
