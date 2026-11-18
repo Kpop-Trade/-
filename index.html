@@ -12518,13 +12518,39 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
               <div>
                 <div class="flex items-center gap-1.5 flex-wrap">
                   <span class="bg-rose-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded">⚠️ 必ず読んでください</span>
+                  <span class="text-xs font-black text-purple-950">Auto-GO（自動枠埋め共同購入）の仕組みとルール</span>
+                </div>
+                <div class="text-[10px] text-rose-800 font-bold mt-0.5">参加前に必ずご確認ください（自動直送ルート・期限ペナルティ）</div>
+              </div>
+            </div>
+            <span id="autogoguide2-arr" class="text-[11px] font-black text-rose-700 bg-white px-2.5 py-1 rounded-full border border-rose-300 shrink-0">▼ 必ず読む</span>
+          </button>
+          <div id="autogoguide2" class="hidden px-3.5 pb-3.5 pt-2.5 border-t border-rose-200 text-[11px] text-gray-800 space-y-2 bg-white/90">
+            <p><b>① 推し枠を予約して公式ショップで購入：</b>ご自身のアカウントで公式から自宅直送で購入するため、二重送料はかかりません。</p>
+            <p><b>② 開封結果を登録：</b>届いたCDを開封し、出たメンバーを登録します。第1希望を自引きした場合は発送ゼロで完了です。</p>
+            <p><b>③ システムが最短直送ルートを自動指示：</b>他メンバーが出た場合、システムが参加者全体の希望を自動マッチングし「あなたは〇〇さんへ1通発送／あなたの推しは△△さんから届く」という最短直送ルートを自動で割り当てます。</p>
+            <div class="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-950 space-y-1">
+              <div class="font-black text-rose-700">🚨 期限超過・未発送に関する厳格なペナルティ</div>
+              <p><b>・指定日時までに開封結果を登録しなかった場合：</b>マッチング対象から自動除外され、枠確保の権利が失効します。また、アカウントにペナルティ履歴が記録され、次回以降のAuto-GO参加制限の対象となります。</p>
+              <p><b>・マッチング成立後、指定日時までに発送しなかった場合：</b>他参加者の推し到着を止める重大な規約違反となり、<b>アカウントの即時利用停止（永久BAN）・今後の全企画への参加禁止</b>となります。</p>
+            </div>
+          </div>
+        </div>
+        <div class="hidden">
+        <div class="mb-3 rounded-2xl bg-gradient-to-br from-rose-50 via-purple-50 to-pink-50 border-2 border-rose-300 overflow-hidden shadow-sm">
+          <button type="button" onclick="const p=document.getElementById('autogoguide2');const r=document.getElementById('autogoguide2-arr');p.classList.toggle('hidden');r.textContent=p.classList.contains('hidden')?'▼ 必ず読む':'▲ 閉じる';" class="w-full px-3.5 py-2.5 flex items-center justify-between text-left">
+            <div class="flex items-center gap-2">
+              <span class="w-6 h-6 rounded-lg bg-rose-600 text-white text-xs font-black flex items-center justify-center shrink-0">!</span>
+              <div>
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <span class="bg-rose-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded">⚠️ 必ず読んでください</span>
                   <span class="text-xs font-black text-purple-950">Auto-GO（自動枠埋め共同購入）の仕組み</span>
                 </div>
                 <div class="text-[10px] text-rose-800 font-bold mt-0.5">参加前に必ずご確認ください（第1希望オンリー＆自動直送ルート）</div>
               </div>
             </div>
             <span id="autogoguide2-arr" class="text-[11px] font-black text-rose-700 bg-white px-2.5 py-1 rounded-full border border-rose-300 shrink-0">▼ 必ず読む</span>
-          </button>
+          </button></div>
           <div id="autogoguide2" class="hidden px-3.5 pb-3.5 pt-2 border-t border-rose-200 text-[11px] text-gray-800 space-y-1.5 bg-white/80">
             <p><b>① 推し枠を予約して公式ショップで購入：</b>ご自身のアカウントで公式から自宅直送で購入するため、二重送料はかかりません。</p>
             <p><b>② 開封結果を登録：</b>届いたCDを開封し、出たメンバーを登録します。第1希望を自引きした場合は発送ゼロで完了です。</p>
