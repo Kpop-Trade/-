@@ -13672,7 +13672,7 @@ ${currentPoolData.title}
       return;
     }
 
-    const myName = (window.currentUserProfile && window.currentUserProfile.name)
+    const myName = (window.currentUserProfile && (window.currentUserProfile.nickname || window.currentUserProfile.displayName))
       || window.currentUser.displayName
       || "出品者";
 
@@ -13775,7 +13775,7 @@ ${currentPoolData.title}
     btn.innerText = "取引ルームを作成中...";
 
     try {
-      const myName = (window.currentUserProfile && window.currentUserProfile.name)
+      const myName = (window.currentUserProfile && (window.currentUserProfile.nickname || window.currentUserProfile.displayName))
         || window.currentUser.displayName
         || "取引相手";
 
