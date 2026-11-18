@@ -654,23 +654,109 @@ html, body {
         <div class="grid grid-cols-2 gap-2">
           <button type="button" onclick="openAutoGoModal()" class="relative bg-gradient-to-r from-purple-600 via-pink-500 to-indigo-600 text-white rounded-2xl p-2.5 shadow-sm border border-white/30 flex items-center justify-between text-left active:scale-[0.98] transition">
             <span class="absolute -top-1.5 -right-1 bg-rose-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full border border-white shadow-xs">NEW</span>
-            <div class="min-w-0 pr-1">
-              <div class="text-xs font-black tracking-tight truncate">⚡ Auto-GO</div>
-              <div class="text-[10px] text-white/90 truncate mt-0.5">抱き合わせゼロ共同購入</div>
-            </div>
-            <span class="text-xs font-black bg-white/20 w-6 h-6 rounded-full flex items-center justify-center shrink-0">›</span>
-          </button>
+            
+<div id="gllit-hub" class="hidden">
+  <div id="gllit-hub-schedule"></div>
+  <div id="gllit-hub-tasks"></div>
+</div>
 
-          <button type="button" onclick="if(window.openXTradeCreateModal){window.openXTradeCreateModal();}else{var m=document.getElementById('xtrade-create-modal');if(m)m.classList.remove('hidden');}" class="bg-gray-900 hover:bg-black text-white rounded-2xl p-2.5 shadow-sm flex items-center justify-between text-left active:scale-[0.98] transition">
-            <div class="min-w-0 pr-1">
-              <div class="text-xs font-black tracking-tight truncate">𝕏 取引ルーム作成</div>
-              <div class="text-[10px] text-gray-300 truncate mt-0.5">URL発行で住所・評価保護</div>
-            </div>
-            <span class="text-xs font-black bg-white/15 w-6 h-6 rounded-full flex items-center justify-center shrink-0">›</span>
-          </button>
-        </div>
 
-        <div class="px-1">
+    <section id="post-menu-section" class="hidden space-y-5 pb-28">
+      <!-- 件数カード -->
+      <div class="grid grid-cols-2 gap-2.5">
+        <button onclick="openTradesModal('active')" class="liquid-glass rounded-2xl py-4 flex flex-col items-center gap-1 active:scale-95 transition">
+          <svg class="w-7 h-7 text-gray-700" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linejoin="round" d="M4 9l2.5-4.5h11L20 9v10a1 1 0 01-1 1H5a1 1 0 01-1-1V9zM4 9h16"/></svg>
+          <span class="text-xs text-gray-600 mt-1">取引中</span>
+          <span class="text-base font-bold text-gray-900"><span id="sell-count-trading">0</span> 件</span>
+        </button>
+        <button onclick="openTradesModal('done')" class="liquid-glass rounded-2xl py-4 flex flex-col items-center gap-1 active:scale-95 transition">
+          <svg class="w-7 h-7 text-gray-700" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+          <span class="text-xs text-gray-600 mt-1">完了</span>
+          <span class="text-base font-bold text-gray-900"><span id="sell-count-done">0</span> 件</span>
+        </button>
+      </div>
+
+      <!-- 出品中リスト -->
+      <div id="my-listing-anchor" class="border-t border-purple-200/50 pt-4 space-y-3">
+        <h3 class="font-bold text-base text-gray-900 px-1">出品中 (<span id="sell-list-count">0</span>)</h3>
+        <div id="sell-my-list" class="grid grid-cols-3 gap-2.5"></div>
+      </div>
+
+      <!-- 出品に関わる設定 -->
+      <div class="space-y-3 pt-2">
+        <h3 class="font-bold text-lg text-gray-900 px-1">出品に関わる設定</h3>
+        <button onclick="openProfileModal('address')" class="w-full text-left liquid-glass rounded-2xl p-4 flex items-center gap-3 active:scale-[.99] transition">
+          <div class="text-3xl shrink-0">📦</div>
+          <div class="flex-1 min-w-0">
+            <div class="font-bold text-sm text-gray-900">住所・配送先</div>
+            <div class="text-xs text-gray-600 mt-0.5">申し込み・参加には、お名前・郵便番号・住所の登録が必要です</div>
+            <div id="sell-status-address" class="text-[11px] font-bold mt-1"></div>
+          </div>
+          <span class="text-gray-400 text-xl">›</span>
+        </button>
+        <button onclick="openAzukariGuide()" class="w-full text-left liquid-glass rounded-2xl p-4 flex items-center gap-3 active:scale-[.99] transition">
+          <div class="text-3xl shrink-0">🔒</div>
+          <div class="flex-1 min-w-0">
+            <div class="font-bold text-sm text-gray-900">アズカリ決済</div>
+            <div class="text-xs text-gray-600 mt-0.5">代金はアズカリ経由で安全にやり取り。アプリを用意しておくとスムーズです</div>
+            <div id="sell-status-azukari" class="text-[11px] font-bold mt-1 text-green-600">✅ 推奨決済方法</div>
+          </div>
+          <span class="text-gray-400 text-xl">›</span>
+        </button>
+        <button onclick="openProfileModal('push')" class="w-full text-left liquid-glass rounded-2xl p-4 flex items-center gap-3 active:scale-[.99] transition">
+          <div class="text-3xl shrink-0">📢</div>
+          <div class="flex-1 min-w-0">
+            <div class="font-bold text-sm text-gray-900">プッシュ通知設定</div>
+            <div class="text-xs text-gray-600 mt-0.5">申し込みやメッセージをすぐ受け取れます</div>
+            <div id="sell-status-push" class="text-[11px] font-bold mt-1"></div>
+          </div>
+          <span class="text-gray-400 text-xl">›</span>
+        </button>
+      </div>
+    </section>
+
+        <section id="post-list-section" class="space-y-4">
+      
+      
+      <div class="flex justify-between items-center px-2">
+        
+      
+      <h3 id="list-section-title" class="font-bold text-base text-gray-800 drop-shadow-sm">最新の募集</h3>
+        <span class="text-xs font-bold text-illit-accent bg-white/50 px-2 py-1 rounded-full border border-white">交換手数料0円</span>
+      </div>
+      <div class="w-full mb-3 relative">
+  <span class="pointer-events-none absolute -top-2 -right-1 z-10 rotate-12 bg-gradient-to-r from-amber-300 via-yellow-400 to-orange-400 text-gray-950 text-[11px] font-black tracking-wider px-2.5 py-0.5 rounded-full shadow-md border border-white">NEW!!</span>
+  <button id="autogo-home-banner" type="button" onclick="if(window.openAutoGoModal){window.openAutoGoModal();}else{var m=document.getElementById('autogo-modal');if(m)m.classList.remove('hidden');}" class="w-full bg-gradient-to-r from-purple-600 via-pink-500 to-indigo-600 text-white rounded-2xl px-4 py-4 shadow-lg border border-white/40 flex items-center justify-between active:scale-[0.99] transition">
+    <div class="text-left">
+      <div class="flex items-center gap-2">
+        <span class="text-base font-black tracking-tight">⚡ Auto-GO</span>
+        <span class="bg-white/25 text-white text-[11px] font-bold px-2.5 py-0.5 rounded-full">抱き合わせゼロ・定価共同購入</span>
+      </div>
+      <p class="text-[11px] text-white/90 font-bold mt-1">推しメンバー指定で自動マッチング・自動割り振り</p>
+    </div>
+    <span class="text-xs font-black bg-white text-purple-700 px-3 py-1.5 rounded-xl shadow-sm shrink-0">参加する →</span>
+  </button>
+</div>
+      <p class="text-[11px] text-white/90 mt-0.5 font-medium">希望メンバー枠を選んで仮予約・自動マッチングに参加する</p>
+    </div>
+    <span class="shrink-0 bg-white text-purple-700 font-black text-xs px-3 py-1.5 rounded-full shadow-sm">開く ›</span>
+  </button></div>
+      <div class="w-full mb-3">
+        <button type="button" onclick="if(window.openXTradeCreateModal){window.openXTradeCreateModal();}else{var m=document.getElementById('xtrade-create-modal');if(m)m.classList.remove('hidden');}" class="w-full flex items-center justify-between px-4 py-2.5 rounded-2xl bg-gray-900 hover:bg-black text-white shadow-sm transition active:scale-[0.99]">
+          <div class="flex items-center gap-2.5 text-left">
+            <span class="w-7 h-7 rounded-xl bg-white/15 flex items-center justify-center text-sm font-black shrink-0">𝕏</span>
+            <div>
+              <div class="text-xs font-black leading-tight">X合意 取引ルーム作成（招待URL発行）</div>
+              <div class="text-[10px] text-gray-300 leading-tight mt-0.5">DMで合意済みなら出品不要・URLを送るだけで住所交換＆評価保護</div>
+            </div>
+          </div>
+          <span class="text-[11px] font-bold px-2.5 py-1 rounded-full bg-white text-gray-900 shrink-0">作成 →</span>
+        </button>
+      </div>
+      
+
+      <!-- 【追加】ここに常時表示の検索バー -->
+      <div class="px-1">
         <div class="relative">
           <input type="text" id="main-search-input" oninput="syncSearch(this.value)" placeholder="🔍 メンバー名・トレカ名・出品者名で検索" class="w-full liquid-glass-input rounded-2xl pl-4 pr-9 py-2.5 text-xs outline-none text-gray-700 placeholder-gray-500 bg-white/75 backdrop-blur-md border border-white/50">
           <button id="main-search-clear" onclick="syncSearch('')" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm font-bold">×</button>
