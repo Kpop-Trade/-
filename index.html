@@ -553,113 +553,39 @@ html, body {
       </div>
     </section>
 
-    <main class="max-w-5xl mx-auto px-4 pb-6 space-y-6">
-    <div id="pull-gap" aria-hidden="true"><div class="pull-spin"></div></div>
-    <section id="intro-section" class="space-y-3">
-      <div id="site-announcement" class="hidden bg-amber-50/90 border border-amber-200 rounded-2xl p-3 text-xs text-amber-900 leading-relaxed">
-        <div class="font-bold mb-0.5">📢 お知らせ</div>
-        <div id="site-announcement-text" class="whitespace-pre-wrap"></div>
-      </div>
-    </section>
-
-    <section id="gllit-hub">
-        <style>
-          @keyframes gllitMarquee {
-            0% { transform: translateX(0%); }
-            100% { transform: translateX(-50%); }
-          }
-          .gllit-marquee-track {
-            display: inline-flex;
-            white-space: nowrap;
-            animation: gllitMarquee 22s linear infinite;
-          }
-          .gllit-marquee-track:hover {
-            animation-play-state: paused;
-          }
-        </style>
-        <button type="button" onclick="openIllitCalendar()" class="w-full liquid-glass rounded-2xl px-2.5 py-2 flex items-center gap-2 overflow-hidden border border-white/70 shadow-xs active:scale-[0.99] transition text-left">
-          <span class="shrink-0 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full">✨ 今日のGLLIT</span>
-          <div class="relative flex-1 overflow-hidden">
-            <div id="gllit-ticker-track" class="gllit-marquee-track text-xs font-bold text-gray-800">
-              <span class="pr-10">📅 予定を読み込み中...</span>
-              <span class="pr-10">📅 予定を読み込み中...</span>
-            </div>
-          </div>
-          <span class="shrink-0 text-[10px] font-bold text-indigo-600">予定表 ›</span>
-        </button>
-        <div class="hidden">
-          <div id="gllit-hub-tasks"></div>
-          <div id="gllit-hub-schedule">予定を読み込み中...</div>
-          <div id="gllit-stat-exchange"></div>
-          <div id="gllit-stat-serial"></div>
-          <div id="gllit-stat-group"></div>
+    <section id="gllit-hub" class="space-y-3">
+      <div class="flex items-end justify-between px-1">
+        <div>
+          <h3 class="font-bold text-base text-gray-900">今日のGLLIT</h3>
         </div>
-      </section>
-
-    <section id="post-menu-section" class="hidden space-y-5 pb-28">
-      <!-- 件数カード -->
-      <div class="grid grid-cols-2 gap-2.5">
-        <button onclick="openTradesModal('active')" class="liquid-glass rounded-2xl py-4 flex flex-col items-center gap-1 active:scale-95 transition">
-          <svg class="w-7 h-7 text-gray-700" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linejoin="round" d="M4 9l2.5-4.5h11L20 9v10a1 1 0 01-1 1H5a1 1 0 01-1-1V9zM4 9h16"/></svg>
-          <span class="text-xs text-gray-600 mt-1">取引中</span>
-          <span class="text-base font-bold text-gray-900"><span id="sell-count-trading">0</span> 件</span>
+        <button type="button" onclick="openIllitCalendar()" class="text-[11px] font-bold text-indigo-700 bg-white/80 border border-white px-3 py-1.5 rounded-full">予定を開く</button>
+      </div>
+      <div id="gllit-hub-tasks" class="space-y-2"></div>
+      <div id="gllit-hub-schedule" class="rounded-2xl p-3 text-xs text-gray-700">予定を読み込み中...</div>
+      <div class="grid grid-cols-2 gap-2">
+        <button type="button" onclick="focusBoard('card_exchange')" class="liquid-glass rounded-2xl p-3 text-left active:scale-[.98]">
+          <div class="text-[11px] text-gray-500">サイト内で完結</div>
+          <div class="font-bold text-sm text-gray-900">トレカ交換</div>
+          <div id="gllit-stat-exchange" class="text-[11px] text-gray-600 mt-0.5">募集を見る</div>
         </button>
-        <button onclick="openTradesModal('done')" class="liquid-glass rounded-2xl py-4 flex flex-col items-center gap-1 active:scale-95 transition">
-          <svg class="w-7 h-7 text-gray-700" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7.5"/></svg>
-          <span class="text-xs text-gray-600 mt-1">完了</span>
-          <span class="text-base font-bold text-gray-900"><span id="sell-count-done">0</span> 件</span>
+        <button type="button" onclick="focusBoard('serial_sell')" class="liquid-glass rounded-2xl p-3 text-left active:scale-[.98]">
+          <div class="text-[11px] text-gray-500">サイト内で完結</div>
+          <div class="font-bold text-sm text-gray-900">シリアル</div>
+          <div id="gllit-stat-serial" class="text-[11px] text-gray-600 mt-0.5">相場を見る</div>
+        </button>
+        <button type="button" onclick="focusBoard('group_buy')" class="liquid-glass rounded-2xl p-3 text-left active:scale-[.98]">
+          <div class="text-[11px] text-gray-500">サイト内で完結</div>
+          <div class="font-bold text-sm text-gray-900">共同購入</div>
+          <div id="gllit-stat-group" class="text-[11px] text-gray-600 mt-0.5">募集を見る</div>
+        </button>
+        <button type="button" onclick="switchTab('mycards')" class="liquid-glass rounded-2xl p-3 text-left active:scale-[.98]">
+          <div class="text-[11px] text-gray-500">サイト内で完結</div>
+          <div class="font-bold text-sm text-gray-900">所持・欲しい</div>
+          <div class="text-[11px] text-gray-600 mt-0.5">コンプと通知</div>
         </button>
       </div>
-
-      <!-- 出品中リスト -->
-      <div id="my-listing-anchor" class="border-t border-purple-200/50 pt-4 space-y-3">
-        <h3 class="font-bold text-base text-gray-900 px-1">出品中 (<span id="sell-list-count">0</span>)</h3>
-        <div id="sell-my-list" class="grid grid-cols-3 gap-2.5"></div>
-      </div>
-
-      <!-- 出品に関わる設定 -->
-      <div class="space-y-3 pt-2">
-        <h3 class="font-bold text-lg text-gray-900 px-1">出品に関わる設定</h3>
-        <button onclick="openProfileModal('address')" class="w-full text-left liquid-glass rounded-2xl p-4 flex items-center gap-3 active:scale-[.99] transition">
-          <div class="text-3xl shrink-0">📦</div>
-          <div class="flex-1 min-w-0">
-            <div class="font-bold text-sm text-gray-900">住所・配送先</div>
-            <div class="text-xs text-gray-600 mt-0.5">申し込み・参加には、お名前・郵便番号・住所の登録が必要です</div>
-            <div id="sell-status-address" class="text-[11px] font-bold mt-1"></div>
-          </div>
-          <span class="text-gray-400 text-xl">›</span>
-        </button>
-        <button onclick="openAzukariGuide()" class="w-full text-left liquid-glass rounded-2xl p-4 flex items-center gap-3 active:scale-[.99] transition">
-          <div class="text-3xl shrink-0">🔒</div>
-          <div class="flex-1 min-w-0">
-            <div class="font-bold text-sm text-gray-900">アズカリ決済</div>
-            <div class="text-xs text-gray-600 mt-0.5">代金はアズカリ経由で安全にやり取り。アプリを用意しておくとスムーズです</div>
-            <div id="sell-status-azukari" class="text-[11px] font-bold mt-1 text-green-600">✅ 推奨決済方法</div>
-          </div>
-          <span class="text-gray-400 text-xl">›</span>
-        </button>
-        <button onclick="openProfileModal('push')" class="w-full text-left liquid-glass rounded-2xl p-4 flex items-center gap-3 active:scale-[.99] transition">
-          <div class="text-3xl shrink-0">📢</div>
-          <div class="flex-1 min-w-0">
-            <div class="font-bold text-sm text-gray-900">プッシュ通知設定</div>
-            <div class="text-xs text-gray-600 mt-0.5">申し込みやメッセージをすぐ受け取れます</div>
-            <div id="sell-status-push" class="text-[11px] font-bold mt-1"></div>
-          </div>
-          <span class="text-gray-400 text-xl">›</span>
-        </button>
-      </div>
+      <div id="gllit-matches" class="space-y-2"></div>
     </section>
-
-        <section id="post-list-section" class="space-y-2.5">
-        <div class="grid grid-cols-2 gap-2">
-          <button type="button" onclick="openAutoGoModal()" class="relative bg-gradient-to-r from-purple-600 via-pink-500 to-indigo-600 text-white rounded-2xl p-2.5 shadow-sm border border-white/30 flex items-center justify-between text-left active:scale-[0.98] transition">
-            <span class="absolute -top-1.5 -right-1 bg-rose-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full border border-white shadow-xs">NEW</span>
-            
-<div id="gllit-hub" class="hidden">
-  <div id="gllit-hub-schedule"></div>
-  <div id="gllit-hub-tasks"></div>
-</div>
-
 
     <section id="post-menu-section" class="hidden space-y-5 pb-28">
       <!-- 件数カード -->
@@ -724,19 +650,16 @@ html, body {
       <h3 id="list-section-title" class="font-bold text-base text-gray-800 drop-shadow-sm">最新の募集</h3>
         <span class="text-xs font-bold text-illit-accent bg-white/50 px-2 py-1 rounded-full border border-white">交換手数料0円</span>
       </div>
-      <div class="w-full mb-3 relative">
-  <span class="pointer-events-none absolute -top-2 -right-1 z-10 rotate-12 bg-gradient-to-r from-amber-300 via-yellow-400 to-orange-400 text-gray-950 text-[11px] font-black tracking-wider px-2.5 py-0.5 rounded-full shadow-md border border-white">NEW!!</span>
-  <button id="autogo-home-banner" type="button" onclick="if(window.openAutoGoModal){window.openAutoGoModal();}else{var m=document.getElementById('autogo-modal');if(m)m.classList.remove('hidden');}" class="w-full bg-gradient-to-r from-purple-600 via-pink-500 to-indigo-600 text-white rounded-2xl px-4 py-4 shadow-lg border border-white/40 flex items-center justify-between active:scale-[0.99] transition">
+      <div class="w-full mb-3"><button id="autogo-home-banner" type="button" onclick="window.openAutoGoModal && window.openAutoGoModal()" class="w-full bg-gradient-to-r from-purple-600 via-pink-500 to-indigo-600 text-white rounded-2xl p-3.5 shadow-md border border-white/30 flex items-center justify-between active:scale-[0.99] transition">
     <div class="text-left">
-      <div class="flex items-center gap-2">
-        <span class="text-base font-black tracking-tight">⚡ Auto-GO</span>
-        <span class="bg-white/25 text-white text-[11px] font-bold px-2.5 py-0.5 rounded-full">抱き合わせゼロ・定価共同購入</span>
+      <div class="flex items-center gap-1.5">
+        <span class="text-sm font-black tracking-tight">⚡ Auto-GO 全体プール</span>
+        <span class="bg-white/25 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">抱き合わせゼロ・定価共同購入</span>
       </div>
-      <p class="text-[11px] text-white/90 font-bold mt-1">推しメンバー指定で自動マッチング・自動割り振り</p>
+      <p class="text-[11px] text-white/90 mt-0.5 font-medium">希望メンバー枠を選んで仮予約・自動マッチングに参加する</p>
     </div>
-    <span class="text-xs font-black bg-white text-purple-700 px-3 py-1.5 rounded-xl shadow-sm shrink-0">参加する →</span>
-  </button>
-</div>
+    <span class="shrink-0 bg-white text-purple-700 font-black text-xs px-3 py-1.5 rounded-full shadow-sm">開く ›</span>
+  </button></div>
       <div class="w-full mb-3">
         <button type="button" onclick="if(window.openXTradeCreateModal){window.openXTradeCreateModal();}else{var m=document.getElementById('xtrade-create-modal');if(m)m.classList.remove('hidden');}" class="w-full flex items-center justify-between px-4 py-2.5 rounded-2xl bg-gray-900 hover:bg-black text-white shadow-sm transition active:scale-[0.99]">
           <div class="flex items-center gap-2.5 text-left">
@@ -5286,27 +5209,22 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       let held = false;
       try {
         let nextBoxes = null;
-        const boxes = asUnitBoxes(boxesNow).map(b => ({ x: b.x, y: b.y, w: b.w, h: b.h, state: b.state || "open" }));
-    for (const i of picks) {
-      if (!boxes[i] || boxes[i].state !== "open") throw new Error("taken");
-      boxes[i].state = "hold";
-    }
-    const left = boxes.filter(b => b.state === "open").length;
-    nextBoxes = boxes;
-    try {
-      await runTransaction(db, async (tx) => {
-        const postRef = doc(db, "posts", p.id);
-        const ps = await tx.get(postRef);
-        if (!ps.exists()) throw new Error("notfound");
-        const cur = ps.data();
-        if (cur.status && cur.status !== "active") throw new Error("notactive");
-        tx.update(postRef, { bundleBoxes: boxes, bundleLeft: left, status: "active" });
-      });
-      held = true;
-    } catch (txErr) {
-      if (txErr && (txErr.message === "taken" || txErr.message === "notactive" || txErr.message === "notfound")) throw txErr;
-      console.warn("post hold skipped due to rule:", txErr);
-    }
+        await runTransaction(db, async (tx) => {
+          const postRef = doc(db, "posts", p.id);
+          const ps = await tx.get(postRef);
+          if (!ps.exists()) throw new Error("notfound");
+          const cur = ps.data();
+          if (cur.status && cur.status !== "active") throw new Error("notactive");
+          const boxes = asUnitBoxes(cur.bundleBoxes && cur.bundleBoxes.length ? cur.bundleBoxes : boxesNow).map(b => ({ x: b.x, y: b.y, w: b.w, h: b.h, state: b.state || "open" }));
+          for (const i of picks) {
+            if (!boxes[i] || boxes[i].state !== "open") throw new Error("taken");
+            boxes[i].state = "hold";
+          }
+          const left = boxes.filter(b => b.state === "open").length;
+          nextBoxes = boxes;
+          tx.update(postRef, { bundleBoxes: boxes, bundleLeft: left, status: "active" });
+        });
+        held = true;
         const docs = await bundlePhotoDocs(p.id);
         const base = docs.find(d => d.role === "base") || docs.filter(d => d.role !== "base").sort((a, b) => (a.order || 0) - (b.order || 0))[0];
         const source = base && isJpegData(base.data) ? base.data : (isJpegData(p.thumb) ? p.thumb : "");
@@ -5340,7 +5258,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         if (held) { try { await releaseBundleHolds(p.id, picks); } catch (_) {} }
         if (e && (e.message === "taken" || e.message === "notactive")) { showToast("そのカードは、さきほど選ばれました", "info"); return; }
         console.error(e);
-        showToast("申し込み失敗: " + (e && (e.code || e.message) ? (e.code || e.message) : String(e)), "error");
+        showToast("申し込みに失敗しました", "error");
       }
     };
     window.agreeBundleTrade = async function() {
@@ -12591,58 +12509,8 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
 
 <!-- Auto-GO メインモーダル -->
 <div id="autogo-modal" class="fixed inset-0 modal-backdrop hidden z-[10000] flex items-end md:items-center justify-center p-0 md:p-4 bg-black/60">
-  <div class="relative w-full max-w-md">
-    <div class="pointer-events-none absolute -top-3 -right-2 md:-right-3 z-30 rotate-12 bg-gradient-to-r from-pink-500 via-rose-500 to-purple-600 text-white text-xs font-black tracking-wider px-3.5 py-1 rounded-full border-2 border-white shadow-lg">NEW!!</div>
-</div>
-    <div class="liquid-glass-heavy bg-white/95 backdrop-blur-xl w-full rounded-t-[2rem] md:rounded-[2rem] p-5 space-y-3.5 shadow-2xl max-h-[92vh] overflow-y-auto">
+  <div class="liquid-glass-heavy bg-white/95 backdrop-blur-xl w-full max-w-md rounded-t-[2rem] md:rounded-[2rem] p-5 space-y-3.5 shadow-2xl max-h-[92vh] overflow-y-auto">
       <!-- Auto-GO 仕組み解説アコーディオン -->
-        <div class="mb-3 rounded-2xl bg-gradient-to-br from-rose-50 via-purple-50 to-pink-50 border-2 border-rose-300 overflow-hidden shadow-sm">
-          <button type="button" onclick="const p=document.getElementById('autogoguide2');const r=document.getElementById('autogoguide2-arr');p.classList.toggle('hidden');r.textContent=p.classList.contains('hidden')?'▼ 必ず読む':'▲ 閉じる';" class="w-full px-3.5 py-2.5 flex items-center justify-between text-left">
-            <div class="flex items-center gap-2">
-              <span class="w-6 h-6 rounded-lg bg-rose-600 text-white text-xs font-black flex items-center justify-center shrink-0">!</span>
-              <div>
-                <div class="flex items-center gap-1.5 flex-wrap">
-                  <span class="bg-rose-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded">⚠️ 必ず読んでください</span>
-                  <span class="text-xs font-black text-purple-950">Auto-GO（自動枠埋め共同購入）の仕組みとルール</span>
-                </div>
-                <div class="text-[10px] text-rose-800 font-bold mt-0.5">参加前に必ずご確認ください（自動直送ルート・期限ペナルティ）</div>
-              </div>
-            </div>
-            <span id="autogoguide2-arr" class="text-[11px] font-black text-rose-700 bg-white px-2.5 py-1 rounded-full border border-rose-300 shrink-0">▼ 必ず読む</span>
-          </button>
-          <div id="autogoguide2" class="hidden px-3.5 pb-3.5 pt-2.5 border-t border-rose-200 text-[11px] text-gray-800 space-y-2 bg-white/90">
-            <p><b>① 推し枠を予約して公式ショップで購入：</b>ご自身のアカウントで公式から自宅直送で購入するため、二重送料はかかりません。</p>
-            <p><b>② 開封結果を登録：</b>届いたCDを開封し、出たメンバーを登録します。第1希望を自引きした場合は発送ゼロで完了です。</p>
-            <p><b>③ システムが最短直送ルートを自動指示：</b>他メンバーが出た場合、システムが参加者全体の希望を自動マッチングし「あなたは〇〇さんへ1通発送／あなたの推しは△△さんから届く」という最短直送ルートを自動で割り当てます。</p>
-            <div class="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-950 space-y-1">
-              <div class="font-black text-rose-700">🚨 期限超過・未発送に関する厳格なペナルティ</div>
-              <p><b>・指定日時までに開封結果を登録しなかった場合：</b>マッチング対象から自動除外され、枠確保の権利が失効します。また、アカウントにペナルティ履歴が記録され、次回以降のAuto-GO参加制限の対象となります。</p>
-              <p><b>・マッチング成立後、指定日時までに発送しなかった場合：</b>他参加者の推し到着を止める重大な規約違反となり、<b>アカウントの即時利用停止（永久BAN）・今後の全企画への参加禁止</b>となります。</p>
-            </div>
-          </div>
-        </div>
-        <div class="hidden">
-        <div class="mb-3 rounded-2xl bg-gradient-to-br from-rose-50 via-purple-50 to-pink-50 border-2 border-rose-300 overflow-hidden shadow-sm">
-          <button type="button" onclick="const p=document.getElementById('autogoguide2');const r=document.getElementById('autogoguide2-arr');p.classList.toggle('hidden');r.textContent=p.classList.contains('hidden')?'▼ 必ず読む':'▲ 閉じる';" class="w-full px-3.5 py-2.5 flex items-center justify-between text-left">
-            <div class="flex items-center gap-2">
-              <span class="w-6 h-6 rounded-lg bg-rose-600 text-white text-xs font-black flex items-center justify-center shrink-0">!</span>
-              <div>
-                <div class="flex items-center gap-1.5 flex-wrap">
-                  <span class="bg-rose-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded">⚠️ 必ず読んでください</span>
-                  <span class="text-xs font-black text-purple-950">Auto-GO（自動枠埋め共同購入）の仕組み</span>
-                </div>
-                <div class="text-[10px] text-rose-800 font-bold mt-0.5">参加前に必ずご確認ください（第1希望オンリー＆自動直送ルート）</div>
-              </div>
-            </div>
-            <span id="autogoguide2-arr" class="text-[11px] font-black text-rose-700 bg-white px-2.5 py-1 rounded-full border border-rose-300 shrink-0">▼ 必ず読む</span>
-          </button></div>
-          <div id="autogoguide2" class="hidden px-3.5 pb-3.5 pt-2 border-t border-rose-200 text-[11px] text-gray-800 space-y-1.5 bg-white/80">
-            <p><b>① 推し枠を予約して公式ショップで購入：</b>ご自身のアカウントで公式から自宅直送で購入するため、二重送料はかかりません。</p>
-            <p><b>② 開封結果を登録：</b>届いたCDを開封し、出たメンバーを登録します。第1希望を自引きした場合は発送ゼロで完了です。</p>
-            <p><b>③ システムが最短直送ルートを自動指示：</b>他メンバーが出た場合、システムが参加者全体の希望を自動マッチングし「あなたは〇〇さんへ1通発送／あなたの推しは△△さんから届く」という最短直送ルートを自動で割り当てます。</p>
-          </div>
-        </div>
-        <div class="hidden">
       <div class="mb-3 rounded-2xl bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200/80 overflow-hidden shadow-sm">
         <button type="button" onclick="const b=document.getElementById('autogo-guide-panel');const a=document.getElementById('autogo-guide-arrow');b.classList.toggle('hidden');a.textContent=b.classList.contains('hidden')?'▼ 開く':'▲ 閉じる';" class="w-full px-3.5 py-2.5 flex items-center justify-between text-left hover:bg-white/40 transition">
           <div class="flex items-center gap-2">
@@ -12653,7 +12521,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
             </div>
           </div>
           <span id="autogo-guide-arrow" class="text-[11px] font-bold text-purple-700 bg-white/80 px-2 py-1 rounded-full border border-purple-200 shrink-0">▼ 開く</span>
-        </button></div>
+        </button>
 
         <div id="autogo-guide-panel" class="hidden px-3.5 pb-3.5 pt-1 border-t border-purple-200/60 space-y-2.5 text-[11px] text-gray-700 leading-relaxed bg-white/70">
           <div class="grid grid-cols-1 gap-2 pt-1">
@@ -12718,7 +12586,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     <!-- ヘッダー＆公式開催トグル -->
     <div class="flex justify-between items-center border-b border-purple-200/60 pb-2.5">
       <div class="flex items-center gap-2">
-        <span class="text-xs font-black text-purple-900">⚡ Auto-GO</span>
+        <span class="text-xs font-black text-purple-900">⚡ Auto-GO 全体プール</span>
         
       </div>
       <button onclick="closeAutoGoModal()" class="text-gray-400 hover:text-gray-700 text-2xl leading-none">&times;</button>
@@ -13216,7 +13084,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
           ? "78%"
           : `${Math.min(75, Math.round(baseSoloProb + (78 - baseSoloProb) * (total / Math.max(1, minP))))}%（${minP}人達成で78%）`;
 
-  const rawTitle = (currentPoolData.title || "Auto-GO").replace(//g, "").trim();
+  const rawTitle = (currentPoolData.title || "Auto-GO").replace(/全体プール/g, "").trim();
   document.getElementById("ag-pool-title").textContent = rawTitle || "Auto-GO";
   document.getElementById("ag-pool-desc").textContent = currentPoolData.description || "";
   const imgEl = document.getElementById("ag-pool-image");
@@ -13324,23 +13192,6 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
               <p class="text-[11px] text-emerald-800 leading-relaxed">
                 あなたが開封した <strong class="underline">${currentEntryData.openedCard || "対象トレカ"}</strong> を、以下の宛先へ直接発送してください（交換交渉は不要です）。<br>
                 <span class="text-[10px] text-emerald-700">※あなたの元には別の参加者から <strong>${currentEntryData.receivingCard || "希望トレカ"}</strong> が届きます。</span>
-                    ${(() => {
-                      const rawReg = currentPoolData && currentPoolData.regDeadline;
-                      if (!rawReg) return '';
-                      const regMs = new Date(rawReg).getTime();
-                      if (isNaN(regMs)) return '<div class="mt-2 p-2 rounded-lg bg-rose-50 border border-rose-200 text-[11px] font-bold text-rose-800">⏰ 発送期限：登録期限から3日後まで</div>';
-                      const shipDeadlineMs = regMs + 3 * 24 * 60 * 60 * 1000;
-                      const d = new Date(shipDeadlineMs);
-                      const pad = n => String(n).padStart(2, '0');
-                      const dLabel = `${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-                      return `<div class="mt-2 p-2.5 rounded-lg bg-rose-50 border border-rose-300 text-rose-950 space-y-1">
-                        <div class="flex items-center justify-between text-[11px] font-black text-rose-800">
-                          <span>⏰ 発送期限（登録期限の3日後）</span>
-                          <span>${dLabel} まで</span>
-                        </div>
-                        <div class="text-xs font-black text-rose-600 tabular-nums" data-ship-deadline="${shipDeadlineMs}">⏳ 残り時間を計算中...</div>
-                      </div>`;
-                    })()}
               </p>
               <div class="bg-white border border-emerald-200 rounded-lg p-2.5 text-xs text-gray-800 space-y-0.5 select-all">
                 <div class="font-bold text-gray-900">${currentEntryData.shipToName || "受取人"} 様</div>
@@ -14334,52 +14185,6 @@ window.promptTradePushNudge = function(contextLabel) {
   }
 })();
 
-
-setInterval(() => {
-  document.querySelectorAll('[data-ship-deadline]').forEach(el => {
-    const targetMs = Number(el.getAttribute('data-ship-deadline'));
-    const diff = targetMs - Date.now();
-    if (diff <= 0) {
-      el.textContent = '🚨 発送期限を過ぎています（至急発送してください）';
-      return;
-    }
-    const days = Math.floor(diff / 86400000);
-    const hrs = Math.floor((diff % 86400000) / 3600000);
-    const mins = Math.floor((diff % 3600000) / 60000);
-    const secs = Math.floor((diff % 60000) / 1000);
-    el.textContent = `⏳ 残り ${days}日 ${String(hrs).padStart(2,'0')}時間${String(mins).padStart(2,'0')}分${String(secs).padStart(2,'0')}秒`;
-  });
-}, 1000);
 </script>
 
-<script>
-(function(){
-  function updateGllitTicker() {
-    const schedEl = document.getElementById('gllit-hub-schedule');
-    const taskEl = document.getElementById('gllit-hub-tasks');
-    const track = document.getElementById('gllit-ticker-track');
-    if (!track) return;
-    const parts = [];
-    if (taskEl && taskEl.innerText.trim()) {
-      parts.push('🔔 ' + taskEl.innerText.replace(/\s+/g, ' ').trim());
-    }
-    if (schedEl && schedEl.innerText.trim()) {
-      parts.push('📅 ' + schedEl.innerText.replace(/\s+/g, ' ').trim());
-    }
-    const text = parts.length ? parts.join('　／　') : '📅 今日の予定・スケジュールをタップで確認';
-    track.innerHTML = '<span class="pr-10">' + text + '</span><span class="pr-10">' + text + '</span>';
-    const dur = Math.max(14, Math.min(45, Math.round(text.length * 0.35)));
-    track.style.animationDuration = dur + 's';
-  }
-  const obs = new MutationObserver(updateGllitTicker);
-  window.addEventListener('DOMContentLoaded', function() {
-    const sEl = document.getElementById('gllit-hub-schedule');
-    const tEl = document.getElementById('gllit-hub-tasks');
-    if (sEl) obs.observe(sEl, { childList: true, subtree: true, characterData: true });
-    if (tEl) obs.observe(tEl, { childList: true, subtree: true, characterData: true });
-    updateGllitTicker();
-  });
-  setTimeout(updateGllitTicker, 1500);
-})();
-</script>
 </body>
