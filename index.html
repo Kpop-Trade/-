@@ -12630,7 +12630,30 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
         <span class="text-xs font-bold text-gray-800">希望メンバー枠を選択</span>
         <span class="text-[10px] text-purple-600 font-bold">予約無料・発動まで決済なし</span>
       </div>
-      <div id="ag-member-grid" class="grid grid-cols-1 gap-2"></div>
+      <div id="ag-consent-box" class="bg-purple-50/80 border border-purple-200 rounded-xl p-2.5 mb-2 space-y-1.5">
+            <div class="text-[11px] font-bold text-purple-900">📋 自動交換・直接発送の事前同意（必須）</div>
+            <div class="grid grid-cols-2 gap-1.5">
+              <div>
+                <label class="block text-[10px] text-gray-600 font-bold mb-0.5">第1希望メンバー</label>
+                <select id="ag-wish-1" class="w-full text-xs border border-purple-200 rounded-lg px-2 py-1 bg-white">
+                  <option value="ミンジュ">ミンジュ</option><option value="ウォンヒ">ウォンヒ</option><option value="モカ">モカ</option><option value="イロハ">イロハ</option><option value="ユナ">ユナ</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[10px] text-gray-600 font-bold mb-0.5">第2希望メンバー</label>
+                <select id="ag-wish-2" class="w-full text-xs border border-purple-200 rounded-lg px-2 py-1 bg-white">
+                  <option value="ウォンヒ">ウォンヒ</option><option value="ミンジュ">ミンジュ</option><option value="モカ">モカ</option><option value="イロハ">イロハ</option><option value="ユナ">ユナ</option>
+                </select>
+              </div>
+            </div>
+            <label class="flex items-start gap-1.5 cursor-pointer pt-0.5">
+              <input type="checkbox" id="ag-auto-ship-consent" class="mt-0.5 rounded text-purple-600">
+              <span class="text-[10px] text-gray-700 leading-tight">
+                登録期限までに開封結果を入力し、システムが自動決定した発送先住所へ期日までに直接郵送すること（個別交渉なし・住所開示）に同意します。
+              </span>
+            </label>
+          </div>
+          <div id="ag-member-grid" class="grid grid-cols-1 gap-2"></div>
     </div>
 
     <!-- X集客用 自動招待URLシェア -->
@@ -13120,11 +13143,82 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       } else if (currentEntryData.status === "waiting_match") {
         html += `<p class="text-xs text-purple-800">⏳ <b>${currentEntryData.pulledMember}</b> を登録済み。希望一致の相手が登録した瞬間に交換ルームURLが自動発行されます！</p>`;
       } else if (currentEntryData.status === "matched") {
-        const roomUrl = `${location.origin}/?trade=${currentEntryData.matchRoomId || ""}`;
-        html += `<div class="bg-emerald-50 border border-emerald-300 rounded-xl p-2.5 space-y-1.5">
-          <p class="text-xs font-bold text-emerald-900">🤝 自動マッチング成立！専用交換URLを発行しました</p>
-          <a href="${roomUrl}" class="block text-center bg-emerald-600 text-white text-xs font-bold py-2 rounded-lg">専用交換ルームを開く ↗</a>
-        </div>`;
+        // 取引進捗ステップ判定（1:申込済, 2:開封登録済, 3:発送指令済, 4:発送/受取完了）
+          const step = currentEntryData.receivedDone ? 4
+            : (currentEntryData.shippedDone ? 4
+            : (currentEntryData.shipToAddress || currentEntryData.noMatchResult ? 3
+            : (currentEntryData.openedCard ? 2 : 1)));
+          const stepLabels = ["①参加同意", "②開封登録", "③発送指令", "④発送・完了"];
+          const progressHtml = `<div class="bg-white border border-purple-100 rounded-xl p-2.5 mb-2">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-[10px] font-extrabold text-purple-900">📊 Auto-GO 取引進捗ステータス</span>
+              <span class="text-[10px] font-bold text-purple-600">STEP ${step} / 4</span>
+            </div>
+            <div class="grid grid-cols-4 gap-1">
+              ${stepLabels.map((lbl, idx) => {
+                const active = (idx + 1) <= step;
+                return `<div class="text-center">
+                  <div class="h-1.5 rounded-full mb-1 ${active ? 'bg-purple-600' : 'bg-gray-200'}"></div>
+                  <span class="text-[9px] font-bold ${active ? 'text-purple-800' : 'text-gray-400'}">${lbl}</span>
+                </div>`;
+              }).join("")}
+            </div>
+          </div>`;
+
+          html += progressHtml;
+
+          if (currentEntryData.shipToAddress) {
+            html += `<div class="bg-emerald-50 border-2 border-emerald-400 rounded-xl p-3 space-y-2 shadow-sm">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-extrabold text-emerald-900">📮【自動発送指令】発送先が確定しました</span>
+                <span class="text-[10px] font-bold bg-emerald-600 text-white px-2 py-0.5 rounded-full">事前同意済</span>
+              </div>
+              <p class="text-[11px] text-emerald-800 leading-relaxed">
+                あなたが開封した <strong class="underline">${currentEntryData.openedCard || "対象トレカ"}</strong> を、以下の宛先へ直接発送してください（交換交渉は不要です）。<br>
+                <span class="text-[10px] text-emerald-700">※あなたの元には別の参加者から <strong>${currentEntryData.receivingCard || "希望トレカ"}</strong> が届きます。</span>
+              </p>
+              <div class="bg-white border border-emerald-200 rounded-lg p-2.5 text-xs text-gray-800 space-y-0.5 select-all">
+                <div class="font-bold text-gray-900">${currentEntryData.shipToName || "受取人"} 様</div>
+                <div class="text-[11px] text-gray-600">〒${currentEntryData.shipToZip || ""}</div>
+                <div class="text-[11px] font-medium">${currentEntryData.shipToAddress}</div>
+              </div>
+              <div class="grid grid-cols-2 gap-1.5 pt-1">
+                ${currentEntryData.shippedDone
+                  ? `<div class="text-center text-[11px] font-bold text-emerald-700 bg-emerald-100 py-2 rounded-lg">✅ 発送完了報告済</div>`
+                  : `<button type="button" onclick="markAutoGoShipped()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold py-2 rounded-lg shadow">📦 発送完了を報告</button>`
+                }
+                ${currentEntryData.receivedDone
+                  ? `<div class="text-center text-[11px] font-bold text-purple-700 bg-purple-100 py-2 rounded-lg">🎉 受取完了済</div>`
+                  : `<button type="button" onclick="markAutoGoReceived()" class="bg-purple-600 hover:bg-purple-700 text-white text-[11px] font-bold py-2 rounded-lg shadow">📥 届いたら受取報告</button>`
+                }
+              </div>
+            </div>`;
+          } else if (currentEntryData.noMatchResult) {
+            html += `<div class="bg-gray-50 border border-gray-300 rounded-xl p-2.5 text-xs text-gray-700">
+              ℹ️ 今回の自動マッチングでは交換対象外（端数）となりました。お手元の <strong>${currentEntryData.openedCard || "トレカ"}</strong> はそのまま保管・通常出品いただけます。
+            </div>`;
+          } else {
+            const membersOpt = (typeof getActiveMembers === "function" ? getActiveMembers() : ["ミンジュ","ウォンヒ","モカ","イロハ","ユナ"])
+              .map(m => `<option value="${m}" ${currentEntryData.openedCard === m ? "selected" : ""}>${m}</option>`).join("");
+            const deadlineStr = (currentPoolData && currentPoolData.regDeadline) ? currentPoolData.regDeadline : "運営指定の登録期限";
+            html += `<div class="bg-amber-50 border border-amber-200 rounded-xl p-2.5 space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-[11px] font-bold text-amber-900">📦 開封結果の登録（期限: ${deadlineStr}）</span>
+                <span class="text-[10px] text-amber-700 font-bold">事前同意済</span>
+              </div>
+              <p class="text-[10px] text-amber-800 leading-snug">
+                到着後、自分の枠から出たメンバーを登録してください。期限になるとシステムが自動でマッチングし、<strong>発送先住所だけ</strong>を自動通知します。
+              </p>
+              <div class="flex gap-1.5">
+                <select id="ag-opened-select" class="flex-1 text-xs border border-amber-300 rounded-lg px-2 py-1.5 bg-white font-bold">
+                  <option value="">出たメンバーを選択...</option>
+                  ${membersOpt}
+                </select>
+                <button type="button" onclick="saveAutoGoOpenedCard()" class="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg whitespace-nowrap">登録</button>
+              </div>
+              ${currentEntryData.openedCard ? `<div class="text-[10px] font-bold text-emerald-700">✅ 登録済み：「${currentEntryData.openedCard}」（期限まで変更可）</div>` : ""}
+            </div>`;
+          }
       }
       statusBox.innerHTML = html;
     } else {
