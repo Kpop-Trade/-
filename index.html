@@ -12655,7 +12655,11 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
               </span>
             </label>
           </div>
-          <div id="ag-member-grid" class="grid grid-cols-1 gap-2"></div>
+          <div class="bg-purple-50 border border-purple-200 rounded-xl p-2.5 mb-2 text-[11px] text-purple-950 space-y-1">
+  <div class="font-extrabold text-purple-800">🎯 第1希望オンリー保証＆最短直送システム</div>
+  <div class="leading-relaxed">選んだ<strong>第1希望メンバーのみ</strong>が割り当てられます（第2希望の押し付けなし）。自引きした場合は<strong>発送ゼロ</strong>、交換が必要な場合もシステムが<strong>1対1の最短直送ペア</strong>を自動マッチングします。</div>
+</div>
+<div id="ag-member-grid" class="grid grid-cols-1 gap-2"></div>
     </div>
 
     <!-- X集客用 自動招待URLシェア -->
@@ -13232,7 +13236,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     const caps = currentPoolData.memberCaps || {};
     const counts = currentPoolData.memberCounts || {};
     grid.innerHTML = getActiveMembers().map(m => {
-      const cap = caps[m] ?? 12;
+      const cap = caps[m] ?? Math.max(1, Math.ceil((currentPoolData.targetParticipants || 20) / Math.max(1, getActiveMembers().length)));
       const cnt = counts[m] ?? 0;
       const rem = Math.max(0, cap - cnt);
       const isFull = rem === 0;
@@ -13240,7 +13244,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
         <div>
           <div class="text-xs font-bold text-gray-900">${m}</div>
           <div class="text-[10px] ${isFull ? 'text-red-500 font-bold' : 'text-purple-600'}">
-            ${isFull ? '現在枠満員（全メンバー揃うと+3枠追加解放）' : `残り ${rem} / ${cap} 枠`}
+            ${isFull ? '🚫 第1希望 満枠（他メンバー枠から選択可）' : `🎯 第1希望 残り ${rem} / ${cap} 枠`}
           </div>
         </div>
         <button onclick="reserveAutoGoMember('${m}')" ${isFull ? 'disabled' : ''} class="px-3.5 py-1.5 rounded-full text-xs font-bold ${isFull ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-gradient-to-r from-purple-600 to-pink-500 text-white shadow'}">
