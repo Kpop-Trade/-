@@ -1551,7 +1551,8 @@ html, body {
         <button onclick="sendQuickMsg('本日発送いたしました！到着までお待ちください。')" class="bg-white/80 border border-white px-3 py-1.5 rounded-full text-purple-700 font-medium shrink-0 hover:bg-white shadow-sm transition">📮 発送完了</button>
         <button onclick="sendQuickMsg('無事に受け取りました！丁寧な取引ありがとうございました✨')" class="bg-white/80 border border-white px-3 py-1.5 rounded-full text-purple-700 font-medium shrink-0 hover:bg-white shadow-sm transition">✨ 受取完了</button>
       </div>
-      <div id="room-messages" class="flex-1 overflow-y-auto p-4 space-y-3 bg-white/40"></div>
+      <div id="room-task-banner" class="mx-3 mt-2 mb-1"></div>
+        <div id="room-messages" class="flex-1 overflow-y-auto p-4 space-y-3 bg-white/40"></div>
       <div class="p-3 border-t border-white/50 flex items-center space-x-2 shrink-0 bg-white/60 backdrop-blur-md">
         <input id="image-input" type="file" accept="image/*" class="hidden" onchange="sendImage(this)">
         <button id="room-photo" onclick="document.getElementById('image-input').click()" class="text-xl px-2.5 py-2 rounded-2xl bg-white/80 border border-white hover:bg-white text-purple-600 transition shadow-sm" title="写真を送る">📷</button>
@@ -5801,6 +5802,7 @@ window.openAzukariApp = function() {
       unsubRoom = onSnapshot(doc(db, "trades", id), (snap) => {
         if (!snap.exists()) { closeRoom(); return; } currentTrade = { id: snap.id, ...snap.data() };
         renderRoom();
+    if (typeof renderRoomTaskBanner === "function") renderRoomTaskBanner();
         const boxKey = currentTrade.id + ":" + currentTrade.status;
         if (boxKey !== roomBoxKey) { roomBoxKey = boxKey; renderRoomAddressBox(); renderRoomPayPayBox(); }
         markTradeRead(currentTrade);
@@ -13966,6 +13968,104 @@ ${currentPoolData.title}
     } catch (e) {}
   }, 1000);
 })();
+
+
+window.renderRoomTaskBanner = function() {
+  const el = document.getElementById("room-task-banner");
+  if (!el || !currentTrade || !currentUser) return;
+  const uid = currentUser.uid;
+  const t = currentTrade;
+  const isOwner = t.ownerId === uid;
+  const isSell = !!t.isSell;
+  const agreed = t.agreed || {};
+  const shipped = t.shipped || {};
+  const received = t.received || {};
+  const cancelled = t.status === "cancelled" || t.status === "canceled";
+  const done = t.status === "done" || t.status === "completed";
+
+  let title = "";
+  let desc = "";
+  let badge = "あなたのタスク";
+  let tone = "bg-purple-50 border-purple-300 text-purple-900";
+
+  if (cancelled) {
+    badge = "取引終了";
+    title = "この取引はキャンセルされました";
+    desc = "新たな操作は不要です。";
+    tone = "bg-gray-100 border-gray-300 text-gray-700";
+  } else if (done || (isSell ? received[t.applicantId] : (received[t.ownerId] && received[t.applicantId]))) {
+    badge = "完了";
+    title = "🎉 すべての取引タスクが完了しました！";
+    desc = "お疲れさまでした。必要に応じて相手の評価を行ってください。";
+    tone = "bg-emerald-50 border-emerald-300 text-emerald-900";
+  } else if (t.status === "negotiating" || (!agreed[t.ownerId] || !agreed[t.applicantId])) {
+    if (!agreed[uid]) {
+      badge = "要対応";
+      title = "① 取引条件を確認して「合意する」を押してください";
+      desc = "チャットで条件・梱包方法などを確認し、問題なければ合意ボタンを押して次のステップへ進みます。";
+      tone = "bg-amber-50 border-amber-400 text-amber-950";
+    } else {
+      badge = "相手待ち";
+      title = "相手の「合意」を待っています";
+      desc = "あなたは合意済みです。相手が合意ボタンを押すと決済・発送フェーズへ進みます。";
+      tone = "bg-blue-50 border-blue-200 text-blue-900";
+    }
+  } else if (isSell) {
+    if (isOwner) {
+      if (!shipped[uid]) {
+        badge = "要対応";
+        title = "② アズカリの入金を確認し、匿名配送で発送してください";
+        desc = "購入者がアズカリに住所入力・お支払いを完了したら、アズカリの匿名配送で発送し「発送完了」ボタンを押してください。";
+        tone = "bg-amber-50 border-amber-400 text-amber-950";
+      } else if (!received[t.applicantId]) {
+        badge = "相手待ち";
+        title = "購入者の「受取確認」を待っています";
+        desc = "匿名配送での発送完了済みです。購入者に届き、アズカリと当サイトの受取完了が押されると取引終了です。";
+        tone = "bg-blue-50 border-blue-200 text-blue-900";
+      }
+    } else {
+      if (!shipped[t.ownerId]) {
+        badge = "要対応";
+        title = "② アズカリに配送先住所を入力し、お支払いを完了してください";
+        desc = "アズカリに住所を登録して決済すると、匿名配送で発送されます。決済後に出品者からの発送通知をお待ちください。";
+        tone = "bg-amber-50 border-amber-400 text-amber-950";
+      } else if (!received[uid]) {
+        badge = "要対応";
+        title = "③ 商品が届いたら中身を確認し「受取完了」を押してください";
+        desc = "匿名配送で届いた商品を確認し、アズカリの受取評価とあわせて当サイトの「受取完了」ボタンを押してください。";
+        tone = "bg-emerald-50 border-emerald-400 text-emerald-950";
+      }
+    }
+  } else {
+    if (!shipped[uid]) {
+      badge = "要対応";
+      title = "② 相手の住所を確認し、トレカを梱包・発送してください";
+      desc = "スリーブ・硬質ケース等で梱包して発送し、「発送完了」ボタンを押してください。";
+      tone = "bg-amber-50 border-amber-400 text-amber-950";
+    } else if (!received[uid]) {
+      badge = "要対応";
+      title = "③ 相手からのトレカが届いたら「受取完了」を押してください";
+      desc = shipped[isOwner ? t.applicantId : t.ownerId]
+        ? "相手は発送済みです。到着したら中身を確認して受取完了を押してください。"
+        : "あなたは発送済みです。相手の発送と到着をお待ちください。";
+      tone = "bg-emerald-50 border-emerald-400 text-emerald-950";
+    } else {
+      badge = "相手待ち";
+      title = "相手の「受取確認」を待っています";
+      desc = "あなたの発送・受取は完了しています。相手が受取完了を押すと取引終了です。";
+      tone = "bg-blue-50 border-blue-200 text-blue-900";
+    }
+  }
+
+  el.innerHTML = `<div class="border rounded-xl p-2.5 shadow-sm ${tone}">
+    <div class="flex items-center gap-1.5 mb-0.5">
+      <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-white/80 border border-current">${badge}</span>
+      <span class="text-xs font-extrabold">${title}</span>
+    </div>
+    <p class="text-[11px] opacity-90 leading-snug pl-0.5">${desc}</p>
+  </div>`;
+};
+
 </script>
 
 </body>
