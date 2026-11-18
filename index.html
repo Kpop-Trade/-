@@ -12538,8 +12538,8 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
             <div class="flex items-start gap-2.5 p-2 rounded-xl bg-white border border-purple-100">
               <span class="w-5 h-5 rounded-full bg-purple-600 text-white text-[10px] font-black flex items-center justify-center shrink-0 mt-0.5">3</span>
               <div>
-                <p class="font-bold text-gray-900">抱き合わせゼロ・定価割り勘で推しだけ届く</p>
-                <p class="text-[10px] text-gray-500 mt-0.5">不要なメンバーの引き取り（抱き合わせ）は一切なし。確定後に案内されるお支払い・配送手続きのみで、希望メンバーの特典がそのまま届きます。</p>
+                <p class="font-bold text-gray-900">アルバム・シリアルもそのまま手元に！抱き合わせゼロで推しが届く</p>
+                <p class="text-[10px] text-gray-500 mt-0.5">購入枚数分の<strong>アルバム本体・シリアルコード（応募券等）もそのまま自分のもの</strong>として受け取れます。不要メンバーの抱き合わせは一切なく、希望メンバーの特典トレカも揃います。</p>
               </div>
             </div>
           </div>
@@ -12549,6 +12549,26 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
             <p>・他のメンバー希望者が集まるほど、あなたの枠も早く確定します（下の「Xでシェアして枠を埋める」で募集を広げられます）。</p>
             <p>・確定前であればエントリーのキャンセルや希望変更も可能です。</p>
           </div>
+        </div>
+      </div>
+
+      <!-- Auto-GO プッシュ通知必須チェックバナー -->
+      <div id="ag-push-req-box" class="mb-3 p-3 rounded-2xl border transition">
+        <div id="ag-push-off-view" class="flex items-center justify-between gap-2.5">
+          <div class="flex items-start gap-2">
+            <span class="text-base leading-none mt-0.5">🔔</span>
+            <div>
+              <p class="text-xs font-black text-rose-900">参加にはプッシュ通知のONが必須です</p>
+              <p class="text-[10px] text-rose-700 leading-snug mt-0.5">枠の確定やトレカ交換マッチングを即座にお知らせするため、通知を許可してからお申し込みください。</p>
+            </div>
+          </div>
+          <button type="button" onclick="requestAutoGoPushPermission()" class="shrink-0 px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-black shadow-sm active:scale-95 transition">
+            通知をONにする
+          </button>
+        </div>
+        <div id="ag-push-on-view" class="hidden flex items-center gap-2 text-emerald-800">
+          <span class="text-sm">✅</span>
+          <p class="text-[11px] font-bold">プッシュ通知ON済み（Auto-GOにお申し込みいただけます）</p>
         </div>
       </div>
 
@@ -13124,6 +13144,17 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
   };
 
   window.submitAutoGoReveal = async function() {
+    if (typeof Notification === "undefined" || Notification.permission !== "granted") {
+      if (typeof showToast === "function") {
+        showToast("Auto-GOへの申し込みにはプッシュ通知のONが必須です", "error");
+      }
+      if (typeof window.requestAutoGoPushPermission === "function") {
+        await window.requestAutoGoPushPermission();
+      }
+      if (typeof Notification === "undefined" || Notification.permission !== "granted") {
+        return;
+      }
+    }
     if (!activePoolId) return;
     const pulled = document.getElementById("ag-pulled-select")?.value;
     if (!pulled) { alert("引いたメンバーを選択してください"); return; }
@@ -13584,6 +13615,58 @@ ${currentPoolData.title}
 
   window.addEventListener("DOMContentLoaded", () => {
     setTimeout(checkIncomingXTrade, 700);
+  });
+})();
+</script>
+
+
+<script>
+(function() {
+  window.syncAutoGoPushBanner = function() {
+    const box = document.getElementById("ag-push-req-box");
+    const offView = document.getElementById("ag-push-off-view");
+    const onView = document.getElementById("ag-push-on-view");
+    if (!box || !offView || !onView) return;
+    const granted = (typeof Notification !== "undefined" && Notification.permission === "granted");
+    if (granted) {
+      box.className = "mb-3 p-2.5 rounded-2xl bg-emerald-50 border border-emerald-200 transition";
+      offView.classList.add("hidden");
+      onView.classList.remove("hidden");
+    } else {
+      box.className = "mb-3 p-3 rounded-2xl bg-rose-50 border border-rose-200 shadow-sm transition";
+      offView.classList.remove("hidden");
+      onView.classList.add("hidden");
+    }
+  };
+
+  window.requestAutoGoPushPermission = async function() {
+    try {
+      if (typeof enablePush === "function") {
+        await enablePush();
+      } else if (typeof window.enablePush === "function") {
+        await window.enablePush();
+      } else if (typeof Notification !== "undefined" && Notification.requestPermission) {
+        await Notification.requestPermission();
+      }
+    } catch (e) {
+      console.error("requestAutoGoPushPermission error:", e);
+    }
+    window.syncAutoGoPushBanner();
+    if (typeof Notification !== "undefined" && Notification.permission !== "granted") {
+      if (typeof showToast === "function") {
+        showToast("ブラウザまたは端末の設定から通知を許可してください（iPhoneはホーム画面に追加後に通知ONできます）", "error");
+      }
+    }
+  };
+
+  // Auto-GOモーダルが開かれたタイミングでバナー状態を最新化
+  document.addEventListener("click", function(e) {
+    if (e.target && e.target.closest && e.target.closest('[onclick*="openAutoGoModal"]')) {
+      setTimeout(window.syncAutoGoPushBanner, 50);
+    }
+  });
+  window.addEventListener("DOMContentLoaded", function() {
+    setTimeout(window.syncAutoGoPushBanner, 500);
   });
 })();
 </script>
