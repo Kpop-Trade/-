@@ -12549,6 +12549,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
             <p>・<strong>1人あたりメンバー1つまで：</strong>同じ企画につき、お一人様1メンバー（1枠）までのお申し込みとなります。</p>
             <p>・<strong>メンバー枠は完全先着順です：</strong>人気メンバーの枠は申し込み順に埋まり、上限に達したメンバーから受付終了となります。</p>
             <p>・<strong>マッチングは指定日時からの先着順です：</strong>開封・交換マッチングの開始時刻になると、登録・開封した方から先着順でペアが成立します（プッシュ通知をONにしておくと開始・成立をすぐ受け取れます）。</p>
+            <p>・<strong>専用購入URL発行から2時間以内に購入＆完了報告：</strong>枠が確定し購入URLが届いてから<strong>2時間以内</strong>に決済と「購入完了を報告する」を完了してください。期限を過ぎると自動的に枠が失効します。</p>
             <p>・<strong>成立後のキャンセル不可：</strong>枠が埋まりマッチング・購入が確定した後の自己都合キャンセルはできません（確定前であればキャンセル・希望変更が可能です）。</p>
             <p>・<strong>シェアで成立率アップ：</strong>他のメンバー希望者が集まるほど全体枠が早く埋まります（下の「Xでシェアして枠を埋める」で募集を広げられます）。</p>
           </div>
@@ -13062,8 +13063,18 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       } else if (currentEntryData.status === "reserved") {
         html += `<div class="bg-white rounded-xl p-2.5 border border-indigo-200 space-y-2">
           <p class="text-[11px] font-bold text-emerald-700">🎉 ${minP}人達成！専用購入URLが発行されました</p>
-          <a href="${currentPoolData.purchaseUrl || '#'}" target="_blank" rel="noopener" class="block text-center bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-bold py-2 rounded-lg">1. 公式ショップで購入する ↗</a>
+          <div id="ag-purchase-deadline-box" class="p-2 rounded-lg bg-rose-50 border border-rose-200 text-center">
+                <p class="text-[10px] font-bold text-rose-700">⏳ 購入＆完了報告の制限時間（発行から2時間以内）</p>
+                <p id="ag-purchase-countdown" class="text-sm font-black text-rose-600 tracking-wider mt-0.5">計算中...</p>
+              </div>
+              <div id="ag-purchase-active-actions" class="space-y-2">
+                <a href="${currentPoolData.purchaseUrl || '#'}" target="_blank" rel="noopener" class="block text-center bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-bold py-2 rounded-lg">1. 公式ショップで購入する ↗</a>
           <button onclick="markAutoGoPurchased()" class="w-full bg-emerald-600 text-white text-xs font-bold py-2 rounded-lg">2. 購入完了を報告する（枠確定）</button>
+              </div>
+              <div id="ag-purchase-expired-msg" class="hidden p-2.5 rounded-lg bg-gray-100 border border-gray-300 text-center">
+                <p class="text-xs font-black text-gray-700">⚠️ 購入期限（2時間）が切れました</p>
+                <p class="text-[10px] text-gray-500 mt-0.5">制限時間内に購入完了報告が行われなかったため、この枠は失効しました。</p>
+              </div>
         </div>`;
       } else if (currentEntryData.status === "purchased") {
         html += `<div class="bg-white rounded-xl p-2.5 border border-purple-200 space-y-2">
@@ -13163,6 +13174,15 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
   };
 
   window.markAutoGoPurchased = async function() {
+    const issuedMs = Number(window.__agCurrentUrlIssuedAt || 0);
+    if (issuedMs > 0 && Date.now() > issuedMs + 2 * 60 * 60 * 1000) {
+      if (typeof showToast === "function") {
+        showToast("購入制限時間（2時間）を過ぎたため枠が失効しています", "error");
+      } else {
+        alert("購入制限時間（2時間）を過ぎたため枠が失効しています");
+      }
+      return;
+    }
     if (!activePoolId) return;
     const { db, auth, doc, updateDoc, serverTimestamp } = window.__autoGoRefs;
     const user = auth.currentUser;
@@ -13714,6 +13734,63 @@ ${currentPoolData.title}
   window.addEventListener("DOMContentLoaded", function() {
     setTimeout(window.syncAutoGoPushBanner, 500);
   });
+})();
+</script>
+
+
+<script>
+(function() {
+  const AG_PURCHASE_LIMIT_MS = 2 * 60 * 60 * 1000; // 2時間
+
+  setInterval(async function() {
+    const countdownEl = document.getElementById("ag-purchase-countdown");
+    if (!countdownEl) return;
+
+    try {
+      const refs = window.__autoGoRefs;
+      if (!refs || !refs.auth || !refs.auth.currentUser) return;
+      const uid = refs.auth.currentUser.uid;
+      const poolId = typeof activePoolId !== "undefined" ? activePoolId : null;
+      if (!poolId) return;
+
+      const key = "ag_url_issued_" + poolId + "_" + uid;
+      let issuedAt = Number(localStorage.getItem(key) || 0);
+
+      if (!issuedAt && typeof currentEntryData !== "undefined" && currentEntryData && currentEntryData.urlIssuedAt) {
+        issuedAt = currentEntryData.urlIssuedAt.toMillis ? currentEntryData.urlIssuedAt.toMillis() : Number(currentEntryData.urlIssuedAt);
+        if (issuedAt > 0) localStorage.setItem(key, String(issuedAt));
+      }
+
+      if (!issuedAt) {
+        issuedAt = Date.now();
+        localStorage.setItem(key, String(issuedAt));
+        if (refs.db && refs.doc && refs.updateDoc && refs.serverTimestamp) {
+          const entryRef = refs.doc(refs.db, "auto_go_pools", poolId, "entries", uid);
+          refs.updateDoc(entryRef, { urlIssuedAt: refs.serverTimestamp() }).catch(() => {});
+        }
+      }
+
+      window.__agCurrentUrlIssuedAt = issuedAt;
+      const remain = (issuedAt + AG_PURCHASE_LIMIT_MS) - Date.now();
+
+      const activeBox = document.getElementById("ag-purchase-active-actions");
+      const expiredBox = document.getElementById("ag-purchase-expired-msg");
+
+      if (remain <= 0) {
+        countdownEl.textContent = "00:00:00（期限切れ）";
+        if (activeBox) activeBox.classList.add("hidden");
+        if (expiredBox) expiredBox.classList.remove("hidden");
+      } else {
+        const totalSec = Math.floor(remain / 1000);
+        const h = String(Math.floor(totalSec / 3600)).padStart(2, "0");
+        const m = String(Math.floor((totalSec % 3600) / 60)).padStart(2, "0");
+        const s = String(totalSec % 60).padStart(2, "0");
+        countdownEl.textContent = `残り ${h}:${m}:${s}`;
+        if (activeBox) activeBox.classList.remove("hidden");
+        if (expiredBox) expiredBox.classList.add("hidden");
+      }
+    } catch (e) {}
+  }, 1000);
 })();
 </script>
 
