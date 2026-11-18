@@ -12614,7 +12614,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
         </div>
         <div class="text-right">
           <span id="ag-status-badge" class="text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800">募集中</span>
-          <div class="text-[11px] font-bold text-pink-600 mt-1">推し確保期待値: <span id="ag-prob-text">78%</span></div>
+          <div class="text-[11px] font-bold text-pink-600 mt-1">推し確保期待値: <span id="ag-prob-text">20%</span></div>
         </div>
       </div>
       <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden relative">
@@ -13072,20 +13072,30 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     const minP = currentPoolData.minParticipants || 20;
     const targetP = currentPoolData.targetParticipants || 48;
     const pct = Math.min(100, Math.round((total / targetP) * 100));
-    const prob = total >= Math.round(targetP * 0.9) ? "92%" : total >= Math.round(targetP * 0.6) ? "87%" : total >= minP ? "82%" : `78%（${minP}人達成で確定）`;
+  const memberCnt = Math.max(1, getActiveMembers().length);
+  const baseSoloProb = Math.round(100 / memberCnt);
+  const prob = total === 0
+    ? `${baseSoloProb}%（${minP}人達成で78%にUP）`
+    : total >= Math.round(targetP * 0.9)
+      ? "92%"
+      : total >= Math.round(targetP * 0.6)
+        ? "87%"
+        : total >= minP
+          ? "78%"
+          : `${Math.min(75, Math.round(baseSoloProb + (78 - baseSoloProb) * (total / Math.max(1, minP))))}%（${minP}人達成で78%）`;
 
-    const rawTitle = (currentPoolData.title || "Auto-GO").replace(/全体プール/g, "").trim();
-      document.getElementById("ag-pool-title").textContent = rawTitle || "Auto-GO";
-    document.getElementById("ag-pool-desc").textContent = currentPoolData.description || "";
-    const imgEl = document.getElementById("ag-pool-image");
-    if (currentPoolData.imageUrl) {
-      imgEl.src = currentPoolData.imageUrl;
-      imgEl.classList.remove("hidden");
-    } else {
-      imgEl.classList.add("hidden");
-    }
+  const rawTitle = (currentPoolData.title || "Auto-GO").replace(/全体プール/g, "").trim();
+  document.getElementById("ag-pool-title").textContent = rawTitle || "Auto-GO";
+  document.getElementById("ag-pool-desc").textContent = currentPoolData.description || "";
+  const imgEl = document.getElementById("ag-pool-image");
+  if (currentPoolData.imageUrl) {
+    imgEl.src = currentPoolData.imageUrl;
+    imgEl.classList.remove("hidden");
+  } else {
+    imgEl.classList.add("hidden");
+  }
 
-    document.getElementById("ag-total-count").textContent = total;
+  document.getElementById("ag-total-count").textContent = total;
     document.getElementById("ag-target-count").textContent = targetP;
     document.getElementById("ag-min-count").textContent = minP;
     document.getElementById("ag-progress-bar").style.width = pct + "%";
