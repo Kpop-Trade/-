@@ -14224,4 +14224,33 @@ window.promptTradePushNudge = function(contextLabel) {
   setTimeout(updateGllitTicker, 1500);
 })();
 </script>
+
+<script>
+window.markReceived = async function(poolId) {
+  if (!confirm("商品の受取を完了しますか？")) return;
+  try {
+    const db = window.firebase.firestore();
+    const uid = window.firebase.auth().currentUser.uid;
+    const docRef = db.collection("auto_go_pools").doc(poolId);
+    const snap = await docRef.get();
+    if (!snap.exists) return;
+    const data = snap.data();
+    let rec = data.received || {};
+    let isOwner = data.ownerId === uid;
+    if (isOwner) rec[data.ownerId] = true;
+    else rec[data.applicantId] = true;
+    let isCompleted = rec[data.ownerId] && rec[data.applicantId];
+    await docRef.update({
+      received: rec,
+      status: isCompleted ? "completed" : (data.status || "shipped")
+    });
+    alert("受取を完了しました！");
+    location.reload();
+  } catch(e) {
+    console.error(e);
+    alert("エラー: " + e.message);
+  }
+};
+</script>
 </body>
+
