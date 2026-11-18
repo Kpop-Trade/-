@@ -12504,6 +12504,54 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
 <!-- Auto-GO メインモーダル -->
 <div id="autogo-modal" class="fixed inset-0 modal-backdrop hidden z-[10000] flex items-end md:items-center justify-center p-0 md:p-4 bg-black/60">
   <div class="liquid-glass-heavy bg-white/95 backdrop-blur-xl w-full max-w-md rounded-t-[2rem] md:rounded-[2rem] p-5 space-y-3.5 shadow-2xl max-h-[92vh] overflow-y-auto">
+      <!-- Auto-GO 仕組み解説アコーディオン -->
+      <div class="mb-3 rounded-2xl bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200/80 overflow-hidden shadow-sm">
+        <button type="button" onclick="const b=document.getElementById('autogo-guide-panel');const a=document.getElementById('autogo-guide-arrow');b.classList.toggle('hidden');a.textContent=b.classList.contains('hidden')?'▼ 開く':'▲ 閉じる';" class="w-full px-3.5 py-2.5 flex items-center justify-between text-left hover:bg-white/40 transition">
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-lg bg-purple-600 text-white text-xs font-black flex items-center justify-center shrink-0">？</span>
+            <div>
+              <div class="text-xs font-black text-purple-950">Auto-GO（自動枠埋め共同購入）の仕組み</div>
+              <div class="text-[10px] text-purple-700">抱き合わせゼロ・推し確定で共同購入できる流れ</div>
+            </div>
+          </div>
+          <span id="autogo-guide-arrow" class="text-[11px] font-bold text-purple-700 bg-white/80 px-2 py-1 rounded-full border border-purple-200 shrink-0">▼ 開く</span>
+        </button>
+
+        <div id="autogo-guide-panel" class="hidden px-3.5 pb-3.5 pt-1 border-t border-purple-200/60 space-y-2.5 text-[11px] text-gray-700 leading-relaxed bg-white/70">
+          <div class="grid grid-cols-1 gap-2 pt-1">
+            <div class="flex items-start gap-2.5 p-2 rounded-xl bg-white border border-purple-100">
+              <span class="w-5 h-5 rounded-full bg-purple-600 text-white text-[10px] font-black flex items-center justify-center shrink-0 mt-0.5">1</span>
+              <div>
+                <p class="font-bold text-gray-900">推しメンバーを第1〜第3希望まで選んでエントリー</p>
+                <p class="text-[10px] text-gray-500 mt-0.5">ランダム特典・封入トレカの希望メンバーと参加口数を登録します（この時点ではまだ決済されません）。</p>
+              </div>
+            </div>
+
+            <div class="flex items-start gap-2.5 p-2 rounded-xl bg-white border border-purple-100">
+              <span class="w-5 h-5 rounded-full bg-purple-600 text-white text-[10px] font-black flex items-center justify-center shrink-0 mt-0.5">2</span>
+              <div>
+                <p class="font-bold text-gray-900">全員分の枠が埋まった瞬間に「自動マッチング」</p>
+                <p class="text-[10px] text-gray-500 mt-0.5">同じグループ内で異なるメンバーを希望する参加者同士をシステムが自動で組み合わせ、目標人数に達すると共同購入が確定します。</p>
+              </div>
+            </div>
+
+            <div class="flex items-start gap-2.5 p-2 rounded-xl bg-white border border-purple-100">
+              <span class="w-5 h-5 rounded-full bg-purple-600 text-white text-[10px] font-black flex items-center justify-center shrink-0 mt-0.5">3</span>
+              <div>
+                <p class="font-bold text-gray-900">抱き合わせゼロ・定価割り勘で推しだけ届く</p>
+                <p class="text-[10px] text-gray-500 mt-0.5">不要なメンバーの引き取り（抱き合わせ）は一切なし。確定後に案内されるお支払い・配送手続きのみで、希望メンバーの特典がそのまま届きます。</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="p-2.5 rounded-xl bg-amber-50/90 border border-amber-200/80 text-[10px] text-amber-900 space-y-1">
+            <p class="font-bold">💡 ポイント</p>
+            <p>・他のメンバー希望者が集まるほど、あなたの枠も早く確定します（下の「Xでシェアして枠を埋める」で募集を広げられます）。</p>
+            <p>・確定前であればエントリーのキャンセルや希望変更も可能です。</p>
+          </div>
+        </div>
+      </div>
+
     <!-- ヘッダー＆公式開催トグル -->
     <div class="flex justify-between items-center border-b border-purple-200/60 pb-2.5">
       <div class="flex items-center gap-2">
