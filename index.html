@@ -12509,7 +12509,10 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
 
 <!-- Auto-GO メインモーダル -->
 <div id="autogo-modal" class="fixed inset-0 modal-backdrop hidden z-[10000] flex items-end md:items-center justify-center p-0 md:p-4 bg-black/60">
-  <div class="liquid-glass-heavy bg-white/95 backdrop-blur-xl w-full max-w-md rounded-t-[2rem] md:rounded-[2rem] p-5 space-y-3.5 shadow-2xl max-h-[92vh] overflow-y-auto">
+  <div class="relative w-full max-w-md">
+    <div class="pointer-events-none absolute -top-3 -right-2 md:-right-3 z-30 rotate-12 bg-gradient-to-r from-pink-500 via-rose-500 to-purple-600 text-white text-xs font-black tracking-wider px-3.5 py-1 rounded-full border-2 border-white shadow-lg">NEW!!</div>
+</div>
+    <div class="liquid-glass-heavy bg-white/95 backdrop-blur-xl w-full rounded-t-[2rem] md:rounded-[2rem] p-5 space-y-3.5 shadow-2xl max-h-[92vh] overflow-y-auto">
       <!-- Auto-GO 仕組み解説アコーディオン -->
         <div class="mb-3 rounded-2xl bg-gradient-to-br from-rose-50 via-purple-50 to-pink-50 border-2 border-rose-300 overflow-hidden shadow-sm">
           <button type="button" onclick="const p=document.getElementById('autogoguide2');const r=document.getElementById('autogoguide2-arr');p.classList.toggle('hidden');r.textContent=p.classList.contains('hidden')?'▼ 必ず読む':'▲ 閉じる';" class="w-full px-3.5 py-2.5 flex items-center justify-between text-left">
