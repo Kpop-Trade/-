@@ -661,7 +661,7 @@ html, body {
     <span class="shrink-0 bg-white text-purple-700 font-black text-xs px-3 py-1.5 rounded-full shadow-sm">開く ›</span>
   </button></div>
       <div class="w-full mb-3">
-        <button type="button" onclick="openXTradeCreateModal()" class="w-full flex items-center justify-between px-4 py-2.5 rounded-2xl bg-gray-900 hover:bg-black text-white shadow-sm transition active:scale-[0.99]">
+        <button type="button" onclick="if(window.openXTradeCreateModal){window.openXTradeCreateModal();}else{var m=document.getElementById('xtrade-create-modal');if(m)m.classList.remove('hidden');}" class="w-full flex items-center justify-between px-4 py-2.5 rounded-2xl bg-gray-900 hover:bg-black text-white shadow-sm transition active:scale-[0.99]">
           <div class="flex items-center gap-2.5 text-left">
             <span class="w-7 h-7 rounded-xl bg-white/15 flex items-center justify-center text-sm font-black shrink-0">𝕏</span>
             <div>
