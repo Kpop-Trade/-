@@ -765,7 +765,8 @@ html, body {
     </div>
 
     <div class="liquid-glass rounded-2xl px-2 py-1 flex overflow-x-auto hide-scrollbar gap-1 text-[11px] md:text-xs font-bold">
-      <button onclick="switchAdminTab('stats')" id="admin-tab-stats" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">📊 統計</button>
+      <button onclick="switchAdminTab('autogo')" id="admin-tab-autogo" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">⚡ Auto-GO</button>
+        <button onclick="switchAdminTab('stats')" id="admin-tab-stats" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">📊 統計</button>
       <button onclick="switchAdminTab('reports')" id="admin-tab-reports" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">🚨 通報</button>
       <button onclick="switchAdminTab('inquiries')" id="admin-tab-inquiries" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">📩 問合せ</button>
       <button onclick="switchAdminTab('users')" id="admin-tab-users" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">👥 ユーザー</button>
@@ -2315,7 +2316,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     window.switchAdminTab = function(tab) {
       adminTab = tab;
       adminSearchQuery = "";
-      const tabs = ["reports", "inquiries", "users", "posts", "trades", "stats", "likes", "broadcast", "cards", "logs"];
+      const tabs = ["reports", "inquiries", "users", "posts", "trades", "stats", "likes", "broadcast", "cards", "logs", "autogo"];
       tabs.forEach((k) => {
         const el = document.getElementById("admin-tab-" + k);
         if (el) {
@@ -2360,6 +2361,10 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         return { docs: [], size: 0, empty: true, forEach: () => {} };
       }
     };
+    if (adminTab === "autogo") {
+      await window.renderAdminAutoGoPanel(el);
+      return;
+    }
     if (adminTab === "stats") {
           const d = new Date(); d.setDate(1); d.setHours(0,0,0,0);
           const [tradesSnap, usersSnap, postsSnap] = await Promise.all([
@@ -12628,6 +12633,167 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     } finally {
       btn.disabled = false;
       btn.textContent = "この内容でプールを公開＆招待URL発行";
+    }
+  };
+
+  
+  // 運営ダッシュボード用 Auto-GO プール作成・一覧・削除パネル
+  window.renderAdminAutoGoPanel = async function(container) {
+    if (!container) container = document.getElementById("admin-content");
+    if (!container) return;
+    const snap = await getDocs(collection(db, "auto_go_pools"));
+    const pools = [];
+    snap.forEach(d => pools.push({ id: d.id, ...d.data() }));
+    pools.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+
+    const poolRows = pools.length === 0
+      ? '<p class="text-xs text-gray-400 text-center py-6 bg-white/60 rounded-2xl border border-white">登録済みのAuto-GOプールはまだありません</p>'
+      : pools.map(p => {
+          const members = p.memberNames || [];
+          const counts = p.memberCounts || {};
+          const slotCap = p.slotPerMember || (members.length === 4 ? 12 : 10);
+          const breakdown = members.map(m => `${m}: ${counts[m] || 0}/${slotCap}`).join(" / ");
+          return `
+            <div class="bg-white/85 rounded-2xl p-3.5 border border-white shadow-sm space-y-2">
+              <div class="flex items-start justify-between gap-2">
+                <div class="flex items-center gap-2.5 min-w-0">
+                  ${p.imageUrl ? `<img src="${p.imageUrl}" class="w-12 h-12 rounded-xl object-cover shrink-0 border border-gray-100">` : '<div class="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center text-lg shrink-0">⚡</div>'}
+                  <div class="min-w-0">
+                    <div class="flex items-center gap-1.5">
+                      <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${p.status === 'recruiting' ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'}">${p.status === 'recruiting' ? '募集中' : p.status}</span>
+                      <span class="text-[11px] font-bold text-gray-500">${p.totalCount || 0} / ${p.targetParticipants || 50}人</span>
+                    </div>
+                    <p class="text-sm font-black text-gray-900 truncate mt-0.5">${p.title || "無題プール"}</p>
+                  </div>
+                </div>
+                <button type="button" onclick="window.deleteAdminAutoGoPool('${p.id}')" class="shrink-0 text-[11px] font-bold text-red-500 bg-red-50 hover:bg-red-100 px-2.5 py-1.5 rounded-xl border border-red-200">削除</button>
+              </div>
+              <p class="text-[11px] text-gray-600 line-clamp-2">${p.description || ""}</p>
+              <div class="text-[10px] font-bold text-purple-700 bg-purple-50/80 px-2.5 py-1.5 rounded-xl">${breakdown}</div>
+            </div>
+          `;
+        }).join("");
+
+    container.innerHTML = `
+      <div class="space-y-4">
+        <div class="bg-white/90 rounded-2xl p-4 border border-white shadow-sm space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="text-sm font-black text-gray-900">⚡ 新規 Auto-GO プール作成</h3>
+            <span class="text-[10px] font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">管理者専用</span>
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-bold text-gray-700 mb-1">イベント・アルバムタイトル</label>
+            <input id="adm-ag-title" type="text" placeholder="例: ILLIT 3rd Mini Album [bomb] 共同購入" class="w-full liquid-glass-input rounded-xl p-2.5 text-xs text-gray-900">
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-bold text-gray-700 mb-1">グループ構成（自動枠数設定）</label>
+            <select id="adm-ag-preset" class="w-full liquid-glass-input rounded-xl p-2.5 text-xs font-bold text-gray-900">
+              <option value="5">5人組（10枚セット × 10人 = 最大50人 / 最低成立20人）</option>
+              <option value="4">4人組（12枚セット × 12人 = 最大48人 / 最低成立20人）</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-bold text-gray-700 mb-1">特典・商品サムネイル画像</label>
+            <input id="adm-ag-photo" type="file" accept="image/*" class="w-full text-xs text-gray-600 file:mr-2 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-purple-50 file:text-purple-700">
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-bold text-gray-700 mb-1">募集要項・説明文</label>
+            <textarea id="adm-ag-desc" rows="3" placeholder="例: Weverse Shop Global 予約特典トレカ共同購入です。20人到達で自動成立します。" class="w-full liquid-glass-input rounded-xl p-2.5 text-xs text-gray-900"></textarea>
+          </div>
+
+          <button id="adm-ag-submit-btn" type="button" onclick="window.createAdminAutoGoPool()" class="w-full bg-gradient-to-r from-purple-600 to-pink-500 text-white font-black text-xs py-3 rounded-xl shadow-md active:scale-[0.99] transition">
+            ＋ この内容で Auto-GO プールを公開する
+          </button>
+        </div>
+
+        <div class="space-y-2">
+          <h4 class="text-xs font-black text-gray-800 px-1">📋 公開中の Auto-GO プール一覧（${pools.length}件）</h4>
+          ${poolRows}
+        </div>
+      </div>
+    `;
+  };
+
+  window.createAdminAutoGoPool = async function() {
+    if (!isAdmin()) { showToast("管理者権限が必要です", "error"); return; }
+    const title = (document.getElementById("adm-ag-title")?.value || "").trim();
+    const presetVal = document.getElementById("adm-ag-preset")?.value || "5";
+    const desc = (document.getElementById("adm-ag-desc")?.value || "").trim();
+    const fileInput = document.getElementById("adm-ag-photo");
+    if (!title) { showToast("タイトルを入力してください", "error"); return; }
+
+    const btn = document.getElementById("adm-ag-submit-btn");
+    if (btn) { btn.disabled = true; btn.textContent = "公開処理中..."; }
+
+    try {
+      let imageUrl = "";
+      if (fileInput && fileInput.files && fileInput.files[0]) {
+        const file = fileInput.files[0];
+        const reader = new FileReader();
+        imageUrl = await new Promise((resolve, reject) => {
+          reader.onload = () => {
+            const img = new Image();
+            img.onload = () => {
+              const canvas = document.createElement("canvas");
+              const maxW = 720;
+              const scale = Math.min(1, maxW / img.width);
+              canvas.width = img.width * scale;
+              canvas.height = img.height * scale;
+              canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+              resolve(canvas.toDataURL("image/jpeg", 0.8));
+            };
+            img.onerror = reject;
+            img.src = reader.result;
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      }
+
+      const isFour = presetVal === "4";
+      const memberNames = isFour ? ["メンバーA", "メンバーB", "メンバーC", "メンバーD"] : ["ユナ", "ミンジュ", "モカ", "ウォンヒ", "イロハ"];
+      const memberCounts = {};
+      memberNames.forEach(m => memberCounts[m] = 0);
+
+      await addDoc(collection(db, "auto_go_pools"), {
+        title,
+        description: desc,
+        imageUrl,
+        memberCountType: isFour ? 4 : 5,
+        memberNames,
+        memberCounts,
+        slotPerMember: isFour ? 12 : 10,
+        targetParticipants: isFour ? 48 : 50,
+        minThreshold: 20,
+        totalCount: 0,
+        status: "recruiting",
+        createdBy: currentUser.uid,
+        createdAt: serverTimestamp()
+      });
+
+      showToast("Auto-GO プールを公開しました！", "success");
+      await window.renderAdminAutoGoPanel();
+    } catch (e) {
+      console.error("createAdminAutoGoPool error:", e);
+      showToast("作成エラー: " + (e?.code || e?.message || "失敗しました"), "error");
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = "＋ この内容で Auto-GO プールを公開する"; }
+    }
+  };
+
+  window.deleteAdminAutoGoPool = async function(poolId) {
+    if (!isAdmin()) return;
+    if (!(await appConfirm("この Auto-GO プールを削除しますか？", "削除する", true))) return;
+    try {
+      await deleteDoc(doc(db, "auto_go_pools", poolId));
+      showToast("プールを削除しました", "info");
+      await window.renderAdminAutoGoPanel();
+    } catch (e) {
+      showToast("削除エラー: " + (e?.code || e?.message), "error");
     }
   };
 
