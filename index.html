@@ -12626,7 +12626,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       await selectAutoGoPool(newId);
       const shareUrl = `${location.origin}/?pool=${newId}`;
       navigator.clipboard?.writeText(shareUrl);
-      showToast("新規Auto-GOプールを作成しました！", "success");
+      showToast("しました！", "success");
     } catch (e) {
       alert("作成に失敗しました: " + (e.message || e));
     } finally {
@@ -12823,7 +12823,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
           await selectAutoGoPool(allPools[0].id);
         } else {
           document.getElementById("ag-pool-title").textContent = "まだ開催中のプールがありません";
-          document.getElementById("ag-pool-desc").textContent = "右上の「＋ 管理者作成」から写真と詳細を登録してプールを作成してください。";
+          document.getElementById("ag-pool-desc").textContent = "右上の「＋ 管理者作成」から写真と詳細を登録して現在募集中の Auto-GO プールはありません。";
           document.getElementById("ag-member-grid").innerHTML = "";
         }
       } else if (activePoolId) {
