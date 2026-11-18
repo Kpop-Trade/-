@@ -5679,7 +5679,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         async function renderRoomPayPayBox() {
       const el = document.getElementById("room-paypay-box");
       if (!currentTrade || currentTrade.status !== "shipping") { el.innerHTML = ""; return; }
-      if (!isPayTrade(currentTrade)) { el.innerHTML = ""; return; }
+      if (!isPayTrade(currentTrade) && (!currentTrade.kind || currentTrade.kind !== "bundle") && (!currentTrade.type || currentTrade.type !== "bundle")) { el.innerHTML = ""; return; }
       const amtTxt = "￥" + Number(currentTrade.postPrice || 0).toLocaleString();
       const az = usesAzukariPayment(currentTrade);
       const iAmOwner = currentUser.uid === currentTrade.ownerId;
