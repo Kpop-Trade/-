@@ -12546,6 +12546,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
 
           <div class="p-2.5 rounded-xl bg-amber-50/90 border border-amber-200/80 text-[10px] text-amber-900 space-y-1.5 leading-relaxed">
             <p class="font-black text-amber-950">⚠️ ご参加前の注意点・ルール</p>
+            <p>・<strong>1人あたりメンバー1つまで：</strong>同じ企画につき、お一人様1メンバー（1枠）までのお申し込みとなります。</p>
             <p>・<strong>メンバー枠は完全先着順です：</strong>人気メンバーの枠は申し込み順に埋まり、上限に達したメンバーから受付終了となります。</p>
             <p>・<strong>マッチングは指定日時からの先着順です：</strong>開封・交換マッチングの開始時刻になると、登録・開封した方から先着順でペアが成立します（プッシュ通知をONにしておくと開始・成立をすぐ受け取れます）。</p>
             <p>・<strong>成立後のキャンセル不可：</strong>枠が埋まりマッチング・購入が確定した後の自己都合キャンセルはできません（確定前であればキャンセル・希望変更が可能です）。</p>
@@ -13120,6 +13121,13 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
 
     const poolRef = doc(db, "auto_go_pools", activePoolId);
     const entryRef = doc(db, "auto_go_pools", activePoolId, "entries", user.uid);
+    const existingAgSnap = await getDoc(entryRef);
+    if (existingAgSnap.exists()) {
+      if (typeof showToast === "function") {
+        showToast("お一人様1メンバー（1枠）までのお申し込みとなります", "error");
+      }
+      return;
+    }
 
     try {
       await runTransaction(db, async (tx) => {
