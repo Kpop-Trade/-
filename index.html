@@ -12547,6 +12547,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
           <div class="p-2.5 rounded-xl bg-amber-50/90 border border-amber-200/80 text-[10px] text-amber-900 space-y-1.5 leading-relaxed">
             <p class="font-black text-amber-950">⚠️ ご参加前の注意点・ルール</p>
             <p>・<strong>1人あたりメンバー1つまで：</strong>同じ企画につき、お一人様1メンバー（1枠）までのお申し込みとなります。</p>
+            <p>・<strong>全メンバー均等達成で発動＆+3枠ずつ自動追加：</strong>5人グループは<strong>各メンバー4枠</strong>、4人グループは<strong>各メンバー5枠</strong>が全員分埋まった時点で共同購入が発動します。発動後は<strong>全メンバー一律+3枠ずつ</strong>新しい募集枠が追加解放され、以降も3枠ずつ全員分が埋まるたびに次の3枠が追加されます。</p>
             <p>・<strong>メンバー枠は完全先着順です：</strong>人気メンバーの枠は申し込み順に埋まり、上限に達したメンバーから受付終了となります。</p>
             <p>・<strong>マッチングは指定日時からの先着順です：</strong>開封・交換マッチングの開始時刻になると、登録・開封した方から先着順でペアが成立します（プッシュ通知をONにしておくと開始・成立をすぐ受け取れます）。</p>
             <p>・<strong>専用購入URL発行から2時間以内に購入＆完了報告：</strong>枠が確定し購入URLが届いてから<strong>2時間以内</strong>に決済と「購入完了を報告する」を完了してください。期限を過ぎると自動的に枠が失効します。</p>
@@ -12708,11 +12709,12 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     try {
       const imageUrl = await compressPoolImage(file);
       const members = preset === "5" ? PRESET_5 : PRESET_4;
-      const capPerMember = preset === "5" ? 10 : 12;
-      const targetParticipants = members.length * capPerMember;
-      const memberCaps = {};
-      const memberCounts = {};
-      members.forEach(m => { memberCaps[m] = capPerMember; memberCounts[m] = 0; });
+      const initialCapPerMember = members.length === 5 ? 4 : (members.length === 4 ? 5 : Math.max(1, Math.ceil(20 / members.length)));
+    const minP = initialCapPerMember * members.length;
+    const targetParticipants = minP;
+    const memberCaps = {};
+    const memberCounts = {};
+    members.forEach(m => { memberCaps[m] = initialCapPerMember; memberCounts[m] = 0; });
 
       const newId = "pool_" + Date.now();
       await setDoc(doc(db, "auto_go_pools", newId), {
@@ -12894,8 +12896,14 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     }
     const matchStartRaw = (document.getElementById("adm-ag-match-start")?.value || "").trim();
     const matchStartAt = matchStartRaw ? new Date(matchStartRaw).getTime() : 0;
+    const initialCapPerMember = memberNames.length === 5 ? 4 : (memberNames.length === 4 ? 5 : Math.max(1, Math.ceil(20 / memberNames.length)));
+    const minParticipants = initialCapPerMember * memberNames.length;
     const memberCounts = {};
-    memberNames.forEach(m => memberCounts[m] = 0);
+    const memberCaps = {};
+    memberNames.forEach(m => {
+      memberCounts[m] = 0;
+      memberCaps[m] = initialCapPerMember;
+    });
 
     await addDoc(collection(db, "auto_go_pools"), {
       title,
@@ -12903,7 +12911,11 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       imageUrl,
       memberCountType: memberNames.length,
       memberNames,
+      members: memberNames,
       memberCounts,
+      memberCaps,
+      minParticipants,
+      targetParticipants: minParticipants,
       matchStartAt,
         slotPerMember: isFour ? 12 : 10,
         targetParticipants: isFour ? 48 : 50,
@@ -13114,7 +13126,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
         <div>
           <div class="text-xs font-bold text-gray-900">${m}</div>
           <div class="text-[10px] ${isFull ? 'text-red-500 font-bold' : 'text-purple-600'}">
-            ${isFull ? '満員（他枠が埋まると追加解放）' : `残り ${rem} / ${cap} 枠`}
+            ${isFull ? '現在枠満員（全メンバー揃うと+3枠追加解放）' : `残り ${rem} / ${cap} 枠`}
           </div>
         </div>
         <button onclick="reserveAutoGoMember('${m}')" ${isFull ? 'disabled' : ''} class="px-3.5 py-1.5 rounded-full text-xs font-bold ${isFull ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-gradient-to-r from-purple-600 to-pink-500 text-white shadow'}">
@@ -13148,18 +13160,42 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
         if (entrySnap.exists()) throw new Error("すでにエントリー済みです");
 
         const p = poolSnap.data();
-        const cap = (p.memberCaps && p.memberCaps[memberName]) ?? 12;
-        const cur = (p.memberCounts && p.memberCounts[memberName]) ?? 0;
-        if (cur >= cap) throw new Error("タッチの差で満員になりました！");
+          const mList = Array.isArray(p.members) && p.members.length ? p.members : (Array.isArray(p.memberNames) ? p.memberNames : []);
+          const defaultInitCap = mList.length === 5 ? 4 : (mList.length === 4 ? 5 : 4);
+          const curCaps = Object.assign({}, p.memberCaps || {});
+          const curCounts = Object.assign({}, p.memberCounts || {});
+          mList.forEach(m => {
+            if (curCaps[m] == null) curCaps[m] = defaultInitCap;
+            if (curCounts[m] == null) curCounts[m] = 0;
+          });
 
-        const nextTotal = (p.totalCount || 0) + 1;
-        const nextStatus = nextTotal >= (p.minParticipants || 20) ? "active" : "recruiting";
+          const cap = curCaps[memberName] ?? defaultInitCap;
+          const cur = curCounts[memberName] ?? 0;
+          if (cur >= cap) throw new Error("このメンバーの現在枠は満員です（他メンバーが全て埋まると+3枠追加解放されます）");
 
-        tx.update(poolRef, {
-          totalCount: nextTotal,
-          status: nextStatus,
-          [`memberCounts.${memberName}`]: cur + 1
-        });
+          curCounts[memberName] = cur + 1;
+          const nextTotal = (p.totalCount || 0) + 1;
+
+          // 全メンバーの現在枠がすべて埋まったか判定
+          const allFilledThisWave = mList.length > 0 && mList.every(m => (curCounts[m] || 0) >= (curCaps[m] || defaultInitCap));
+          let nextStatus = p.status === "active" ? "active" : "recruiting";
+          let nextTarget = p.targetParticipants || (defaultInitCap * mList.length);
+
+          if (allFilledThisWave) {
+            nextStatus = "active";
+            mList.forEach(m => {
+              curCaps[m] = (curCaps[m] || defaultInitCap) + 3;
+            });
+            nextTarget = mList.reduce((acc, m) => acc + (curCaps[m] || 0), 0);
+          }
+
+          tx.update(poolRef, {
+            totalCount: nextTotal,
+            status: nextStatus,
+            memberCounts: curCounts,
+            memberCaps: curCaps,
+            targetParticipants: nextTarget
+          });
         tx.set(entryRef, {
           uid: user.uid,
           wantedMember: memberName,
