@@ -4556,7 +4556,11 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         const loginLabel = isGroup ? "ログインして応募" : (isDirectPurchase ? "ログインして購入を確定" : "ログインして申し込む");
         actions.innerHTML = `<button onclick="loginWithGoogle()" class="w-full bg-gradient-to-r from-illit-purple to-illit-accent text-white font-medium py-3 rounded-full shadow-md border border-white/30">${loginLabel}</button>`;
       } else if (p.userId === currentUser.uid) {
-        actions.innerHTML = `${isGroup ? `<button onclick="toggleGroupClosed(${index})" class="w-full bg-teal-50 text-teal-700 border border-teal-200 font-medium py-3 rounded-full hover:bg-teal-100 transition shadow-sm mb-2">${closed ? '🔓 募集再開' : '🔒 募集締切'}</button>` : ''}<button onclick="openEditPost(${index})" class="w-full bg-white/80 border border-white text-illit-darkPurple font-medium py-3 rounded-full hover:bg-white transition shadow-sm">✏️ 編集</button><button onclick="deletePost(${index})" class="w-full bg-red-50 text-red-500 font-medium py-3 rounded-full border border-red-200 hover:bg-red-100 transition mt-2 shadow-sm">削除</button>`;
+        const hasAnyTradeOrSold = isSold || p.status === "traded" || p.status === "closed" || myTrades.some(t => t.postId === p.id && t.status !== "cancelled");
+      const editBtnHtml = hasAnyTradeOrSold
+        ? `<div class="w-full bg-gray-100/80 border border-gray-200 text-gray-400 text-xs font-bold py-3 rounded-full text-center">🔒 購入・取引開始済みのため編集不可</div>`
+        : `<button onclick="openEditPost(${index})" class="w-full bg-white/80 border border-white text-illit-darkPurple font-medium py-3 rounded-full hover:bg-white transition shadow-sm">✏️ 編集</button>`;
+      actions.innerHTML = `${isGroup ? `<button onclick="toggleGroupClosed(${index})" class="w-full bg-teal-50 text-teal-700 border border-teal-200 font-medium py-3 rounded-full hover:bg-teal-100 transition shadow-sm mb-2">${closed ? '🔓 募集再開' : '🔒 募集締切'}</button>` : ''}${editBtnHtml}<button onclick="deletePost(${index})" class="w-full bg-red-50 text-red-500 font-medium py-3 rounded-full border border-red-200 hover:bg-red-100 transition mt-2 shadow-sm">削除</button>`;
       } else {
         const existingTrade = myTrades.find(t => t.postId === p.id && t.status !== "cancelled");
         if (existingTrade) {
@@ -4913,7 +4917,8 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     window.deletePost = async function(index) {
       const p = allPosts[index]; if (!p) return;
       if (myTrades.some(t => t.postId === p.id && (t.status === "negotiating" || t.status === "shipping"))) {
-        return /* alert hidden */ console.log("進行中の取引があるため削除できません。先に取引を完了またはキャンセルしてください。");
+        showToast("取引中のため削除できません。先に取引を完了させてください", "error");
+      return;
       }
       if (!(await appConfirm("この投稿を削除しますか？", "削除する", true))) return;
       try {
@@ -4988,6 +4993,11 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
 
     window.onEditBundleChange = function() { document.getElementById("edit-bundle-note-box").classList.toggle("hidden", document.getElementById("edit-bundle").value === "ng"); };
     window.openEditPost = function(index) {
+    const _ep = allPosts[index];
+    if (_ep && (_ep.status === "traded" || _ep.status === "closed" || myTrades.some(t => t.postId === _ep.id && t.status !== "cancelled"))) {
+      showToast("購入・取引が開始された投稿は編集できません", "error");
+      return;
+    }
       const p = allPosts[index]; if (!p || !currentUser || (p.userId !== currentUser.uid && !isAdmin())) return;
       closeDetailModal(); editingPostId = p.id;
       document.getElementById("edit-give").value = p.give || ""; document.getElementById("edit-want").value = p.want || ""; document.getElementById("edit-price").value = p.price || ""; document.getElementById("edit-deadline").value = p.deadline || ""; document.getElementById("edit-desc").value = p.description || "";
