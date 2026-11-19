@@ -2509,23 +2509,12 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           tradesSnap.docs.forEach(docSnap => {
             const t = docSnap.data(); 
             const tDate = t.createdAt?.toDate ? t.createdAt.toDate() : new Date();
-} else if (t.status === "completed") {
-          const alreadyReviewed = !!(t.reviewed && t.reviewed[uid]);
-          if (alreadyReviewed) {
-            html += `<p class="text-xs text-emerald-700 font-bold text-center bg-emerald-50/90 p-3 rounded-xl border border-emerald-200 shadow-sm">✅ 評価を送信済みです！取引が完了しました。</p>`;
-          } else {
-            html += `<div class="bg-white/80 p-3 rounded-xl border border-white shadow-sm space-y-2">
-              <p class="text-xs text-green-700 font-bold text-center">🎉 取引が完了しました！評価を送って取引を終えましょう。</p>
-              <div class="flex justify-center gap-2" id="inline-review-stars">
-                <button type="button" onclick="window.__setInlineReviewScore && window.__setInlineReviewScore(5)" class="px-2.5 py-1 rounded-lg bg-amber-100 text-amber-800 text-xs font-bold border border-amber-300">★★★★★ 良い</button>
-                <button type="button" onclick="window.__setInlineReviewScore && window.__setInlineReviewScore(3)" class="px-2.5 py-1 rounded-lg bg-gray-100 text-gray-700 text-xs font-bold border border-gray-300">★★★ 普通</button>
-                <button type="button" onclick="window.__setInlineReviewScore && window.__setInlineReviewScore(1)" class="px-2.5 py-1 rounded-lg bg-rose-100 text-rose-700 text-xs font-bold border border-rose-300">★ 残念</button>
-              </div>
-              <input id="inline-review-comment" type="text" placeholder="ひとことコメント（任意）" class="w-full text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white">
-              <button type="button" onclick="window.__submitInlineCompletedReview && window.__submitInlineCompletedReview('${t.id}')" class="w-full py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm">評価を送信して取引を完了</button>
-            </div>`;
-          }
-        }
+            if (t.status === "completed") {
+              const price = Number(t.postPrice || 0);
+              platformTotal += price;
+              completedCount++;
+              if (tDate >= d) thisMonthTotal += price;
+            }
           });
 
           el.innerHTML = `
