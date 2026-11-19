@@ -12843,7 +12843,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
                     <p class="text-sm font-black text-gray-900 truncate mt-0.5">${p.title || "無題プール"}</p>
                   </div>
                 </div>
-                <button type="button" onclick="window.deleteAdminAutoGoPool('${p.id}')" class="shrink-0 text-[11px] font-bold text-red-500 bg-red-50 hover:bg-red-100 px-2.5 py-1.5 rounded-xl border border-red-200">削除</button>
+                ${p.status === "active" ? `<span class="shrink-0 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-xl border border-emerald-200">✅ 枠確定済</span>` : `<button type="button" onclick="window.activateAutoGoPool('${p.id}')" class="shrink-0 text-[11px] font-bold text-white bg-indigo-600 px-2.5 py-1.5 rounded-xl shadow-sm">⚡ 枠確定</button>`} <button type="button" onclick="window.deleteAdminAutoGoPool('${p.id}')" class="shrink-0 text-[11px] font-bold text-red-500 bg-red-50 hover:bg-red-100 px-2.5 py-1.5 rounded-xl border border-red-200">削除</button>
               </div>
               <p class="text-[11px] text-gray-600 line-clamp-2">${p.description || ""}</p>
               <div class="text-[10px] font-bold text-purple-700 bg-purple-50/80 px-2.5 py-1.5 rounded-xl">${breakdown}</div>
@@ -13016,6 +13016,45 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       showToast("削除エラー: " + (e?.code || e?.message), "error");
     }
   };
+    window.activateAutoGoPool = async function(poolId) {
+      if (!confirm("枠を確定し、確定者に10時間以内の購入登録期限を発行しますか？")) return;
+      try {
+        const { db, doc, collection, getDocs, updateDoc, addDoc, serverTimestamp } = window.__autoGoRefs;
+        const poolRef = doc(db, "auto_go_pools", poolId);
+        const poolSnap = await getDoc(poolRef);
+        if (!poolSnap.exists()) return;
+        const poolData = poolSnap.data();
+        const entriesSnap = await getDocs(collection(db, "auto_go_pools", poolId, "entries"));
+        const entries = entriesSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
+        if (!entries.length) { alert("参加者がいません"); return; }
+        entries.sort((a, b) => (a.createdAt?.toMillis ? a.createdAt.toMillis() : 0) - (b.createdAt?.toMillis ? b.createdAt.toMillis() : 0));
+        const maxCap = Number(poolData.targetP || 999);
+        const deadlineMs = Date.now() + 10 * 3600 * 1000;
+        let ok = 0;
+        for (let i = 0; i < entries.length; i++) {
+          const isOk = i < maxCap;
+          await updateDoc(doc(db, "auto_go_pools", poolId, "entries", entries[i].uid), {
+            status: isOk ? "confirmed" : "waitlist",
+            slotOrder: i + 1,
+            purchaseDeadlineAt: isOk ? deadlineMs : null
+          });
+          if (isOk) {
+            ok++;
+            await addDoc(collection(db, "notifications"), {
+              toUid: entries[i].uid,
+              type: "autogo_confirmed",
+              title: "⚡ Auto-GO 枠確定！",
+              body: `「${poolData.title || "Auto-GO"}」の枠が確定しました。10時間以内に購入登録を行ってください。`,
+              poolId, read: false, createdAt: serverTimestamp()
+            });
+          }
+        }
+        await updateDoc(poolRef, { status: "active", purchaseDeadlineAt: deadlineMs, confirmedCount: ok });
+        alert(`✅ ${ok}名の枠を確定し、10時間期限を発行しました！`);
+        const el = document.getElementById("admin-autogo-panel");
+        if (el) await window.renderAdminAutoGoPanel(el);
+      } catch (e) { alert("エラー: " + e.message); }
+    };
 
   window.openAutoGoModal = async function() {
     const modal = document.getElementById("autogo-modal");
