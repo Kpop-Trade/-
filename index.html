@@ -13814,7 +13814,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
 
   window.deleteAdminAutoGoPool = async function(poolId) {
     if (!isAdmin()) return;
-    if (!(await appConfirm("この Auto-GO プールを削除しますか？", "削除する", true))) return;
+    if (!confirm("この Auto-GO プールを削除しますか？")) return;
     try {
       await deleteDoc(doc(db, "auto_go_pools", poolId));
       showToast("プールを削除しました", "info");
