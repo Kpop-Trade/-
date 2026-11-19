@@ -12940,9 +12940,9 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
 
 <!-- Auto-GO メインモーダル -->
 <div id="autogo-modal" class="fixed inset-0 modal-backdrop hidden z-[10000] flex items-end md:items-center justify-center p-0 md:p-4 bg-black/60">
-  <div class="liquid-glass-heavy bg-white/95 backdrop-blur-xl w-full max-w-md rounded-t-[2rem] md:rounded-[2rem] p-5 space-y-3.5 shadow-2xl max-h-[92vh] overflow-y-auto">
+  <div class="bg-white w-full max-w-md rounded-t-xl md:rounded-xl p-5 space-y-4 max-h-[92vh] overflow-y-auto">
       <!-- Auto-GO 仕組み解説アコーディオン -->
-      <div class="mb-3 rounded-2xl bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200/80 overflow-hidden shadow-sm">
+      <div class="hidden">
         <button type="button" onclick="const b=document.getElementById('autogo-guide-panel');const a=document.getElementById('autogo-guide-arrow');b.classList.toggle('hidden');a.textContent=b.classList.contains('hidden')?'▼ 開く':'▲ 閉じる';" class="w-full px-3.5 py-2.5 flex items-center justify-between text-left hover:bg-white/40 transition">
           <div class="flex items-center gap-2">
             <span class="w-6 h-6 rounded-lg bg-purple-600 text-white text-xs font-black flex items-center justify-center shrink-0">？</span>
@@ -12996,29 +12996,26 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       </div>
 
       <!-- Auto-GO プッシュ通知必須チェックバナー -->
-      <div id="ag-push-req-box" class="mb-3 p-3 rounded-2xl border transition">
+            <div id="ag-push-req-box" class="mb-2 py-2">
         <div id="ag-push-off-view" class="flex items-center justify-between gap-2.5">
           <div class="flex items-start gap-2">
-            <span class="text-base leading-none mt-0.5">🔔</span>
             <div>
-              <p class="text-xs font-black text-rose-900">参加にはプッシュ通知のONが必須です</p>
-              <p class="text-[10px] text-rose-700 leading-snug mt-0.5">枠の確定やトレカ交換マッチングを即座にお知らせするため、通知を許可してからお申し込みください。</p>
+                    <p class="text-sm text-gray-700">参加には通知の許可が必要です</p>
             </div>
           </div>
-          <button type="button" onclick="requestAutoGoPushPermission()" class="shrink-0 px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-black shadow-sm active:scale-95 transition">
+                <button type="button" onclick="requestAutoGoPushPermission()" class="shrink-0 px-3 py-2 border border-gray-300 text-sm text-gray-900">
             通知をONにする
           </button>
         </div>
-        <div id="ag-push-on-view" class="hidden flex items-center gap-2 text-emerald-800">
-          <span class="text-sm">✅</span>
-          <p class="text-[11px] font-bold">プッシュ通知ON済み（Auto-GOにお申し込みいただけます）</p>
+              <div id="ag-push-on-view" class="hidden flex items-center gap-2 text-sm text-gray-600">
+                <p>通知ON</p>
         </div>
       </div>
 
     <!-- ヘッダー＆公式開催トグル -->
-    <div class="flex justify-between items-center border-b border-purple-200/60 pb-2.5">
+    <div class="flex justify-between items-center border-b border-gray-200 pb-2.5">
       <div class="flex items-center gap-2">
-        <span class="text-xs font-black text-purple-900">⚡ Auto-GO 全体プール</span>
+        <span class="text-sm font-medium text-gray-900">Auto-GO</span>
         
       </div>
       <button onclick="closeAutoGoModal()" class="text-gray-400 hover:text-gray-700 text-2xl leading-none">&times;</button>
@@ -13028,55 +13025,39 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     <div id="ag-pool-tabs" class="flex gap-1.5 overflow-x-auto pb-1"></div>
 
         <!-- 選択中プールの写真・タイトル・詳細カード -->
-    <div id="ag-pool-detail-card" class="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+    <div id="ag-pool-detail-card" class="bg-white border border-gray-200 overflow-hidden">
       <img id="ag-pool-image" src="" alt="" class="hidden w-full h-40 object-cover bg-gray-100">
-      <div class="p-3 space-y-1">
-        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">抱き合わせゼロ・定価共同購入</span>
-        <h3 id="ag-pool-title" class="font-extrabold text-lg text-gray-900 tracking-tight">Auto-GO</h3>
-        <p id="ag-pool-desc" class="text-[11px] text-gray-600 whitespace-pre-line leading-relaxed"></p>
+      <div class="py-2">
+        <h3 id="ag-pool-title" class="font-semibold text-lg text-gray-900">Auto-GO</h3>
+        <p id="ag-pool-desc" class="hidden"></p>
       </div>
     </div>
 
-    <!-- 20人発動 / 定員確率ゲージ -->
-    <div class="bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-2xl p-3.5 space-y-2">
-      <div class="flex justify-between items-end">
-        <div>
-          <span class="text-[11px] text-gray-600">現在の参加人数</span>
-          <div class="text-xl font-black text-purple-900"><span id="ag-total-count">0</span> <span class="text-xs font-normal text-gray-500">/ <span id="ag-target-count">20</span>人（最低<span id="ag-min-count">20</span>人で発動）</span></div>
-        </div>
-        <div class="text-right">
-          <span id="ag-status-badge" class="text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800">募集中</span>
-          <div class="text-[11px] font-bold text-pink-600 mt-1">推し確保期待値: <span id="ag-prob-text">20%</span></div>
-        </div>
-      </div>
-      <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden relative">
-        <div id="ag-progress-bar" class="bg-gradient-to-r from-purple-600 to-pink-500 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
-      </div>
-      <p class="text-[10px] text-gray-600 leading-relaxed">※最低発動人数に達した瞬間に購入URLが自動送信されます。各メンバー均等上限枠で人気メンバーへの偏りを防止します。</p>
+    <div class="flex items-center gap-2 py-1 text-sm text-gray-700">
+      <span>参加</span>
+      <span id="ag-total-count">0</span>
+      <span>/ <span id="ag-target-count">20</span>人</span>
+      <span id="ag-status-badge" class="font-medium">募集中</span>
+      <span id="ag-min-count" class="hidden">20</span>
+      <span id="ag-prob-text" class="hidden">20%</span>
+      <div class="hidden"><div id="ag-progress-bar" style="width: 0%"></div></div>
     </div>
 
     <!-- 自分の参加ステータス＆自動URL配布エリア -->
-    <div id="ag-my-status-box" class="hidden bg-indigo-50 border border-indigo-200 rounded-2xl p-3.5 space-y-2.5"></div>
+    <div id="ag-my-status-box" class="hidden bg-white space-y-2.5"></div>
 
     <!-- エントリー枠選択（未参加時） -->
     <div id="ag-entry-section" class="space-y-2">
-      <div class="flex justify-between items-center">
-        <span class="text-xs font-bold text-gray-800">希望メンバー枠を選択</span>
-        <span class="text-[10px] text-purple-600 font-bold">予約無料・発動まで決済なし</span>
-      </div>
-      <div id="ag-consent-box" class="bg-purple-50/80 border border-purple-200 rounded-xl p-2.5 mb-2 space-y-1.5">
-            <div class="text-[11px] font-bold text-purple-900">📋 開封結果登録・自動発送の事前同意（必須）</div>
+      <div class="text-sm font-medium text-gray-800">メンバーを選択</div>
+      <div id="ag-consent-box" class="border-b border-gray-200 pb-3 mb-2 space-y-1.5">
+            <div class="text-sm font-medium text-gray-800">自動発送に同意（必須）</div>
             <label class="flex items-start gap-1.5 cursor-pointer pt-0.5">
-              <input type="checkbox" id="ag-auto-ship-consent" required class="mt-0.5 rounded text-purple-600">
+              <input type="checkbox" id="ag-auto-ship-consent" required class="mt-0.5 rounded">
               <span class="text-[10px] text-gray-700 leading-tight">
                 開封結果を期限内に登録し、交換が成立した場合はシステムが決定した発送先へ発送することに同意します。住所はマッチング相手に共有されます。
               </span>
             </label>
           </div>
-          <div class="bg-purple-50 border border-purple-200 rounded-xl p-2.5 mb-2 text-[11px] text-purple-950 space-y-1">
-  <div class="font-extrabold text-purple-800">🎯 希望メンバーを1人選択</div>
-  <div class="leading-relaxed">同じ企画で申し込めるのは1人1メンバー枠です。自引きの場合も開封結果を登録してください。交換が必要な場合は登録期間終了後に自動マッチングします。</div>
-</div>
 <div id="ag-member-grid" class="grid grid-cols-1 gap-2"></div>
     </div>
 
@@ -13573,16 +13554,16 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     const badge = document.getElementById("ag-status-badge");
     if (currentPoolData.status === "cancelled") {
       badge.textContent = "募集終了";
-      badge.className = "text-[11px] font-bold px-2.5 py-1 rounded-full bg-gray-200 text-gray-700";
+      badge.className = "font-medium text-gray-700";
     } else if (total >= targetP) {
-      badge.textContent = "🔥 満員御礼・開催確定";
-      badge.className = "text-[11px] font-bold px-2.5 py-1 rounded-full bg-pink-600 text-white";
+      badge.textContent = "満員";
+      badge.className = "font-medium text-gray-700";
     } else if (total >= minP) {
-      badge.textContent = "✅ 開催確定（URL自動配布中）";
-      badge.className = "text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800";
+      badge.textContent = "開催確定";
+      badge.className = "font-medium text-gray-700";
     } else {
-      badge.textContent = `募集中（あと${minP - total}人で発動）`;
-      badge.className = "text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800";
+      badge.textContent = "募集中";
+      badge.className = "font-medium text-gray-700";
     }
 
     const statusBox = document.getElementById("ag-my-status-box");
@@ -13592,139 +13573,103 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       entrySec.classList.add("hidden");
       statusBox.classList.remove("hidden");
         const isActivated = currentPoolData.status === "active";
-      let html = `<div class="flex justify-between items-center">
-        <span class="text-xs font-bold text-indigo-950">あなたの希望枠: ${currentEntryData.wantedMember}</span>
-        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-600 text-white">${currentEntryData.status}</span>
-      </div>`;
+      let html = `<p class="text-sm text-gray-700">希望メンバー：${currentEntryData.wantedMember}</p>`;
 
       if (currentEntryData.status === "cancelled") {
-        html += `<p class="text-xs font-bold text-rose-700">⚠️ この参加枠はキャンセルされました${currentEntryData.penalty ? "（ペナルティ記録済み）" : ""}。</p>`;
+        html += `<p class="text-sm text-gray-700">予約はキャンセル済み${currentEntryData.penalty ? "（ペナルティ記録済み）" : ""}</p>`;
       } else if (!isActivated && currentEntryData.status === "reserved") {
-        html += `<p class="text-[11px] text-indigo-800">仮予約完了！あと <b>${Math.max(0, minP - total)}人</b> 集まった時点で購入URLが自動送信されます。</p><button onclick="cancelAutoGoEntry()" class="w-full rounded-lg border border-rose-200 bg-white py-2 text-xs font-bold text-rose-700">成立前の仮予約をキャンセル</button>`;
+        html += `<p class="text-sm text-gray-700">仮予約済み</p><button onclick="cancelAutoGoEntry()" class="w-full border border-gray-300 bg-white py-2 text-sm text-gray-900">仮予約をキャンセル</button>`;
       } else if (currentEntryData.status === "waitlist") {
-          html += `<div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-amber-900 space-y-1.5"><div class="font-bold text-[13px]">⏳ キャンセル待ち（順位: ${currentEntryData.slotOrder || "-"}番目）</div><p class="text-[12px] leading-relaxed text-amber-800">定員に達しているため現在キャンセル待ちとなります。購入期限内に未購入の枠が出た場合、自動で繰り上げ通知が届きます。</p></div>`;
+          html += `<p class="text-sm text-gray-700">キャンセル待ち · ${currentEntryData.slotOrder || "-"}番目</p>`;
         } else if (currentEntryData.status === "reserved") {
-          html += `<p class="text-[11px] text-indigo-800">成立処理中です。購入URLが通知されるまでお待ちください。</p>`;
+          html += `<p class="text-sm text-gray-700">開催成立待ち</p>`;
         } else if (currentEntryData.status === "confirmed") {
-        html += `<div class="bg-white rounded-xl p-2.5 border border-indigo-200 space-y-2">
-          <p class="text-[11px] font-bold text-emerald-700">🎉 ${minP}人達成！専用購入URLが発行されました</p>
-          <div id="ag-purchase-deadline-box" class="p-2 rounded-lg bg-rose-50 border border-rose-200 text-center">
-                <p class="text-[10px] font-bold text-rose-700">⏳ 購入＆完了報告の制限時間（発行から10時間以内）</p>
+        html += `<div class="space-y-2">
+          <p class="text-sm text-gray-700">専用購入URLが発行されました</p>
+          <div id="ag-purchase-deadline-box" class="py-2 text-center">
+                <p class="text-xs text-gray-600">購入期限</p>
                 <p id="ag-purchase-countdown" class="text-sm font-black text-rose-600 tracking-wider mt-0.5">計算中...</p>
               </div>
               <div id="ag-purchase-active-actions" class="space-y-2">
-                <a href="${currentPoolData.purchaseUrl || '#'}" target="_blank" rel="noopener" class="block text-center bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-bold py-2 rounded-lg">1. 公式ショップで購入する ↗</a>
-                <label class="block text-[10px] font-bold text-gray-700">2. 購入日時とアルバムが見えるスクリーンショット
+                <a href="${currentPoolData.purchaseUrl || '#'}" target="_blank" rel="noopener" class="block border border-gray-300 text-center text-sm text-gray-900 py-2">公式ショップで購入</a>
+                <label class="block text-sm text-gray-700">購入証明の画像
                   <input id="ag-purchase-proof" type="file" accept="image/*" class="block w-full mt-1 text-[10px]">
                 </label>
-                <button onclick="markAutoGoPurchased()" class="w-full bg-emerald-600 text-white text-xs font-bold py-2 rounded-lg">3. 購入スクリーンショットを登録</button>
+                <button onclick="markAutoGoPurchased()" class="w-full border border-gray-300 text-sm text-gray-900 py-2">購入を報告</button>
               </div>
-              <div id="ag-purchase-expired-msg" class="hidden p-2.5 rounded-lg bg-gray-100 border border-gray-300 text-center">
-                <p class="text-xs font-black text-gray-700">⚠️ 購入登録期限（10時間）が切れました</p>
-                <p class="text-[10px] text-gray-500 mt-0.5">制限時間内に購入完了報告が行われなかったため、この枠は失効しました。</p>
+              <div id="ag-purchase-expired-msg" class="hidden py-2 text-center">
+                <p class="text-sm text-gray-700">購入期限切れ</p>
               </div>
         </div>`;
       } else if (currentEntryData.status === "purchased") {
-        html += `<div class="bg-white rounded-xl p-2.5 border border-purple-200 space-y-2">
-          <p class="text-[11px] font-bold text-purple-900">📦 アルバムが届いたら到着を報告し、開封結果を登録してください。5人目の到着報告から4日間で受付終了します。</p>
-          <button onclick="markAutoGoAlbumArrived()" class="w-full bg-indigo-600 text-white text-xs font-bold py-2 rounded-lg">アルバム到着を報告</button>
-          <button onclick="reportAutoGoDelay()" class="w-full border border-amber-300 bg-amber-50 text-amber-900 text-xs font-bold py-2 rounded-lg">到着が遅れている（理由を報告）</button>
+        html += `<div class="space-y-2">
+          <p class="text-sm text-gray-700">アルバム到着を報告してください</p>
+          <button onclick="markAutoGoAlbumArrived()" class="w-full border border-gray-300 text-sm text-gray-900 py-2">到着を報告</button>
+          <button onclick="reportAutoGoDelay()" class="w-full text-sm text-gray-600 py-2">遅延を報告</button>
         </div>`;
       } else if (currentEntryData.status === "arrived") {
-        const revealDeadline = currentPoolData.revealDeadlineAt?.toDate ? currentPoolData.revealDeadlineAt.toDate().toLocaleString("ja-JP") : "5人目の到着報告後、4日間";
-        html += `<div class="bg-white rounded-xl p-2.5 border border-purple-200 space-y-2">
-          <p class="text-[11px] font-bold text-purple-900">📦 開封結果を登録してください。登録期限: ${revealDeadline}</p>
+        html += `<div class="space-y-2">
+          <p class="text-sm text-gray-700">開封結果を登録してください</p>
           <select id="ag-pulled-select" class="w-full border border-gray-300 rounded-lg p-2 text-xs">
             <option value="">実際に引いたメンバーを選択...</option>
             ${getActiveMembers().map(m => `<option value="${m}">${m}</option>`).join("")}
           </select>
-          <button onclick="submitAutoGoReveal()" class="w-full bg-pink-600 text-white text-xs font-bold py-2 rounded-lg">開封結果を登録（自引きも必須）</button>
-          <button onclick="reportAutoGoDelay()" class="w-full border border-amber-300 bg-amber-50 text-amber-900 text-xs font-bold py-2 rounded-lg">開封が遅れている（理由を報告）</button>
+          <button onclick="submitAutoGoReveal()" class="w-full border border-gray-300 text-sm text-gray-900 py-2">開封結果を登録</button>
+          <button onclick="reportAutoGoDelay()" class="w-full text-sm text-gray-600 py-2">遅延を報告</button>
         </div>`;
       } else if (currentEntryData.status === "delayed") {
-        html += `<p class="text-xs font-bold text-amber-800">到着遅延を報告済みです。運営からの案内をお待ちください。</p>`;
+        html += `<p class="text-sm text-gray-700">遅延を報告済み</p>`;
       } else if (currentEntryData.status === "self_pulled") {
-        html += `<p class="text-xs font-bold text-emerald-700">🎊 開封結果を登録済み（自引き）。登録期間終了後に結果が確定します。</p>`;
+        html += `<p class="text-sm text-gray-700">開封結果を登録済み（自引き）</p>`;
       } else if (currentEntryData.status === "waiting_match") {
-        const revealDeadline = currentPoolData.revealDeadlineAt?.toDate ? currentPoolData.revealDeadlineAt.toDate().toLocaleString("ja-JP") : "5人目の到着報告後、4日間";
-        html += `<p class="text-xs text-purple-800">⏳ <b>${currentEntryData.pulledMember}</b> を登録済み。登録期限（${revealDeadline}）終了後に自動マッチングします。</p>`;
+        html += `<p class="text-sm text-gray-700">開封結果を登録済み · マッチング待ち</p>`;
       } else if (currentEntryData.status === "matched") {
         // 取引進捗ステップ判定（1:申込済, 2:開封登録済, 3:発送指令済, 4:発送/受取完了）
-          const step = currentEntryData.receivedDone ? 4
-            : (currentEntryData.shippedDone ? 4
-            : (currentEntryData.shipToAddress || currentEntryData.noMatchResult ? 3
-            : (currentEntryData.openedCard ? 2 : 1)));
-          const stepLabels = ["①参加同意", "②開封登録", "③発送指令", "④発送・完了"];
-          const progressHtml = `<div class="bg-white border border-purple-100 rounded-xl p-2.5 mb-2">
-            <div class="flex items-center justify-between mb-1.5">
-              <span class="text-[10px] font-extrabold text-purple-900">📊 Auto-GO 取引進捗ステータス</span>
-              <span class="text-[10px] font-bold text-purple-600">STEP ${step} / 4</span>
-            </div>
-            <div class="grid grid-cols-4 gap-1">
-              ${stepLabels.map((lbl, idx) => {
-                const active = (idx + 1) <= step;
-                return `<div class="text-center">
-                  <div class="h-1.5 rounded-full mb-1 ${active ? 'bg-purple-600' : 'bg-gray-200'}"></div>
-                  <span class="text-[9px] font-bold ${active ? 'text-purple-800' : 'text-gray-400'}">${lbl}</span>
-                </div>`;
-              }).join("")}
-            </div>
-          </div>`;
-
-          html += progressHtml;
+          const stageText = currentEntryData.receivedDone ? "取引完了"
+            : currentEntryData.shippedDone ? "発送済み・受取報告待ち"
+            : currentEntryData.shipToAddress ? "発送してください"
+            : currentEntryData.noMatchResult ? "マッチング対象外"
+            : currentEntryData.openedCard ? "開封結果登録済み"
+            : "開封結果を登録してください";
+          html += `<p class="text-sm text-gray-700">${stageText}</p>`;
 
           if (currentEntryData.shipToAddress) {
-            html += `<div class="bg-emerald-50 border-2 border-emerald-400 rounded-xl p-3 space-y-2 shadow-sm">
+            html += `<div class="space-y-2">
               <div class="flex items-center justify-between">
-                <span class="text-xs font-extrabold text-emerald-900">📮【自動発送指令】発送先が確定しました</span>
-                <span class="text-[10px] font-bold bg-emerald-600 text-white px-2 py-0.5 rounded-full">事前同意済</span>
+                <span class="text-sm font-medium text-gray-900">発送先</span>
               </div>
-              <p class="text-[11px] text-emerald-800 leading-relaxed">
-                あなたが開封した <strong class="underline">${currentEntryData.openedCard || "対象トレカ"}</strong> を、以下の宛先へ直接発送してください（交換交渉は不要です）。<br>
-                <span class="text-[10px] text-emerald-700">※あなたの元には別の参加者から <strong>${currentEntryData.receivingCard || "希望トレカ"}</strong> が届きます。</span>
-              </p>
-              <div class="bg-white border border-emerald-200 rounded-lg p-2.5 text-xs text-gray-800 space-y-0.5 select-all">
+              <div class="border border-gray-200 p-2.5 text-xs text-gray-800 space-y-0.5 select-all">
                 <div class="font-bold text-gray-900">${escapeAutoGoHtml(currentEntryData.shipToName || "受取人")} 様</div>
                 <div class="text-[11px] text-gray-600">〒${escapeAutoGoHtml(currentEntryData.shipToZip)}</div>
                 <div class="text-[11px] font-medium">${escapeAutoGoHtml(currentEntryData.shipToAddress)}</div>
               </div>
               <div class="grid grid-cols-2 gap-1.5 pt-1">
                 ${currentEntryData.shippedDone
-                  ? `<div class="text-center text-[11px] font-bold text-emerald-700 bg-emerald-100 py-2 rounded-lg">✅ 発送完了報告済</div>`
-                  : `<div class="col-span-2 space-y-1"><label class="block text-[10px] font-bold text-gray-700">伝票の住所が見える発送写真
+                  ? `<div class="text-center text-[11px] text-gray-600 py-2">発送完了</div>`
+                  : `<div class="col-span-2 space-y-1"><label class="block text-[10px] text-gray-700">発送写真
                       <input id="ag-shipping-proof" type="file" accept="image/*" class="block w-full mt-1 text-[10px]">
-                    </label><button type="button" onclick="markAutoGoShipped()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold py-2 rounded-lg shadow">📦 写真を登録して発送完了</button></div>`
+                    </label><button type="button" onclick="markAutoGoShipped()" class="w-full border border-gray-300 text-gray-900 text-[11px] font-medium py-2">写真を登録して発送完了</button></div>`
                 }
                 ${currentEntryData.receivedDone
-                  ? `<div class="text-center text-[11px] font-bold text-purple-700 bg-purple-100 py-2 rounded-lg">🎉 受取完了済</div>`
-                  : `<button type="button" onclick="markAutoGoReceived()" class="bg-purple-600 hover:bg-purple-700 text-white text-[11px] font-bold py-2 rounded-lg shadow">📥 届いたら受取報告</button>`
+                  ? `<div class="text-center text-[11px] text-gray-600 py-2">受取完了</div>`
+                  : `<button type="button" onclick="markAutoGoReceived()" class="${currentEntryData.shippedDone ? "" : "hidden"} border border-gray-300 text-gray-900 text-[11px] font-medium py-2">受取を報告</button>`
                 }
               </div>
             </div>`;
           } else if (currentEntryData.noMatchResult) {
-            html += `<div class="bg-gray-50 border border-gray-300 rounded-xl p-2.5 text-xs text-gray-700">
-              ℹ️ 今回の自動マッチングでは交換対象外（端数）となりました。お手元の <strong>${currentEntryData.openedCard || "トレカ"}</strong> はそのまま保管・通常出品いただけます。
-            </div>`;
+            html += `<p class="text-sm text-gray-700">交換対象外：${currentEntryData.openedCard || "トレカ"}</p>`;
           } else {
             const membersOpt = (typeof getActiveMembers === "function" ? getActiveMembers() : ["ミンジュ","ウォンヒ","モカ","イロハ","ユナ"])
               .map(m => `<option value="${m}" ${currentEntryData.openedCard === m ? "selected" : ""}>${m}</option>`).join("");
-            const deadlineStr = currentPoolData.revealDeadlineAt?.toDate ? currentPoolData.revealDeadlineAt.toDate().toLocaleString("ja-JP") : "5人目の到着報告後、4日間";
-            html += `<div class="bg-amber-50 border border-amber-200 rounded-xl p-2.5 space-y-2">
-              <div class="flex items-center justify-between">
-                <span class="text-[11px] font-bold text-amber-900">📦 開封結果の登録（期限: ${deadlineStr}）</span>
-                <span class="text-[10px] text-amber-700 font-bold">事前同意済</span>
-              </div>
-              <p class="text-[10px] text-amber-800 leading-snug">
-                到着後、自分の枠から出たメンバーを登録してください。登録期間終了後に自動マッチングし、発送先を通知します。自引きの場合も登録が必要です。
-              </p>
+            html += `<div class="space-y-2">
               <div class="flex gap-1.5">
-                <select id="ag-opened-select" class="flex-1 text-xs border border-amber-300 rounded-lg px-2 py-1.5 bg-white font-bold">
+                <select id="ag-opened-select" class="flex-1 text-xs border border-gray-300 px-2 py-1.5 bg-white">
                   <option value="">出たメンバーを選択...</option>
                   ${membersOpt}
                 </select>
-                <button type="button" onclick="saveAutoGoOpenedCard()" class="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg whitespace-nowrap">登録</button>
+                <button type="button" onclick="saveAutoGoOpenedCard()" class="border border-gray-300 text-gray-900 text-xs px-3 py-1.5 whitespace-nowrap">登録</button>
               </div>
-              ${currentEntryData.openedCard ? `<div class="text-[10px] font-bold text-emerald-700">✅ 登録済み：「${currentEntryData.openedCard}」（期限まで変更可）</div>` : ""}
+              ${currentEntryData.openedCard ? `<div class="text-[10px] text-gray-600">登録済み：${currentEntryData.openedCard}</div>` : ""}
             </div>`;
           }
       }
@@ -13743,15 +13688,13 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       const rem = Math.max(0, cap - cnt);
       const isFull = rem === 0;
       const disabled = isFull || recruitmentClosed;
-      return `<div class="flex items-center justify-between p-2.5 rounded-xl border ${isFull ? 'bg-gray-100 border-gray-200' : 'bg-white border-purple-200'}">
-        <div>
-          <div class="text-xs font-bold text-gray-900">${m}</div>
-          <div class="text-[10px] ${isFull ? 'text-red-500 font-bold' : 'text-purple-600'}">
-            ${recruitmentClosed ? '募集終了' : isFull ? '🚫 枠満員（他メンバーが埋まると+3枠追加）' : `🎯 残り ${rem} / ${cap} 枠`}
-          </div>
+      return `<div class="flex items-center justify-between py-2 border-b border-gray-200">
+        <div class="flex items-center gap-3">
+          <span class="text-sm text-gray-900">${m}</span>
+          <span class="text-xs text-gray-500">残り ${rem} / ${cap} 枠</span>
         </div>
-        <button onclick="reserveAutoGoMember('${m}')" ${disabled ? 'disabled' : ''} class="px-3.5 py-1.5 rounded-full text-xs font-bold ${disabled ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-gradient-to-r from-purple-600 to-pink-500 text-white shadow'}">
-          ${recruitmentClosed ? '募集終了' : isFull ? '満員' : '仮予約する'}
+        <button onclick="reserveAutoGoMember('${m}')" ${disabled ? 'disabled' : ''} class="px-3 py-1.5 text-sm ${disabled ? 'text-gray-400 cursor-not-allowed' : 'text-gray-900 underline underline-offset-2'}">
+          予約する
         </button>
       </div>`;
     }).join("");
