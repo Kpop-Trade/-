@@ -13210,9 +13210,11 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
                 <p class="text-[10px] text-gray-500 mt-0.5">制限時間内に購入完了報告が行われなかったため、この枠は失効しました。</p>
               </div>
         </div>`;
-      } else if (currentEntryData.status === "purchased") {
+      } else if (currentEntryData.status === "waitlist") {
+          html += `<div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-amber-900 space-y-1.5"><div class="font-bold text-[13px]">⏳ キャンセル待ち（順位: ${currentEntryData.slotOrder || "-"}番目）</div><p class="text-[12px] leading-relaxed text-amber-800">定員に達しているため現在キャンセル待ちとなります。購入期限内に未購入の枠が出た場合、自動で繰り上げ通知が届きます。</p></div>`;
+        } else if (currentEntryData.status === "purchased") {
         html += `<div class="bg-white rounded-xl p-2.5 border border-purple-200 space-y-2">
-          <p class="text-[11px] font-bold text-purple-900">📦 CD到着後、710時間以内に開封結果を登録してください（未登録は自動除外＆利用制限）</p>
+          <p class="text-[11px] font-bold text-purple-900">📦 CD到着後、72時間以内に開封結果を登録してください（未登録は自動除外＆利用制限）</p>
           <select id="ag-pulled-select" class="w-full border border-gray-300 rounded-lg p-2 text-xs">
             <option value="">実際に引いたメンバーを選択...</option>
             ${getActiveMembers().map(m => `<option value="${m}">${m}</option>`).join("")}
