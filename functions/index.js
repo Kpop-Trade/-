@@ -30,7 +30,7 @@ async function push(uid, title, body, link) {
         : SITE;
   const pushBody = link && link.purchaseUrl
     ? `購入URL: ${String(link.purchaseUrl)}（10時間以内に購入登録してください）`
-    : String(text).slice(0, 200);
+    : String(body).slice(0, 200);
   const res = await admin.messaging().sendEachForMulticast({
     tokens,
     data: {
