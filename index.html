@@ -12580,7 +12580,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
             <p>・<strong>全メンバー均等達成で発動＆+3枠ずつ自動追加：</strong>5人グループは<strong>各メンバー4枠</strong>、4人グループは<strong>各メンバー5枠</strong>が全員分埋まった時点で共同購入が発動します。発動後は<strong>全メンバー一律+3枠ずつ</strong>新しい募集枠が追加解放され、以降も3枠ずつ全員分が埋まるたびに次の3枠が追加されます。</p>
             <p>・<strong>メンバー枠は完全先着順です：</strong>人気メンバーの枠は申し込み順に埋まり、上限に達したメンバーから受付終了となります。</p>
             <p>・<strong>マッチングは指定日時からの先着順です：</strong>開封・交換マッチングの開始時刻になると、登録・開封した方から先着順でペアが成立します（プッシュ通知をONにしておくと開始・成立をすぐ受け取れます）。</p>
-            <p>・<strong>専用購入URL発行から2時間以内に購入＆完了報告：</strong>枠が確定し購入URLが届いてから<strong>2時間以内</strong>に決済と「購入完了を報告する」を完了してください。期限を過ぎると自動的に枠が失効します。</p>
+            <p>・<strong>専用購入URL発行から10時間以内に購入＆完了報告：</strong>枠が確定し購入URLが届いてから<strong>2時間以内</strong>に決済と「購入完了を報告する」を完了してください。期限を過ぎると自動的に枠が失効します。</p>
             <p>・<strong>成立後のキャンセル不可：</strong>枠が埋まりマッチング・購入が確定した後の自己都合キャンセルはできません（確定前であればキャンセル・希望変更が可能です）。</p>
             <p>・<strong>シェアで成立率アップ：</strong>他のメンバー希望者が集まるほど全体枠が早く埋まります（下の「Xでシェアして枠を埋める」で募集を広げられます）。</p>
           </div>
@@ -13157,7 +13157,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
         html += `<div class="bg-white rounded-xl p-2.5 border border-indigo-200 space-y-2">
           <p class="text-[11px] font-bold text-emerald-700">🎉 ${minP}人達成！専用購入URLが発行されました</p>
           <div id="ag-purchase-deadline-box" class="p-2 rounded-lg bg-rose-50 border border-rose-200 text-center">
-                <p class="text-[10px] font-bold text-rose-700">⏳ 購入＆完了報告の制限時間（発行から2時間以内）</p>
+                <p class="text-[10px] font-bold text-rose-700">⏳ 購入＆完了報告の制限時間（発行から10時間以内）</p>
                 <p id="ag-purchase-countdown" class="text-sm font-black text-rose-600 tracking-wider mt-0.5">計算中...</p>
               </div>
               <div id="ag-purchase-active-actions" class="space-y-2">
@@ -13171,7 +13171,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
         </div>`;
       } else if (currentEntryData.status === "purchased") {
         html += `<div class="bg-white rounded-xl p-2.5 border border-purple-200 space-y-2">
-          <p class="text-[11px] font-bold text-purple-900">📦 CD到着後、72時間以内に開封結果を登録してください（未登録は自動除外＆利用制限）</p>
+          <p class="text-[11px] font-bold text-purple-900">📦 CD到着後、710時間以内に開封結果を登録してください（未登録は自動除外＆利用制限）</p>
           <select id="ag-pulled-select" class="w-full border border-gray-300 rounded-lg p-2 text-xs">
             <option value="">実際に引いたメンバーを選択...</option>
             ${getActiveMembers().map(m => `<option value="${m}">${m}</option>`).join("")}
@@ -13368,7 +13368,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
 
   window.markAutoGoPurchased = async function() {
     const issuedMs = Number(window.__agCurrentUrlIssuedAt || 0);
-    if (issuedMs > 0 && Date.now() > issuedMs + 2 * 60 * 60 * 1000) {
+    if (issuedMs > 0 && Date.now() > issuedMs + 10 * 60 * 60 * 1000) {
       if (typeof showToast === "function") {
         showToast("購入制限時間（2時間）を過ぎたため枠が失効しています", "error");
       } else {
