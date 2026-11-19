@@ -553,37 +553,36 @@ html, body {
       </div>
     </section>
 
-    <section id="gllit-hub">
+    <section id="gllit-hub" class="w-screen relative left-1/2 -translate-x-1/2">
   <style>
     @keyframes gllitMarquee {
       0% { transform: translateX(0%); }
       100% { transform: translateX(-50%); }
     }
     .gllit-led-board {
-      background: radial-gradient(rgba(234, 179, 8, 0.08) 1px, transparent 1px), #0a0a0a;
+      background: radial-gradient(rgba(253, 230, 138, 0.06) 1px, transparent 1px), #0a0a0a;
       background-size: 4px 4px;
     }
     .gllit-marquee-track {
       display: inline-flex;
       white-space: nowrap;
       animation: gllitMarquee 22s linear infinite;
-      color: #eab308;
-      text-shadow: 0 0 8px rgba(234, 179, 8, 0.55);
+      color: #fde68a;
+      text-shadow: 0 0 6px rgba(253, 230, 138, 0.35);
     }
     .gllit-marquee-track:hover {
       animation-play-state: paused;
     }
   </style>
-  <div class="inline-block bg-black text-amber-400 text-sm font-black tracking-widest mb-1.5 px-3 py-1 rounded-lg">GLLIT Information</div>
-  <button type="button" onclick="openIllitCalendar()" class="gllit-led-board w-full rounded-2xl px-3.5 py-3.5 flex items-center gap-3 overflow-hidden border-2 border-neutral-800 shadow-lg active:scale-[0.99] transition text-left">
-    
+  <button type="button" onclick="openIllitCalendar()" class="gllit-led-board w-full rounded-none px-4 py-3.5 flex items-center gap-3 overflow-hidden border-y border-neutral-800 shadow-lg active:opacity-95 transition text-left">
+    <span class="shrink-0 bg-amber-200/15 border border-amber-200/35 text-amber-100/90 text-xs font-bold px-2.5 py-1 rounded-lg tracking-wider">✨ GLLIT Information</span>
     <div class="relative flex-1 overflow-hidden py-0.5">
-      <div id="gllit-ticker-track" class="gllit-marquee-track text-sm sm:text-base font-black tracking-wide">
+      <div id="gllit-ticker-track" class="gllit-marquee-track text-sm sm:text-base font-bold tracking-wide">
         <span class="pr-12">📅 予定を読み込み中...</span>
         <span class="pr-12">📅 予定を読み込み中...</span>
       </div>
     </div>
-    <span class="shrink-0 text-xs font-bold text-amber-400/90">予定表 ›</span>
+    <span class="shrink-0 text-xs font-medium text-amber-200/80">予定表 ›</span>
   </button>
   <div class="hidden">
     <div id="gllit-hub-tasks"></div>
