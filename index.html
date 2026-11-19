@@ -21,7 +21,7 @@
   if (typeof showToast === "function") window.showToast = showToast;
 </script>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <script>
   // エラーを赤い文字で画面に大きく表示する
   window.onerror = function(message, source, lineno, colno, error) {
@@ -575,10 +575,95 @@ html, body {
   pointer-events: none;
   letter-spacing: 0.04em;
 }
+#app-splash-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 100vh;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  background: #000000;
+  opacity: 1;
+  transition: opacity 0.4s ease;
+}
+#app-splash-screen.is-hiding {
+  opacity: 0;
+  pointer-events: none;
+}
+#app-splash-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  animation: app-splash-pop-in 0.38s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+#app-splash-logo {
+  width: 104px;
+  height: 104px;
+  border-radius: 22%;
+  object-fit: contain;
+}
+#app-splash-fallback {
+  width: 104px;
+  height: 104px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 22%;
+  background: linear-gradient(145deg, #ec4899, #7c3aed);
+  color: #ffffff;
+  font-size: 58px;
+  font-weight: 900;
+  box-shadow: 0 12px 30px rgba(111, 76, 182, 0.24);
+}
+#app-splash-name {
+  margin: 0;
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: 900;
+}
+@keyframes app-splash-pop-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
 </style>
 
 </head>
 <body class="bg-illit-bg min-h-screen text-gray-800 relative overflow-x-hidden">
+  <div id="app-splash-screen" role="status" aria-label="K-pop Tradeを読み込み中">
+    <div id="app-splash-content">
+      <img id="app-splash-logo" src="icon-192.png" alt="K-pop Trade" onerror="this.hidden=true; document.getElementById('app-splash-fallback').style.display='flex';">
+      <div id="app-splash-fallback" style="display:none" aria-hidden="true">K</div>
+      <p id="app-splash-name">K-pop Trade</p>
+    </div>
+  </div>
+  <script>
+    (function() {
+      var splash = document.getElementById("app-splash-screen");
+      if (!splash) return;
+      var dismissed = false;
+      var fadeOut = function() {
+        if (dismissed) return;
+        dismissed = true;
+        splash.classList.add("is-hiding");
+        window.setTimeout(function() {
+          splash.style.display = "none";
+        }, 400);
+      };
+      window.setTimeout(fadeOut, 900);
+      window.setTimeout(function() {
+        fadeOut();
+        splash.style.display = "none";
+      }, 1500);
+    })();
+  </script>
   <div id="bg-blobs" class="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
     <div class="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-pink-300/40 rounded-full mix-blend-multiply filter blur-[80px] animate-blob"></div>
     <div class="absolute top-[20%] right-[-10%] w-[60vw] h-[60vw] bg-purple-300/40 rounded-full mix-blend-multiply filter blur-[80px] animate-blob animation-delay-2000"></div>
@@ -3571,6 +3656,10 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         ua: navigator.userAgent.slice(0, 120), 
         updatedAt: serverTimestamp() 
       });
+      await setDoc(doc(db, "users", currentUser.uid), {
+        fcmToken: token,
+        fcmTokenUpdatedAt: serverTimestamp()
+      }, { merge: true });
       localStorage.setItem(pushStorageKey(), token);
       bindForegroundPush();
     }
@@ -13238,7 +13327,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
         <div id="ag-push-off-view" class="flex items-center justify-between gap-2.5">
           <div class="flex items-start gap-2">
             <div>
-                    <p class="text-sm text-gray-700">参加には通知の許可が必要です</p>
+                    <p id="ag-push-required-message" class="text-sm text-gray-700">参加には通知の許可が必要です</p>
             </div>
           </div>
                 <button type="button" onclick="requestAutoGoPushPermission()" class="shrink-0 px-3 py-2 border border-gray-300 text-sm text-gray-900">
@@ -13294,19 +13383,23 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
         </div>
         <div class="space-y-4 text-xs leading-relaxed sm:text-sm">
           <div>
-            <h4 class="mb-2 font-black">【Auto-GO（自動共同購入・交換マッチング）の仕組み】</h4>
+            <h4 class="mb-2 font-black">【Auto-GO（自動共同購入・トレカ自動割り当て）の仕組み】</h4>
             <ol class="space-y-3">
               <li class="flex items-start gap-2"><span class="shrink-0 rounded-full bg-red-600 px-2 py-0.5 font-bold text-white">1.</span><div><h5 class="font-bold">仮予約（エントリー）</h5><ul class="list-disc space-y-1 pl-4"><li>希望メンバーを1人選んで仮予約します（参加には配送先住所とXアカウントの登録が必要です）。</li><li>募集締切までに最低成立人数（通常20人）に達すると企画が成立し、本確定となります。未達の場合は自動キャンセルされ、購入は不要です。</li></ul></div></li>
-              <li class="flex items-start gap-2"><span class="shrink-0 rounded-full bg-red-600 px-2 py-0.5 font-bold text-white">2.</span><div><h5 class="font-bold">各自でCDを購入・報告</h5><ul class="list-disc space-y-1 pl-4"><li>企画成立後、指定期限までに各自で対象ショップからCDを1枚購入し、購入完了スクリーンショットを登録します。</li></ul></div></li>
-              <li class="flex items-start gap-2"><span class="shrink-0 rounded-full bg-red-600 px-2 py-0.5 font-bold text-white">3.</span><div><h5 class="font-bold">到着報告・開封結果の登録</h5><ul class="list-disc space-y-1 pl-4"><li>手元にCDが届いたら到着報告を行い、封入されていたランダムトレカのメンバー（開封結果）を登録します。</li></ul></div></li>
-              <li class="flex items-start gap-2"><span class="shrink-0 rounded-full bg-red-600 px-2 py-0.5 font-bold text-white">4.</span><div><h5 class="font-bold">最短ルート自動マッチング</h5><ul class="list-disc space-y-1 pl-4"><li>希望メンバーを「自引き」した人はその場で完了！</li><li>希望外だったメンバー同士をシステムが最短の交換ルート（2人交換や3人以上の循環ルート）で自動マッチングし、1回の発送で希望トレカが届くように配送先を割り当てます。</li><li>※組み合わせの都合上マッチングが成立しなかった場合は、手元のトレカをそのままお持ち帰りとなります（発送不要）。</li></ul></div></li>
+              <li class="flex items-start gap-2"><span class="shrink-0 rounded-full bg-red-600 px-2 py-0.5 font-bold text-white">2.</span><div><h5 class="font-bold">企画成立後、購入用URLが届くので各自でCDを購入・報告</h5><ul class="list-disc space-y-1 pl-4"><li>企画成立後、プッシュ通知・アプリ内通知（およびX等）にて対象ショップの購入用URLが届きます。</li><li>指定期限までにそのURLから各自でCDを1枚購入し、購入完了スクリーンショットを登録してください。</li></ul></div></li>
+              <li class="flex items-start gap-2"><span class="shrink-0 rounded-full bg-red-600 px-2 py-0.5 font-bold text-white">3.</span><div><h5 class="font-bold">到着報告・開封結果の登録（※自引きの場合も必須）</h5><ul class="list-disc space-y-1 pl-4"><li>手元にCDが届いたら到着報告を行い、封入されていたランダムトレカのメンバー（開封結果）を必ず登録してください。</li><li>※希望メンバーを「自引き」した場合でも、全体の集計・自動割り当て確定のために開封結果の登録が必須です（登録完了後、自引きの方は発送不要でそのまま終了となります）。</li></ul></div></li>
+              <li class="flex items-start gap-2"><span class="shrink-0 rounded-full bg-red-600 px-2 py-0.5 font-bold text-white">4.</span><div><h5 class="font-bold">最短ルート自動割り当て</h5><ul class="list-disc space-y-1 pl-4"><li>自引き以外のメンバー同士をシステムが最短の循環ルートで自動割り当てし、1回の発送で希望トレカが届くように配送先を指定します。</li><li>※組み合わせの都合上割り当て対象外となった場合は、手元のトレカをそのままお持ち帰りとなります（発送不要）。</li></ul></div></li>
               <li class="flex items-start gap-2"><span class="shrink-0 rounded-full bg-red-600 px-2 py-0.5 font-bold text-white">5.</span><div><h5 class="font-bold">発送・受取完了</h5><ul class="list-disc space-y-1 pl-4"><li>マッチング確定から72時間以内に、割り当てられた相手へトレカを発送し、発送伝票（または投函・追跡証明）の写真を登録します。</li><li>※あなたの発送伝票を登録するまで、自分宛てに送ってくれる相手の情報はロックされます。</li><li>双方の受取完了をもって取引終了です。</li></ul></div></li>
             </ol>
+          </div>
+          <div class="rounded-lg border border-red-300 bg-red-100 p-3 font-bold text-red-900 dark:border-red-800 dark:bg-red-900/40 dark:text-red-100">
+            <p>※個人間のチャットや交渉は一切不要です。システムが自動で割り当てた送り先住所へそのまま発送するだけで希望メンバーのトレカが届きます</p>
+            <p class="mt-2">開封結果の未登録・期限超過は進行の妨げとなるためペナルティ対象となります</p>
           </div>
           <div class="border-t border-red-200 pt-3 dark:border-red-800">
             <h4 class="mb-2 font-black">【必ず守るルール・不正防止ポリシー】</h4>
             <ul class="list-disc space-y-2 pl-4">
-              <li>事前登録の必須化：エントリー前に「氏名・郵便番号・住所」および「XアカウントID」の登録が必要です。</li>
+              <li>事前登録・通知設定の必須化：エントリー前に「氏名・郵便番号・住所」「XアカウントID」の登録、および「プッシュ通知のオン」が必要です（企画成立後の購入URLや発送期限の通知を確実に受け取るため）。</li>
               <li>成立後のキャンセル不可：最低人数に達して企画が成立した後は、自己都合での購入キャンセルはできません。</li>
               <li class="rounded-lg bg-red-100 p-2 font-bold text-red-900 dark:bg-red-900/40 dark:text-red-100">72時間以内の発送義務：マッチング確定後、72時間以内に発送および伝票写真の登録を行ってください。期限超過・未発送が確認された場合、Auto-GOの利用資格を永久停止（アカウント凍結対象）とします。</li>
               <li>伝票画像の使い回し禁止：発送証明画像はシステムで重複検知（ハッシュ照合）を行っています。過去画像や他人の画像の流用、虚偽報告は即座にペナルティ対象となります。</li>
@@ -13321,7 +13414,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
             <label class="flex items-start gap-1.5 cursor-pointer pt-0.5">
               <input type="checkbox" id="ag-auto-ship-consent" required class="mt-0.5 rounded">
               <span class="text-[10px] text-gray-700 leading-tight">
-                開封結果を期限内に登録し、交換が成立した場合はシステムが決定した発送先へ発送することに同意します。住所はマッチング相手に共有されます。
+                開封結果を期限内に登録し、自動割り当ての結果、発送先が指定された場合は指定先へ発送することに同意します。住所は発送先に共有されます。
               </span>
             </label>
           </div>
@@ -14026,7 +14119,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
               </div>
             </div>`;
           } else if (currentEntryData.noMatchResult) {
-            html += `<p class="text-sm text-gray-700">交換対象外：${currentEntryData.openedCard || "トレカ"}</p>`;
+            html += `<p class="text-sm text-gray-700">割り当て対象外：${currentEntryData.openedCard || "トレカ"}</p>`;
           } else {
             const membersOpt = (typeof getActiveMembers === "function" ? getActiveMembers() : ["ミンジュ","ウォンヒ","モカ","イロハ","ユナ"])
               .map(m => `<option value="${m}" ${currentEntryData.openedCard === m ? "selected" : ""}>${m}</option>`).join("");
@@ -14107,6 +14200,26 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
         window.openProfileModal?.("address");
         return;
       }
+      const savedTokens = userData.fcmTokens;
+      const hasFcmToken = Boolean(
+        String(userData.fcmToken || "").trim() ||
+        (typeof savedTokens === "string" && savedTokens.trim()) ||
+        (Array.isArray(savedTokens) && savedTokens.some(token => String(token || "").trim())) ||
+        (savedTokens && typeof savedTokens === "object" && !Array.isArray(savedTokens) &&
+          Object.values(savedTokens).some(token => String(token || "").trim()))
+      );
+      if (typeof Notification === "undefined" || Notification.permission !== "granted" || !hasFcmToken) {
+        const pushBox = document.getElementById("ag-push-req-box");
+        const pushMessage = document.getElementById("ag-push-required-message");
+        const pushOffView = document.getElementById("ag-push-off-view");
+        const pushOnView = document.getElementById("ag-push-on-view");
+        if (pushMessage) pushMessage.textContent = "企画成立後の購入URL通知や発送期限のお知らせを受け取るため、プッシュ通知をオンにしてから申し込んでください";
+        if (pushBox) pushBox.className = "mb-3 p-3 rounded-2xl bg-rose-50 border border-rose-200 shadow-sm transition";
+        pushOffView?.classList.remove("hidden");
+        pushOnView?.classList.add("hidden");
+        pushBox?.scrollIntoView({ behavior: "smooth", block: "center" });
+        return;
+      }
       const minCompletedTrades = Number(currentPoolData?.minCompletedTrades) || 0;
       if (minCompletedTrades > 0) {
         const tradesSnap = await refs.getDocs(refs.query(
@@ -14124,11 +14237,6 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       if (!document.getElementById("ag-auto-ship-consent")?.checked) {
         showToast("自動発送の事前同意にチェックしてください", "error");
         return;
-      }
-      if (typeof Notification === "undefined" || Notification.permission !== "granted") {
-        showToast("申し込みにはプッシュ通知の許可が必要です", "error");
-        await window.requestAutoGoPushPermission?.();
-        if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
       }
       await refs.reserveAutoGoEntry({
         poolId: activePoolId,

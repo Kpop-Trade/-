@@ -606,6 +606,17 @@ exports.reserveAutoGoEntry = onCall(async (request) => {
     if (user.autoGoBanned === true) {
       throw new HttpsError("permission-denied", "this account is banned from Auto-GO");
     }
+    const savedTokens = user.fcmTokens;
+    const hasFcmToken = Boolean(
+      String(user.fcmToken || "").trim() ||
+      (typeof savedTokens === "string" && savedTokens.trim()) ||
+      (Array.isArray(savedTokens) && savedTokens.some((token) => String(token || "").trim())) ||
+      (savedTokens && typeof savedTokens === "object" && !Array.isArray(savedTokens) &&
+        Object.values(savedTokens).some((token) => String(token || "").trim()))
+    );
+    if (!hasFcmToken) {
+      throw new HttpsError("failed-precondition", "push notification registration is required");
+    }
     const pool = poolSnap.data();
     if (!["recruiting", "activating", "active"].includes(pool.status) || pool.recruitmentClosedAt) {
       throw new HttpsError("failed-precondition", "recruitment is closed");
