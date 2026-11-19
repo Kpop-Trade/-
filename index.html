@@ -1468,15 +1468,23 @@ html, body {
             <div id="detail-photos"></div>
           </div>
           <div class="px-4 pt-3 pb-2 space-y-3">
-            <div class="flex items-center gap-3">
-              <button id="detail-like-btn" onclick="toggleDetailLike()" class="inline-flex items-center">
-                <span id="detail-like-icon" class="text-[18px] font-normal leading-none">♡</span> <span id="detail-like-count" class="text-[13px]">0</span>
+            <div class="flex items-center justify-between pt-0.5">
+          <div class="flex items-center gap-4">
+            <div class="flex items-center gap-2">
+              <button id="detail-like-btn" onclick="toggleDetailLike()" class="w-11 h-11 rounded-full bg-[#f5f5f5] hover:bg-[#ebebeb] active:scale-95 transition flex items-center justify-center">
+                <span id="detail-like-icon" class="text-[20px] font-normal leading-none"></span>
               </button>
-              <button id="detail-comment-btn" type="button" onclick="document.getElementById('detail-comment-input').focus()" class="inline-flex items-center">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 16.5 4.2 20c-.4.8.5 1.6 1.2 1.1L9 18.6A8.5 8.5 0 1 0 6 16.5Z" stroke="#444" stroke-width="1.6"/><circle cx="8.2" cy="12" r="1" fill="#444"/><circle cx="12" cy="12" r="1" fill="#444"/><circle cx="15.8" cy="12" r="1" fill="#444"/></svg>
-                <span id="detail-comment-count" class="text-[13px]">0</span>
-              </button>
+              <span id="detail-like-count" class="text-[13px] font-medium text-[#333333]">0</span>
             </div>
+            <div class="flex items-center gap-2">
+              <button id="detail-comment-btn" type="button" onclick="document.getElementById('detail-comment-input').focus()" class="w-11 h-11 rounded-full bg-[#f5f5f5] hover:bg-[#ebebeb] active:scale-95 transition flex items-center justify-center text-[#333333]">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 16.5 4.2 20c-.4.8.5 1.6 1.2 1.1L9 18.6A8.5 8.5 0 1 0 6 16.5Z" stroke="currentColor" stroke-width="1.7"/><circle cx="8.2" cy="12" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="15.8" cy="12" r="1" fill="currentColor"/></svg>
+              </button>
+              <span id="detail-comment-count" class="text-[13px] font-medium text-[#333333]">0</span>
+            </div>
+          </div>
+          <div id="detail-pricecut-pill-wrap"></div>
+        </div>
             <h2 id="detail-item-title" class="text-[19px] font-bold text-[#222222] leading-[1.45] tracking-[-0.01em]"></h2>
             <div id="detail-condition-box" class="hidden text-[13px] text-[#555555] mt-1.5"><span id="detail-condition"></span></div>
             <div class="flex items-center gap-1 text-[12px] text-[#888888] mt-1"><svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 7v5l3 2"/></svg><span id="detail-time"></span></div>
@@ -4602,11 +4610,22 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
             ? `<p class="text-xs text-gray-500 font-medium text-center bg-white/50 p-2 rounded-xl border border-white">この募集は停止しています</p>`
             : `<button type="button" onclick="applyBundlePost(${index})" class="w-full bg-gradient-to-r from-illit-purple to-illit-accent text-white font-medium py-3 rounded-full shadow-md border border-white/30">バツを付けたカードを申し込む</button>`;
         } else {
-          const btnLabel = isGroup ? "応募する" : (p.isSell ? "購入する" : "申し込む");
-          const btnGrad = isGroup ? "from-teal-400 to-teal-500" : "from-illit-purple to-illit-accent";
-          const onclick = isGroup ? `joinGroup(${index})` : (p.isSell ? `confirmPurchase(${index})` : `applyToPost(${index})`);
-          const offerBtn = (p.isSell && (!currentUser || p.userId !== currentUser.uid)) ? `<button type="button" onclick="proposePriceCutById('${escapeHtml(p.id)}')" class="bg-white/80">値下げを提案</button>` : "";
-          actions.innerHTML = `<button onclick="${onclick}" class="w-full bg-gradient-to-r ${btnGrad} text-white font-medium py-3 rounded-full shadow-md border border-white/30">${btnLabel}</button>${offerBtn}`;
+          const pillWrap = document.getElementById("detail-pricecut-pill-wrap");
+      if (pillWrap) {
+        if (p.isSell && (!currentUser || p.userId !== currentUser.uid)) {
+          pillWrap.innerHTML = `<button type="button" onclick="proposePriceCutById('${escapeHtml(p.id)}')" class="inline-flex items-center gap-1.5 rounded-full bg-[#f5f5f5] hover:bg-[#ebebeb] active:scale-95 transition px-3.5 py-2 text-[12px] font-bold text-[#333333]"><span class="w-4 h-4 rounded-full border border-[#555555] inline-flex items-center justify-center text-[10px] leading-none">¥</span><span>値下げ依頼</span></button>`;
+        } else {
+          pillWrap.innerHTML = "";
+        }
+      }
+      const btnLabel = isGroup ? "応募する" : (p.isSell ? "購入へ" : "申し込む");
+      const onclick = isGroup ? `joinGroup(${index})` : (p.isSell ? `confirmPurchase(${index})` : `applyToPost(${index})`);
+      if (p.isSell && (!currentUser || p.userId !== currentUser.uid)) {
+        actions.innerHTML = `<div class="bg-white border-t border-gray-200 px-3 py-2.5 flex items-center gap-2.5"><button type="button" onclick="proposePriceCutById('${escapeHtml(p.id)}')" class="flex-1 h-11 rounded-[6px] border border-[#ff333f] bg-white text-[#ff333f] text-[14px] font-bold active:opacity-80 transition">値下げ依頼</button><button type="button" onclick="${onclick}" class="flex-1 h-11 rounded-[6px] bg-[#ff333f] text-white text-[14px] font-bold shadow-sm active:opacity-90 transition">${btnLabel}</button></div>`;
+      } else {
+        const btnGrad = isGroup ? "from-teal-400 to-teal-500" : "from-illit-purple to-illit-accent";
+        actions.innerHTML = `<div class="px-3 py-2.5"><button type="button" onclick="${onclick}" class="w-full bg-gradient-to-r ${btnGrad} text-white font-bold py-3 rounded-full shadow-md border border-white/30">${btnLabel}</button></div>`;
+      }
         }
       }
       const more = document.getElementById("detail-more");
