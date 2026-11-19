@@ -13204,7 +13204,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       snap.forEach(d => pools.push({ id: d.id, ...d.data() }));
     } catch (err) {
       console.warn("auto_go_pools read warn:", err);
-      permWarn = `<div class="bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-bold rounded-xl p-2.5">⚠️ Firestoreルールに auto_go_pools の許可を追加してください（現在のUID: ${window.currentUser?.uid || "未ログイン"}）（${err?.code || "permission-denied"}）</div>`;
+      permWarn = `<div class="bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-bold rounded-xl p-2.5">⚠️ Firestoreルールに auto_go_pools の許可を追加してください（現在のUID: ${window.currentUser?.uid || "未ログイン"}）（${err?.code || "error"}: ${err?.message || ""}）</div>`;
     }
     pools.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
 
