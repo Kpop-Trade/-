@@ -2057,10 +2057,22 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     window.closePwaGuideModal = function() { document.getElementById("pwa-modal").classList.add("hidden"); };
 
     window.openNotificationsModal = function() {
-      if (!currentUser) return /* alert hidden */ console.log("ログインが必要です。");
-      renderNotificationsList();
-      document.getElementById("notifications-modal").classList.remove("hidden");
-    };
+  if (!currentUser) return /* alert hidden */ console.log("ログインが必要です。");
+  const currentList = Array.isArray(userData.notifications) ? userData.notifications : [];
+  const hasUnread = currentList.some(n => !n.read);
+  if (hasUnread) {
+    const updatedList = currentList.map(n => ({ ...n, read: true }));
+    userData.notifications = updatedList;
+    if (typeof updateNotifBadge === "function") {
+      updateNotifBadge();
+    }
+    if (typeof saveUserData === "function") {
+      saveUserData({ notifications: updatedList }).catch(() => {});
+    }
+  }
+  renderNotificationsList();
+  document.getElementById("notifications-modal").classList.remove("hidden");
+};
     window.closeNotificationsModal = function() { document.getElementById("notifications-modal").classList.add("hidden"); };
     function renderNotificationsList() {
       const el = document.getElementById("notifications-list");
