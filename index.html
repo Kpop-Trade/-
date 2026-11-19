@@ -1720,6 +1720,7 @@ html, body {
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { getFirestore, collection, collectionGroup, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, where, orderBy, limit, startAfter, onSnapshot, serverTimestamp, increment, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js";
 
 
 
@@ -1739,7 +1740,16 @@ window.__autoGoRefs = {
   app, auth,
   db: getFirestore(app),
   collection, doc, getDoc, getDocs, setDoc, updateDoc,
-  query, where, orderBy, limit, onSnapshot, serverTimestamp, increment, runTransaction
+  query, where, orderBy, limit, onSnapshot, serverTimestamp, increment, runTransaction,
+  uploadAutoGoEvidence: httpsCallable(getFunctions(app, "asia-northeast1"), "uploadAutoGoEvidence"),
+  registerAutoGoPurchase: httpsCallable(getFunctions(app, "asia-northeast1"), "registerAutoGoPurchase"),
+  reserveAutoGoEntry: httpsCallable(getFunctions(app, "asia-northeast1"), "reserveAutoGoEntry"),
+  cancelAutoGoEntry: httpsCallable(getFunctions(app, "asia-northeast1"), "cancelAutoGoEntry"),
+  registerAutoGoReveal: httpsCallable(getFunctions(app, "asia-northeast1"), "registerAutoGoReveal"),
+  registerAutoGoArrival: httpsCallable(getFunctions(app, "asia-northeast1"), "registerAutoGoArrival"),
+  registerAutoGoDelay: httpsCallable(getFunctions(app, "asia-northeast1"), "registerAutoGoDelay"),
+  registerAutoGoShipment: httpsCallable(getFunctions(app, "asia-northeast1"), "registerAutoGoShipment"),
+  registerAutoGoReceipt: httpsCallable(getFunctions(app, "asia-northeast1"), "registerAutoGoReceipt")
 };
 
   
@@ -12949,8 +12959,8 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
             <div class="flex items-start gap-2.5 p-2 rounded-xl bg-white border border-purple-100">
               <span class="w-5 h-5 rounded-full bg-purple-600 text-white text-[10px] font-black flex items-center justify-center shrink-0 mt-0.5">1</span>
               <div>
-                <p class="font-bold text-gray-900">推しメンバーを第1〜第3希望まで選んでエントリー</p>
-                <p class="text-[10px] text-gray-500 mt-0.5">ランダム特典・封入トレカの希望メンバーと参加口数を登録します（この時点ではまだ決済されません）。</p>
+                <p class="font-bold text-gray-900">希望メンバーを1人選んでエントリー</p>
+                <p class="text-[10px] text-gray-500 mt-0.5">同じ企画で申し込めるのは1人1枠です（この時点ではまだ決済されません）。</p>
               </div>
             </div>
 
@@ -12967,7 +12977,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
               <div>
                 <p class="font-bold text-gray-900">アルバム・シリアルもそのまま手元に！抱き合わせゼロで推しが届く</p>
                 <p class="text-[10px] text-gray-500 mt-0.5">購入枚数分の<strong>アルバム本体・シリアルコード（応募券等）もそのまま自分のもの</strong>として受け取れます。不要メンバーの抱き合わせは一切なく、希望メンバーの特典トレカも揃います。</p>
-              </div><div class="p-2 rounded-xl bg-white border border-purple-100 text-[11px]"><p class="font-bold text-gray-900">🎯 第一希望のトレカがもらえる確率の目安</p><div class="mt-1 text-gray-700"><div class="flex justify-between border-b border-purple-100 py-0.5 text-[10px] text-gray-500"><span>全体の人数</span><span></span><span>第一希望確率</span></div><div class="flex justify-between py-0.5"><span>20人</span><span>4人</span><span class="font-bold">約82.5%</span></div><div class="flex justify-between py-0.5"><span>50人</span><span>10人</span><span class="font-bold">約88.8%</span></div><div class="flex justify-between py-0.5"><span>100人</span><span>20人</span><span class="font-bold">約92.1%</span></div></div></div>
+              </div><div class="p-2 rounded-xl bg-white border border-purple-100 text-[11px]"><p class="font-bold text-gray-900">🎯 第一希望のトレカがもらえる確率の目安</p><div class="mt-1 text-gray-700"><div class="flex justify-between border-b border-purple-100 py-0.5 text-[10px] text-gray-500"><span>全体の人数</span><span></span><span>第一希望確率</span></div><div class="flex justify-between py-0.5"><span>20人</span><span></span><span class="font-bold">約82.5%</span></div><div class="flex justify-between py-0.5"><span>50人</span><span></span><span class="font-bold">約88%</span></div><p class="text-[9px] text-gray-500 mt-1">人数ごとの表示はこの2点を基準に補間した参考値です。獲得を保証するものではありません。</p></div></div>
             </div>
           </div>
 
@@ -12976,8 +12986,9 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
             <p>・<strong>1人あたりメンバー1つまで：</strong>同じ企画につき、お一人様1メンバー（1枠）までのお申し込みとなります。</p>
             <p>・<strong>全メンバー均等達成で発動＆+3枠ずつ自動追加：</strong>5人グループは<strong>各メンバー4枠</strong>、4人グループは<strong>各メンバー5枠</strong>が全員分埋まった時点で共同購入が発動します。発動後は<strong>全メンバー一律+3枠ずつ</strong>新しい募集枠が追加解放され、以降も3枠ずつ全員分が埋まるたびに次の3枠が追加されます。</p>
             <p>・<strong>メンバー枠は完全先着順です：</strong>人気メンバーの枠は申し込み順に埋まり、上限に達したメンバーから受付終了となります。</p>
-            <p>・<strong>マッチングは指定日時からの先着順です：</strong>開封・交換マッチングの開始時刻になると、登録・開封した方から先着順でペアが成立します（プッシュ通知をONにしておくと開始・成立をすぐ受け取れます）。</p>
-            <p>・<strong>専用購入URL発行から10時間以内に購入＆完了報告：</strong>枠が確定し購入URLが届いてから<strong>2時間以内</strong>に決済と「購入完了を報告する」を完了してください。期限を過ぎると自動的に枠が失効します。</p>
+            <p>・<strong>開封結果の登録期間：</strong>5人目がアルバム到着を報告すると4日間の登録期間が始まり、終了後に自動マッチングします。</p>
+            <p>・<strong>専用購入URL発行から10時間以内に購入＆完了報告：</strong>購入画面で日時とアルバムが見えるスクリーンショットを登録してください。期限を過ぎると自動キャンセル・ペナルティとなります。</p>
+            <p>・<strong>開封結果の登録：</strong>自引きの場合も必ず結果を登録してください。到着や開封が遅れる場合は、期限前に遅延理由を報告してください。</p>
             <p>・<strong>成立後のキャンセル不可：</strong>枠が埋まりマッチング・購入が確定した後の自己都合キャンセルはできません（確定前であればキャンセル・希望変更が可能です）。</p>
             <p>・<strong>シェアで成立率アップ：</strong>他のメンバー希望者が集まるほど全体枠が早く埋まります（下の「Xでシェアして枠を埋める」で募集を広げられます）。</p>
           </div>
@@ -13031,7 +13042,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       <div class="flex justify-between items-end">
         <div>
           <span class="text-[11px] text-gray-600">現在の参加人数</span>
-          <div class="text-xl font-black text-purple-900"><span id="ag-total-count">0</span> <span class="text-xs font-normal text-gray-500">/ <span id="ag-target-count">48</span>人（最低<span id="ag-min-count">20</span>人で発動）</span></div>
+          <div class="text-xl font-black text-purple-900"><span id="ag-total-count">0</span> <span class="text-xs font-normal text-gray-500">/ <span id="ag-target-count">20</span>人（最低<span id="ag-min-count">20</span>人で発動）</span></div>
         </div>
         <div class="text-right">
           <span id="ag-status-badge" class="text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800">募集中</span>
@@ -13054,31 +13065,17 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
         <span class="text-[10px] text-purple-600 font-bold">予約無料・発動まで決済なし</span>
       </div>
       <div id="ag-consent-box" class="bg-purple-50/80 border border-purple-200 rounded-xl p-2.5 mb-2 space-y-1.5">
-            <div class="text-[11px] font-bold text-purple-900">📋 自動交換・直接発送の事前同意（必須）</div>
-            <div class="grid grid-cols-2 gap-1.5">
-              <div>
-                <label class="block text-[10px] text-gray-600 font-bold mb-0.5">第1希望メンバー</label>
-                <select id="ag-wish-1" class="w-full text-xs border border-purple-200 rounded-lg px-2 py-1 bg-white">
-                  <option value="ミンジュ">ミンジュ</option><option value="ウォンヒ">ウォンヒ</option><option value="モカ">モカ</option><option value="イロハ">イロハ</option><option value="ユナ">ユナ</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-[10px] text-gray-600 font-bold mb-0.5">第2希望メンバー</label>
-                <select id="ag-wish-2" class="w-full text-xs border border-purple-200 rounded-lg px-2 py-1 bg-white">
-                  <option value="ウォンヒ">ウォンヒ</option><option value="ミンジュ">ミンジュ</option><option value="モカ">モカ</option><option value="イロハ">イロハ</option><option value="ユナ">ユナ</option>
-                </select>
-              </div>
-            </div>
+            <div class="text-[11px] font-bold text-purple-900">📋 開封結果登録・自動発送の事前同意（必須）</div>
             <label class="flex items-start gap-1.5 cursor-pointer pt-0.5">
-              <input type="checkbox" id="ag-auto-ship-consent" class="mt-0.5 rounded text-purple-600">
+              <input type="checkbox" id="ag-auto-ship-consent" required class="mt-0.5 rounded text-purple-600">
               <span class="text-[10px] text-gray-700 leading-tight">
-                登録期限までに開封結果を入力し、システムが自動決定した発送先住所へ期日までに直接郵送すること（個別交渉なし・住所開示）に同意します。
+                開封結果を期限内に登録し、交換が成立した場合はシステムが決定した発送先へ発送することに同意します。住所はマッチング相手に共有されます。
               </span>
             </label>
           </div>
           <div class="bg-purple-50 border border-purple-200 rounded-xl p-2.5 mb-2 text-[11px] text-purple-950 space-y-1">
-  <div class="font-extrabold text-purple-800">🎯 第1希望オンリー保証＆最短直送システム</div>
-  <div class="leading-relaxed">選んだ<strong>第1希望メンバーのみ</strong>が割り当てられます（第2希望の押し付けなし）。自引きした場合は<strong>発送ゼロ</strong>、交換が必要な場合もシステムが<strong>システム指定の最短直送ルートペア</strong>を自動マッチングします。</div>
+  <div class="font-extrabold text-purple-800">🎯 希望メンバーを1人選択</div>
+  <div class="leading-relaxed">同じ企画で申し込めるのは1人1メンバー枠です。自引きの場合も開封結果を登録してください。交換が必要な場合は登録期間終了後に自動マッチングします。</div>
 </div>
 <div id="ag-member-grid" class="grid grid-cols-1 gap-2"></div>
     </div>
@@ -13108,6 +13105,16 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     return (currentPoolData && Array.isArray(currentPoolData.members) && currentPoolData.members.length)
       ? currentPoolData.members
       : PRESET_4;
+  }
+
+  function escapeAutoGoHtml(value) {
+    return String(value || "").replace(/[&<>"']/g, (char) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      "\"": "&quot;",
+      "'": "&#39;"
+    })[char]);
   }
 
   window.toggleAutoGoAdminForm = function() {
@@ -13151,7 +13158,6 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
 
     const desc = document.getElementById("ag-new-desc").value.trim();
     const preset = document.getElementById("ag-new-preset").value;
-    const minP = Math.max(4, Number(document.getElementById("ag-new-min").value) || 20);
     const purchaseUrl = document.getElementById("ag-new-url").value.trim() || "https://weverseshop.io/";
     const fileInput = document.getElementById("ag-new-photo");
     const file = fileInput && fileInput.files ? fileInput.files[0] : null;
@@ -13180,6 +13186,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
         memberCaps,
         memberCounts,
         minParticipants: minP,
+        minThreshold: minP,
         targetParticipants,
         totalCount: 0,
         status: "recruiting",
@@ -13195,7 +13202,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       await selectAutoGoPool(newId);
       const shareUrl = `${location.origin}/?pool=${newId}`;
       navigator.clipboard?.writeText(shareUrl);
-      showToast("しました！", "success");
+      showToast("Auto-GOプールを公開しました！", "success");
     } catch (e) {
       alert("作成に失敗しました: " + (e.message || e));
     } finally {
@@ -13223,10 +13230,10 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     const poolRows = pools.length === 0
       ? '<p class="text-xs text-gray-400 text-center py-6 bg-white/60 rounded-2xl border border-white">登録済みのAuto-GOプールはまだありません</p>'
       : pools.map(p => {
-          const members = p.memberNames || [];
+          const members = p.memberNames || p.members || [];
           const counts = p.memberCounts || {};
-          const slotCap = p.slotPerMember || (members.length === 4 ? 12 : 10);
-          const breakdown = members.map(m => `${m}: ${counts[m] || 0}/${slotCap}`).join(" / ");
+          const caps = p.memberCaps || {};
+          const breakdown = members.map(m => `${m}: ${counts[m] || 0}/${caps[m] || p.slotPerMember || 0}`).join(" / ");
           return `
             <div class="bg-white/85 rounded-2xl p-3.5 border border-white shadow-sm space-y-2">
               <div class="flex items-start justify-between gap-2">
@@ -13235,12 +13242,12 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
                   <div class="min-w-0">
                     <div class="flex items-center gap-1.5">
                       <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${p.status === 'recruiting' ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'}">${p.status === 'recruiting' ? '募集中' : p.status}</span>
-                      <span class="text-[11px] font-bold text-gray-500">${p.totalCount || 0} / ${p.targetParticipants || 50}人</span>
+                      <span class="text-[11px] font-bold text-gray-500">${p.totalCount || 0} / ${p.targetParticipants || 20}人</span>
                     </div>
                     <p class="text-sm font-black text-gray-900 truncate mt-0.5">${p.title || "無題プール"}</p>
                   </div>
                 </div>
-                ${p.status === "active" ? `<span class="shrink-0 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-xl border border-emerald-200">✅ 枠確定済</span>` : `<button type="button" onclick="window.activateAutoGoPool('${p.id}')" class="shrink-0 text-[11px] font-bold text-white bg-indigo-600 px-2.5 py-1.5 rounded-xl shadow-sm">⚡ 枠確定</button>`} <button type="button" onclick="window.deleteAdminAutoGoPool('${p.id}')" class="shrink-0 text-[11px] font-bold text-red-500 bg-red-50 hover:bg-red-100 px-2.5 py-1.5 rounded-xl border border-red-200">削除</button>
+                ${p.status === "active" ? `<span class="shrink-0 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-xl border border-emerald-200">✅ 成立済</span>` : `<span class="shrink-0 text-[11px] font-bold text-amber-700 bg-amber-50 px-2.5 py-1.5 rounded-xl border border-amber-200">${p.status === "cancelled" ? "募集終了" : "自動成立待ち"}</span>`} <button type="button" onclick="window.deleteAdminAutoGoPool('${p.id}')" class="shrink-0 text-[11px] font-bold text-red-500 bg-red-50 hover:bg-red-100 px-2.5 py-1.5 rounded-xl border border-red-200">削除</button>
               </div>
               <p class="text-[11px] text-gray-600 line-clamp-2">${p.description || ""}</p>
               <div class="text-[10px] font-bold text-purple-700 bg-purple-50/80 px-2.5 py-1.5 rounded-xl">${breakdown}</div>
@@ -13263,10 +13270,15 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
           </div>
 
           <div>
+            <label class="block text-[11px] font-bold text-gray-700 mb-1">アルバム購入URL</label>
+            <input id="adm-ag-url" type="url" required placeholder="https://..." class="w-full liquid-glass-input rounded-xl p-2.5 text-xs text-gray-900">
+          </div>
+
+          <div>
             <label class="block text-[11px] font-bold text-gray-700 mb-1">グループ構成（自動枠数設定）</label>
             <select id="adm-ag-preset" class="w-full liquid-glass-input rounded-xl p-2.5 text-xs font-bold text-gray-900">
-              <option value="5">5人組（10枚セット × 10人 = 最大50人 / 最低成立20人）</option>
-              <option value="4">4人組（12枚セット × 12人 = 最大48人 / 最低成立20人）</option>
+              <option value="5">5人組（初期4枠/人・最低20人）</option>
+              <option value="4">4人組（初期5枠/人・最低20人）</option>
             </select>
           </div>
 
@@ -13286,13 +13298,8 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
                   <p class="text-[10px] text-gray-400 mt-0.5">※ 入力した人数に合わせて自動的に枠数・メンバー選択肢が生成されます</p>
                 </div>
                 <div>
-                  <label class="block text-[11px] font-bold text-gray-700 mb-1">マッチング開始日時（指定時間から先着順）</label>
-                  <input id="adm-ag-match-start" type="datetime-local" class="w-full liquid-glass-input px-3 py-2 text-xs">
-                  <p class="text-[10px] text-gray-400 mt-0.5">※ 未指定の場合は即時マッチング可能になります</p>
-                </div>
-                <div>
                   <label class="block text-[11px] font-bold text-gray-700 mb-1">募集終了日時（締め切り）</label>
-                  <input id="adm-ag-recruit-end" type="datetime-local" class="w-full liquid-glass-input px-3 py-2 text-xs">
+                  <input id="adm-ag-recruit-end" type="datetime-local" required class="w-full liquid-glass-input px-3 py-2 text-xs">
                   <p class="text-[10px] text-gray-400 mt-0.5">※ 指定日時を過ぎると自動的に新規参加の受付を終了します</p>
                 </div>
                 <button id="adm-ag-submit-btn" type="button" onclick="window.createAdminAutoGoPool()" class="w-full bg-gradient-to-r from-purple-600 to-pink-500 text-white font-black text-xs py-3 rounded-xl shadow-md active:scale-[0.99] transition">
@@ -13349,20 +13356,23 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       ? rawMembers.split(new RegExp("[,、，\n\r]+")).map(s => s.trim()).filter(Boolean)
       : (presetVal === "4" ? ["メンバーA", "メンバーB", "メンバーC", "メンバーD"] : ["ユナ", "ミンジュ", "モカ", "ウォンヒ", "イロハ"]);
     const memberNames = Array.from(new Set(parsedMembers));
-    if (memberNames.length < 2) {
-      showToast("メンバーは2名以上登録してください", "error");
+    if (![4, 5].includes(memberNames.length)) {
+      showToast("メンバーは4名または5名で登録してください", "error");
       return;
     }
-    const matchStartRaw = (document.getElementById("adm-ag-match-start")?.value || "").trim();
-    const matchStartAt = matchStartRaw ? new Date(matchStartRaw).getTime() : 0;
     const recruitEndRaw = (document.getElementById("adm-ag-recruit-end")?.value || "").trim();
     const recruitEndAt = recruitEndRaw ? new Date(recruitEndRaw).getTime() : 0;
-    if (matchStartAt > 0 && recruitEndAt > 0 && recruitEndAt <= matchStartAt) {
-      showToast("募集終了日時は開始日時より後の時刻を指定してください", "error");
+    if (!recruitEndAt || recruitEndAt <= Date.now()) {
+      showToast("募集終了日時は現在より後の日時を指定してください", "error");
       return;
     }
     const initialCapPerMember = memberNames.length === 5 ? 4 : (memberNames.length === 4 ? 5 : Math.max(1, Math.ceil(20 / memberNames.length)));
     const minParticipants = initialCapPerMember * memberNames.length;
+    const purchaseUrl = (document.getElementById("adm-ag-url")?.value || "").trim();
+    if (!/^https:\/\//i.test(purchaseUrl)) {
+      showToast("有効なアルバム購入URL（https://）を入力してください", "error");
+      return;
+    }
     const memberCounts = {};
     const memberCaps = {};
     memberNames.forEach(m => {
@@ -13373,6 +13383,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     await addDoc(collection(db, "auto_go_pools"), {
       title,
       description: desc,
+      purchaseUrl,
       imageUrl,
       memberCountType: memberNames.length,
       memberNames,
@@ -13380,17 +13391,15 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       memberCounts,
       memberCaps,
       minParticipants,
+      minThreshold: 20,
       targetParticipants: minParticipants,
-      matchStartAt,
       recruitEndAt,
-        slotPerMember: isFour ? 12 : 10,
-        targetParticipants: isFour ? 48 : 50,
-        minThreshold: 20,
-        totalCount: 0,
-        status: "recruiting",
-        createdBy: currentUser.uid,
-        createdAt: serverTimestamp()
-      });
+      slotPerMember: initialCapPerMember,
+      totalCount: 0,
+      status: "recruiting",
+      createdBy: currentUser.uid,
+      createdAt: serverTimestamp()
+    });
 
       showToast("Auto-GO プールを公開しました！", "success");
       await window.renderAdminAutoGoPanel();
@@ -13413,46 +13422,6 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       showToast("削除エラー: " + (e?.code || e?.message), "error");
     }
   };
-    window.activateAutoGoPool = async function(poolId) {
-      if (!confirm("枠を確定し、確定者に10時間以内の購入登録期限を発行しますか？")) return;
-      try {
-        const { db, doc, collection, getDocs, updateDoc, addDoc, serverTimestamp } = window.__autoGoRefs;
-        const poolRef = doc(db, "auto_go_pools", poolId);
-        const poolSnap = await getDoc(poolRef);
-        if (!poolSnap.exists()) return;
-        const poolData = poolSnap.data();
-        const entriesSnap = await getDocs(collection(db, "auto_go_pools", poolId, "entries"));
-        const entries = entriesSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
-        if (!entries.length) { alert("参加者がいません"); return; }
-        entries.sort((a, b) => (a.createdAt?.toMillis ? a.createdAt.toMillis() : 0) - (b.createdAt?.toMillis ? b.createdAt.toMillis() : 0));
-        const maxCap = Number(poolData.targetP || 999);
-        const deadlineMs = Date.now() + 10 * 3600 * 1000;
-        let ok = 0;
-        for (let i = 0; i < entries.length; i++) {
-          const isOk = i < maxCap;
-          await updateDoc(doc(db, "auto_go_pools", poolId, "entries", entries[i].uid), {
-            status: isOk ? "confirmed" : "waitlist",
-            slotOrder: i + 1,
-            purchaseDeadlineAt: isOk ? deadlineMs : null
-          });
-          if (isOk) {
-            ok++;
-            await addDoc(collection(db, "notifications"), {
-              toUid: entries[i].uid,
-              type: "autogo_confirmed",
-              title: "⚡ Auto-GO 枠確定！",
-              body: `「${poolData.title || "Auto-GO"}」の枠が確定しました。10時間以内に購入登録を行ってください。`,
-              poolId, read: false, createdAt: serverTimestamp()
-            });
-          }
-        }
-        await updateDoc(poolRef, { status: "active", purchaseDeadlineAt: deadlineMs, confirmedCount: ok });
-        alert(`✅ ${ok}名の枠を確定し、10時間期限を発行しました！`);
-        const el = document.getElementById("admin-autogo-panel");
-        if (el) await window.renderAdminAutoGoPanel(el);
-      } catch (e) { alert("エラー: " + e.message); }
-    };
-
   window.__selectAutoGoPool = function(poolId) {
     if (typeof selectAutoGoPool === "function") {
       return selectAutoGoPool(poolId);
@@ -13530,13 +13499,16 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     tabsEl.innerHTML = allPools.map(p => {
       const isSelected = p.id === activePoolId;
       return `<button onclick="selectAutoGoPool('${p.id}')" class="shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold border transition ${isSelected ? 'bg-purple-600 text-white border-purple-600 shadow-sm' : 'bg-white text-gray-700 border-gray-200 hover:bg-purple-50'}">
-        ${p.title} (${p.totalCount || 0}/${p.targetParticipants || 48})
+        ${p.title} (${p.totalCount || 0}/${p.targetParticipants || 20})
       </button>`;
     }).join("");
   }
 
   window.selectAutoGoPool = async function(poolId) {
     activePoolId = poolId;
+    currentEntryData = null;
+    window.__agActivePoolId = poolId;
+    window.__agCurrentEntryData = null;
     renderPoolTabs();
     const { db, auth, doc, onSnapshot } = window.__autoGoRefs;
 
@@ -13552,6 +13524,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       if (unsubEntry) unsubEntry();
       unsubEntry = onSnapshot(doc(db, "auto_go_pools", poolId, "entries", user.uid), (snap) => {
         currentEntryData = snap.exists() ? snap.data() : null;
+        window.__agCurrentEntryData = currentEntryData;
         renderAutoGoUI();
       });
     }
@@ -13559,21 +13532,25 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
 
   function renderAutoGoUI() {
     if (!currentPoolData) return;
+    window.__agActivePoolId = activePoolId;
+    window.__agCurrentEntryData = currentEntryData;
     const total = currentPoolData.totalCount || 0;
-    const minP = currentPoolData.minParticipants || 20;
-    const targetP = currentPoolData.targetParticipants || 48;
+    const minP = currentPoolData.minThreshold || currentPoolData.minParticipants || 20;
+    const targetP = currentPoolData.targetParticipants || 20;
     const pct = Math.min(100, Math.round((total / targetP) * 100));
-  const memberCnt = Math.max(1, getActiveMembers().length);
-  const baseSoloProb = Math.round(100 / memberCnt);
-  const prob = total === 0
-    ? `${baseSoloProb}%（${minP}人達成で78%にUP）`
-    : total >= Math.round(targetP * 0.9)
-      ? "92%"
-      : total >= Math.round(targetP * 0.6)
-        ? "87%"
-        : total >= minP
-          ? "78%"
-          : `${Math.min(75, Math.round(baseSoloProb + (78 - baseSoloProb) * (total / Math.max(1, minP))))}%（${minP}人達成で78%）`;
+    const recruitEndMs = currentPoolData.recruitEndAt?.toMillis
+      ? currentPoolData.recruitEndAt.toMillis()
+      : Number(currentPoolData.recruitEndAt);
+    const recruitmentClosed = currentPoolData.status === "cancelled" || !!currentPoolData.recruitmentClosedAt ||
+      (recruitEndMs > 0 && Date.now() >= recruitEndMs);
+    const memberCnt = Math.max(1, getActiveMembers().length);
+    const baselineProbability = 100 / memberCnt;
+    const probability = total <= 20
+      ? baselineProbability + (82.5 - baselineProbability) * (total / 20)
+      : total <= 50
+        ? 82.5 + (88 - 82.5) * ((total - 20) / 30)
+        : Math.min(99, 88 + (12 * (total - 50) / 65));
+    const prob = `${probability.toFixed(1)}%（参考値）`;
 
   const rawTitle = (currentPoolData.title || "Auto-GO").replace(/全体プール/g, "").trim();
   document.getElementById("ag-pool-title").textContent = rawTitle || "Auto-GO";
@@ -13591,9 +13568,13 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     document.getElementById("ag-min-count").textContent = minP;
     document.getElementById("ag-progress-bar").style.width = pct + "%";
     document.getElementById("ag-prob-text").textContent = prob;
+    document.getElementById("ag-prob-text").title = "20人で82.5%、50人で88%となるよう補間した参考値です。獲得を保証するものではありません。";
 
     const badge = document.getElementById("ag-status-badge");
-    if (total >= targetP) {
+    if (currentPoolData.status === "cancelled") {
+      badge.textContent = "募集終了";
+      badge.className = "text-[11px] font-bold px-2.5 py-1 rounded-full bg-gray-200 text-gray-700";
+    } else if (total >= targetP) {
       badge.textContent = "🔥 満員御礼・開催確定";
       badge.className = "text-[11px] font-bold px-2.5 py-1 rounded-full bg-pink-600 text-white";
     } else if (total >= minP) {
@@ -13610,19 +13591,21 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     if (currentEntryData) {
       entrySec.classList.add("hidden");
       statusBox.classList.remove("hidden");
-      const isActivated = total >= minP || currentPoolData.status === "active";
-    const isRecruitClosed = !!(currentPoolData.recruitEndAt && Number(currentPoolData.recruitEndAt) > 0 && Date.now() > Number(currentPoolData.recruitEndAt));
-
+        const isActivated = currentPoolData.status === "active";
       let html = `<div class="flex justify-between items-center">
         <span class="text-xs font-bold text-indigo-950">あなたの希望枠: ${currentEntryData.wantedMember}</span>
         <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-600 text-white">${currentEntryData.status}</span>
       </div>`;
 
-      if (!isActivated) {
-        html += `<p class="text-[11px] text-indigo-800">仮予約完了！あと <b>${minP - total}人</b> 集まった瞬間に購入URLが自動送信されます。</p>`;
+      if (currentEntryData.status === "cancelled") {
+        html += `<p class="text-xs font-bold text-rose-700">⚠️ この参加枠はキャンセルされました${currentEntryData.penalty ? "（ペナルティ記録済み）" : ""}。</p>`;
+      } else if (!isActivated && currentEntryData.status === "reserved") {
+        html += `<p class="text-[11px] text-indigo-800">仮予約完了！あと <b>${Math.max(0, minP - total)}人</b> 集まった時点で購入URLが自動送信されます。</p><button onclick="cancelAutoGoEntry()" class="w-full rounded-lg border border-rose-200 bg-white py-2 text-xs font-bold text-rose-700">成立前の仮予約をキャンセル</button>`;
       } else if (currentEntryData.status === "waitlist") {
           html += `<div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-amber-900 space-y-1.5"><div class="font-bold text-[13px]">⏳ キャンセル待ち（順位: ${currentEntryData.slotOrder || "-"}番目）</div><p class="text-[12px] leading-relaxed text-amber-800">定員に達しているため現在キャンセル待ちとなります。購入期限内に未購入の枠が出た場合、自動で繰り上げ通知が届きます。</p></div>`;
-        } else if (currentEntryData.status === "reserved" || currentEntryData.status === "confirmed") {
+        } else if (currentEntryData.status === "reserved") {
+          html += `<p class="text-[11px] text-indigo-800">成立処理中です。購入URLが通知されるまでお待ちください。</p>`;
+        } else if (currentEntryData.status === "confirmed") {
         html += `<div class="bg-white rounded-xl p-2.5 border border-indigo-200 space-y-2">
           <p class="text-[11px] font-bold text-emerald-700">🎉 ${minP}人達成！専用購入URLが発行されました</p>
           <div id="ag-purchase-deadline-box" class="p-2 rounded-lg bg-rose-50 border border-rose-200 text-center">
@@ -13631,28 +13614,40 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
               </div>
               <div id="ag-purchase-active-actions" class="space-y-2">
                 <a href="${currentPoolData.purchaseUrl || '#'}" target="_blank" rel="noopener" class="block text-center bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-bold py-2 rounded-lg">1. 公式ショップで購入する ↗</a>
-          <button onclick="markAutoGoPurchased()" class="w-full bg-emerald-600 text-white text-xs font-bold py-2 rounded-lg">2. 購入完了を報告する（枠確定）</button>
+                <label class="block text-[10px] font-bold text-gray-700">2. 購入日時とアルバムが見えるスクリーンショット
+                  <input id="ag-purchase-proof" type="file" accept="image/*" class="block w-full mt-1 text-[10px]">
+                </label>
+                <button onclick="markAutoGoPurchased()" class="w-full bg-emerald-600 text-white text-xs font-bold py-2 rounded-lg">3. 購入スクリーンショットを登録</button>
               </div>
               <div id="ag-purchase-expired-msg" class="hidden p-2.5 rounded-lg bg-gray-100 border border-gray-300 text-center">
-                <p class="text-xs font-black text-gray-700">⚠️ 購入期限（2時間）が切れました</p>
+                <p class="text-xs font-black text-gray-700">⚠️ 購入登録期限（10時間）が切れました</p>
                 <p class="text-[10px] text-gray-500 mt-0.5">制限時間内に購入完了報告が行われなかったため、この枠は失効しました。</p>
               </div>
         </div>`;
-      } else if (currentEntryData.status === "waitlist") {
-          html += `<div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-amber-900 space-y-1.5"><div class="font-bold text-[13px]">⏳ キャンセル待ち（順位: ${currentEntryData.slotOrder || "-"}番目）</div><p class="text-[12px] leading-relaxed text-amber-800">定員に達しているため現在キャンセル待ちとなります。購入期限内に未購入の枠が出た場合、自動で繰り上げ通知が届きます。</p></div>`;
-        } else if (currentEntryData.status === "purchased") {
+      } else if (currentEntryData.status === "purchased") {
         html += `<div class="bg-white rounded-xl p-2.5 border border-purple-200 space-y-2">
-          <p class="text-[11px] font-bold text-purple-900">📦 CD到着後、72時間以内に開封結果を登録してください（未登録は自動除外＆利用制限）</p>
+          <p class="text-[11px] font-bold text-purple-900">📦 アルバムが届いたら到着を報告し、開封結果を登録してください。5人目の到着報告から4日間で受付終了します。</p>
+          <button onclick="markAutoGoAlbumArrived()" class="w-full bg-indigo-600 text-white text-xs font-bold py-2 rounded-lg">アルバム到着を報告</button>
+          <button onclick="reportAutoGoDelay()" class="w-full border border-amber-300 bg-amber-50 text-amber-900 text-xs font-bold py-2 rounded-lg">到着が遅れている（理由を報告）</button>
+        </div>`;
+      } else if (currentEntryData.status === "arrived") {
+        const revealDeadline = currentPoolData.revealDeadlineAt?.toDate ? currentPoolData.revealDeadlineAt.toDate().toLocaleString("ja-JP") : "5人目の到着報告後、4日間";
+        html += `<div class="bg-white rounded-xl p-2.5 border border-purple-200 space-y-2">
+          <p class="text-[11px] font-bold text-purple-900">📦 開封結果を登録してください。登録期限: ${revealDeadline}</p>
           <select id="ag-pulled-select" class="w-full border border-gray-300 rounded-lg p-2 text-xs">
             <option value="">実際に引いたメンバーを選択...</option>
             ${getActiveMembers().map(m => `<option value="${m}">${m}</option>`).join("")}
           </select>
-          <button onclick="submitAutoGoReveal()" class="w-full bg-pink-600 text-white text-xs font-bold py-2 rounded-lg">開封結果を登録して自動マッチング</button>
+          <button onclick="submitAutoGoReveal()" class="w-full bg-pink-600 text-white text-xs font-bold py-2 rounded-lg">開封結果を登録（自引きも必須）</button>
+          <button onclick="reportAutoGoDelay()" class="w-full border border-amber-300 bg-amber-50 text-amber-900 text-xs font-bold py-2 rounded-lg">開封が遅れている（理由を報告）</button>
         </div>`;
+      } else if (currentEntryData.status === "delayed") {
+        html += `<p class="text-xs font-bold text-amber-800">到着遅延を報告済みです。運営からの案内をお待ちください。</p>`;
       } else if (currentEntryData.status === "self_pulled") {
-        html += `<p class="text-xs font-bold text-emerald-700">🎊 自引き達成おめでとうございます！交換不要で完了です。</p>`;
+        html += `<p class="text-xs font-bold text-emerald-700">🎊 開封結果を登録済み（自引き）。登録期間終了後に結果が確定します。</p>`;
       } else if (currentEntryData.status === "waiting_match") {
-        html += `<p class="text-xs text-purple-800">⏳ <b>${currentEntryData.pulledMember}</b> を登録済み。希望一致の相手が登録した瞬間に交換ルームURLが自動発行されます！</p>`;
+        const revealDeadline = currentPoolData.revealDeadlineAt?.toDate ? currentPoolData.revealDeadlineAt.toDate().toLocaleString("ja-JP") : "5人目の到着報告後、4日間";
+        html += `<p class="text-xs text-purple-800">⏳ <b>${currentEntryData.pulledMember}</b> を登録済み。登録期限（${revealDeadline}）終了後に自動マッチングします。</p>`;
       } else if (currentEntryData.status === "matched") {
         // 取引進捗ステップ判定（1:申込済, 2:開封登録済, 3:発送指令済, 4:発送/受取完了）
           const step = currentEntryData.receivedDone ? 4
@@ -13689,14 +13684,16 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
                 <span class="text-[10px] text-emerald-700">※あなたの元には別の参加者から <strong>${currentEntryData.receivingCard || "希望トレカ"}</strong> が届きます。</span>
               </p>
               <div class="bg-white border border-emerald-200 rounded-lg p-2.5 text-xs text-gray-800 space-y-0.5 select-all">
-                <div class="font-bold text-gray-900">${currentEntryData.shipToName || "受取人"} 様</div>
-                <div class="text-[11px] text-gray-600">〒${currentEntryData.shipToZip || ""}</div>
-                <div class="text-[11px] font-medium">${currentEntryData.shipToAddress}</div>
+                <div class="font-bold text-gray-900">${escapeAutoGoHtml(currentEntryData.shipToName || "受取人")} 様</div>
+                <div class="text-[11px] text-gray-600">〒${escapeAutoGoHtml(currentEntryData.shipToZip)}</div>
+                <div class="text-[11px] font-medium">${escapeAutoGoHtml(currentEntryData.shipToAddress)}</div>
               </div>
               <div class="grid grid-cols-2 gap-1.5 pt-1">
                 ${currentEntryData.shippedDone
                   ? `<div class="text-center text-[11px] font-bold text-emerald-700 bg-emerald-100 py-2 rounded-lg">✅ 発送完了報告済</div>`
-                  : `<button type="button" onclick="markAutoGoShipped()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold py-2 rounded-lg shadow">📦 発送完了を報告</button>`
+                  : `<div class="col-span-2 space-y-1"><label class="block text-[10px] font-bold text-gray-700">伝票の住所が見える発送写真
+                      <input id="ag-shipping-proof" type="file" accept="image/*" class="block w-full mt-1 text-[10px]">
+                    </label><button type="button" onclick="markAutoGoShipped()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold py-2 rounded-lg shadow">📦 写真を登録して発送完了</button></div>`
                 }
                 ${currentEntryData.receivedDone
                   ? `<div class="text-center text-[11px] font-bold text-purple-700 bg-purple-100 py-2 rounded-lg">🎉 受取完了済</div>`
@@ -13711,14 +13708,14 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
           } else {
             const membersOpt = (typeof getActiveMembers === "function" ? getActiveMembers() : ["ミンジュ","ウォンヒ","モカ","イロハ","ユナ"])
               .map(m => `<option value="${m}" ${currentEntryData.openedCard === m ? "selected" : ""}>${m}</option>`).join("");
-            const deadlineStr = (currentPoolData && currentPoolData.regDeadline) ? currentPoolData.regDeadline : "運営指定の登録期限";
+            const deadlineStr = currentPoolData.revealDeadlineAt?.toDate ? currentPoolData.revealDeadlineAt.toDate().toLocaleString("ja-JP") : "5人目の到着報告後、4日間";
             html += `<div class="bg-amber-50 border border-amber-200 rounded-xl p-2.5 space-y-2">
               <div class="flex items-center justify-between">
                 <span class="text-[11px] font-bold text-amber-900">📦 開封結果の登録（期限: ${deadlineStr}）</span>
                 <span class="text-[10px] text-amber-700 font-bold">事前同意済</span>
               </div>
               <p class="text-[10px] text-amber-800 leading-snug">
-                到着後、自分の枠から出たメンバーを登録してください。期限になるとシステムが自動でマッチングし、<strong>発送先住所だけ</strong>を自動通知します。
+                到着後、自分の枠から出たメンバーを登録してください。登録期間終了後に自動マッチングし、発送先を通知します。自引きの場合も登録が必要です。
               </p>
               <div class="flex gap-1.5">
                 <select id="ag-opened-select" class="flex-1 text-xs border border-amber-300 rounded-lg px-2 py-1.5 bg-white font-bold">
@@ -13745,15 +13742,16 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       const cnt = counts[m] ?? 0;
       const rem = Math.max(0, cap - cnt);
       const isFull = rem === 0;
+      const disabled = isFull || recruitmentClosed;
       return `<div class="flex items-center justify-between p-2.5 rounded-xl border ${isFull ? 'bg-gray-100 border-gray-200' : 'bg-white border-purple-200'}">
         <div>
           <div class="text-xs font-bold text-gray-900">${m}</div>
           <div class="text-[10px] ${isFull ? 'text-red-500 font-bold' : 'text-purple-600'}">
-            ${isFull ? '🚫 第1希望 満枠（他メンバー枠から選択可）' : `🎯 第1希望 残り ${rem} / ${cap} 枠`}
+            ${recruitmentClosed ? '募集終了' : isFull ? '🚫 枠満員（他メンバーが埋まると+3枠追加）' : `🎯 残り ${rem} / ${cap} 枠`}
           </div>
         </div>
-        <button onclick="reserveAutoGoMember('${m}')" ${isFull ? 'disabled' : ''} class="px-3.5 py-1.5 rounded-full text-xs font-bold ${isFull ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-gradient-to-r from-purple-600 to-pink-500 text-white shadow'}">
-          ${isFull ? '満員' : '仮予約する'}
+        <button onclick="reserveAutoGoMember('${m}')" ${disabled ? 'disabled' : ''} class="px-3.5 py-1.5 rounded-full text-xs font-bold ${disabled ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-gradient-to-r from-purple-600 to-pink-500 text-white shadow'}">
+          ${recruitmentClosed ? '募集終了' : isFull ? '満員' : '仮予約する'}
         </button>
       </div>`;
     }).join("");
@@ -13761,134 +13759,86 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
 
   window.reserveAutoGoMember = async function(memberName) {
     if (!activePoolId) return;
-    const { db, auth, doc, runTransaction, serverTimestamp } = window.__autoGoRefs;
-    const user = auth.currentUser;
+    const refs = window.__autoGoRefs;
+    const user = refs.auth.currentUser;
     if (!user) { alert("先にログインしてください"); return; }
-
-    const poolRef = doc(db, "auto_go_pools", activePoolId);
-    const entryRef = doc(db, "auto_go_pools", activePoolId, "entries", user.uid);
-    const existingAgSnap = await getDoc(entryRef);
-    if (existingAgSnap.exists()) {
-      if (typeof showToast === "function") {
-        showToast("お一人様1メンバー（1枠）までのお申し込みとなります", "error");
-      }
+    if (!document.getElementById("ag-auto-ship-consent")?.checked) {
+      showToast("自動発送の事前同意にチェックしてください", "error");
       return;
     }
-
+    if (typeof Notification === "undefined" || Notification.permission !== "granted") {
+      showToast("申し込みにはプッシュ通知の許可が必要です", "error");
+      await window.requestAutoGoPushPermission?.();
+      if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+    }
     try {
-      await runTransaction(db, async (tx) => {
-        const poolSnap = await tx.get(poolRef);
-        const entrySnap = await tx.get(entryRef);
-        if (!poolSnap.exists()) throw new Error("プールが存在しません");
-        if (entrySnap.exists()) throw new Error("すでにエントリー済みです");
-
-        const p = poolSnap.data();
-          if (p.recruitEndAt && Number(p.recruitEndAt) > 0 && Date.now() > Number(p.recruitEndAt)) {
-            const edt = new Date(Number(p.recruitEndAt));
-            const pad = n => String(n).padStart(2, "0");
-            throw new Error(`募集終了日時（${edt.getMonth()+1}/${edt.getDate()} ${pad(edt.getHours())}:${pad(edt.getMinutes())}）を過ぎたため受付を終了しました`);
-          }
-          const mList = Array.isArray(p.members) && p.members.length ? p.members : (Array.isArray(p.memberNames) ? p.memberNames : []);
-          const defaultInitCap = mList.length === 5 ? 4 : (mList.length === 4 ? 5 : 4);
-          const curCaps = Object.assign({}, p.memberCaps || {});
-          const curCounts = Object.assign({}, p.memberCounts || {});
-          mList.forEach(m => {
-            if (curCaps[m] == null) curCaps[m] = defaultInitCap;
-            if (curCounts[m] == null) curCounts[m] = 0;
-          });
-
-          const cap = curCaps[memberName] ?? defaultInitCap;
-          const cur = curCounts[memberName] ?? 0;
-          if (cur >= cap) throw new Error("このメンバーの現在枠は満員です（他メンバーが全て埋まると+3枠追加解放されます）");
-
-          curCounts[memberName] = cur + 1;
-          const nextTotal = (p.totalCount || 0) + 1;
-
-          // 全メンバーの現在枠がすべて埋まったか判定
-          const allFilledThisWave = mList.length > 0 && mList.every(m => (curCounts[m] || 0) >= (curCaps[m] || defaultInitCap));
-          let nextStatus = p.status === "active" ? "active" : "recruiting";
-          let nextTarget = p.targetParticipants || (defaultInitCap * mList.length);
-
-          if (allFilledThisWave) {
-            nextStatus = "active";
-            mList.forEach(m => {
-              curCaps[m] = (curCaps[m] || defaultInitCap) + 3;
-            });
-            nextTarget = mList.reduce((acc, m) => acc + (curCaps[m] || 0), 0);
-          }
-
-          tx.update(poolRef, {
-            totalCount: nextTotal,
-            status: nextStatus,
-            memberCounts: curCounts,
-            memberCaps: curCaps,
-            targetParticipants: nextTarget
-          });
-        tx.set(entryRef, {
-          uid: user.uid,
-          wantedMember: memberName,
-          pulledMember: null,
-          status: "reserved",
-          createdAt: serverTimestamp()
-        });
+      await refs.reserveAutoGoEntry({
+        poolId: activePoolId,
+        wantedMember: memberName,
+        consent: true
       });
-    } catch (e) {
-      alert(e.message || "予約に失敗しました");
+      showToast("仮予約しました", "success");
+    } catch (error) {
+      console.error("reserveAutoGoMember error:", error);
+      showToast("予約に失敗しました: " + (error?.message || error), "error");
     }
   };
 
+  window.cancelAutoGoEntry = async function() {
+    if (!activePoolId || !(await appConfirm("成立前の仮予約をキャンセルしますか？"))) return;
+    try {
+      await window.__autoGoRefs.cancelAutoGoEntry({ poolId: activePoolId });
+      showToast("仮予約をキャンセルしました。別のメンバー枠を選べます。", "success");
+    } catch (error) {
+      console.error("cancelAutoGoEntry error:", error);
+      showToast("キャンセルできませんでした: " + (error?.message || error), "error");
+    }
+  };
+
+  function readAutoGoEvidence(file) {
+    if (!file || !file.type.startsWith("image/")) {
+      return Promise.reject(new Error("画像ファイルを選択してください"));
+    }
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("画像を読み込めませんでした"));
+      reader.onload = () => {
+        const image = new Image();
+        image.onerror = () => reject(new Error("画像を開けませんでした"));
+        image.onload = () => {
+          const scale = Math.min(1, 1600 / image.width);
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.round(image.width * scale);
+          canvas.height = Math.round(image.height * scale);
+          canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL("image/jpeg", 0.82));
+        };
+        image.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
   window.markAutoGoPurchased = async function() {
-      const orderNote = prompt("購入したショップの「注文番号」または購入完了メモを入力してください（必須）:", "");
-      if (orderNote === null) {
-        return;
+    const input = document.getElementById("ag-purchase-proof");
+    const file = input?.files?.[0];
+    if (!file) { alert("購入日時とアルバムが見えるスクリーンショットを選択してください。"); return; }
+    const orderNote = prompt("注文番号（任意）を入力してください:", "") || "";
+    try {
+      const refs = window.__autoGoRefs;
+      if (!refs?.uploadAutoGoEvidence || !refs?.registerAutoGoPurchase) {
+        throw new Error("Auto-GOの準備中です。数秒後にもう一度お試しください。");
       }
-      if (!orderNote.trim()) {
-        alert("注文番号または購入メモを入力してください。");
-        return;
-      }
-      if (!activePoolId) {
-        if (typeof showToast === "function") {
-          showToast("参加中のプールが見つかりません", "error");
-        }
-        return;
-      }
-      const issuedMs = Number(window.__agCurrentUrlIssuedAt || 0);
-      if (issuedMs > 0 && Date.now() > issuedMs + 2 * 60 * 60 * 1000) {
-        if (typeof showToast === "function") {
-          showToast("購入制限時間（2時間）を過ぎたため枠が失効しています", "error");
-        } else {
-          alert("購入制限時間（2時間）を過ぎたため枠が失効しています");
-        }
-        return;
-      }
-      try {
-        const refs = window.__autoGoRefs;
-        if (!refs || !refs.db || !refs.doc || !refs.updateDoc) {
-          if (typeof showToast === "function") {
-            showToast("Auto-GOの準備中です。数秒後にもう一度押してください", "info");
-          } else {
-            alert("Auto-GOの準備中です。数秒後にもう一度押してください");
-          }
-          return;
-        }
-        const user = refs.auth && refs.auth.currentUser ? refs.auth.currentUser : null;
-        if (!user) {
-          alert("ログインしてください");
-          return;
-        }
-        await refs.updateDoc(refs.doc(refs.db, "auto_go_pools", activePoolId, "entries", user.uid), {
-          status: "purchased",
-          orderNote: orderNote.trim(),
-          purchasedAt: refs.serverTimestamp()
-        });
-        alert("購入完了を報告しました。CD到着後の開封結果登録をお待ちください。");
-        window.openAutoGoModal(activePoolId);
-      } catch (error) {
-        console.error("markAutoGoPurchased error:", error);
-        const message = error && error.message ? error.message : "失敗しました";
-        alert("購入報告エラー: " + message);
-      }
-    };
+      const dataUrl = await readAutoGoEvidence(file);
+      await refs.uploadAutoGoEvidence({ poolId: activePoolId, kind: "purchase", dataUrl });
+      await refs.registerAutoGoPurchase({ poolId: activePoolId, orderNote: orderNote.trim() });
+      showToast("購入スクリーンショットを登録しました", "success");
+      window.openAutoGoModal(activePoolId);
+    } catch (error) {
+      console.error("markAutoGoPurchased error:", error);
+      alert("購入報告エラー: " + (error?.message || error));
+    }
+  };
 
   window.submitAutoGoReveal = async function() {
     if (typeof Notification === "undefined" || Notification.permission !== "granted") {
@@ -13905,111 +13855,69 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     if (!activePoolId) return;
     const pulled = document.getElementById("ag-pulled-select")?.value;
     if (!pulled) { alert("引いたメンバーを選択してください"); return; }
-    const { db, auth, doc, collection, query, where, getDocs, runTransaction, serverTimestamp } = window.__autoGoRefs;
-    const user = auth.currentUser;
-    if (!user || !currentEntryData) return;
-
-    const myEntryRef = doc(db, "auto_go_pools", activePoolId, "entries", user.uid);
-
-    if (pulled === currentEntryData.wantedMember) {
-      await runTransaction(db, async (tx) => {
-        tx.update(myEntryRef, {
-          pulledMember: pulled,
-          status: "self_pulled",
-          revealedAt: serverTimestamp()
-        });
-      });
-      return;
+    try {
+      const refs = window.__autoGoRefs;
+      if (!refs?.registerAutoGoReveal) throw new Error("Auto-GOの準備中です。");
+      await refs.registerAutoGoReveal({ poolId: activePoolId, pulledMember: pulled });
+      showToast("開封結果を登録しました。登録期間の終了後に自動マッチングされます。", "success");
+    } catch (error) {
+      console.error("submitAutoGoReveal error:", error);
+      alert("開封結果の登録に失敗しました: " + (error?.message || error));
     }
+};
 
-    const entriesCol = collection(db, "auto_go_pools", activePoolId, "entries");
-  if (currentPoolData && currentPoolData.matchStartAt && Date.now() < Number(currentPoolData.matchStartAt)) {
-    const dt = new Date(Number(currentPoolData.matchStartAt));
-    const pad = n => String(n).padStart(2, "0");
-    const label = `${dt.getMonth()+1}/${dt.getDate()} ${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
-    if (typeof showToast === "function") {
-      showToast(`マッチングは ${label} から先着順で開始します`, "info");
-    }
-    return;
+window.saveAutoGoOpenedCard = window.submitAutoGoReveal;
+
+window.markAutoGoAlbumArrived = async function() {
+  try {
+    await window.__autoGoRefs.registerAutoGoArrival({ poolId: activePoolId });
+    showToast("アルバム到着を登録しました", "success");
+    window.openAutoGoModal(activePoolId);
+  } catch (error) {
+    console.error("markAutoGoAlbumArrived error:", error);
+    alert("到着報告に失敗しました: " + (error?.message || error));
   }
+};
 
-  // 全待機中エントリーを取得し、自分を含めた有向グラフで最短の循環ループ（2〜5人）を探索
-  const waitSnap = await getDocs(query(entriesCol, where("status", "==", "waiting_match")));
-  const poolNodes = [
-    { id: user.uid, wantedMember: currentEntryData.wantedMember, pulledMember: pulled, userName: currentEntryData.userName || "あなた", shippingAddress: currentEntryData.shippingAddress || "" }
-  ];
-  waitSnap.docs.forEach(d => {
-    if (d.id !== user.uid) {
-      poolNodes.push({ id: d.id, ...d.data() });
-    }
-  });
-
-  // DFSで自分(index 0)から始まり自分に戻る最短サイクル(長さ2〜5)を探す
-  let foundCycle = null;
-  function findCycle(path, visited) {
-    if (foundCycle && foundCycle.length <= path.length) return;
-    const curr = path[path.length - 1];
-    // currが引いたカード(pulledMember)を欲しがっている人(wantedMember)が次の送り先
-    for (let i = 0; i < poolNodes.length; i++) {
-      const nextNode = poolNodes[i];
-      if (nextNode.wantedMember !== curr.pulledMember) continue;
-      if (i === 0 && path.length >= 2) {
-        foundCycle = [...path];
-        return;
-      }
-      if (!visited.has(i) && path.length < 5) {
-        visited.add(i);
-        path.push(nextNode);
-        findCycle(path, visited);
-        path.pop();
-        visited.delete(i);
-      }
-    }
+window.reportAutoGoDelay = async function() {
+  const reason = prompt("到着または開封が遅れている理由を入力してください:", "");
+  if (reason === null) return;
+  if (!reason.trim()) { alert("遅延理由を入力してください。"); return; }
+  try {
+    await window.__autoGoRefs.registerAutoGoDelay({ poolId: activePoolId, reason: reason.trim() });
+    showToast("遅延理由を登録しました。運営からの案内をお待ちください。", "success");
+    window.openAutoGoModal(activePoolId);
+  } catch (error) {
+    console.error("reportAutoGoDelay error:", error);
+    alert("遅延理由の登録に失敗しました: " + (error?.message || error));
   }
-  findCycle([poolNodes[0]], new Set([0]));
+};
 
-  if (foundCycle && foundCycle.length >= 2) {
-    const cycleId = `ag_${activePoolId}_${Date.now()}`;
-    await runTransaction(db, async (tx) => {
-      // 全員の最新状態を確認
-      const refs = foundCycle.map(n => doc(db, "auto_go_pools", activePoolId, "entries", n.id));
-      const snaps = await Promise.all(refs.map(r => tx.get(r)));
-      for (let i = 1; i < snaps.length; i++) {
-        if (!snaps[i].exists() || snaps[i].data().status !== "waiting_match") {
-          throw new Error("RETRY_MATCH");
-        }
-      }
-      // 各メンバーに「発送先(sendTo)」と「発送元(receiveFrom)」を割り当て
-      const len = foundCycle.length;
-      for (let i = 0; i < len; i++) {
-        const sender = foundCycle[i];
-        const receiver = foundCycle[(i + 1) % len]; // senderが引いたカードを欲しい人
-        const provider = foundCycle[(i - 1 + len) % len]; // senderの推しを引いた人
-        const updatePayload = {
-          status: "matched",
-          matchRoomId: cycleId,
-          cycleSize: len,
-          sendToUid: receiver.id,
-          sendToName: receiver.userName || receiver.displayName || "参加者",
-          shipToAddress: receiver.shippingAddress || "（住所未登録・取引チャットで確認）",
-          receiveFromUid: provider.id,
-          receiveFromName: provider.userName || provider.displayName || "参加者"
-        };
-        if (i === 0) {
-          updatePayload.pulledMember = pulled;
-          updatePayload.revealedAt = serverTimestamp();
-        }
-        tx.update(refs[i], updatePayload);
-      }
-    });
-  } else {
-    await runTransaction(db, async (tx) => {
-      tx.update(myEntryRef, {
-        pulledMember: pulled,
-        status: "waiting_match",
-        revealedAt: serverTimestamp()
-      });
-    });
+window.markAutoGoShipped = async function() {
+  const file = document.getElementById("ag-shipping-proof")?.files?.[0];
+  if (!file) { alert("伝票の住所が見える写真を選択してください。"); return; }
+  try {
+    const refs = window.__autoGoRefs;
+    const dataUrl = await readAutoGoEvidence(file);
+    await refs.uploadAutoGoEvidence({ poolId: activePoolId, kind: "shipping", dataUrl });
+    await refs.registerAutoGoShipment({ poolId: activePoolId });
+    showToast("発送写真を登録しました", "success");
+    window.openAutoGoModal(activePoolId);
+  } catch (error) {
+    console.error("markAutoGoShipped error:", error);
+    alert("発送報告に失敗しました: " + (error?.message || error));
+  }
+};
+
+window.markAutoGoReceived = async function() {
+  if (!(await appConfirm("トレカを受け取ったことを報告しますか？"))) return;
+  try {
+    await window.__autoGoRefs.registerAutoGoReceipt({ poolId: activePoolId });
+    showToast("受取完了を登録しました", "success");
+    window.openAutoGoModal(activePoolId);
+  } catch (error) {
+    console.error("markAutoGoReceived error:", error);
+    alert("受取報告に失敗しました: " + (error?.message || error));
   }
 };
 
@@ -14494,56 +14402,32 @@ ${currentPoolData.title}
 
 <script>
 (function() {
-  const AG_PURCHASE_LIMIT_MS = 2 * 60 * 60 * 1000; // 2時間
-
   setInterval(async function() {
     const countdownEl = document.getElementById("ag-purchase-countdown");
     if (!countdownEl) return;
 
-    try {
-      const refs = window.__autoGoRefs;
-      if (!refs || !refs.auth || !refs.auth.currentUser) return;
-      const uid = refs.auth.currentUser.uid;
-      const poolId = typeof activePoolId !== "undefined" ? activePoolId : null;
-      if (!poolId) return;
+    const entry = window.__agCurrentEntryData;
+    if (!entry || entry.status !== "confirmed" || !entry.purchaseDeadlineAt) return;
+    const deadline = entry.purchaseDeadlineAt.toMillis
+      ? entry.purchaseDeadlineAt.toMillis()
+      : Number(entry.purchaseDeadlineAt);
+    const remain = deadline - Date.now();
+    const activeBox = document.getElementById("ag-purchase-active-actions");
+    const expiredBox = document.getElementById("ag-purchase-expired-msg");
 
-      const key = "ag_url_issued_" + poolId + "_" + uid;
-      let issuedAt = Number(localStorage.getItem(key) || 0);
-
-      if (!issuedAt && typeof currentEntryData !== "undefined" && currentEntryData && currentEntryData.urlIssuedAt) {
-        issuedAt = currentEntryData.urlIssuedAt.toMillis ? currentEntryData.urlIssuedAt.toMillis() : Number(currentEntryData.urlIssuedAt);
-        if (issuedAt > 0) localStorage.setItem(key, String(issuedAt));
-      }
-
-      if (!issuedAt) {
-        issuedAt = Date.now();
-        localStorage.setItem(key, String(issuedAt));
-        if (refs.db && refs.doc && refs.updateDoc && refs.serverTimestamp) {
-          const entryRef = refs.doc(refs.db, "auto_go_pools", poolId, "entries", uid);
-          refs.updateDoc(entryRef, { urlIssuedAt: refs.serverTimestamp() }).catch(() => {});
-        }
-      }
-
-      window.__agCurrentUrlIssuedAt = issuedAt;
-      const remain = (issuedAt + AG_PURCHASE_LIMIT_MS) - Date.now();
-
-      const activeBox = document.getElementById("ag-purchase-active-actions");
-      const expiredBox = document.getElementById("ag-purchase-expired-msg");
-
-      if (remain <= 0) {
-        countdownEl.textContent = "00:00:00（期限切れ）";
-        if (activeBox) activeBox.classList.add("hidden");
-        if (expiredBox) expiredBox.classList.remove("hidden");
-      } else {
-        const totalSec = Math.floor(remain / 1000);
-        const h = String(Math.floor(totalSec / 3600)).padStart(2, "0");
-        const m = String(Math.floor((totalSec % 3600) / 60)).padStart(2, "0");
-        const s = String(totalSec % 60).padStart(2, "0");
-        countdownEl.textContent = `残り ${h}:${m}:${s}`;
-        if (activeBox) activeBox.classList.remove("hidden");
-        if (expiredBox) expiredBox.classList.add("hidden");
-      }
-    } catch (e) {}
+    if (remain <= 0) {
+      countdownEl.textContent = "00:00:00（期限切れ）";
+      if (activeBox) activeBox.classList.add("hidden");
+      if (expiredBox) expiredBox.classList.remove("hidden");
+    } else {
+      const totalSec = Math.floor(remain / 1000);
+      const h = String(Math.floor(totalSec / 3600)).padStart(2, "0");
+      const m = String(Math.floor((totalSec % 3600) / 60)).padStart(2, "0");
+      const s = String(totalSec % 60).padStart(2, "0");
+      countdownEl.textContent = `残り ${h}:${m}:${s}`;
+      if (activeBox) activeBox.classList.remove("hidden");
+      if (expiredBox) expiredBox.classList.add("hidden");
+    }
   }, 1000);
 })();
 
