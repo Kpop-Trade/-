@@ -13410,7 +13410,32 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
   };
 
   window.markAutoGoPurchased = async function() {
-    const issuedMs = Number(window.__agCurrentUrlIssuedAt || 0);
+      const orderNote = prompt("購入したショップの「注文番号」または購入完了メモを入力してください（必須）:", "");
+      if (orderNote === null) return;
+      if (!orderNote.trim()) { alert("注文番号または購入メモを入力してください。"); return; }
+      
+      if (!activePoolId) return;
+      try {
+        const { db, doc, updateDoc, serverTimestamp } = window.__autoGoRefs;
+        const user = auth.currentUser;
+        if (!user) { alert("ログインしてください"); return; }
+        
+        await updateDoc(doc(db, "auto_go_pools", activePoolId, "entries", user.uid), {
+          status: "purchased",
+          orderNote: orderNote.trim(),
+          purchasedAt: serverTimestamp()
+        });
+        alert("✅ 購入完了を報告しました！CD到着後の開封結果登録をお待ちください。");
+        const container = document.getElementById("auto-go-modal-body");
+        if (container && typeof window.openAutoGoModal === "function") {
+          // モーダル再描画
+          window.openAutoGoModal(activePoolId);
+        }
+      } catch (e) {
+        console.error("markAutoGoPurchased error:", e);
+        alert("購入報告エラー: " + (e.message || e));
+      }
+    };window.__agCurrentUrlIssuedAt || 0);
     if (issuedMs > 0 && Date.now() > issuedMs + 10 * 60 * 60 * 1000) {
       if (typeof showToast === "function") {
         showToast("購入制限時間（2時間）を過ぎたため枠が失効しています", "error");
