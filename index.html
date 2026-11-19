@@ -1598,6 +1598,23 @@ html, body {
     </div>
   </div>
 
+  <div id="exchange-apply-modal" class="fixed inset-0 hidden z-[90] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onclick="if(event.target===this) closeExchangeApplyModal()">
+    <div class="bg-white w-full max-w-sm rounded-2xl p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <h3 class="font-bold text-base text-gray-900">差し出すトレカの画像</h3>
+        <button type="button" onclick="closeExchangeApplyModal()" class="text-gray-400 text-2xl leading-none" aria-label="閉じる">×</button>
+      </div>
+      <p class="text-xs text-gray-600">交換を申し込むトレカの画像を1枚以上選択してください。</p>
+      <input id="exchange-apply-images" type="file" accept="image/*" multiple class="hidden" onchange="previewExchangeApplyImages(this)">
+      <button type="button" onclick="document.getElementById('exchange-apply-images').click()" class="w-full py-3 rounded-xl border border-purple-200 bg-purple-50 text-purple-800 text-sm font-bold">画像を選択</button>
+      <div id="exchange-apply-preview" class="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto"></div>
+      <div class="flex gap-2">
+        <button type="button" onclick="closeExchangeApplyModal()" class="flex-1 py-3 rounded-xl bg-gray-100 text-gray-700 text-sm font-bold">キャンセル</button>
+        <button id="exchange-apply-submit" type="button" onclick="confirmExchangeApply()" disabled class="flex-1 py-3 rounded-xl bg-purple-600 text-white text-sm font-bold disabled:opacity-40">画像を添えて申し込む</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 取引一覧 -->
   <div id="trades-modal" class="fixed inset-0 bg-black/40 hidden z-50 flex items-end sm:items-center justify-center">
     <div class="bg-[#f5f5f5] w-full max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[88vh] flex flex-col">
@@ -1863,6 +1880,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     let profileSection = "basic";
     let currentDetailId = null, submittingSerial = false;
     let roomActionsKey = null, cancellingTrade = false;
+    let pendingExchangePostIndex = -1, pendingExchangeSubmission = null, exchangeImageUrls = [], submittingExchangeApply = false;
     let myCardsAlbum = "srm", myCardsMember = "ALL", myCardsTab = "own";
     let cardPhotoCache = {}; // cardId -> jpeg dataURL
 
@@ -5643,8 +5661,133 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         closeRoom();
       } catch (e) { showToast("取り下げに失敗しました", "error"); }
     };
+    window.agreeStandardExchange = async function() {
+      const t = currentTrade;
+      if (!t || !currentUser || t.ownerId !== currentUser.uid || t.status !== "negotiating" || !isStandardExchangeTrade(t)) return;
+      try {
+        await updateDoc(doc(db, "trades", t.id), {
+          status: "shipping",
+          [`agreed.${t.ownerId}`]: true,
+          updatedAt: serverTimestamp()
+        });
+        showToast("合意しました。発送フェーズに進みます。", "success");
+      } catch (e) {
+        console.error("agreeStandardExchange error:", e);
+        showToast("合意に失敗しました", "error");
+      }
+    };
+    window.declineStandardExchange = async function() {
+      const t = currentTrade;
+      if (!t || !currentUser || t.ownerId !== currentUser.uid || t.status !== "negotiating" || !isStandardExchangeTrade(t)) return;
+      if (!(await appConfirm("この申し込みを断りますか？\n取引はキャンセルされ、募集を再開します。", "合意しない", true))) return;
+      try {
+        await updateDoc(doc(db, "trades", t.id), { status: "cancelled", updatedAt: serverTimestamp() });
+        await restorePostToActive(t.postId, t.kind, t.applicantId, t.id);
+        renderPosts();
+        showToast("申し込みを断り、募集を再開しました", "info");
+        closeRoom();
+      } catch (e) {
+        console.error("declineStandardExchange error:", e);
+        showToast("キャンセルに失敗しました", "error");
+      }
+    };
+    window.withdrawStandardExchange = async function() {
+      const t = currentTrade;
+      if (!t || !currentUser || t.applicantId !== currentUser.uid || t.status !== "negotiating" || !isStandardExchangeTrade(t)) return;
+      if (!(await appConfirm("申し込みを取り下げますか？\n募集は再開されます。", "取り下げる", true))) return;
+      try {
+        await updateDoc(doc(db, "trades", t.id), { status: "cancelled", updatedAt: serverTimestamp() });
+        await restorePostToActive(t.postId, t.kind, t.applicantId, t.id);
+        renderPosts();
+        showToast("申し込みを取り下げました", "info");
+        closeRoom();
+      } catch (e) {
+        console.error("withdrawStandardExchange error:", e);
+        showToast("取り下げに失敗しました", "error");
+      }
+    };
+
+    function isStandardExchangePost(post) {
+      return !!post && !post.isSell && !post.isBundle && !post.isBulk &&
+        post.kind !== "group" && !(Array.isArray(post.bundleBoxes) && post.bundleBoxes.length);
+    }
+    function isStandardExchangeTrade(trade) {
+      return !!trade && !trade.isSell && !trade.isBundle && trade.kind !== "group" &&
+        !(Array.isArray(trade.bundleIndexes) && trade.bundleIndexes.length);
+    }
+    window.openExchangeApplyModal = function(index) {
+      pendingExchangePostIndex = index;
+      const input = document.getElementById("exchange-apply-images");
+      if (input) input.value = "";
+      const submit = document.getElementById("exchange-apply-submit");
+      if (submit) submit.disabled = true;
+      const preview = document.getElementById("exchange-apply-preview");
+      if (preview) preview.innerHTML = "";
+      exchangeImageUrls.forEach(url => URL.revokeObjectURL(url));
+      exchangeImageUrls = [];
+      document.getElementById("exchange-apply-modal").classList.remove("hidden");
+    };
+    window.closeExchangeApplyModal = function(force) {
+      if (submittingExchangeApply && !force) return;
+      document.getElementById("exchange-apply-modal").classList.add("hidden");
+      pendingExchangePostIndex = -1;
+      const preview = document.getElementById("exchange-apply-preview");
+      if (preview) preview.innerHTML = "";
+      const input = document.getElementById("exchange-apply-images");
+      if (input) input.value = "";
+      exchangeImageUrls.forEach(url => URL.revokeObjectURL(url));
+      exchangeImageUrls = [];
+    };
+    window.previewExchangeApplyImages = function(input) {
+      const preview = document.getElementById("exchange-apply-preview");
+      const submit = document.getElementById("exchange-apply-submit");
+      if (!preview || !submit) return;
+      exchangeImageUrls.forEach(url => URL.revokeObjectURL(url));
+      exchangeImageUrls = [];
+      preview.innerHTML = "";
+      const files = Array.from(input.files || []).filter(file => file.type.startsWith("image/"));
+      files.forEach(file => {
+        const url = URL.createObjectURL(file);
+        exchangeImageUrls.push(url);
+        const img = document.createElement("img");
+        img.src = url;
+        img.alt = "差し出すトレカ";
+        img.className = "w-full aspect-square object-cover rounded-lg border border-gray-200";
+        preview.appendChild(img);
+      });
+      submit.disabled = files.length === 0;
+      if (!files.length && input.files && input.files.length) showToast("画像ファイルを選択してください", "error");
+    };
+    window.confirmExchangeApply = async function() {
+      if (submittingExchangeApply) return;
+      const index = pendingExchangePostIndex;
+      const post = allPosts[index];
+      const input = document.getElementById("exchange-apply-images");
+      const files = Array.from(input?.files || []).filter(file => file.type.startsWith("image/"));
+      if (!isStandardExchangePost(post) || !files.length) {
+        showToast("差し出すトレカの画像を1枚以上選択してください", "info");
+        return;
+      }
+      submittingExchangeApply = true;
+      const submit = document.getElementById("exchange-apply-submit");
+      if (submit) { submit.disabled = true; submit.textContent = "画像を準備中..."; }
+      try {
+        const images = [];
+        for (const file of files) images.push(await compressImage(file, CHAT_PHOTO));
+        pendingExchangeSubmission = { index, images };
+        await applyToPost(index);
+      } catch (e) {
+        console.error("exchange application image error:", e);
+        showToast("画像を準備できませんでした。別の画像をお試しください。", "error");
+      } finally {
+        submittingExchangeApply = false;
+        if (submit) { submit.textContent = "画像を添えて申し込む"; submit.disabled = !input?.files?.length; }
+      }
+    };
 
     window.applyToPost = async function(index) {
+      const exchangeSubmission = pendingExchangeSubmission && pendingExchangeSubmission.index === index ? pendingExchangeSubmission : null;
+      pendingExchangeSubmission = null;
       if (typeof checkCancelAccountLock === "function" && checkCancelAccountLock()) return;
       const p = allPosts[index]; if (!currentUser || !p || !p.userId) return;
       if (!requireShippingInfo()) return;
@@ -5670,6 +5813,11 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         openTrade(existing.id);
         return;
       }
+      const normalExchange = isStandardExchangePost(p);
+      if (normalExchange && !exchangeSubmission) {
+        openExchangeApplyModal(index);
+        return;
+      }
 
       const deviceId = getOrCreateDeviceId();
       // 先着：出品が active のときだけ traded にして確保（同時申込の二重取引を防ぐ）
@@ -5689,10 +5837,13 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         }
         console.warn("post claim failed:", claimErr?.code || claimErr); // 権限などは従来どおり続行
       }
+      let createdTradeId = null;
       try {
         // 売却は合意ステップをスキップし、即「取引・発送中」でルームを開く
         const direct = true;
-        const agreedMap = { [p.userId]: true, [currentUser.uid]: true };
+        const agreedMap = normalExchange
+          ? { [currentUser.uid]: true }
+          : { [p.userId]: true, [currentUser.uid]: true };
         const ref = await addDoc(collection(db, "trades"), {
           kind: p.kind,
           isBuy: !!p.isBuy,
@@ -5711,7 +5862,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           applicantId: currentUser.uid,
           applicantName: getMyDisplayName(),
           participants: [p.userId, currentUser.uid],
-          status: "shipping",
+          status: normalExchange ? "negotiating" : "shipping",
           agreed: agreedMap,
           shipped: {},
           received: {},
@@ -5722,14 +5873,35 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           updatedAt: serverTimestamp(),
           deviceId: deviceId
         });
+        createdTradeId = ref.id;
 
         claimed = false; // 取引作成まで成功
+        if (normalExchange && exchangeSubmission) {
+          for (let imageIndex = 0; imageIndex < exchangeSubmission.images.length; imageIndex++) {
+            await addDoc(collection(db, "trades", ref.id, "messages"), {
+              senderId: currentUser.uid,
+              senderName: getMyDisplayName(),
+              text: imageIndex === 0 ? "交換を申し込みました" : "差し出しトレカ画像",
+              image: exchangeSubmission.images[imageIndex],
+              createdAt: serverTimestamp(),
+              deviceId: deviceId
+            });
+          }
+        }
 
         closeDetailModal();
+        if (normalExchange) closeExchangeApplyModal(true);
         openTrade(ref.id);
-        showToast("申し込みが完了しました。取引ルームで決済・発送を進めてください。", "success");
+        showToast(normalExchange ? "交換を申し込みました。出品者の合意をお待ちください。" : "申し込みが完了しました。取引ルームで決済・発送を進めてください。", "success");
       } catch (e) {
         console.error("applyToPost error:", e);
+        if (createdTradeId) {
+          closeDetailModal();
+          closeExchangeApplyModal(true);
+          openTrade(createdTradeId);
+          showToast("取引は作成されましたが、申込画像を送信できませんでした。取引ルームから再送してください。", "error");
+          return;
+        }
         if (claimed) restorePostToActive(p.id, p.kind, null); // 取引が作れなかったら確保を戻す
         const msg = e?.code || e?.message || String(e);
         if (msg.includes("permission-denied") || msg.includes("PERMISSION_DENIED")) {
@@ -6331,8 +6503,9 @@ window.openAzukariApp = function() {
       let idx = order.indexOf(t.status);
       if (t.status === "negotiating") {
         const bundleWait = Array.isArray(t.bundleIndexes) && t.bundleIndexes.length;
-        idx = bundleWait ? 0 : 1;
-        if (!bundleWait && !t._skipAgree) {
+        const standardExchange = isStandardExchangeTrade(t);
+        idx = bundleWait || standardExchange ? 0 : 1;
+        if (!bundleWait && !standardExchange && !t._skipAgree) {
           t._skipAgree = true;
           updateDoc(doc(db, "trades", t.id), {
             status: "shipping",
@@ -6355,7 +6528,11 @@ window.openAzukariApp = function() {
           ${isInitiator ? '<p class="text-[11px]">相手の同意をお待ちください。</p>' : `<button onclick="agreeCancel()" class="${btn} bg-red-500 text-white hover:bg-red-600">キャンセルに同意する</button>`}
         </div>`;
       }
-      if (t.status === "negotiating" && Array.isArray(t.bundleIndexes) && t.bundleIndexes.length) {
+      if (t.status === "negotiating" && isStandardExchangeTrade(t)) {
+        html += iAmOwner
+          ? `<div class="space-y-2"><p class="text-xs text-gray-700">申込者の差し出しトレカ画像を確認してください。</p><div class="flex gap-2"><button type="button" onclick="agreeStandardExchange()" class="${primary} flex-1">この条件で合意する</button><button type="button" onclick="declineStandardExchange()" class="${btn} bg-white text-gray-700 border border-gray-200 flex-1">合意しない</button></div></div>`
+          : `<div class="space-y-2"><p class="text-xs text-gray-700">出品者の合意を待っています</p><button type="button" onclick="withdrawStandardExchange()" class="${btn} bg-white text-gray-700 border border-gray-200">申し込みを取り下げる</button></div>`;
+      } else if (t.status === "negotiating" && Array.isArray(t.bundleIndexes) && t.bundleIndexes.length) {
         const nums = t.bundleIndexes.map(n => Number(n) + 1).join("、");
         html += `<div class="bg-white border border-rose-200 rounded-2xl p-3 text-[13px] text-gray-800 space-y-2"><div>選ばれた枠: <b>${nums}</b></div><div class="text-[12px] text-gray-500">赤くバツの付いた写真を確認して、合意するか決めてください。</div>${iAmOwner ? `<button type="button" onclick="agreeBundleTrade()" class="${primary}">この枠で合意する</button><button type="button" onclick="declineBundleTrade()" class="${btn} bg-white text-gray-700 border border-gray-200">合意しない</button>` : `<p class="text-[12px] text-gray-500">出品者の合意を待っています</p><button type="button" onclick="withdrawBundleTrade()" class="${btn} bg-white text-gray-700 border border-gray-200">申し込みを取り下げる</button>`}</div>`;
       } else if (t.status === "shipping" || t.status === "negotiating") {
@@ -14431,6 +14608,8 @@ window.renderRoomTaskBanner = function() {
   const t = currentTrade;
   const isOwner = t.ownerId === uid;
   const isSell = !!t.isSell;
+  const isBundle = !!t.isBundle || (Array.isArray(t.bundleIndexes) && t.bundleIndexes.length > 0);
+  const isStandardExchange = !isSell && !isBundle && t.kind !== "group";
   const agreed = t.agreed || {};
   const shipped = t.shipped || {};
   const received = t.received || {};
@@ -14452,6 +14631,18 @@ window.renderRoomTaskBanner = function() {
     title = "🎉 すべての取引タスクが完了しました！";
     desc = "お疲れさまでした。必要に応じて相手の評価を行ってください。";
     tone = "bg-emerald-50 border-emerald-300 text-emerald-900";
+  } else if (isStandardExchange && t.status === "negotiating") {
+    if (isOwner) {
+      badge = "要対応";
+      title = "交換条件を確認して合意してください";
+      desc = "申込者の差し出しトレカ画像を確認し、この条件で進めるか選択してください。";
+      tone = "bg-amber-50 border-amber-400 text-amber-950";
+    } else {
+      badge = "相手待ち";
+      title = "出品者の合意を待っています";
+      desc = "出品者が合意すると発送フェーズへ進みます。";
+      tone = "bg-blue-50 border-blue-200 text-blue-900";
+    }
   } else if (t.status === "negotiating" || (!agreed[t.ownerId] || !agreed[t.applicantId])) {
     if (!agreed[uid]) {
       badge = "要対応";
