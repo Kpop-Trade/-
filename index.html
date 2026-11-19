@@ -6066,7 +6066,7 @@ window.openAzukariApp = function() {
       if (trade.status === "completed" || trade.status === "done") {
         return true;
       }
-      if (flag(trade, "received", userId)) {
+      if (flag(trade, "received", userId) || (window.__localReceivedTrades && window.__localReceivedTrades[trade.id + "_" + userId])) {
         return true;
       }
       return false;
@@ -6376,6 +6376,7 @@ window.openAzukariApp = function() {
       }
       currentTrade[field][userId] = true;
       if (field === "received") {
+if(field==="received"){window.__localReceivedTrades=window.__localReceivedTrades||{};window.__localReceivedTrades[tradeId+"_"+userId]=true;} if(!currentTrade[field]||typeof currentTrade[field]!=="object"){currentTrade[field]={};} currentTrade[field][userId]=true;
         const ownerReceived = flag(currentTrade, "received", currentTrade.ownerId);
         const applicantReceived = flag(currentTrade, "received", currentTrade.applicantId);
         if (ownerReceived && applicantReceived && currentTrade.status !== "completed") {
