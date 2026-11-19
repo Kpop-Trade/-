@@ -13564,6 +13564,127 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
 
   
   // 運営ダッシュボード用 Auto-GO プール作成・一覧・削除パネル
+      window.createAdminAutoGoPool = async function() {
+        let btn = null;
+        try {
+          if (typeof window.__isAutoGoAdmin !== "function") throw new Error("管理者権限の確認を初期化できません");
+          if (!window.__isAutoGoAdmin()) {
+            window.showToast("管理者権限が必要です", "error");
+            return;
+          }
+
+          const refs = window.__autoGoRefs;
+          if (!refs?.db || !refs?.collection || !refs?.serverTimestamp || typeof window.addDoc !== "function") {
+            throw new Error("Firestoreの初期化が完了していません");
+          }
+          btn = document.getElementById("adm-ag-submit-btn");
+          if (btn) { btn.disabled = true; btn.textContent = "公開処理中..."; }
+
+          const title = (document.getElementById("adm-ag-title")?.value || "").trim();
+          const desc = (document.getElementById("adm-ag-desc")?.value || "").trim();
+          const fileInput = document.getElementById("adm-ag-photo");
+          if (!title) { window.showToast("タイトルを入力してください", "error"); return; }
+
+          const minThreshold = Number(document.getElementById("adm-ag-min-threshold")?.value);
+          const minCompletedTrades = Number(document.getElementById("adm-ag-min-completed-trades")?.value);
+          if (!Number.isInteger(minThreshold) || minThreshold < 2 || minThreshold > 100) {
+            window.showToast("最低成立人数は2〜100の整数で入力してください", "error");
+            return;
+          }
+          if (!Number.isInteger(minCompletedTrades) || minCompletedTrades < 0) {
+            window.showToast("参加に必要な完了評価数は0以上の整数で入力してください", "error");
+            return;
+          }
+
+          const rawMembers = (document.getElementById("adm-ag-members")?.value || "").trim();
+          const memberNames = Array.from(new Set(rawMembers.split(/[,、，\n\r]+/).map(name => name.trim()).filter(Boolean)));
+          if (memberNames.length < 2) {
+            window.showToast("メンバーは2名以上入力してください", "error");
+            return;
+          }
+
+          const recruitEndRaw = (document.getElementById("adm-ag-recruit-end")?.value || "").trim();
+          const recruitEndAt = recruitEndRaw ? new Date(recruitEndRaw).getTime() : 0;
+          if (!recruitEndAt || recruitEndAt <= Date.now()) {
+            window.showToast("募集終了日時は現在より後の日時を指定してください", "error");
+            return;
+          }
+          const purchaseUrl = (document.getElementById("adm-ag-url")?.value || "").trim();
+          if (!/^https:\/\//i.test(purchaseUrl)) {
+            window.showToast("有効なアルバム購入URL（https://）を入力してください", "error");
+            return;
+          }
+
+          let imageUrl = "";
+          if (fileInput?.files?.[0]) {
+            const reader = new FileReader();
+            imageUrl = await new Promise((resolve, reject) => {
+              reader.onload = () => {
+                const image = new Image();
+                image.onload = () => {
+                  const canvas = document.createElement("canvas");
+                  const scale = Math.min(1, 720 / image.width);
+                  canvas.width = image.width * scale;
+                  canvas.height = image.height * scale;
+                  canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+                  resolve(canvas.toDataURL("image/jpeg", 0.8));
+                };
+                image.onerror = reject;
+                image.src = reader.result;
+              };
+              reader.onerror = reject;
+              reader.readAsDataURL(fileInput.files[0]);
+            });
+          }
+
+          const initialCapPerMember = Math.max(1, Math.ceil(20 / memberNames.length));
+          const minParticipants = initialCapPerMember * memberNames.length;
+          const memberCounts = {};
+          const memberCaps = {};
+          memberNames.forEach(member => {
+            memberCounts[member] = 0;
+            memberCaps[member] = initialCapPerMember;
+          });
+          const user = refs.auth?.currentUser || window.currentUser;
+          if (!user?.uid) throw new Error("ログイン状態を確認できません");
+
+          await window.addDoc(refs.collection(refs.db, "auto_go_pools"), {
+            title,
+            description: desc,
+            purchaseUrl,
+            imageUrl,
+            memberCountType: memberNames.length,
+            memberNames,
+            members: memberNames,
+            memberCounts,
+            memberCaps,
+            minParticipants,
+            minThreshold,
+            minCompletedTrades,
+            targetParticipants: minParticipants,
+            recruitEndAt,
+            slotPerMember: initialCapPerMember,
+            totalCount: 0,
+            status: "recruiting",
+            createdBy: user.uid,
+            createdAt: refs.serverTimestamp()
+          });
+
+          window.showToast("Auto-GO プールを公開しました！", "success");
+          await window.renderAdminAutoGoPanel();
+        } catch (error) {
+          console.error("createAdminAutoGoPool error:", error);
+          const reason = error?.code || error?.message || String(error || "失敗しました");
+          try {
+            if (typeof window.showToast === "function") window.showToast("作成エラー: " + reason, "error");
+          } catch (toastError) {
+            console.error("createAdminAutoGoPool toast error:", toastError);
+          }
+        } finally {
+          if (btn) { btn.disabled = false; btn.textContent = "＋ この内容で Auto-GO プールを公開する"; }
+        }
+      };
+
   window.renderAdminAutoGoPanel = async function(container) {
     if (!container) container = document.getElementById("admin-content");
     if (!container) return;
@@ -13649,14 +13770,6 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
             <input id="adm-ag-url" type="url" required placeholder="https://..." class="w-full liquid-glass-input rounded-xl p-2.5 text-xs text-gray-900">
           </div>
 
-          <div>
-            <label class="block text-[11px] font-bold text-gray-700 mb-1">グループ構成（自動枠数設定）</label>
-            <select id="adm-ag-preset" class="w-full liquid-glass-input rounded-xl p-2.5 text-xs font-bold text-gray-900">
-              <option value="5">5人組（初期4枠/人・最低20人）</option>
-              <option value="4">4人組（初期5枠/人・最低20人）</option>
-            </select>
-          </div>
-
           <div class="grid grid-cols-2 gap-2">
             <label class="block text-[11px] font-bold text-gray-700">最低成立人数
               <input id="adm-ag-min-threshold" type="number" min="2" max="100" value="20" class="mt-1 w-full liquid-glass-input rounded-xl p-2.5 text-xs text-gray-900">
@@ -13697,113 +13810,6 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
         </div>
       </div>
     `;
-  };
-
-  window.createAdminAutoGoPool = async function() {
-    if (!isAdmin()) { showToast("管理者権限が必要です", "error"); return; }
-    const title = (document.getElementById("adm-ag-title")?.value || "").trim();
-    const presetVal = document.getElementById("adm-ag-preset")?.value || "5";
-    const desc = (document.getElementById("adm-ag-desc")?.value || "").trim();
-    const fileInput = document.getElementById("adm-ag-photo");
-    if (!title) { showToast("タイトルを入力してください", "error"); return; }
-    const minThreshold = Number(document.getElementById("adm-ag-min-threshold")?.value);
-    const minCompletedTrades = Number(document.getElementById("adm-ag-min-completed-trades")?.value);
-    if (!Number.isInteger(minThreshold) || minThreshold < 2 || minThreshold > 100) {
-      showToast("最低成立人数は2〜100の整数で入力してください", "error");
-      return;
-    }
-    if (!Number.isInteger(minCompletedTrades) || minCompletedTrades < 0) {
-      showToast("参加に必要な完了評価数は0以上の整数で入力してください", "error");
-      return;
-    }
-
-    const btn = document.getElementById("adm-ag-submit-btn");
-    if (btn) { btn.disabled = true; btn.textContent = "公開処理中..."; }
-
-    try {
-      let imageUrl = "";
-      if (fileInput && fileInput.files && fileInput.files[0]) {
-        const file = fileInput.files[0];
-        const reader = new FileReader();
-        imageUrl = await new Promise((resolve, reject) => {
-          reader.onload = () => {
-            const img = new Image();
-            img.onload = () => {
-              const canvas = document.createElement("canvas");
-              const maxW = 720;
-              const scale = Math.min(1, maxW / img.width);
-              canvas.width = img.width * scale;
-              canvas.height = img.height * scale;
-              canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
-              resolve(canvas.toDataURL("image/jpeg", 0.8));
-            };
-            img.onerror = reject;
-            img.src = reader.result;
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-      }
-
-      const rawMembers = (document.getElementById("adm-ag-members")?.value || "").trim();
-    const parsedMembers = rawMembers
-      ? rawMembers.split(new RegExp("[,、，\n\r]+")).map(s => s.trim()).filter(Boolean)
-      : (presetVal === "4" ? ["メンバーA", "メンバーB", "メンバーC", "メンバーD"] : ["ユナ", "ミンジュ", "モカ", "ウォンヒ", "イロハ"]);
-    const memberNames = Array.from(new Set(parsedMembers));
-    if (![4, 5].includes(memberNames.length)) {
-      showToast("メンバーは4名または5名で登録してください", "error");
-      return;
-    }
-    const recruitEndRaw = (document.getElementById("adm-ag-recruit-end")?.value || "").trim();
-    const recruitEndAt = recruitEndRaw ? new Date(recruitEndRaw).getTime() : 0;
-    if (!recruitEndAt || recruitEndAt <= Date.now()) {
-      showToast("募集終了日時は現在より後の日時を指定してください", "error");
-      return;
-    }
-    const initialCapPerMember = memberNames.length === 5 ? 4 : (memberNames.length === 4 ? 5 : Math.max(1, Math.ceil(20 / memberNames.length)));
-    const minParticipants = initialCapPerMember * memberNames.length;
-    const purchaseUrl = (document.getElementById("adm-ag-url")?.value || "").trim();
-    if (!/^https:\/\//i.test(purchaseUrl)) {
-      showToast("有効なアルバム購入URL（https://）を入力してください", "error");
-      return;
-    }
-    const memberCounts = {};
-    const memberCaps = {};
-    memberNames.forEach(m => {
-      memberCounts[m] = 0;
-      memberCaps[m] = initialCapPerMember;
-    });
-
-    await addDoc(collection(db, "auto_go_pools"), {
-      title,
-      description: desc,
-      purchaseUrl,
-      imageUrl,
-      memberCountType: memberNames.length,
-      memberNames,
-      members: memberNames,
-      memberCounts,
-      memberCaps,
-      minParticipants,
-      minThreshold,
-      minCompletedTrades,
-      targetParticipants: minParticipants,
-      recruitEndAt,
-      slotPerMember: initialCapPerMember,
-      totalCount: 0,
-      status: "recruiting",
-      createdBy: currentUser.uid,
-      createdAt: serverTimestamp()
-    });
-
-      showToast("Auto-GO プールを公開しました！", "success");
-      await window.renderAdminAutoGoPanel();
-    } catch (e) {
-      console.error("createAdminAutoGoPool error:", e);
-      showToast("作成エラー: " + (e?.code || e?.message || "失敗しました"), "error");
-    } finally {
-      if (btn) { btn.disabled = false; btn.textContent = "＋ この内容で Auto-GO プールを公開する"; }
-    }
   };
 
   window.deleteAdminAutoGoPool = async function(poolId) {
