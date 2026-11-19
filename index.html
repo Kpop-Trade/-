@@ -67,6 +67,60 @@
     errorDiv.innerText = `【Promiseエラー】\n${event.reason}`;
     document.body.prepend(errorDiv);
   });
+
+  window.openAutoGoModal = function(poolId) {
+    var modal = document.getElementById("autogo-modal");
+    if (!modal) {
+      if (typeof showToast === "function") {
+        showToast("Auto-GOの画面が見つかりませんでした", "error");
+      }
+      return;
+    }
+    if (modal.parentElement !== document.body) {
+      document.body.appendChild(modal);
+    }
+    modal.classList.remove("hidden");
+    modal.classList.add("is-open");
+    modal.style.setProperty("display", "flex", "important");
+    modal.style.setProperty("visibility", "visible", "important");
+    modal.style.setProperty("opacity", "1", "important");
+    modal.style.setProperty("pointer-events", "auto", "important");
+    modal.style.setProperty("position", "fixed", "important");
+    modal.style.setProperty("inset", "0px", "important");
+    modal.style.setProperty("z-index", "10000", "important");
+    document.body.style.overflow = "hidden";
+    if (poolId && typeof window.__selectAutoGoPool === "function") {
+      window.__pendingAutoGoPoolId = poolId;
+    }
+    if (typeof window.__loadAutoGoPools === "function") {
+      Promise.resolve(window.__loadAutoGoPools()).catch(function(error) {
+        var message = error && error.message ? error.message : "読み込めませんでした";
+        var title = document.getElementById("ag-pool-title");
+        var desc = document.getElementById("ag-pool-desc");
+        if (title) title.textContent = "Auto-GOを開けませんでした";
+        if (desc) desc.textContent = message;
+        if (typeof showToast === "function") {
+          showToast("Auto-GOの読み込みに失敗しました: " + message, "error");
+        }
+      });
+    }
+  };
+  window.closeAutoGoModal = function() {
+    var modal = document.getElementById("autogo-modal");
+    if (!modal) return;
+    modal.classList.add("hidden");
+    modal.classList.remove("is-open");
+    modal.style.setProperty("display", "none", "important");
+    document.body.style.overflow = "";
+  };
+  document.addEventListener("DOMContentLoaded", function() {
+    var banner = document.getElementById("autogo-home-banner");
+    if (!banner) return;
+    banner.addEventListener("click", function(event) {
+      if (event) event.preventDefault();
+      window.openAutoGoModal();
+    });
+  });
 </script>
   <title>ILLIT（アイリット）専用トレカフリマ・交換｜Kpop-Trade（ケポトレ）- K-Pop Photocard Market</title>
   <meta name="description" content="ILLIT（アイリット）専用のトレカフリマ・交換プラットフォーム「Kpop-Trade（ケポトレ）」。ユナ・ミンジュ・モカ・ウォンヒ・イロハの封入トレカ・ラキドロ・特典トレカの交換・売買（WTS / WTT / WTB）がサイト内で完結！カメラのガイド枠に合わせるだけのAI自動出品・画像検索・まとめ売りにも対応。">
@@ -169,6 +223,19 @@
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
     }
+    #autogo-home-wrap { position: relative; overflow: visible; padding-top: 10px; }
+    #autogo-home-banner { position: relative; overflow: hidden; }
+    .autogo-new-tag { position: absolute; top: 0; right: 12px; z-index: 3; transform: rotate(28deg); background: #ff2a2a; color: #fff; font-size: 12px; font-weight: 900; letter-spacing: .04em; padding: 3px 14px; box-shadow: 0 3px 8px rgba(0,0,0,.28); pointer-events: none; }
+    #autogo-modal.is-open {
+      display: flex !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      pointer-events: auto !important;
+      position: fixed !important;
+      inset: 0 !important;
+      z-index: 10000 !important;
+    }
+    #room-review-slot { position: relative; z-index: 6; }
     .hide-scrollbar::-webkit-scrollbar { display: none; }
     .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
@@ -655,7 +722,7 @@ html, body {
       <h3 id="list-section-title" class="font-bold text-base text-gray-800 drop-shadow-sm">最新の募集</h3>
         <span class="text-xs font-bold text-illit-accent bg-white/50 px-2 py-1 rounded-full border border-white">交換手数料0円</span>
       </div>
-      <div class="w-full mb-3"><button id="autogo-home-banner" type="button" onclick="window.openAutoGoModal && window.openAutoGoModal()" class="w-full bg-gradient-to-r from-purple-600 via-pink-500 to-indigo-600 text-white rounded-2xl p-3.5 shadow-md border border-white/30 flex items-center justify-between active:scale-[0.99] transition">
+      <div class="w-full mb-3" id="autogo-home-wrap"><span class="autogo-new-tag">NEW!!</span><button id="autogo-home-banner" type="button" onclick="openAutoGoModal()" class="w-full bg-gradient-to-r from-purple-600 via-pink-500 to-indigo-600 text-white rounded-2xl p-4 shadow-md border border-white/30 flex items-center justify-between active:scale-[0.99] transition">
     <div class="text-left">
       <div class="flex items-center gap-1.5">
         <span class="text-xl sm:text-2xl font-black tracking-tight leading-tight">⚡ Auto-GO</span>
@@ -2033,6 +2100,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         setTimeout(() => toast.remove(), 260);
       }, 3400);
     }
+    window.showToast = showToast;
 
     function addNotification(text, type = "info", target = null) {
       if (!currentUser) return;
@@ -2247,7 +2315,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         try {
           const banSnap = await getDoc(doc(db, "deviceBans", deviceId));
           if (banSnap.exists()) {
-            /* alert hidden */ console.log("⚠️ この端末は利用が制限されています。\n運営にお問い合わせください。");
+            showToast("この端末は利用が制限されています", "error");
             return false;
           }
         } catch (_) {}
@@ -2261,7 +2329,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           try { await updateDoc(ref, { updatedAt: serverTimestamp() }); } catch (_) {}
           return true;
         }
-        /* alert hidden */ console.log("⚠️ セキュリティ制限\nこの端末からはすでに別のアカウントで登録が行われています。");
+        showToast("この端末は別のアカウントで登録されています", "error");
         return false;
       } catch (e) {
         console.warn("checkDeviceLock error:", e);
@@ -3830,8 +3898,16 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     };
 
     window.submitPost = async function() {
-      if (typeof checkCancelAccountLock === "function" && checkCancelAccountLock()) return;
-      if (submittingPost || processingPhotos || !(await checkDeviceLock())) return;
+      if (typeof checkCancelAccountLock === "function" && checkCancelAccountLock()) {
+        showToast("いまは出品できません", "error");
+        return;
+      }
+      if (submittingPost) return;
+      if (processingPhotos) {
+        showToast("写真の準備が終わるまで待ってください", "info");
+        return;
+      }
+      if (!(await checkDeviceLock())) return;
       const isBuy = postMode === "buy";
       const isAlbum = postMode.startsWith("album");
       const isDearlit = postMode.startsWith("dearlit");
@@ -3839,81 +3915,149 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       let kind = "card";
       if (isAlbum) kind = "album";
       else if (isDearlit) kind = "dearlit";
-      const member = document.getElementById("input-member").value;
-      const isBulkBundle = !!(window.__isBulkMode || window.exchangeStyle === "bundle");
-      let give = document.getElementById("input-give").value.trim();
-      let want = document.getElementById("input-want").value.trim();
-      if (isBulkBundle) {
+      const memberInput = document.getElementById("input-member");
+      const giveInput = document.getElementById("input-give");
+      const wantInput = document.getElementById("input-want");
+      const priceInput = document.getElementById("input-price");
+      const descInput = document.getElementById("input-desc");
+      const conditionInput = document.getElementById("input-condition");
+      if (!memberInput || !giveInput || !wantInput || !descInput || !conditionInput) {
+        showToast("入力欄を読み込めませんでした。画面を開き直してください", "error");
+        return;
+      }
+      const member = memberInput.value;
+      const bundleMode = postMode === "exchange" && window.exchangeStyle === "bundle";
+      let give = giveInput.value.trim();
+      let want = wantInput.value.trim();
+      if (bundleMode) {
         if (!give) give = "まとめ出品";
         if (!want) want = "複数希望（枠指定）";
       }
-      const price = (isBuy || isSell) ? Number(document.getElementById("input-price").value) : 0;
-      const desc = document.getElementById("input-desc").value.trim().slice(0, 200);
-      const condition = document.getElementById("input-condition").value;
-      if (!give) return /* alert hidden */ console.log("内容を入力してください。");
-      if (!isBuy && !isSell && !want) return /* alert hidden */ console.log("【求】を入力してください。");
-      if ((isBuy || isSell) && (!price || price <= 0)) return /* alert hidden */ console.log("価格を正しく入力してください。");
-      if (!condition) return /* alert hidden */ console.log("商品の状態を選択してください。");
-      if (!isBuy && postPhotos.length < 1) return /* alert hidden */ console.log("写真を1枚以上追加してください。");
+      const price = (isBuy || isSell) ? Number(priceInput ? priceInput.value : 0) : 0;
+      const desc = descInput.value.trim().slice(0, 200);
+      const condition = conditionInput.value;
+      if (!give) {
+        showToast("出すものを入力してください", "info");
+        return;
+      }
+      if (!isBuy && !isSell && !want) {
+        showToast("希望するものを入力してください", "info");
+        return;
+      }
+      if ((isBuy || isSell) && (!price || price <= 0)) {
+        showToast("価格を入力してください", "info");
+        return;
+      }
+      if (!condition) {
+        showToast("商品の状態を選択してください", "info");
+        return;
+      }
+      if (!isBuy && postPhotos.length < 1) {
+        showToast("写真を1枚以上追加してください", "info");
+        return;
+      }
       const isExchange = postMode === "exchange";
       if (isExchange) {
-        for (const row of bundleExtras) {
-          if (!String(row.give || "").trim() || !String(row.want || "").trim() || !row.full) {
-            return /* alert hidden */ console.log("追加したカードは、出すもの・希望・写真をすべて入れてください。");
+        for (let rowIndex = 0; rowIndex < bundleExtras.length; rowIndex++) {
+          const row = bundleExtras[rowIndex];
+          const rowGive = String(row.give || "").trim();
+          const rowWant = String(row.want || "").trim();
+          if (!rowGive || !rowWant || !row.full) {
+            showToast("追加したカードは、出すもの・希望・写真をすべて入れてください", "info");
+            return;
           }
         }
       }
-      submittingPost = true; const btn = document.getElementById("post-submit-btn"); btn.disabled = true; btn.innerText = "投稿中…";
+      const submitButton = document.getElementById("post-submit-btn");
+      submittingPost = true;
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.innerText = "投稿中…";
+      }
       try {
         const catalogCardId = selectedPostCard ? selectedPostCard.id : "";
         const catalogCardName = selectedPostCard ? selectedPostCard.name : "";
         const items = [{
-          give, want: (isBuy || isSell) ? "" : want, photos: postPhotos.slice(),
-          catalogCardId: catalogCardId || null, catalogCardName: catalogCardName || null
+          give: give,
+          want: (isBuy || isSell) ? "" : want,
+          photos: postPhotos.slice(),
+          catalogCardId: catalogCardId || null,
+          catalogCardName: catalogCardName || null
         }];
         if (isExchange) {
-          bundleExtras.forEach(row => items.push({
-            give: row.give.trim(), want: row.want.trim(),
-            photos: [{ full: row.full, thumb: row.thumb }],
-            catalogCardId: null, catalogCardName: null
-          }));
+          bundleExtras.forEach(function(row) {
+            items.push({
+              give: row.give.trim(),
+              want: row.want.trim(),
+              photos: [{ full: row.full, thumb: row.thumb }],
+              catalogCardId: null,
+              catalogCardName: null
+            });
+          });
         }
         let bundleBoxes = [];
-        if (isExchange && window.exchangeStyle === "bundle" && postPhotos[0]) {
+        if (bundleMode && postPhotos[0]) {
           if (Array.isArray(window.__bulkSlots) && window.__bulkSlots.length) {
-            bundleBoxes = asUnitBoxes(window.__bulkSlots).map(b => ({ x: b.x, y: b.y, w: b.w, h: b.h, state: "open" }));
+            bundleBoxes = asUnitBoxes(window.__bulkSlots).map(function(box) {
+              return { x: box.x, y: box.y, w: box.w, h: box.h, state: "open" };
+            });
           } else {
-            const live = sheetCropState && sheetCropState.img && Array.isArray(sheetCropState.boxes) ? sheetCropState.boxes : [];
-            if (live.length) {
-              const img = sheetCropState.img;
-              bundleBoxes = live.filter(b => b && b.active !== false && b.w > 8 && b.h > 8).map(b => ({
-                x: b.x / img.width, y: b.y / img.height, w: b.w / img.width, h: b.h / img.height, state: "open"
-              }));
+            const liveBoxes = sheetCropState && sheetCropState.img && Array.isArray(sheetCropState.boxes) ? sheetCropState.boxes : [];
+            if (liveBoxes.length && sheetCropState.img) {
+              const sourceImage = sheetCropState.img;
+              bundleBoxes = liveBoxes.filter(function(box) {
+                return box && box.active !== false && box.w > 8 && box.h > 8;
+              }).map(function(box) {
+                return {
+                  x: box.x / sourceImage.width,
+                  y: box.y / sourceImage.height,
+                  w: box.w / sourceImage.width,
+                  h: box.h / sourceImage.height,
+                  state: "open"
+                };
+              });
+            } else if (Array.isArray(window._pendingBundleBoxes) && window._pendingBundleBoxes.length) {
+              bundleBoxes = asUnitBoxes(window._pendingBundleBoxes).map(function(box) {
+                return { x: box.x, y: box.y, w: box.w, h: box.h, state: "open" };
+              });
             } else {
-              bundleBoxes = asUnitBoxes(
-                Array.isArray(window._pendingBundleBoxes) && window._pendingBundleBoxes.length
-                  ? window._pendingBundleBoxes
-                  : await detectBundleBoxes(postPhotos[0].full)
-              ).map(b => ({ x: b.x, y: b.y, w: b.w, h: b.h, state: "open" }));
+              const detectedBoxes = await detectBundleBoxes(postPhotos[0].full);
+              bundleBoxes = asUnitBoxes(detectedBoxes).map(function(box) {
+                return { x: box.x, y: box.y, w: box.w, h: box.h, state: "open" };
+              });
             }
           }
+          if (bundleBoxes.length < 1) {
+            showToast("まとめ出品では、写真の枠を1つ以上設定してください", "info");
+            return;
+          }
         }
-        for (const item of items) {
-          const useBundle = isExchange && bundleBoxes.length >= 2 && item === items[0];
-          if (window.__isBulkMode && (!window.__bulkSlots || window.__bulkSlots.length === 0)) {
-          btn.disabled = false; btn.innerText = "出品する";
-          return /* alert hidden */ console.log("まとめて出品では「写真の枠を設定・編集する」から枠を1つ以上設定してください。");
-        }
-        const __bulkExtra = (window.__isBulkMode && window.__bulkSlots.length > 0)
-          ? { isBulk: true, bulkSlots: JSON.parse(JSON.stringify(window.__bulkSlots)) }
-          : { isBulk: false };
-        const ref = await addDoc(collection(db, "posts"), {
-          ...__bulkExtra,
-            kind, isBuy, isSell: isSell && !isBuy, member, give: item.give, want: item.want,
-            price: (isBuy || isSell) ? price : 0, description: desc, condition,
-            status: "active", photoCount: item.photos.length, thumb: item.photos.length > 0 ? item.photos[0].thumb : "",
-            userId: currentUser.uid, userName: getMyDisplayName(), userPhoto: getMyProfile()?.photo || "",
-            likesCount: 0, createdAt: serverTimestamp(),
+        for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+          const item = items[itemIndex];
+          const useBundle = bundleMode && bundleBoxes.length >= 2 && itemIndex === 0;
+          const bulkExtra = (bundleMode && Array.isArray(window.__bulkSlots) && window.__bulkSlots.length > 0)
+            ? { isBulk: true, bulkSlots: JSON.parse(JSON.stringify(window.__bulkSlots)) }
+            : { isBulk: false };
+          const ref = await addDoc(collection(db, "posts"), {
+            isBulk: bulkExtra.isBulk,
+            bulkSlots: bulkExtra.bulkSlots || [],
+            kind: kind,
+            isBuy: isBuy,
+            isSell: isSell && !isBuy,
+            member: member,
+            give: item.give,
+            want: item.want,
+            price: (isBuy || isSell) ? price : 0,
+            description: desc,
+            condition: condition,
+            status: "active",
+            photoCount: item.photos.length,
+            thumb: item.photos.length > 0 ? item.photos[0].thumb : "",
+            userId: currentUser.uid,
+            userName: getMyDisplayName(),
+            userPhoto: getMyProfile() ? (getMyProfile().photo || "") : "",
+            likesCount: 0,
+            createdAt: serverTimestamp(),
             deviceId: getOrCreateDeviceId(),
             paymentMethod: "azukari",
             catalogCardId: item.catalogCardId,
@@ -3922,13 +4066,40 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
             bundleTotal: useBundle ? bundleBoxes.length : 0,
             bundleLeft: useBundle ? bundleBoxes.length : 0
           });
-          for (let i = 0; i < item.photos.length; i++) await addDoc(collection(db, "posts", ref.id, "photos"), { data: item.photos[i].full, order: i, createdAt: serverTimestamp() });
-          if (useBundle && item.photos[0]) await addDoc(collection(db, "posts", ref.id, "photos"), { data: item.photos[0].full, order: -1, role: "base", createdAt: serverTimestamp() });
-          if (item.catalogCardId) notifyCardWatchers(item.catalogCardId, item.catalogCardName || item.give, ref.id).catch(() => {});
+          for (let photoIndex = 0; photoIndex < item.photos.length; photoIndex++) {
+            await addDoc(collection(db, "posts", ref.id, "photos"), {
+              data: item.photos[photoIndex].full,
+              order: photoIndex,
+              createdAt: serverTimestamp()
+            });
+          }
+          if (useBundle && item.photos[0]) {
+            await addDoc(collection(db, "posts", ref.id, "photos"), {
+              data: item.photos[0].full,
+              order: -1,
+              role: "base",
+              createdAt: serverTimestamp()
+            });
+          }
+          if (item.catalogCardId) {
+            notifyCardWatchers(item.catalogCardId, item.catalogCardName || item.give, ref.id).catch(function() {});
+          }
         }
-        showToast(items.length > 1 ? items.length + "件出品しました" : "出品が完了しました！詳細画面からXでシェアできます", "success");
-        closePostModal(); loadPosts(true); switchTab('home');
-      } catch(e) { /* alert hidden */ console.log("失敗しました"); } finally { submittingPost = false; btn.disabled = false; btn.innerText = "出品する"; }
+        showToast(items.length > 1 ? items.length + "件出品しました" : "出品が完了しました", "success");
+        closePostModal();
+        loadPosts(true);
+        switchTab("home");
+      } catch (error) {
+        console.error(error);
+        const errorText = error && error.message ? error.message : "失敗しました";
+        showToast("出品できませんでした: " + errorText, "error");
+      } finally {
+        submittingPost = false;
+        if (submitButton) {
+          submitButton.disabled = false;
+          submitButton.innerText = "出品する";
+        }
+      }
     };
 
     async function notifyCardWatchers(cardId, cardName, postId) {
@@ -4094,8 +4265,17 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     }
 
     window.openPostTypeSheet = function() {
-      if (!currentUser) return /* alert hidden */ console.log("ログインが必要です。");
-      document.getElementById("post-type-sheet").classList.remove("hidden");
+      if (!currentUser) {
+        showToast("ログインしてください", "info");
+        return;
+      }
+      const sheet = document.getElementById("post-type-sheet");
+      if (!sheet) {
+        showToast("出品画面を開けませんでした", "error");
+        return;
+      }
+      sheet.classList.remove("hidden");
+      sheet.style.display = "flex";
     };
     window.closePostTypeSheet = function() { document.getElementById("post-type-sheet").classList.add("hidden"); };
 
@@ -5859,10 +6039,130 @@ window.openAzukariApp = function() {
       } else if (t.status === "shipping" && both("received")) { next = "completed"; }
       if (next) updateDoc(doc(db, "trades", t.id), { status: next, updatedAt: serverTimestamp() }).catch(()=>{});
     }
+    function reviewFormHtml(buttonClass) {
+      return `<div class="bg-white rounded-2xl p-4 border border-gray-200 space-y-3 shadow-md">
+        <div class="text-xs font-medium text-gray-700 text-center">相手を評価してください</div>
+        <div class="flex justify-center space-x-2">
+          <button type="button" data-star="1" onclick="setRating(1)" class="text-3xl text-gray-300">★</button>
+          <button type="button" data-star="2" onclick="setRating(2)" class="text-3xl text-gray-300">★</button>
+          <button type="button" data-star="3" onclick="setRating(3)" class="text-3xl text-gray-300">★</button>
+          <button type="button" data-star="4" onclick="setRating(4)" class="text-3xl text-gray-300">★</button>
+          <button type="button" data-star="5" onclick="setRating(5)" class="text-3xl text-gray-300">★</button>
+        </div>
+        <textarea id="review-comment" rows="2" maxlength="200" placeholder="任意：取引の感想コメント（相手のプロフィールに表示されます）" class="w-full liquid-glass-input rounded-xl p-2.5 text-xs text-gray-800"></textarea>
+        <button type="button" onclick="submitReview()" class="${buttonClass}">評価を送信して取引を終える</button>
+      </div>`;
+    }
+    function shouldShowReviewForm(trade, userId) {
+      if (!trade || !userId) {
+        return false;
+      }
+      if (trade.status === "cancelled") {
+        return false;
+      }
+      if (reviewState.done === true && reviewState.tradeId === trade.id) {
+        return false;
+      }
+      if (trade.status === "completed" || trade.status === "done") {
+        return true;
+      }
+      if (flag(trade, "received", userId)) {
+        return true;
+      }
+      return false;
+    }
+    function paintReviewSlot(trade, userId, buttonClass) {
+      const host = document.getElementById("room-review-slot");
+      if (!host) {
+        return;
+      }
+      if (!shouldShowReviewForm(trade, userId)) {
+        host.innerHTML = "";
+        host.removeAttribute("data-review-key");
+        host.classList.add("hidden");
+        return;
+      }
+      host.classList.remove("hidden");
+      const reviewKey = trade.id + ":open";
+      if (host.getAttribute("data-review-key") !== reviewKey) {
+        host.innerHTML = reviewFormHtml(buttonClass);
+        host.setAttribute("data-review-key", reviewKey);
+        if (selectedRating > 0 && typeof window.setRating === "function") {
+          window.setRating(selectedRating);
+        }
+      }
+      if (window.__scrollReviewSlot) {
+        window.__scrollReviewSlot = false;
+        setTimeout(function() {
+          host.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 80);
+      }
+    }
     function checkReview() {
-      const t = currentTrade; if (!t || t.status !== "completed" || reviewState.tradeId === t.id) return;
-      reviewState = { tradeId: t.id, done: null };
-      getDoc(doc(db, "reviews", t.id + "_" + currentUser.uid)).then(s => { if (currentTrade && currentTrade.id === t.id) { reviewState.done = s.exists(); renderRoom(); } });
+      const trade = currentTrade;
+      if (!trade || !currentUser) {
+        return;
+      }
+      const userId = currentUser.uid;
+      const iHaveReceived = flag(trade, "received", userId);
+      const finished = trade.status === "completed" || trade.status === "done";
+      if (!finished && !iHaveReceived) {
+        return;
+      }
+      if (reviewState.tradeId === trade.id && reviewState.done === true) {
+        return;
+      }
+      const reviewId = trade.id + "_" + userId;
+      if (checkReview.inflightId === reviewId) {
+        return;
+      }
+      checkReview.inflightId = reviewId;
+      if (reviewState.tradeId !== trade.id || reviewState.done !== false) {
+        reviewState = { tradeId: trade.id, done: false };
+        const host = document.getElementById("room-review-slot");
+        if (host) {
+          host.removeAttribute("data-review-key");
+        }
+        roomActionsKey = "";
+        renderRoom();
+      }
+      getDoc(doc(db, "reviews", reviewId)).then(function(snapshot) {
+        if (checkReview.inflightId === reviewId) {
+          checkReview.inflightId = "";
+        }
+        if (!currentTrade || currentTrade.id !== trade.id) {
+          return;
+        }
+        const alreadyReviewed = snapshot.exists();
+        if (reviewState.tradeId === trade.id && reviewState.done === alreadyReviewed) {
+          return;
+        }
+        reviewState.tradeId = trade.id;
+        reviewState.done = alreadyReviewed;
+        const host = document.getElementById("room-review-slot");
+        if (host) {
+          host.removeAttribute("data-review-key");
+        }
+        roomActionsKey = "";
+        renderRoom();
+      }).catch(function(error) {
+        if (checkReview.inflightId === reviewId) {
+          checkReview.inflightId = "";
+        }
+        console.error(error);
+        if (!currentTrade || currentTrade.id !== trade.id) {
+          return;
+        }
+        reviewState.tradeId = trade.id;
+        reviewState.done = false;
+        const host = document.getElementById("room-review-slot");
+        if (host) {
+          host.removeAttribute("data-review-key");
+        }
+        roomActionsKey = "";
+        renderRoom();
+        showToast("評価の確認に失敗しました。この画面から評価を送れます", "info");
+      });
     }
 
     window.openCancelModal = function() {
@@ -6009,12 +6309,12 @@ window.openAzukariApp = function() {
           </div>`;
         }
       } else if (t.status === "completed") {
-        html += `<p class="text-xs text-green-700 font-medium text-center bg-white/60 p-3 rounded-xl border border-white shadow-sm">🎉 取引が完了しました！</p>`;
-        if (reviewState.done === false) html += `<div class="bg-white/80 rounded-2xl p-4 border border-white space-y-3 shadow-md mt-4"><div class="text-xs font-medium text-gray-700 text-center">相手を評価してください</div><div class="flex justify-center space-x-2">${[1,2,3,4,5].map(n => `<button data-star="${n}" onclick="setRating(${n})" class="text-3xl text-gray-300 hover:scale-110 transition drop-shadow-sm">★</button>`).join("")}</div><textarea id="review-comment" rows="2" maxlength="200" placeholder="任意：取引の感想コメント（相手のプロフィールに表示されます）" class="w-full liquid-glass-input rounded-xl p-2.5 text-xs text-gray-800"></textarea><button onclick="submitReview()" class="${primary}">評価を送信</button></div>`;
+        html += `<p class="text-xs text-green-700 font-medium text-center bg-white/60 p-3 rounded-xl border border-white shadow-sm">🎉 取引が完了しました！下の評価を送ると取引を終えられます。</p>`;
       }
       const actionsKey = t.id + "|" + html;
       const actionsChanged = roomActionsKey !== actionsKey;
       if (actionsChanged) { roomActionsKey = actionsKey; document.getElementById("room-actions").innerHTML = html; }
+      paintReviewSlot(t, uid, primary);
       if (selectedRating > 0) setRating(selectedRating);
       const disabled = t.status === "cancelled"; document.getElementById("room-input").disabled = disabled; document.getElementById("room-send").disabled = disabled; document.getElementById("room-photo").disabled = disabled;
       if (actionsChanged) setTimeout(() => { const topBox = document.getElementById("room-top-box"), actionsBox = document.getElementById("room-actions"); if (topBox && actionsBox && t.status !== "completed" && t.status !== "cancelled") topBox.scrollTo({ top: actionsBox.offsetTop, behavior: "smooth" }); }, 300);
@@ -6055,7 +6355,58 @@ window.openAzukariApp = function() {
     window.closeImageViewer = function() { document.getElementById("image-viewer").classList.add("hidden"); };
 
     window.tradeAction = async function(field) {
-      if (!currentTrade) return; try { const updateData = {}; updateData[`${field}.${currentUser.uid}`] = true; updateData.updatedAt = serverTimestamp(); await updateDoc(doc(db, "trades", currentTrade.id), updateData); } catch(e) { /* alert hidden */ console.log("失敗しました。"); }
+      if (!currentTrade || !currentUser) {
+        showToast("取引情報を読み込めませんでした", "error");
+        return;
+      }
+      const tradeId = currentTrade.id;
+      const userId = currentUser.uid;
+      const updateData = {};
+      updateData[field + "." + userId] = true;
+      updateData.updatedAt = serverTimestamp();
+      try {
+        await updateDoc(doc(db, "trades", tradeId), updateData);
+      } catch (error) {
+        console.error(error);
+        showToast("操作を保存できませんでした", "error");
+        return;
+      }
+      if (!currentTrade[field] || typeof currentTrade[field] !== "object") {
+        currentTrade[field] = {};
+      }
+      currentTrade[field][userId] = true;
+      if (field === "received") {
+        const ownerReceived = flag(currentTrade, "received", currentTrade.ownerId);
+        const applicantReceived = flag(currentTrade, "received", currentTrade.applicantId);
+        if (ownerReceived && applicantReceived && currentTrade.status !== "completed") {
+          try {
+            await updateDoc(doc(db, "trades", tradeId), { status: "completed", updatedAt: serverTimestamp() });
+            currentTrade.status = "completed";
+          } catch (error) {
+            console.error(error);
+            showToast("取引完了の保存に失敗しました", "error");
+          }
+        }
+        if (!(reviewState.tradeId === tradeId && reviewState.done === true)) {
+          reviewState = { tradeId: tradeId, done: false };
+        }
+        const reviewHost = document.getElementById("room-review-slot");
+        if (reviewHost) {
+          reviewHost.removeAttribute("data-review-key");
+        }
+        window.__scrollReviewSlot = true;
+        roomActionsKey = "";
+        renderRoom();
+        checkReview();
+        if (currentTrade.status === "completed") {
+          showToast("取引を完了しました。下に出た星を選んで評価してください", "success");
+        } else {
+          showToast("完了確認を送りました。下の評価を送信できます", "success");
+        }
+        return;
+      }
+      roomActionsKey = "";
+      renderRoom();
     };
     window.checkCancelAccountLock = function() {
       if (!currentUser || !userData) return false;
@@ -6138,13 +6489,26 @@ window.openAzukariApp = function() {
 
     window.setRating = function(n) { selectedRating = n; document.querySelectorAll("[data-star]").forEach(b => b.className = "text-3xl transition drop-shadow-sm hover:scale-110 " + (Number(b.dataset.star) <= n ? "text-yellow-400" : "text-gray-300")); };
     window.submitReview = async function() {
-      const t = currentTrade; if (!t) return; if (selectedRating < 1) return /* alert hidden */ console.log("星を選んでください。");
-      const toId = currentUser.uid === t.ownerId ? t.applicantId : t.ownerId;
+      const trade = currentTrade;
+      if (!trade || !currentUser) {
+        showToast("取引情報を読み込めませんでした", "error");
+        return;
+      }
+      if (selectedRating < 1) {
+        showToast("星を選んでください", "info");
+        return;
+      }
+      const toId = currentUser.uid === trade.ownerId ? trade.applicantId : trade.ownerId;
       const commentEl = document.getElementById("review-comment");
-      const comment = (commentEl && commentEl.value ? commentEl.value : "").trim().slice(0, 200);
+      const comment = commentEl && commentEl.value ? commentEl.value.trim().slice(0, 200) : "";
+      const submitButton = document.querySelector("#room-review-slot button[onclick='submitReview()']");
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.innerText = "送信中…";
+      }
       try {
-        await setDoc(doc(db, "reviews", t.id + "_" + currentUser.uid), {
-          tradeId: t.id,
+        await setDoc(doc(db, "reviews", trade.id + "_" + currentUser.uid), {
+          tradeId: trade.id,
           fromId: currentUser.uid,
           fromName: getMyDisplayName(),
           toId: toId,
@@ -6153,10 +6517,29 @@ window.openAzukariApp = function() {
           createdAt: serverTimestamp(),
           deviceId: getOrCreateDeviceId()
         });
-        reviewState.done = true;
+        const ownerReceived = flag(trade, "received", trade.ownerId);
+        const applicantReceived = flag(trade, "received", trade.applicantId);
+        if (ownerReceived && applicantReceived && trade.status !== "completed" && trade.status !== "cancelled") {
+          await updateDoc(doc(db, "trades", trade.id), { status: "completed", updatedAt: serverTimestamp() });
+          trade.status = "completed";
+        }
+        reviewState = { tradeId: trade.id, done: true };
+        const host = document.getElementById("room-review-slot");
+        if (host) {
+          host.removeAttribute("data-review-key");
+        }
+        roomActionsKey = "";
         renderRoom();
-        showToast("評価を送信しました", "success");
-      } catch(e) { /* alert hidden */ console.log("失敗しました。"); }
+        showToast("評価を送信しました。取引を終えました", "success");
+      } catch (error) {
+        console.error(error);
+        const message = error && error.message ? error.message : "失敗しました";
+        showToast("評価を送れませんでした: " + message, "error");
+        if (submitButton) {
+          submitButton.disabled = false;
+          submitButton.innerText = "評価を送信して取引を終える";
+        }
+      }
     };
 
     // この日時以降に作成された出品・取引はアズカリ表示（既存はPayPay）
@@ -13068,38 +13451,69 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       } catch (e) { alert("エラー: " + e.message); }
     };
 
-  window.openAutoGoModal = async function() {
-    const modal = document.getElementById("autogo-modal");
-    if (!modal) return;
-    modal.classList.remove("hidden");
-    await initPoolsListListener();
+  window.__selectAutoGoPool = function(poolId) {
+    if (typeof selectAutoGoPool === "function") {
+      return selectAutoGoPool(poolId);
+    }
   };
-
-  window.closeAutoGoModal = function() {
-    const modal = document.getElementById("autogo-modal");
-    if (modal) modal.classList.add("hidden");
-  };
+  window.__loadAutoGoPools = initPoolsListListener;
 
   async function initPoolsListListener() {
-    if (!window.__autoGoRefs) return;
-    const { db, collection, query, orderBy, limit, onSnapshot } = window.__autoGoRefs;
-
-    if (unsubPoolsList) unsubPoolsList();
-    const q = query(collection(db, "auto_go_pools"), orderBy("createdAt", "desc"), limit(10));
-    unsubPoolsList = onSnapshot(q, async (snap) => {
-      allPools = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const titleEl = document.getElementById("ag-pool-title");
+    const descEl = document.getElementById("ag-pool-desc");
+    const gridEl = document.getElementById("ag-member-grid");
+    if (window.__pendingAutoGoPoolId) {
+      activePoolId = window.__pendingAutoGoPoolId;
+      window.__pendingAutoGoPoolId = "";
+    }
+    if (!window.__autoGoRefs) {
+      if (titleEl) titleEl.textContent = "Auto-GOを準備しています";
+      if (descEl) descEl.textContent = "通信の準備が終わるまで少し待ってから、もう一度開いてください。";
+      if (typeof showToast === "function") {
+        showToast("Auto-GOの準備中です。数秒後にもう一度開いてください", "info");
+      }
+      return;
+    }
+    const refs = window.__autoGoRefs;
+    if (!refs.db || typeof refs.collection !== "function" || typeof refs.query !== "function" || typeof refs.orderBy !== "function" || typeof refs.limit !== "function" || typeof refs.onSnapshot !== "function") {
+      if (titleEl) titleEl.textContent = "Auto-GOを開けませんでした";
+      if (descEl) descEl.textContent = "必要な機能が読み込まれていません。ページを再読み込みしてください。";
+      if (typeof showToast === "function") {
+        showToast("Auto-GOの機能を読み込めませんでした。ページを再読み込みしてください", "error");
+      }
+      return;
+    }
+    if (unsubPoolsList) {
+      unsubPoolsList();
+      unsubPoolsList = null;
+    }
+    const poolsQuery = refs.query(refs.collection(refs.db, "auto_go_pools"), refs.orderBy("createdAt", "desc"), refs.limit(10));
+    unsubPoolsList = refs.onSnapshot(poolsQuery, async function(snap) {
+      allPools = snap.docs.map(function(poolDoc) {
+        const row = poolDoc.data();
+        row.id = poolDoc.id;
+        return row;
+      });
       renderPoolTabs();
-
-      if (!activePoolId || (!snap.docs.some(d => d.id === activePoolId) && allPools.length > 0)) {
+      const stillVisible = snap.docs.some(function(poolDoc) { return poolDoc.id === activePoolId; });
+      if (!activePoolId || (!stillVisible && allPools.length > 0)) {
         if (allPools.length > 0) {
           await selectAutoGoPool(allPools[0].id);
         } else {
-          document.getElementById("ag-pool-title").textContent = "まだ開催中のプールがありません";
-          document.getElementById("ag-pool-desc").textContent = "";
-          document.getElementById("ag-member-grid").innerHTML = "";
+          if (titleEl) titleEl.textContent = "まだ開催中のプールがありません";
+          if (descEl) descEl.textContent = "管理者が公開すると、ここに参加できます。";
+          if (gridEl) gridEl.innerHTML = "";
         }
       } else if (activePoolId) {
         await selectAutoGoPool(activePoolId);
+      }
+    }, function(error) {
+      console.error(error);
+      const message = error && error.message ? error.message : "取得に失敗しました";
+      if (titleEl) titleEl.textContent = "プールを読み込めませんでした";
+      if (descEl) descEl.textContent = message;
+      if (typeof showToast === "function") {
+        showToast("Auto-GOの一覧を取得できませんでした: " + message, "error");
       }
     });
   }
@@ -13423,48 +13837,56 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
 
   window.markAutoGoPurchased = async function() {
       const orderNote = prompt("購入したショップの「注文番号」または購入完了メモを入力してください（必須）:", "");
-      if (orderNote === null) return;
-      if (!orderNote.trim()) { alert("注文番号または購入メモを入力してください。"); return; }
-      
-      if (!activePoolId) return;
+      if (orderNote === null) {
+        return;
+      }
+      if (!orderNote.trim()) {
+        alert("注文番号または購入メモを入力してください。");
+        return;
+      }
+      if (!activePoolId) {
+        if (typeof showToast === "function") {
+          showToast("参加中のプールが見つかりません", "error");
+        }
+        return;
+      }
+      const issuedMs = Number(window.__agCurrentUrlIssuedAt || 0);
+      if (issuedMs > 0 && Date.now() > issuedMs + 2 * 60 * 60 * 1000) {
+        if (typeof showToast === "function") {
+          showToast("購入制限時間（2時間）を過ぎたため枠が失効しています", "error");
+        } else {
+          alert("購入制限時間（2時間）を過ぎたため枠が失効しています");
+        }
+        return;
+      }
       try {
-        const { db, doc, updateDoc, serverTimestamp } = window.__autoGoRefs;
-        const user = auth.currentUser;
-        if (!user) { alert("ログインしてください"); return; }
-        
-        await updateDoc(doc(db, "auto_go_pools", activePoolId, "entries", user.uid), {
+        const refs = window.__autoGoRefs;
+        if (!refs || !refs.db || !refs.doc || !refs.updateDoc) {
+          if (typeof showToast === "function") {
+            showToast("Auto-GOの準備中です。数秒後にもう一度押してください", "info");
+          } else {
+            alert("Auto-GOの準備中です。数秒後にもう一度押してください");
+          }
+          return;
+        }
+        const user = refs.auth && refs.auth.currentUser ? refs.auth.currentUser : null;
+        if (!user) {
+          alert("ログインしてください");
+          return;
+        }
+        await refs.updateDoc(refs.doc(refs.db, "auto_go_pools", activePoolId, "entries", user.uid), {
           status: "purchased",
           orderNote: orderNote.trim(),
-          purchasedAt: serverTimestamp()
+          purchasedAt: refs.serverTimestamp()
         });
-        alert("✅ 購入完了を報告しました！CD到着後の開封結果登録をお待ちください。");
-        const container = document.getElementById("auto-go-modal-body");
-        if (container && typeof window.openAutoGoModal === "function") {
-          // モーダル再描画
-          window.openAutoGoModal(activePoolId);
-        }
-      } catch (e) {
-        console.error("markAutoGoPurchased error:", e);
-        alert("購入報告エラー: " + (e.message || e));
+        alert("購入完了を報告しました。CD到着後の開封結果登録をお待ちください。");
+        window.openAutoGoModal(activePoolId);
+      } catch (error) {
+        console.error("markAutoGoPurchased error:", error);
+        const message = error && error.message ? error.message : "失敗しました";
+        alert("購入報告エラー: " + message);
       }
-    };window.__agCurrentUrlIssuedAt || 0);
-    if (issuedMs > 0 && Date.now() > issuedMs + 10 * 60 * 60 * 1000) {
-      if (typeof showToast === "function") {
-        showToast("購入制限時間（2時間）を過ぎたため枠が失効しています", "error");
-      } else {
-        alert("購入制限時間（2時間）を過ぎたため枠が失効しています");
-      }
-      return;
-    }
-    if (!activePoolId) return;
-    const { db, auth, doc, updateDoc, serverTimestamp } = window.__autoGoRefs;
-    const user = auth.currentUser;
-    if (!user) return;
-    await updateDoc(doc(db, "auto_go_pools", activePoolId, "entries", user.uid), {
-      status: "purchased",
-      purchasedAt: serverTimestamp()
-    });
-  };
+    };
 
   window.submitAutoGoReveal = async function() {
     if (typeof Notification === "undefined" || Notification.permission !== "granted") {
