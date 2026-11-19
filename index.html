@@ -4277,7 +4277,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       sheet.classList.remove("hidden");
       sheet.style.display = "flex";
     };
-    window.closePostTypeSheet = function() { document.getElementById("post-type-sheet").classList.add("hidden"); };
+    window.closePostTypeSheet = function() { const el = document.getElementById("post-type-sheet"); if (el) { el.classList.add("hidden"); el.style.display = "none"; } };
 
     function renderSellTab() {
       const sec = document.getElementById("post-menu-section");
