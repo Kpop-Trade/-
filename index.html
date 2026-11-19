@@ -1263,10 +1263,11 @@ html, body {
         </div>
       </div>
       <div id="profile-section-address" class="space-y-3 text-xs md:text-sm hidden">
-        <div class="bg-amber-50/80 border border-amber-200 rounded-xl p-2.5 text-[11px] text-amber-800 leading-relaxed">申し込み・参加をするには、お名前・郵便番号・住所の登録が必要です。</div>
+        <div class="bg-amber-50/80 border border-amber-200 rounded-xl p-2.5 text-[11px] text-amber-800 leading-relaxed">Auto-GOへの参加には、お名前・郵便番号・住所・XアカウントIDの登録が必要です。</div>
         <div><label class="block font-medium text-gray-700 mb-1">お名前（郵送時の宛名） <span class="text-pink-600">必須</span></label><input type="text" id="profile-name" maxlength="50" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
         <div><label class="block font-medium text-gray-700 mb-1">郵便番号 <span class="text-pink-600">必須</span></label><input type="text" id="profile-zip" maxlength="10" inputmode="numeric" placeholder="例: 123-4567" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
         <div><label class="block font-medium text-gray-700 mb-1">都道府県・市区町村・番地 <span class="text-pink-600">必須</span></label><input type="text" id="profile-address1" maxlength="100" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
+        <div><label class="block font-medium text-gray-700 mb-1">X（Twitter）アカウントID <span class="text-pink-600">Auto-GO参加時必須</span></label><input type="text" id="profile-xid" maxlength="50" placeholder="例: your_account" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
         <div><label class="block font-medium text-gray-700 mb-1">建物名・部屋番号（任意）</label><input type="text" id="profile-address2" maxlength="100" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
         <div><label class="block font-medium text-gray-700 mb-1">電話番号（任意・伝票用）</label><input type="text" id="profile-phone" maxlength="20" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
       </div>
@@ -1766,7 +1767,8 @@ window.__autoGoRefs = {
   registerAutoGoArrival: httpsCallable(getFunctions(app, "asia-northeast1"), "registerAutoGoArrival"),
   registerAutoGoDelay: httpsCallable(getFunctions(app, "asia-northeast1"), "registerAutoGoDelay"),
   registerAutoGoShipment: httpsCallable(getFunctions(app, "asia-northeast1"), "registerAutoGoShipment"),
-  registerAutoGoReceipt: httpsCallable(getFunctions(app, "asia-northeast1"), "registerAutoGoReceipt")
+  registerAutoGoReceipt: httpsCallable(getFunctions(app, "asia-northeast1"), "registerAutoGoReceipt"),
+  adminRemoveAutoGoEntry: httpsCallable(getFunctions(app, "asia-northeast1"), "adminRemoveAutoGoEntry")
 };
 
   
@@ -1808,6 +1810,7 @@ getRedirectResult(auth)
   });
     const ADMIN_UIDS = ["Ay6VCS8HTgM3RqjDYZ0wKdHrSKz1", "GvVhAmT56GZjsWrl1YRaStB81im1"];
     function isAdmin() { return currentUser && ADMIN_UIDS.includes(currentUser.uid); }
+    window.__isAutoGoAdmin = isAdmin;
 
     const MEMBERS = ["すべて", "ウォニ (Wonhee)", "ミンジュ (Minju)", "イロハ (Iroha)", "モカ (Moka)", "ユナ (Yuna)"];
     const KINDS = [
@@ -3328,6 +3331,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       document.getElementById("profile-name").value = s.name || currentUser.displayName || "";
       document.getElementById("profile-zip").value = s.zip || "";
       document.getElementById("profile-address1").value = s.address1 || "";
+      document.getElementById("profile-xid").value = s.xId || s.twitter || s.xUsername || "";
       document.getElementById("profile-address2").value = s.address2 || "";
       document.getElementById("profile-phone").value = s.phone || "";
       const preview = document.getElementById("profile-photo-preview");
@@ -3372,6 +3376,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           name: document.getElementById("profile-name").value.trim(),
           zip: document.getElementById("profile-zip").value.trim(),
           address1: document.getElementById("profile-address1").value.trim(),
+          xId: document.getElementById("profile-xid").value.trim().replace(/^@/, ""),
           address2: document.getElementById("profile-address2").value.trim(),
           phone: document.getElementById("profile-phone").value.trim()
         };
@@ -13268,6 +13273,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       <span id="ag-prob-text" class="hidden">20%</span>
       <div class="hidden"><div id="ag-progress-bar" style="width: 0%"></div></div>
     </div>
+    <div id="ag-participant-list" class="rounded-xl border border-gray-100 px-3 py-2"></div>
 
     <!-- 自分の参加ステータス＆自動URL配布エリア -->
     <div id="ag-my-status-box" class="hidden bg-white space-y-2.5"></div>
@@ -13304,9 +13310,11 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
   let allPools = [];
   let currentPoolData = null;
   let currentEntryData = null;
+  let currentEntries = [];
   let unsubPoolsList = null;
   let unsubPool = null;
   let unsubEntry = null;
+  let unsubEntries = null;
 
   function getActiveMembers() {
     return (currentPoolData && Array.isArray(currentPoolData.members) && currentPoolData.members.length)
@@ -13322,6 +13330,10 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       "\"": "&quot;",
       "'": "&#39;"
     })[char]);
+  }
+
+  function getAutoGoXId(profile) {
+    return String(profile?.xId || profile?.twitter || profile?.xUsername || "").trim().replace(/^@/, "");
   }
 
   window.toggleAutoGoAdminForm = function() {
@@ -13433,6 +13445,15 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       permWarn = `<div class="bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-bold rounded-xl p-2.5">⚠️ Firestoreルールに auto_go_pools の許可を追加してください（現在のUID: ${window.currentUser?.uid || "未ログイン"}）（${err?.code || "error"}: ${err?.message || ""}）</div>`;
     }
     pools.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+    await Promise.all(pools.map(async (pool) => {
+      try {
+        const entriesSnap = await getDocs(collection(db, "auto_go_pools", pool.id, "entries"));
+        pool.entries = entriesSnap.docs.map(entry => ({ uid: entry.id, ...entry.data() }));
+      } catch (error) {
+        console.warn("Auto-GO participant list read warn:", pool.id, error);
+        pool.entries = [];
+      }
+    }));
 
     const poolRows = pools.length === 0
       ? '<p class="text-xs text-gray-400 text-center py-6 bg-white/60 rounded-2xl border border-white">登録済みのAuto-GOプールはまだありません</p>'
@@ -13441,6 +13462,16 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
           const counts = p.memberCounts || {};
           const caps = p.memberCaps || {};
           const breakdown = members.map(m => `${m}: ${counts[m] || 0}/${caps[m] || p.slotPerMember || 0}`).join(" / ");
+          const participants = (p.entries || []).map(entry => {
+            const xId = getAutoGoXId(entry);
+            const canRemove = !["unshipped_penalty", "cancelled"].includes(entry.status);
+            return `<div class="flex items-center justify-between gap-2 text-[10px] border-t border-gray-100 py-1">
+              <span class="truncate">${escapeAutoGoHtml(entry.userName || "参加者")} · ${escapeAutoGoHtml(entry.wantedMember || "")} · ${escapeAutoGoHtml(entry.status || "")}
+                ${xId ? `<a href="https://x.com/${encodeURIComponent(xId)}" target="_blank" rel="noopener" class="ml-1 text-blue-600 underline">@${escapeAutoGoHtml(xId)}</a>` : ""}
+              </span>
+              ${canRemove ? `<button type="button" data-pool="${escapeAutoGoHtml(p.id)}" data-uid="${escapeAutoGoHtml(entry.uid)}" onclick="window.adminRemoveAutoGoEntry(this.dataset.pool,this.dataset.uid)" class="shrink-0 text-red-600 underline">除外</button>` : ""}
+            </div>`;
+          }).join("");
           return `
             <div class="bg-white/85 rounded-2xl p-3.5 border border-white shadow-sm space-y-2">
               <div class="flex items-start justify-between gap-2">
@@ -13458,6 +13489,10 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
               </div>
               <p class="text-[11px] text-gray-600 line-clamp-2">${p.description || ""}</p>
               <div class="text-[10px] font-bold text-purple-700 bg-purple-50/80 px-2.5 py-1.5 rounded-xl">${breakdown}</div>
+              <div class="rounded-xl border border-gray-100 px-2.5 py-1.5">
+                <p class="text-[10px] font-bold text-gray-600">参加者 ${p.entries?.length || 0}人</p>
+                ${participants || '<p class="text-[10px] text-gray-400 py-1">参加者はいません</p>'}
+              </div>
             </div>
           `;
         }).join("");
@@ -13487,6 +13522,15 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
               <option value="5">5人組（初期4枠/人・最低20人）</option>
               <option value="4">4人組（初期5枠/人・最低20人）</option>
             </select>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <label class="block text-[11px] font-bold text-gray-700">最低成立人数
+              <input id="adm-ag-min-threshold" type="number" min="2" max="100" value="20" class="mt-1 w-full liquid-glass-input rounded-xl p-2.5 text-xs text-gray-900">
+            </label>
+            <label class="block text-[11px] font-bold text-gray-700">参加に必要な完了評価数
+              <input id="adm-ag-min-completed-trades" type="number" min="0" value="0" class="mt-1 w-full liquid-glass-input rounded-xl p-2.5 text-xs text-gray-900">
+            </label>
           </div>
 
           <div>
@@ -13529,6 +13573,16 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     const desc = (document.getElementById("adm-ag-desc")?.value || "").trim();
     const fileInput = document.getElementById("adm-ag-photo");
     if (!title) { showToast("タイトルを入力してください", "error"); return; }
+    const minThreshold = Number(document.getElementById("adm-ag-min-threshold")?.value);
+    const minCompletedTrades = Number(document.getElementById("adm-ag-min-completed-trades")?.value);
+    if (!Number.isInteger(minThreshold) || minThreshold < 2 || minThreshold > 100) {
+      showToast("最低成立人数は2〜100の整数で入力してください", "error");
+      return;
+    }
+    if (!Number.isInteger(minCompletedTrades) || minCompletedTrades < 0) {
+      showToast("参加に必要な完了評価数は0以上の整数で入力してください", "error");
+      return;
+    }
 
     const btn = document.getElementById("adm-ag-submit-btn");
     if (btn) { btn.disabled = true; btn.textContent = "公開処理中..."; }
@@ -13598,7 +13652,8 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       memberCounts,
       memberCaps,
       minParticipants,
-      minThreshold: 20,
+      minThreshold,
+      minCompletedTrades,
       targetParticipants: minParticipants,
       recruitEndAt,
       slotPerMember: initialCapPerMember,
@@ -13720,6 +13775,8 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     const { db, auth, doc, onSnapshot } = window.__autoGoRefs;
 
     if (unsubPool) unsubPool();
+    if (unsubEntry) unsubEntry();
+    if (unsubEntries) unsubEntries();
     unsubPool = onSnapshot(doc(db, "auto_go_pools", poolId), (snap) => {
       if (!snap.exists()) return;
       currentPoolData = snap.data();
@@ -13728,14 +13785,41 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
 
     const user = auth.currentUser;
     if (user) {
-      if (unsubEntry) unsubEntry();
       unsubEntry = onSnapshot(doc(db, "auto_go_pools", poolId, "entries", user.uid), (snap) => {
         currentEntryData = snap.exists() ? snap.data() : null;
         window.__agCurrentEntryData = currentEntryData;
         renderAutoGoUI();
       });
     }
+    currentEntries = [];
+    unsubEntries = onSnapshot(collection(db, "auto_go_pools", poolId, "entries"), (snap) => {
+      currentEntries = snap.docs.map(entry => ({ uid: entry.id, ...entry.data() }));
+      renderAutoGoUI();
+    }, (error) => {
+      console.error("Auto-GO participant list error:", error);
+      const list = document.getElementById("ag-participant-list");
+      if (list) list.textContent = "参加者一覧を読み込めませんでした";
+    });
   };
+
+  function renderAutoGoParticipants() {
+    const list = document.getElementById("ag-participant-list");
+    if (!list) return;
+    const participants = currentEntries.filter(entry => entry.status !== "cancelled");
+    const admin = !!window.__isAutoGoAdmin?.();
+    list.innerHTML = `<p class="text-[10px] font-bold text-gray-600 mb-1">参加者 ${participants.length}人</p>` +
+      (participants.length ? participants.map(entry => {
+        const xId = getAutoGoXId(entry);
+        const canRemove = admin && !["unshipped_penalty", "cancelled"].includes(entry.status);
+        return `<div class="flex items-center justify-between gap-2 border-t border-gray-100 py-1 text-[10px]">
+          <span class="truncate">${escapeAutoGoHtml(entry.userName || "参加者")} · ${escapeAutoGoHtml(entry.wantedMember || "")}
+            ${xId ? `<a href="https://x.com/${encodeURIComponent(xId)}" target="_blank" rel="noopener" class="ml-1 text-blue-600 underline">@${escapeAutoGoHtml(xId)}</a>` : ""}
+          </span>
+          ${admin ? `<span class="shrink-0 text-gray-500">${escapeAutoGoHtml(entry.status || "")}</span>` : ""}
+          ${canRemove ? `<button type="button" data-pool="${escapeAutoGoHtml(activePoolId)}" data-uid="${escapeAutoGoHtml(entry.uid)}" onclick="window.adminRemoveAutoGoEntry(this.dataset.pool,this.dataset.uid)" class="shrink-0 text-red-600 underline">除外</button>` : ""}
+        </div>`;
+      }).join("") : '<p class="text-[10px] text-gray-400">参加者はいません</p>');
+  }
 
   function renderAutoGoUI() {
     if (!currentPoolData) return;
@@ -13776,6 +13860,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     document.getElementById("ag-progress-bar").style.width = pct + "%";
     document.getElementById("ag-prob-text").textContent = prob;
     document.getElementById("ag-prob-text").title = "20人で82.5%、50人で88%となるよう補間した参考値です。獲得を保証するものではありません。";
+    renderAutoGoParticipants();
 
     const badge = document.getElementById("ag-status-badge");
     if (currentPoolData.status === "cancelled") {
@@ -13803,6 +13888,8 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
 
       if (currentEntryData.status === "cancelled") {
         html += `<p class="text-sm text-gray-700">予約はキャンセル済み${currentEntryData.penalty ? "（ペナルティ記録済み）" : ""}</p>`;
+      } else if (currentEntryData.status === "unshipped_penalty") {
+        html += `<p class="text-sm text-red-700">発送期限切れによりAuto-GOへの参加が停止されています。</p>`;
       } else if (!isActivated && currentEntryData.status === "reserved") {
         html += `<p class="text-sm text-gray-700">仮予約済み</p><button onclick="cancelAutoGoEntry()" class="w-full border border-gray-300 bg-white py-2 text-sm text-gray-900">仮予約をキャンセル</button>`;
       } else if (currentEntryData.status === "waitlist") {
@@ -13858,6 +13945,11 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
             : currentEntryData.openedCard ? "開封結果登録済み"
             : "開封結果を登録してください";
           html += `<p class="text-sm text-gray-700">${stageText}</p>`;
+          if (!currentEntryData.noMatchResult) {
+            html += currentEntryData.shippedAt
+              ? `<p class="text-sm text-gray-700">受取元：${escapeAutoGoHtml(currentEntryData.receiveFromName || "参加者")} · ${escapeAutoGoHtml(currentEntryData.receivingCard || "トレカ")}</p>`
+              : `<p class="text-xs text-gray-500">※あなたの発送伝票を登録すると表示されます</p>`;
+          }
 
           if (currentEntryData.shipToAddress) {
             html += `<div class="space-y-2">
@@ -13873,7 +13965,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
                 ${currentEntryData.shippedDone
                   ? `<div class="text-center text-[11px] text-gray-600 py-2">発送完了</div>`
                   : `<div class="col-span-2 space-y-1"><label class="block text-[10px] text-gray-700">発送写真
-                      <input id="ag-shipping-proof" type="file" accept="image/*" class="block w-full mt-1 text-[10px]">
+                      <input id="ag-shipping-proof" type="file" accept="image/*" capture="environment" class="block w-full mt-1 text-[10px]">
                     </label><button type="button" onclick="markAutoGoShipped()" class="w-full border border-gray-300 text-gray-900 text-[11px] font-medium py-2">写真を登録して発送完了</button></div>`
                 }
                 ${currentEntryData.receivedDone
@@ -13931,16 +14023,44 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     const refs = window.__autoGoRefs;
     const user = refs.auth.currentUser;
     if (!user) { alert("先にログインしてください"); return; }
-    if (!document.getElementById("ag-auto-ship-consent")?.checked) {
-      showToast("自動発送の事前同意にチェックしてください", "error");
-      return;
-    }
-    if (typeof Notification === "undefined" || Notification.permission !== "granted") {
-      showToast("申し込みにはプッシュ通知の許可が必要です", "error");
-      await window.requestAutoGoPushPermission?.();
-      if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
-    }
     try {
+      const userSnap = await refs.getDoc(refs.doc(refs.db, "users", user.uid));
+      const userData = userSnap.exists() ? userSnap.data() : {};
+      if (userData.autoGoBanned === true) {
+        showToast("このアカウントはAuto-GOに参加できません", "error");
+        return;
+      }
+      const profile = userData.profile || {};
+      if (!String(profile.name || "").trim() || !String(profile.zip || "").trim() ||
+          !String(profile.address1 || "").trim() || !getAutoGoXId(profile)) {
+        showToast("Auto-GOへの参加には配送先住所とXアカウントの登録が必要です", "error");
+        window.closeAutoGoModal?.();
+        window.openProfileModal?.("address");
+        return;
+      }
+      const minCompletedTrades = Number(currentPoolData?.minCompletedTrades) || 0;
+      if (minCompletedTrades > 0) {
+        const tradesSnap = await refs.getDocs(refs.query(
+          refs.collection(refs.db, "trades"),
+          refs.where("participants", "array-contains", user.uid)
+        ));
+        const completedTrades = tradesSnap.docs.filter(trade =>
+          ["completed", "done"].includes(trade.data().status)
+        ).length;
+        if (completedTrades < minCompletedTrades) {
+          showToast(`参加には完了取引が${minCompletedTrades}件以上必要です（現在${completedTrades}件）`, "error");
+          return;
+        }
+      }
+      if (!document.getElementById("ag-auto-ship-consent")?.checked) {
+        showToast("自動発送の事前同意にチェックしてください", "error");
+        return;
+      }
+      if (typeof Notification === "undefined" || Notification.permission !== "granted") {
+        showToast("申し込みにはプッシュ通知の許可が必要です", "error");
+        await window.requestAutoGoPushPermission?.();
+        if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+      }
       await refs.reserveAutoGoEntry({
         poolId: activePoolId,
         wantedMember: memberName,
@@ -13950,6 +14070,21 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     } catch (error) {
       console.error("reserveAutoGoMember error:", error);
       showToast("予約に失敗しました: " + (error?.message || error), "error");
+    }
+  };
+
+  window.adminRemoveAutoGoEntry = async function(poolId, uid) {
+    if (!window.__isAutoGoAdmin?.()) {
+      showToast("管理者権限が必要です", "error");
+      return;
+    }
+    if (!(await appConfirm("この参加者をAuto-GOから除外しますか？", "除外する", true))) return;
+    try {
+      await window.__autoGoRefs.adminRemoveAutoGoEntry({ poolId, uid });
+      showToast("参加者を除外しました", "success");
+    } catch (error) {
+      console.error("adminRemoveAutoGoEntry error:", error);
+      showToast("除外に失敗しました: " + (error?.message || error), "error");
     }
   };
 

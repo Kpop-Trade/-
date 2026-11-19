@@ -3,7 +3,7 @@ const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const admin = require("firebase-admin");
-const { randomUUID } = require("crypto");
+const { randomUUID, createHash } = require("crypto");
 admin.initializeApp();
 setGlobalOptions({ region: "asia-northeast1", maxInstances: 10 });
 
@@ -388,6 +388,59 @@ exports.processAutoGoDeadlines = onSchedule({
       if (pool.recruitEndAt && timestampMillis(pool.recruitEndAt) <= now && !pool.recruitmentClosedAt) {
         await poolDoc.ref.update({ recruitmentClosedAt: FV.serverTimestamp() });
       }
+      const matchedEntries = await poolDoc.ref.collection("entries").where("status", "==", "matched").get();
+      for (const entryDoc of matchedEntries.docs) {
+        const entry = entryDoc.data();
+        if (entry.noMatchResult || !entry.shipToAddress || entry.shippedAt ||
+            !entry.matchedAt || timestampMillis(entry.matchedAt) > now - 72 * 60 * 60 * 1000) continue;
+        const userRef = db.collection("users").doc(entryDoc.id);
+        const penalized = await db.runTransaction(async (tx) => {
+          const [currentEntry, userSnap] = await Promise.all([
+            tx.get(entryDoc.ref),
+            tx.get(userRef)
+          ]);
+          if (!currentEntry.exists) return false;
+          const current = currentEntry.data();
+          if (current.status !== "matched" || current.shippedAt || current.noMatchResult ||
+              !current.shipToAddress || !current.matchedAt ||
+              timestampMillis(current.matchedAt) > Date.now() - 72 * 60 * 60 * 1000) return false;
+          tx.update(entryDoc.ref, {
+            status: "unshipped_penalty",
+            penalty: true,
+            penaltyReason: "shipping_not_registered_within_72_hours",
+            penalizedAt: FV.serverTimestamp()
+          });
+          tx.set(userRef, {
+            autoGoBanned: true,
+            autoGoBanReason: "unshipped_autogo_entry",
+            autoGoBanAt: FV.serverTimestamp(),
+            autoGoPenaltyHistory: FV.arrayUnion({
+              poolId,
+              reason: "shipping_not_registered_within_72_hours",
+              matchedAt: current.matchedAt,
+              penalizedAt: admin.firestore.Timestamp.now()
+            })
+          }, { merge: true });
+          return true;
+        });
+        if (penalized) {
+          const notice = `Auto-GO「${pool.title || poolId}」でマッチング後72時間以内に発送伝票が登録されなかった参加者（UID: ${entryDoc.id}）を自動除外し、永久参加停止にしました。`;
+          await Promise.all(ADMIN_UIDS.map((adminUid) => notify(adminUid, {
+            id: `autogo_unshipped_${poolId}_${entryDoc.id}`,
+            text: notice,
+            type: "admin",
+            link: { k: "autogo", id: poolId },
+            title: "⚠️ Auto-GO未発送・永久参加停止"
+          })));
+          await notify(entryDoc.id, {
+            id: `autogo_unshipped_${poolId}`,
+            text: "マッチング後72時間以内に発送伝票が登録されなかったため、Auto-GOへの参加を停止しました。",
+            type: "admin",
+            link: { k: "autogo", id: poolId },
+            title: "⚠️ Auto-GO参加停止"
+          });
+        }
+      }
       const entries = await poolDoc.ref.collection("entries").where("status", "==", "confirmed").get();
       for (const entry of entries.docs) {
         if (!entry.data().purchaseDeadlineAt || timestampMillis(entry.data().purchaseDeadlineAt) > now) continue;
@@ -462,7 +515,43 @@ exports.uploadAutoGoEvidence = onCall({ maxInstances: 10 }, async (request) => {
     }
   });
   const url = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(path)}?alt=media&token=${token}`;
-  await entryRef.update(kind === "purchase" ? { purchaseProofUrl: url } : { shippingProofUrl: url });
+  if (kind === "purchase") {
+    await entryRef.update({ purchaseProofUrl: url });
+  } else {
+    const hash = createHash("sha256").update(buffer).digest("hex");
+    const hashRef = db.collection("auto_go_shipping_hashes").doc(hash);
+    try {
+      await db.runTransaction(async (tx) => {
+        const [hashSnap, currentEntry] = await Promise.all([
+          tx.get(hashRef),
+          tx.get(entryRef)
+        ]);
+        if (hashSnap.exists) {
+          throw new HttpsError("already-exists", "shipping image has already been used");
+        }
+        if (!currentEntry.exists || currentEntry.data().status !== "matched" ||
+            !currentEntry.data().shipToAddress) {
+          throw new HttpsError("failed-precondition", "shipping evidence is no longer expected");
+        }
+        tx.create(hashRef, {
+          poolId,
+          uid,
+          kind: "shipping",
+          sha256: hash,
+          storagePath: path,
+          createdAt: FV.serverTimestamp()
+        });
+        tx.update(entryRef, { shippingProofUrl: url, shippingProofHash: hash });
+      });
+    } catch (error) {
+      try {
+        await bucket.file(path).delete({ ignoreNotFound: true });
+      } catch (cleanupError) {
+        console.error("Duplicate shipping evidence cleanup failed:", cleanupError);
+      }
+      throw error;
+    }
+  }
   return { url };
 });
 
@@ -499,6 +588,10 @@ exports.reserveAutoGoEntry = onCall(async (request) => {
     throw new HttpsError("invalid-argument", "pool, member and consent are required");
   }
   const uid = request.auth.uid;
+  const initialUserSnap = await db.collection("users").doc(uid).get();
+  if (initialUserSnap.exists && initialUserSnap.data().autoGoBanned === true) {
+    throw new HttpsError("permission-denied", "this account is banned from Auto-GO");
+  }
   const poolRef = db.collection("auto_go_pools").doc(poolId);
   const entryRef = autoGoEntryRef(poolId, uid);
   await db.runTransaction(async (tx) => {
@@ -509,6 +602,10 @@ exports.reserveAutoGoEntry = onCall(async (request) => {
     ]);
     if (!poolSnap.exists) throw new HttpsError("not-found", "pool not found");
     if (entrySnap.exists) throw new HttpsError("already-exists", "one entry per person is allowed");
+    const user = userSnap.exists ? userSnap.data() : {};
+    if (user.autoGoBanned === true) {
+      throw new HttpsError("permission-denied", "this account is banned from Auto-GO");
+    }
     const pool = poolSnap.data();
     if (!["recruiting", "activating", "active"].includes(pool.status) || pool.recruitmentClosedAt) {
       throw new HttpsError("failed-precondition", "recruitment is closed");
@@ -521,9 +618,21 @@ exports.reserveAutoGoEntry = onCall(async (request) => {
       ? pool.members
       : (Array.isArray(pool.memberNames) ? pool.memberNames : []);
     if (!members.includes(wantedMember)) throw new HttpsError("invalid-argument", "unknown member");
-    const profile = userSnap.exists ? userSnap.data().profile || {} : {};
-    if (!profile.name || !profile.zip || !profile.address1) {
-      throw new HttpsError("failed-precondition", "shipping address is required");
+    const profile = user.profile || {};
+    const xId = String(profile.xId || profile.twitter || profile.xUsername || "").trim().replace(/^@/, "");
+    if (!String(profile.name || "").trim() || !String(profile.zip || "").trim() ||
+        !String(profile.address1 || "").trim() || !xId) {
+      throw new HttpsError("failed-precondition", "shipping address and X account are required");
+    }
+    const minCompletedTrades = Number(pool.minCompletedTrades) || 0;
+    if (minCompletedTrades > 0) {
+      const tradesSnap = await tx.get(db.collection("trades")
+        .where("participants", "array-contains", uid));
+      const completedTrades = tradesSnap.docs.filter((trade) =>
+        ["completed", "done"].includes(trade.data().status)).length;
+      if (completedTrades < minCompletedTrades) {
+        throw new HttpsError("failed-precondition", "minimum completed trade count not met");
+      }
     }
 
     const defaultCap = members.length === 5 ? 4 : members.length === 4 ? 5 : 0;
@@ -556,6 +665,7 @@ exports.reserveAutoGoEntry = onCall(async (request) => {
       status: "reserved",
       consentAt: FV.serverTimestamp(),
       userName: profile.nickname || request.auth.token.name || "参加者",
+      xId,
       createdAt: FV.serverTimestamp()
     });
   });
@@ -774,6 +884,67 @@ exports.onCancelPenalty = onDocumentUpdated("users/{uid}", async (event) => {
 function assertAdmin(req) {
   if (!req.auth || !ADMIN_UIDS.includes(req.auth.uid)) throw new HttpsError("permission-denied", "admin only");
 }
+
+exports.adminRemoveAutoGoEntry = onCall(async (request) => {
+  assertAdmin(request);
+  const { poolId, uid } = request.data || {};
+  if (typeof poolId !== "string" || !/^[\w-]{1,120}$/.test(poolId) ||
+      typeof uid !== "string" || !uid || uid.length > 128) {
+    throw new HttpsError("invalid-argument", "pool and participant are required");
+  }
+  const poolRef = db.collection("auto_go_pools").doc(poolId);
+  const entryRef = autoGoEntryRef(poolId, uid);
+  let removedEntries = [];
+  await db.runTransaction(async (tx) => {
+    const [poolSnap, entrySnap] = await Promise.all([tx.get(poolRef), tx.get(entryRef)]);
+    if (!poolSnap.exists || !entrySnap.exists) {
+      throw new HttpsError("not-found", "Auto-GO participant not found");
+    }
+    const selected = entrySnap.data();
+    if (["cancelled", "unshipped_penalty"].includes(selected.status)) {
+      throw new HttpsError("failed-precondition", "this participant can no longer be excluded");
+    }
+    let entriesToRemove = [{ ref: entryRef, data: selected }];
+    if (selected.status === "matched" && selected.matchRoomId) {
+      const roomSnap = await tx.get(poolRef.collection("entries")
+        .where("matchRoomId", "==", selected.matchRoomId));
+      entriesToRemove = roomSnap.docs.map((entry) => ({ ref: entry.ref, data: entry.data() }));
+    }
+    if (entriesToRemove.some(({ data }) =>
+      ["cancelled", "unshipped_penalty"].includes(data.status) ||
+      (data.status === "matched" && (data.shippedAt || data.receivedDone)))) {
+      throw new HttpsError("failed-precondition", "a matched participant has already shipped");
+    }
+    const pool = poolSnap.data();
+    const counts = { ...(pool.memberCounts || {}) };
+    for (const { data } of entriesToRemove) {
+      if (data.wantedMember) {
+        counts[data.wantedMember] = Math.max(0, (Number(counts[data.wantedMember]) || 0) - 1);
+      }
+    }
+    tx.update(poolRef, {
+      totalCount: Math.max(0, (Number(pool.totalCount) || 0) - entriesToRemove.length),
+      memberCounts: counts
+    });
+    entriesToRemove.forEach(({ ref }) => tx.update(ref, {
+      status: "cancelled",
+      cancellationReason: "admin_removed",
+      adminRemovedBy: request.auth.uid,
+      adminRemovedAt: FV.serverTimestamp()
+    }));
+    removedEntries = entriesToRemove.map(({ ref }) => ref.id);
+  });
+  if (removedEntries.length) {
+    await Promise.all(removedEntries.map((removedUid) => notify(removedUid, {
+      id: `autogo_admin_removed_${poolId}`,
+      text: "Auto-GOの参加エントリーが運営によりキャンセルされました。マッチング後の場合は同じ取引グループ全体がキャンセルされています。",
+      type: "admin",
+      link: { k: "autogo", id: poolId },
+      title: "Auto-GO参加エントリーのキャンセル"
+    })));
+  }
+  return { ok: true };
+});
 
 exports.adminSendWarning = onCall(async (req) => {
   assertAdmin(req);
