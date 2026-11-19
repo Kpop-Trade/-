@@ -1775,6 +1775,8 @@ window.__autoGoRefs = {
     const db = getFirestore(app);
     window.db = db;
     window.collection = collection;
+    window.getDocs = getDocs; window.query = query; window.where = where; window.orderBy = orderBy; window.limit = limit; window.getDoc = getDoc; window.doc = doc; window.setDoc = setDoc; window.updateDoc = updateDoc; window.addDoc = addDoc; window.serverTimestamp = serverTimestamp;
+    window.getDocs = getDocs;
     window.addDoc = addDoc;
     window.serverTimestamp = serverTimestamp;
 
