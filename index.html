@@ -13192,7 +13192,9 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
 
       if (!isActivated) {
         html += `<p class="text-[11px] text-indigo-800">仮予約完了！あと <b>${minP - total}人</b> 集まった瞬間に購入URLが自動送信されます。</p>`;
-      } else if (currentEntryData.status === "reserved") {
+      } else if (currentEntryData.status === "waitlist") {
+          html += `<div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-amber-900 space-y-1.5"><div class="font-bold text-[13px]">⏳ キャンセル待ち（順位: ${currentEntryData.slotOrder || "-"}番目）</div><p class="text-[12px] leading-relaxed text-amber-800">定員に達しているため現在キャンセル待ちとなります。購入期限内に未購入の枠が出た場合、自動で繰り上げ通知が届きます。</p></div>`;
+        } else if (currentEntryData.status === "reserved" || currentEntryData.status === "confirmed") {
         html += `<div class="bg-white rounded-xl p-2.5 border border-indigo-200 space-y-2">
           <p class="text-[11px] font-bold text-emerald-700">🎉 ${minP}人達成！専用購入URLが発行されました</p>
           <div id="ag-purchase-deadline-box" class="p-2 rounded-lg bg-rose-50 border border-rose-200 text-center">
