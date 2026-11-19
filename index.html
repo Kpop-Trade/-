@@ -13569,7 +13569,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
         try {
           if (typeof window.__isAutoGoAdmin !== "function") throw new Error("管理者権限の確認を初期化できません");
           if (!window.__isAutoGoAdmin()) {
-            window.showToast("管理者権限が必要です", "error");
+            showToast("管理者権限が必要です", "error");
             return;
           }
 
@@ -13583,35 +13583,35 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
           const title = (document.getElementById("adm-ag-title")?.value || "").trim();
           const desc = (document.getElementById("adm-ag-desc")?.value || "").trim();
           const fileInput = document.getElementById("adm-ag-photo");
-          if (!title) { window.showToast("タイトルを入力してください", "error"); return; }
+          if (!title) { showToast("タイトルを入力してください", "error"); return; }
 
           const minThreshold = Number(document.getElementById("adm-ag-min-threshold")?.value);
           const minCompletedTrades = Number(document.getElementById("adm-ag-min-completed-trades")?.value);
           if (!Number.isInteger(minThreshold) || minThreshold < 2 || minThreshold > 100) {
-            window.showToast("最低成立人数は2〜100の整数で入力してください", "error");
+            showToast("最低成立人数は2〜100の整数で入力してください", "error");
             return;
           }
           if (!Number.isInteger(minCompletedTrades) || minCompletedTrades < 0) {
-            window.showToast("参加に必要な完了評価数は0以上の整数で入力してください", "error");
+            showToast("参加に必要な完了評価数は0以上の整数で入力してください", "error");
             return;
           }
 
           const rawMembers = (document.getElementById("adm-ag-members")?.value || "").trim();
           const memberNames = Array.from(new Set(rawMembers.split(/[,、，\n\r]+/).map(name => name.trim()).filter(Boolean)));
           if (memberNames.length < 2) {
-            window.showToast("メンバーは2名以上入力してください", "error");
+            showToast("メンバーは2名以上入力してください", "error");
             return;
           }
 
           const recruitEndRaw = (document.getElementById("adm-ag-recruit-end")?.value || "").trim();
           const recruitEndAt = recruitEndRaw ? new Date(recruitEndRaw).getTime() : 0;
           if (!recruitEndAt || recruitEndAt <= Date.now()) {
-            window.showToast("募集終了日時は現在より後の日時を指定してください", "error");
+            showToast("募集終了日時は現在より後の日時を指定してください", "error");
             return;
           }
           const purchaseUrl = (document.getElementById("adm-ag-url")?.value || "").trim();
           if (!/^https:\/\//i.test(purchaseUrl)) {
-            window.showToast("有効なアルバム購入URL（https://）を入力してください", "error");
+            showToast("有効なアルバム購入URL（https://）を入力してください", "error");
             return;
           }
 
@@ -13670,13 +13670,13 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
             createdAt: refs.serverTimestamp()
           });
 
-          window.showToast("Auto-GO プールを公開しました！", "success");
+          showToast("Auto-GO プールを公開しました！", "success");
           await window.renderAdminAutoGoPanel();
         } catch (error) {
           console.error("createAdminAutoGoPool error:", error);
           const reason = error?.code || error?.message || String(error || "失敗しました");
           try {
-            if (typeof window.showToast === "function") window.showToast("作成エラー: " + reason, "error");
+            if (typeof window.showToast === "function") showToast("作成エラー: " + reason, "error");
           } catch (toastError) {
             console.error("createAdminAutoGoPool toast error:", toastError);
           }
