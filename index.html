@@ -76,6 +76,11 @@
       }
       return;
     }
+    var rulesConsent = document.getElementById("ag-rules-consent");
+    if (rulesConsent) {
+      rulesConsent.checked = false;
+      window.toggleAutoGoRulesConsent?.();
+    }
     if (modal.parentElement !== document.body) {
       document.body.appendChild(modal);
     }
@@ -13282,6 +13287,34 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
 
     <!-- エントリー枠選択（未参加時） -->
     <div id="ag-entry-section" class="space-y-2">
+      <section class="mb-3 rounded-xl border-2 border-red-300 bg-red-50 p-3 text-gray-900 dark:border-red-800 dark:bg-red-950/40 dark:text-gray-100">
+        <div class="mb-3 flex items-start gap-2">
+          <span class="shrink-0 rounded bg-red-600 px-2 py-1 text-[10px] font-black text-white">必読</span>
+          <h3 class="text-sm font-black leading-snug">⚠️ 申し込み前に必ずお読みください（Auto-GOの仕組みとルール）</h3>
+        </div>
+        <div class="space-y-4 text-xs leading-relaxed sm:text-sm">
+          <div>
+            <h4 class="mb-2 font-black">【Auto-GO（自動共同購入・交換マッチング）の仕組み】</h4>
+            <ol class="space-y-3">
+              <li class="flex items-start gap-2"><span class="shrink-0 rounded-full bg-red-600 px-2 py-0.5 font-bold text-white">1.</span><div><h5 class="font-bold">仮予約（エントリー）</h5><ul class="list-disc space-y-1 pl-4"><li>希望メンバーを1人選んで仮予約します（参加には配送先住所とXアカウントの登録が必要です）。</li><li>募集締切までに最低成立人数（通常20人）に達すると企画が成立し、本確定となります。未達の場合は自動キャンセルされ、購入は不要です。</li></ul></div></li>
+              <li class="flex items-start gap-2"><span class="shrink-0 rounded-full bg-red-600 px-2 py-0.5 font-bold text-white">2.</span><div><h5 class="font-bold">各自でCDを購入・報告</h5><ul class="list-disc space-y-1 pl-4"><li>企画成立後、指定期限までに各自で対象ショップからCDを1枚購入し、購入完了スクリーンショットを登録します。</li></ul></div></li>
+              <li class="flex items-start gap-2"><span class="shrink-0 rounded-full bg-red-600 px-2 py-0.5 font-bold text-white">3.</span><div><h5 class="font-bold">到着報告・開封結果の登録</h5><ul class="list-disc space-y-1 pl-4"><li>手元にCDが届いたら到着報告を行い、封入されていたランダムトレカのメンバー（開封結果）を登録します。</li></ul></div></li>
+              <li class="flex items-start gap-2"><span class="shrink-0 rounded-full bg-red-600 px-2 py-0.5 font-bold text-white">4.</span><div><h5 class="font-bold">最短ルート自動マッチング</h5><ul class="list-disc space-y-1 pl-4"><li>希望メンバーを「自引き」した人はその場で完了！</li><li>希望外だったメンバー同士をシステムが最短の交換ルート（2人交換や3人以上の循環ルート）で自動マッチングし、1回の発送で希望トレカが届くように配送先を割り当てます。</li><li>※組み合わせの都合上マッチングが成立しなかった場合は、手元のトレカをそのままお持ち帰りとなります（発送不要）。</li></ul></div></li>
+              <li class="flex items-start gap-2"><span class="shrink-0 rounded-full bg-red-600 px-2 py-0.5 font-bold text-white">5.</span><div><h5 class="font-bold">発送・受取完了</h5><ul class="list-disc space-y-1 pl-4"><li>マッチング確定から72時間以内に、割り当てられた相手へトレカを発送し、発送伝票（または投函・追跡証明）の写真を登録します。</li><li>※あなたの発送伝票を登録するまで、自分宛てに送ってくれる相手の情報はロックされます。</li><li>双方の受取完了をもって取引終了です。</li></ul></div></li>
+            </ol>
+          </div>
+          <div class="border-t border-red-200 pt-3 dark:border-red-800">
+            <h4 class="mb-2 font-black">【必ず守るルール・不正防止ポリシー】</h4>
+            <ul class="list-disc space-y-2 pl-4">
+              <li>事前登録の必須化：エントリー前に「氏名・郵便番号・住所」および「XアカウントID」の登録が必要です。</li>
+              <li>成立後のキャンセル不可：最低人数に達して企画が成立した後は、自己都合での購入キャンセルはできません。</li>
+              <li class="rounded-lg bg-red-100 p-2 font-bold text-red-900 dark:bg-red-900/40 dark:text-red-100">72時間以内の発送義務：マッチング確定後、72時間以内に発送および伝票写真の登録を行ってください。期限超過・未発送が確認された場合、Auto-GOの利用資格を永久停止（アカウント凍結対象）とします。</li>
+              <li>伝票画像の使い回し禁止：発送証明画像はシステムで重複検知（ハッシュ照合）を行っています。過去画像や他人の画像の流用、虚偽報告は即座にペナルティ対象となります。</li>
+              <li>発送方法の統一（追跡必須）：トラブル・未着防止のため、普通郵便（追跡なし）は禁止です。必ず『クリックポスト（185円）』『レターパックライト（430円）』『特定記録郵便』など追跡番号が発行される方法で発送し、発送報告時に追跡番号と伝票（控え）写真を登録してください。トレカはスリーブ＋硬質ケース（または厚紙補強）＋防水対策を行ってください。</li>
+            </ul>
+          </div>
+        </div>
+      </section>
       <div class="text-sm font-medium text-gray-800">メンバーを選択</div>
       <div id="ag-consent-box" class="border-b border-gray-200 pb-3 mb-2 space-y-1.5">
             <div class="text-sm font-medium text-gray-800">自動発送に同意（必須）</div>
@@ -13292,6 +13325,10 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
               </span>
             </label>
           </div>
+      <label class="mb-2 flex items-start gap-2 rounded-xl border border-red-300 bg-red-50 p-3 text-xs font-bold leading-relaxed text-gray-900 dark:border-red-800 dark:bg-red-950/40 dark:text-gray-100">
+        <input type="checkbox" id="ag-rules-consent" required onchange="toggleAutoGoRulesConsent()" class="mt-0.5 shrink-0 rounded">
+        <span>上記の仕組み・ルール（成立後のキャンセル不可・72時間以内の発送義務）を確認し同意します</span>
+      </label>
 <div id="ag-member-grid" class="grid grid-cols-1 gap-2"></div>
     </div>
 
@@ -13502,6 +13539,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     container.innerHTML = `
       <div class="space-y-4">
         ${permWarn}
+        <button onclick="openAgGuide()" class="w-full py-3 rounded-2xl bg-red-500 text-white font-black text-sm shadow-sm">📖 仕組み（必ずお読みください）</button>
         <div class="bg-white/90 rounded-2xl p-4 border border-white shadow-sm space-y-3">
           <div class="flex items-center justify-between">
             <h3 class="text-sm font-black text-gray-900">⚡ 新規 Auto-GO プール作成</h3>
@@ -13952,6 +13990,14 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
               ? `<p class="text-sm text-gray-700">受取元：${escapeAutoGoHtml(currentEntryData.receiveFromName || "参加者")} · ${escapeAutoGoHtml(currentEntryData.receivingCard || "トレカ")}</p>`
               : `<p class="text-xs text-gray-500">※あなたの発送伝票を登録すると表示されます</p>`;
           }
+          const receiveFromEntry = currentEntries.find(entry => entry.uid === currentEntryData.receiveFromUid);
+          const receiveTrackingNumber = String(receiveFromEntry?.trackingNumber || "").replace(/\D/g, "");
+          if (currentEntryData.shippedAt && receiveFromEntry?.shippedAt && receiveTrackingNumber.length >= 10) {
+            html += `<div class="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-gray-900 dark:border-blue-800 dark:bg-blue-950/40 dark:text-gray-100">
+              <div class="mb-1 font-bold">相手の追跡番号：${escapeAutoGoHtml(receiveTrackingNumber)}</div>
+              <a href="https://trackings.post.japanpost.jp/services/srv/search/direct?reqCodeNo1=${encodeURIComponent(receiveTrackingNumber)}&locale=ja" target="_blank" rel="noopener" class="inline-block rounded-lg bg-blue-700 px-3 py-2 font-bold text-white">📦 追跡状況を確認する（日本郵便）</a>
+            </div>`;
+          }
 
           if (currentEntryData.shipToAddress) {
             html += `<div class="space-y-2">
@@ -13963,10 +14009,13 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
                 <div class="text-[11px] text-gray-600">〒${escapeAutoGoHtml(currentEntryData.shipToZip)}</div>
                 <div class="text-[11px] font-medium">${escapeAutoGoHtml(currentEntryData.shipToAddress)}</div>
               </div>
+              <button type="button" onclick="copyAutoGoDestination()" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-bold text-gray-900">📋 宛先をコピー</button>
               <div class="grid grid-cols-2 gap-1.5 pt-1">
                 ${currentEntryData.shippedDone
                   ? `<div class="text-center text-[11px] text-gray-600 py-2">発送完了</div>`
-                  : `<div class="col-span-2 space-y-1"><label class="block text-[10px] text-gray-700">発送写真
+                  : `<div class="col-span-2 space-y-1"><label class="block text-[10px] text-gray-700">追跡番号（必須・ハイフンなし半角数字）
+                      <input id="ag-shipping-tracking" type="text" inputmode="numeric" pattern="[0-9]{10,}" minlength="10" maxlength="30" required autocomplete="off" placeholder="例: 12345678901" class="block w-full mt-1 rounded border border-gray-300 px-2 py-1.5 text-xs text-gray-900">
+                    </label><label class="block text-[10px] text-gray-700">発送写真
                       <input id="ag-shipping-proof" type="file" accept="image/*" capture="environment" class="block w-full mt-1 text-[10px]">
                     </label><button type="button" onclick="markAutoGoShipped()" class="w-full border border-gray-300 text-gray-900 text-[11px] font-medium py-2">写真を登録して発送完了</button></div>`
                 }
@@ -14002,25 +14051,43 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     const grid = document.getElementById("ag-member-grid");
     const caps = currentPoolData.memberCaps || {};
     const counts = currentPoolData.memberCounts || {};
+    const rulesAgreed = document.getElementById("ag-rules-consent")?.checked === true;
     grid.innerHTML = getActiveMembers().map(m => {
       const cap = caps[m] ?? Math.max(1, Math.ceil((currentPoolData.targetParticipants || 20) / Math.max(1, getActiveMembers().length)));
       const cnt = counts[m] ?? 0;
       const rem = Math.max(0, cap - cnt);
       const isFull = rem === 0;
-      const disabled = isFull || recruitmentClosed;
+      const disabled = isFull || recruitmentClosed || !rulesAgreed;
       return `<div class="flex items-center justify-between py-2 border-b border-gray-200">
         <div class="flex items-center gap-3">
           <span class="text-sm text-gray-900">${m}</span>
           <span class="text-xs text-gray-500">残り ${rem} / ${cap} 枠</span>
         </div>
-        <button onclick="reserveAutoGoMember('${m}')" ${disabled ? 'disabled' : ''} class="px-3 py-1.5 text-sm ${disabled ? 'text-gray-400 cursor-not-allowed' : 'text-gray-900 underline underline-offset-2'}">
+        <button onclick="reserveAutoGoMember('${m}')" data-unavailable="${isFull || recruitmentClosed}" ${disabled ? 'disabled' : ''} class="px-3 py-1.5 text-sm ${disabled ? 'text-gray-400 cursor-not-allowed' : 'text-gray-900 underline underline-offset-2'}">
           予約する
         </button>
       </div>`;
     }).join("");
   }
 
+  window.toggleAutoGoRulesConsent = function() {
+    const agreed = document.getElementById("ag-rules-consent")?.checked === true;
+    document.querySelectorAll("#ag-member-grid button[data-unavailable]").forEach(button => {
+      const disabled = !agreed || button.dataset.unavailable === "true";
+      button.disabled = disabled;
+      button.classList.toggle("text-gray-400", disabled);
+      button.classList.toggle("cursor-not-allowed", disabled);
+      button.classList.toggle("text-gray-900", !disabled);
+      button.classList.toggle("underline", !disabled);
+      button.classList.toggle("underline-offset-2", !disabled);
+    });
+  };
+
   window.reserveAutoGoMember = async function(memberName) {
+    if (!document.getElementById("ag-rules-consent")?.checked) {
+      alert("申し込み前にルールを確認してチェックを入れてください");
+      return;
+    }
     if (!activePoolId) return;
     const refs = window.__autoGoRefs;
     const user = refs.auth.currentUser;
@@ -14200,18 +14267,42 @@ window.reportAutoGoDelay = async function() {
 };
 
 window.markAutoGoShipped = async function() {
+  const trackingInput = document.getElementById("ag-shipping-tracking");
+  const trackingNumber = String(trackingInput?.value || "").replace(/\D/g, "");
+  if (trackingInput) trackingInput.value = trackingNumber;
+  if (trackingNumber.length < 10) {
+    alert("追跡番号は半角数字10桁以上で入力してください。");
+    return;
+  }
   const file = document.getElementById("ag-shipping-proof")?.files?.[0];
   if (!file) { alert("伝票の住所が見える写真を選択してください。"); return; }
   try {
     const refs = window.__autoGoRefs;
     const dataUrl = await readAutoGoEvidence(file);
     await refs.uploadAutoGoEvidence({ poolId: activePoolId, kind: "shipping", dataUrl });
-    await refs.registerAutoGoShipment({ poolId: activePoolId });
+    await refs.registerAutoGoShipment({ poolId: activePoolId, trackingNumber });
     showToast("発送写真を登録しました", "success");
     window.openAutoGoModal(activePoolId);
   } catch (error) {
     console.error("markAutoGoShipped error:", error);
     alert("発送報告に失敗しました: " + (error?.message || error));
+  }
+};
+
+window.copyAutoGoDestination = async function() {
+  if (!currentEntryData?.shipToAddress) return;
+  const destination = [
+    `〒${currentEntryData.shipToZip || ""}`,
+    currentEntryData.shipToAddress,
+    currentEntryData.shipToName || ""
+  ].join("\n");
+  try {
+    if (!navigator.clipboard?.writeText) throw new Error("clipboard unavailable");
+    await navigator.clipboard.writeText(destination);
+    showToast("宛先をコピーしました", "success");
+  } catch (error) {
+    console.error("copyAutoGoDestination error:", error);
+    alert("宛先をコピーできませんでした。");
   }
 };
 
@@ -14976,6 +15067,72 @@ window.markReceived = async function(poolId) {
     alert("エラー: " + e.message);
   }
 };
+
+function openAgGuide() {
+  const existing = document.getElementById("ag-guide-modal");
+  if (existing) {
+    existing.classList.remove("hidden");
+    return;
+  }
+
+  const guideText = `～取引の流れ～
+❶ 運営がプールと呼ばれる共同購入を応募します。最初はメンバー1人あたり5枠or4枠が設定され、最低20人集まると自動で共同購入が確定します。全て埋まり次第、メンバーあたり3枠ずつ追加されます。（ここではお支払いは発生しません。）
+❷ 募集期間終了までに最低20人が集まると、自動でアルバムのURLがプッシュ通知で送信されます。お客様自身でアルバムを購入した後、購入画面で支払い日時とアルバムが写るようにスクリーンショットを撮り、購入したことをアプリに登録します。（URLが届いてから10時間以内に登録しないと、自動でキャンセルとなり、ペナルティが課されます）
+❸ トレカが到着次第、開封結果を登録します。自引きした場合も同様に、必ず登録してください。（5人以上が到着してから4日程度まで猶予があります。遅延理由も登録せずキャンセルになった場合、同様のペナルティ）
+❹ 登録期間が終了した時、登録された情報からシステムが最適な送付先を決定し、お客様に送付先の住所が送られます。送付する時は、必ず伝票の住所が写るように写真を撮り、アプリに登録します。
+❺ 到着次第、受け取り完了ボタンを押して完了となります。
+
+～具体的な第一希望の推し獲得確率～
+全体20人：約82.5%
+全体50人：約88%
+リアルタイムで、参加人数に対する確率がアプリ内に表示されます！
+したがって、最低人数が集まった時点で、約82.5%の確率で推しのトレカが獲得できます！
+
+⚠️ Auto-GO ご参加前の注意点・ルール ⚠️
+① 1人あたりメンバー1つまで
+同じ企画につき、お一人様1メンバー（1枠）までのお申し込みとなります。
+② メンバー枠は完全先着順
+人気メンバーの枠は申し込み順に埋まり、上限に達したメンバーから受付終了となります。募集開始2日程度前から、アプリからのプッシュ通知と公式Xで日時を予告します。
+③ 成立後のキャンセル不可
+枠が埋まりマッチング・購入が確定した後の自己都合キャンセルはできません（確定前であればキャンセル・希望変更が可能です）。
+※ルールは変更となる場合があります。
+
+！シェアで成立率アップ！
+人数が多ければ多いほど、推し獲得の確率は高くなります。他のメンバー希望者が集まるほど全体枠が早く埋まります。「Xでシェアして枠を埋める」ボタンから募集を広げられます！`;
+
+  const overlay = document.createElement("div");
+  overlay.id = "ag-guide-modal";
+  overlay.className = "fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 p-4";
+  overlay.setAttribute("role", "dialog");
+  overlay.setAttribute("aria-modal", "true");
+
+  const panel = document.createElement("div");
+  panel.className = "flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white text-gray-900 shadow-xl dark:bg-gray-950 dark:text-gray-100";
+  panel.addEventListener("click", (event) => event.stopPropagation());
+
+  const banner = document.createElement("div");
+  banner.className = "shrink-0 bg-red-600 px-4 py-3 text-center text-sm font-black text-white";
+  banner.textContent = "⚠️ 参加前に必ず読んでください";
+
+  const content = document.createElement("div");
+  content.className = "overflow-y-auto whitespace-pre-wrap px-4 py-4 text-sm leading-relaxed";
+  content.textContent = guideText;
+
+  const footer = document.createElement("div");
+  footer.className = "shrink-0 border-t border-gray-200 p-3 dark:border-gray-700";
+
+  const closeButton = document.createElement("button");
+  closeButton.type = "button";
+  closeButton.className = "w-full rounded-xl bg-red-500 px-4 py-3 text-sm font-black text-white";
+  closeButton.textContent = "読みました";
+  closeButton.addEventListener("click", () => overlay.classList.add("hidden"));
+
+  footer.appendChild(closeButton);
+  panel.append(banner, content, footer);
+  overlay.appendChild(panel);
+  overlay.addEventListener("click", () => overlay.classList.add("hidden"));
+  document.body.appendChild(overlay);
+}
 </script>
 </body>
 

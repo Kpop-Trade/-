@@ -777,13 +777,29 @@ exports.registerAutoGoShipment = onCall(async (request) => {
   if (!request.auth) throw new HttpsError("unauthenticated", "login required");
   const poolId = String((request.data || {}).poolId || "");
   if (!/^[\w-]{1,120}$/.test(poolId)) throw new HttpsError("invalid-argument", "invalid pool");
+  const trackingNumber = String((request.data || {}).trackingNumber || "").replace(/\D/g, "");
+  if (trackingNumber.length < 10) {
+    throw new HttpsError("invalid-argument", "追跡番号は半角数字10桁以上で入力してください。");
+  }
   const entryRef = autoGoEntryRef(poolId, request.auth.uid);
+  const entriesRef = entryRef.parent;
   await db.runTransaction(async (tx) => {
-    const snap = await tx.get(entryRef);
+    const [snap, entriesSnap] = await Promise.all([tx.get(entryRef), tx.get(entriesRef)]);
     if (!snap.exists || snap.data().status !== "matched" || !snap.data().shipToAddress || !snap.data().shippingProofUrl) {
       throw new HttpsError("failed-precondition", "shipping label evidence is required");
     }
-    tx.update(entryRef, { shippedDone: true, shippedAt: FV.serverTimestamp() });
+    const duplicate = entriesSnap.docs.some((entry) =>
+      entry.id !== request.auth.uid &&
+      String(entry.data().trackingNumber || "").replace(/\D/g, "") === trackingNumber
+    );
+    if (duplicate) {
+      throw new HttpsError("already-exists", "この追跡番号は同じプール内ですでに使用されています。");
+    }
+    tx.update(entryRef, {
+      shippedDone: true,
+      shippedAt: FV.serverTimestamp(),
+      trackingNumber
+    });
   });
   return { ok: true };
 });
