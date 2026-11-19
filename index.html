@@ -1477,32 +1477,32 @@ html, body {
                 <span id="detail-comment-count" class="text-[13px]">0</span>
               </button>
             </div>
-            <h2 id="detail-item-title" class="text-[20px] font-bold text-gray-900 leading-snug"></h2>
-            <div id="detail-condition-box" class="hidden text-[15px] text-gray-800"><span id="detail-condition"></span></div>
-            <div id="detail-time" class="text-[13px] text-gray-400"></div>
-            <div id="detail-price-box" class="hidden"><span id="detail-price"></span></div>
+            <h2 id="detail-item-title" class="text-[19px] font-bold text-[#222222] leading-[1.45] tracking-[-0.01em]"></h2>
+            <div id="detail-condition-box" class="hidden text-[13px] text-[#555555] mt-1.5"><span id="detail-condition"></span></div>
+            <div class="flex items-center gap-1 text-[12px] text-[#888888] mt-1"><svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 7v5l3 2"/></svg><span id="detail-time"></span></div>
+            <div id="detail-price-box" class="hidden mt-3 flex items-baseline"><span id="detail-price" class="text-[26px] font-extrabold text-[#222222] tracking-tight leading-none"></span></div>
             <div class="text-[13px] text-gray-500">メンバー <span id="detail-member" class="text-gray-800"></span></div>
             <div id="detail-give-box" class="hidden"><span></span><span id="detail-give"></span></div>
             <div id="detail-want-box" class="text-[14px] text-gray-700"><span class="text-gray-400">希望</span> <span id="detail-want"></span></div>
             <div id="detail-extra" class="text-[13px] text-gray-500 space-y-1"></div>
             <div id="detail-offers" class="space-y-2"></div>
             <div>
-              <div class="text-[16px] font-bold text-gray-900 mb-2">商品の説明</div>
-              <div id="detail-desc-box" class="text-[15px] text-gray-800 whitespace-pre-wrap leading-relaxed"></div>
+              <div class="text-[15px] font-bold text-[#222222] mb-2.5">商品の説明</div>
+              <div id="detail-desc-box" class="text-[14px] text-[#222222] whitespace-pre-wrap leading-[1.65]"></div>
             </div>
             <button type="button" id="detail-seller-btn" onclick="openSellerProfileFromDetail()" class="w-full flex items-center gap-3 text-left py-2">
               <img id="detail-user-avatar" src="" alt="" class="w-11 h-11 rounded-full object-cover hidden shrink-0">
               <div id="detail-user-avatar-placeholder" class="w-11 h-11 rounded-full bg-gray-100 flex items-center justify-center text-sm shrink-0">👤</div>
               <div class="min-w-0 flex-1">
-                <div class="text-[11px] text-gray-400">出品者</div>
-                <div id="detail-user" class="text-[14px] text-gray-900 truncate"></div>
+                <div class="text-[11px] text-[#888888] leading-none mb-0.5">出品者</div>
+                <div id="detail-user" class="text-[14px] font-bold text-[#222222] truncate"></div>
                 <div id="detail-rating" class="text-[12px] text-gray-400"></div>
               </div>
               <span class="text-gray-300 text-lg">›</span>
             </button>
             <div id="detail-seller-items" class="text-[13px]"></div>
             <div>
-              <div class="text-[16px] font-bold text-gray-900 mb-3">コメント</div>
+              <div class="text-[15px] font-bold text-[#222222] mb-3">コメント</div>
               <div id="detail-comments" class="space-y-3 mb-3"></div>
               <form class="flex gap-2 items-center" onsubmit="submitPostComment(event)">
                 <label class="shrink-0 w-10 h-10 rounded-full bg-[#f6f6f7] border border-[#eee] flex items-center justify-center text-[11px] text-gray-500 cursor-pointer">
@@ -4530,7 +4530,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       if (priceHead) priceHead.innerText = "";
       if (isGroup || isBuy || p.isSell) {
         const pay = paymentLabel(p);
-        document.getElementById("detail-price").innerHTML = "¥" + Number(p.price || 0).toLocaleString() + (pay ? `<span style="margin-left:8px;font-size:13px;font-weight:400;color:#666">${escapeHtml(pay)}</span>` : "");
+        document.getElementById("detail-price").innerHTML = "¥" + Number(p.price || 0).toLocaleString() + (pay ? `<span style="margin-left:6px;font-size:12px;font-weight:500;color:#666666">${escapeHtml(pay)}</span>` : "");
       }
       document.getElementById("detail-give").innerText = p.give;
       document.getElementById("detail-want").innerText = p.want || "（なし）";
