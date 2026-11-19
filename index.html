@@ -5394,15 +5394,64 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       return boxes;
     }
     async function revertBundleTrade(t) {
-      if (!t || !t.postId || !Array.isArray(t.bundleIndexes) || !t.bundleIndexes.length) return;
+      if (!t || !t.postId) return;
+      const indexes = Array.isArray(t.bundleIndexes) ? t.bundleIndexes.map(Number).filter(Number.isInteger) : [];
+      const selectedSlotIds = new Set(Array.isArray(t.selectedSlotIds) ? t.selectedSlotIds : []);
+      if (!indexes.length && !selectedSlotIds.size) return;
       const pref = doc(db, "posts", t.postId);
-      const ps = await getDoc(pref);
-      if (!ps.exists() || !Array.isArray(ps.data().bundleBoxes)) return;
-      const boxes = ps.data().bundleBoxes.map(b => ({ x: b.x, y: b.y, w: b.w, h: b.h, state: b.state || "open" }));
-      t.bundleIndexes.forEach(i => { if (boxes[i] && boxes[i].state !== "open") boxes[i].state = "open"; });
-      const left = boxes.filter(b => b.state === "open").length;
-      await updateDoc(pref, { bundleBoxes: boxes, bundleLeft: left, status: "active" });
-      if (t.bundlePhotoApplied) {
+      let boxes = null;
+      let bulkSlots = null;
+      let released = false;
+      await runTransaction(db, async (tx) => {
+        const ps = await tx.get(pref);
+        if (!ps.exists()) return;
+        const pData = ps.data();
+        const updates = {};
+        const slotIndexes = Array.isArray(pData.bulkSlots)
+          ? pData.bulkSlots.reduce((result, slot, index) => {
+              if (selectedSlotIds.has(slot.id)) result.push(index);
+              return result;
+            }, [])
+          : [];
+        const boxIndexes = new Set([...indexes, ...slotIndexes]);
+        if (boxIndexes.size && Array.isArray(pData.bundleBoxes)) {
+          boxes = pData.bundleBoxes.map(b => ({ ...b }));
+          boxIndexes.forEach(i => {
+            const box = boxes[i];
+            if (!box || box.state === "open" || (box.soldTo && box.soldTo !== t.applicantId)) return;
+            if (!indexes.includes(i) && (box.state === "hold" || (box.state === "sold" && !box.soldTo))) return;
+            box.state = "open";
+            delete box.soldTo;
+            delete box.holdBy;
+            delete box.holdUntil;
+            released = true;
+          });
+          updates.bundleBoxes = boxes;
+          updates.bundleLeft = boxes.filter(b => !b.state || b.state === "open").length;
+        }
+        if ((selectedSlotIds.size || indexes.length) && Array.isArray(pData.bulkSlots)) {
+          bulkSlots = pData.bulkSlots.map(slot => {
+            if (slot.tradeId !== t.id) return slot;
+            released = true;
+            return { ...slot, sold: false, tradeId: null };
+          });
+          updates.bulkSlots = bulkSlots;
+        }
+        if (!Object.keys(updates).length) return;
+        if (released) updates.status = "active";
+        updates.updatedAt = serverTimestamp();
+        tx.update(pref, updates);
+      });
+      if (boxes) {
+        const left = boxes.filter(b => !b.state || b.state === "open").length;
+        const lp = allPosts.find(x => x.id === t.postId);
+        if (lp) { lp.bundleBoxes = boxes; lp.bundleLeft = left; if (released) lp.status = "active"; }
+      }
+      if (bulkSlots) {
+        const lp = allPosts.find(x => x.id === t.postId);
+        if (lp) { lp.bulkSlots = bulkSlots; if (released) lp.status = "active"; }
+      }
+      if (indexes.length && t.bundlePhotoApplied) {
         const hist = await getDocs(collection(db, "posts", t.postId, "photoHistory"));
         const newest = hist.docs.slice().sort((a, b) => ((b.data().createdAt && b.data().createdAt.toMillis) ? b.data().createdAt.toMillis() : 0) - ((a.data().createdAt && a.data().createdAt.toMillis) ? a.data().createdAt.toMillis() : 0))[0];
         if (newest && isJpegData(newest.data().data)) {
@@ -5410,8 +5459,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           try { await deleteDoc(newest.ref); } catch (_) {}
         }
       }
-      const lp = allPosts.find(x => x.id === t.postId);
-      if (lp) { lp.bundleBoxes = boxes; lp.bundleLeft = left; lp.status = "active"; renderPosts(); }
+      renderPosts();
     }
     async function bundleMarkedJpeg(baseUrl, boxes) {
       const raw = await drawBundleMarks(baseUrl, boxes);
