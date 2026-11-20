@@ -14361,7 +14361,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       <svg id="ag-prob-svg" viewBox="0 0 340 196" class="w-full h-52" role="img" aria-label="参加人数と第1希望獲得確率。最低成立人数から企画成立"></svg>
       <p class="text-[10px] text-gray-500 mt-1">縦軸は確率（%）、横軸は参加人数です。緑の帯は20人以降の<strong class="font-bold text-emerald-700">ここから企画成立</strong>ゾーン。紫の点線がいまの人数。20人で82.5%、50人で88%の参考値で、獲得を保証するものではありません。</p>
     </div>
-    <div id="ag-participant-list" class="rounded-xl border border-gray-100 px-3 py-2"></div>
+    <!-- 参加者一覧は通常の企画画面には出さない（管理者も管理パネル側のみ） -->
 
     <!-- X集客用 自動招待URLシェア -->
     <div class="pt-2 border-t border-gray-200/70 flex gap-2">
@@ -15544,44 +15544,17 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       });
     }
 
-    // 管理者のみ全参加者を購読（一般ユーザーは他人の応募内容を読めない）
-    if (window.__isAutoGoAdmin?.() && typeof collection === "function") {
-      unsubEntries = onSnapshot(collection(db, "auto_go_pools", poolId, "entries"), (snap) => {
-        if (activePoolId !== poolId) return;
-        currentEntries = snap.docs.map(entry => ({ uid: entry.id, ...entry.data() }));
-        renderAutoGoUI();
-      }, (error) => {
-        console.error("Auto-GO participant list error:", error);
-        const list = document.getElementById("ag-participant-list");
-        if (list) list.textContent = "参加者一覧を読み込めませんでした";
-      });
-    }
+    // 通常の企画画面には参加者一覧を出さない（管理者向けも管理パネルのみ）
+    currentEntries = [];
   };
 
   function renderAutoGoParticipants() {
+    // 通常企画UIからは参加者を載せない
     const list = document.getElementById("ag-participant-list");
-    if (!list) return;
-    const admin = !!window.__isAutoGoAdmin?.();
-    const total = Number(currentPoolData?.totalCount || 0);
-    if (!admin) {
-      // 一般ユーザーには誰が応募しているか見せない（人数のみ）
-      list.innerHTML = `<p class="text-[11px] text-gray-600">現在の参加人数 <span class="font-bold text-gray-900">${total}</span>人</p>
-        <p class="text-[10px] text-gray-400 mt-0.5">他の参加者の名前・予約内容は非公開です</p>`;
-      return;
+    if (list) {
+      list.innerHTML = "";
+      list.classList.add("hidden");
     }
-    const participants = currentEntries.filter(entry => entry.status !== "cancelled");
-    list.innerHTML = `<p class="text-[10px] font-bold text-gray-600 mb-1">参加者 ${participants.length}人（管理者のみ表示）</p>` +
-      (participants.length ? participants.map(entry => {
-        const xId = getAutoGoXId(entry);
-        const canRemove = !["unshipped_penalty", "cancelled"].includes(entry.status);
-        return `<div class="flex items-center justify-between gap-2 border-t border-gray-100 py-1 text-[10px]">
-          <button type="button" data-ag-act="person" data-pool-id="${escapeAutoGoHtml(activePoolId)}" data-uid="${escapeAutoGoHtml(entry.uid)}" onclick="window.openAutoGoPerson(this.getAttribute('data-pool-id'), this.getAttribute('data-uid'))" class="truncate text-left font-bold text-gray-800">${escapeAutoGoHtml(entry.userName || "参加者")} · ${escapeAutoGoHtml(entry.wantedMember || "")}
-            ${xId ? `<span class="ml-1 text-blue-600">@${escapeAutoGoHtml(xId)}</span>` : ""}
-          </button>
-          <span class="shrink-0 text-gray-500">${escapeAutoGoHtml(entry.status || "")}</span>
-          ${canRemove ? `<button type="button" data-pool="${escapeAutoGoHtml(activePoolId)}" data-uid="${escapeAutoGoHtml(entry.uid)}" onclick="window.adminRemoveAutoGoEntry(this.dataset.pool,this.dataset.uid)" class="shrink-0 text-red-600 underline">除外</button>` : ""}
-        </div>`;
-      }).join("") : '<p class="text-[10px] text-gray-400">参加者はいません</p>');
   }
 
   function renderAutoGoUI() {
@@ -15628,6 +15601,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       agProbNote.innerHTML = "縦軸は確率（%）、横軸は参加人数です。緑の帯は" + minP + "人以降の<strong class=\"font-bold text-emerald-700\">ここから企画成立</strong>ゾーン。紫の点線がいまの人数。20人で82.5%、50人で88%の参考値で、獲得を保証するものではありません。";
     }
     drawFirstChoiceChart(total, memberCnt, targetP, minP);
+    // 参加者一覧は通常企画画面に出さない
     renderAutoGoParticipants();
 
     const badge = document.getElementById("ag-status-badge");
