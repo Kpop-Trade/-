@@ -3809,6 +3809,8 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         document.getElementById("suspended-modal").classList.add("hidden");
         userData = { profile: {}, blocked: [], likes: [], reads: {}, notifications: [], cancelHistory: [], myCards: {}, collectionPublic: false, customCards: [], cardWatch: {} }; myTrades = []; updateBadge(); updateNotifBadge();
         prevUnreadCount = -1; prevTradeCountAsOwner = -1;
+        window._tradeWatchReady = false;
+        window._tradeWatch = {};
         updateUserAvatar();
       }
     });
@@ -6104,33 +6106,129 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       document.getElementById("wallet-count").innerText = `${completedCount} 件`;
     }
 
+    function clipNotice(value, max) {
+      const text = String(value || "").replace(/\s+/g, " ").trim();
+      return text.length > max ? text.slice(0, max) + "…" : text;
+    }
+    function tradeItemLabel(t) {
+      const member = t.postMember && t.postMember !== "指定なし" ? "（" + clipNotice(t.postMember, 12) + "）" : "";
+      return clipNotice(t.postGive || "出品", 36) + member;
+    }
+    function tradeRequestCopy(t) {
+      const who = clipNotice(t.applicantName || "相手", 16);
+      const item = tradeItemLabel(t);
+      const price = Number(t.postPrice || 0);
+      const yen = price > 0 ? " ¥" + price.toLocaleString() : "";
+      const want = clipNotice(t.postWant || "", 20);
+      if (t.kind === "group") {
+        return { toast: "👥 " + who + "さんが共同購入に参加", note: who + "さんが共同購入に参加：" + item, type: "success" };
+      }
+      if (t.isBundle && Array.isArray(t.bundleIndexes) && t.bundleIndexes.length) {
+        const nums = t.bundleIndexes.map(function (n) { return Number(n) + 1; }).join("・");
+        return { toast: "🃏 " + who + "さんが枠" + nums + "を申し込み", note: who + "さんが枠" + nums + "を申し込み：" + item, type: "success" };
+      }
+      if (t.isBuy) {
+        return { toast: "💳 " + who + "さんから買取の申し込み", note: who + "さんから買取の申し込み：" + item + yen, type: "success" };
+      }
+      if (t.isSell) {
+        return { toast: "📥 " + who + "さんから購入申請", note: who + "さんから購入申請：" + item + yen, type: "success" };
+      }
+      if (want) {
+        return { toast: "🔄 " + who + "さんから交換申請", note: who + "さんから交換申請：" + item + " → " + want, type: "success" };
+      }
+      return { toast: "📥 " + who + "さんから申し込み", note: who + "さんから申し込み：" + item + yen, type: "success" };
+    }
+    function tradeWatchSnap(t) {
+      return {
+        status: t.status || "",
+        msgAt: tsMillis(t.lastMessageAt),
+        shipO: !!(t.shipped && t.ownerId && t.shipped[t.ownerId]),
+        shipA: !!(t.shipped && t.applicantId && t.shipped[t.applicantId]),
+        recO: !!(t.received && t.ownerId && t.received[t.ownerId]),
+        recA: !!(t.received && t.applicantId && t.received[t.applicantId]),
+        cancelBy: (t.cancelRequest && t.cancelRequest.by) || ""
+      };
+    }
+    function tradeUpdateCopy(t, prev) {
+      if (!prev || !currentUser) return null;
+      const uid = currentUser.uid;
+      const iAmOwner = uid === t.ownerId;
+      const otherName = clipNotice(iAmOwner ? (t.applicantName || "相手") : (t.ownerName || "相手"), 16);
+      const item = tradeItemLabel(t);
+      if (prev.status !== (t.status || "")) {
+        if (t.status === "cancelled") {
+          const by = t.cancelledBy || (t.cancelRequest && t.cancelRequest.by) || "";
+          if (by === uid) return null;
+          const who = t.adminCancelled ? "運営" : otherName + "さん";
+          return { toast: who + "が取引をキャンセル", note: who + "が取引をキャンセル：" + item, type: "admin" };
+        }
+        if (t.status === "completed") {
+          return { toast: "🎉 取引が完了", note: "取引が完了しました。評価をお願いします：" + item, type: "success" };
+        }
+        if (t.status === "shipping" && prev.status === "negotiating" && !iAmOwner) {
+          return { toast: "✅ " + otherName + "さんが合意しました", note: otherName + "さんが合意。決済・発送へ：" + item, type: "success" };
+        }
+      }
+      if (t.cancelRequest && t.cancelRequest.by && t.cancelRequest.by !== prev.cancelBy && t.cancelRequest.by !== uid) {
+        return { toast: "⚠️ " + otherName + "さんからキャンセル申請", note: otherName + "さんからキャンセル申請：" + item, type: "admin" };
+      }
+      const otherShipped = iAmOwner
+        ? (!prev.shipA && !!(t.shipped && t.applicantId && t.shipped[t.applicantId]))
+        : (!prev.shipO && !!(t.shipped && t.ownerId && t.shipped[t.ownerId]));
+      if (otherShipped) {
+        return { toast: "📦 " + otherName + "さんが発送・決済", note: otherName + "さんが決済／発送を完了：" + item, type: "info" };
+      }
+      const otherReceived = iAmOwner
+        ? (!prev.recA && !!(t.received && t.applicantId && t.received[t.applicantId]))
+        : (!prev.recO && !!(t.received && t.ownerId && t.received[t.ownerId]));
+      if (otherReceived) {
+        return { toast: "✨ " + otherName + "さんが受け取り完了", note: otherName + "さんが受け取りを確認：" + item, type: "success" };
+      }
+      if (tsMillis(t.lastMessageAt) > (prev.msgAt || 0) && t.lastSenderId && t.lastSenderId !== uid) {
+        return { toast: "💬 " + otherName + "さんからメッセージ", note: otherName + "さんからメッセージ：" + item, type: "info" };
+      }
+      return null;
+    }
+    function announceTrade(copy, tradeId) {
+      if (!copy) return;
+      addNotification(copy.note, copy.type || "info", { type: "trade", id: tradeId });
+      if ((window._tradeToastLeft || 0) > 0) {
+        window._tradeToastLeft -= 1;
+        showToast(copy.toast, copy.type === "admin" ? "error" : (copy.type === "success" ? "success" : "info"));
+      }
+    }
+
     function subscribeTrades() {
       if (unsubTrades) unsubTrades();
       tradesLoaded = false;
+      window._tradeWatchReady = false;
+      window._tradeWatch = {};
       unsubTrades = onSnapshot(query(collection(db, "trades"), where("participants", "array-contains", currentUser.uid)), (snap) => {
         myTrades = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         tradesLoaded = true;
         const lastAct = t => Math.max(tsValue(t.updatedAt), tsMillis(t.lastMessageAt));
         myTrades.sort((a, b) => lastAct(b) - lastAct(a));
         const unread = myTrades.filter(t => isUnread(t)).length;
-        if (!window._seenTradeIds) {
-          window._seenTradeIds = new Set(myTrades.map(t => t.id));
-          window._tradeMsgAt = {};
-          myTrades.forEach(t => { window._tradeMsgAt[t.id] = tsMillis(t.lastMessageAt); });
+        const fromCache = !!(snap.metadata && snap.metadata.fromCache);
+        if (!window._tradeWatchReady) {
+          if (!fromCache) {
+            window._tradeWatchReady = true;
+            window._tradeWatch = {};
+            myTrades.forEach(t => { window._tradeWatch[t.id] = tradeWatchSnap(t); });
+          }
         } else {
-          const apps = myTrades.filter(t => t.ownerId === currentUser.uid && !window._seenTradeIds.has(t.id));
-          const msgs = myTrades.filter(t => window._seenTradeIds.has(t.id) && isUnread(t) && tsMillis(t.lastMessageAt) > (window._tradeMsgAt[t.id] || 0));
-          if (apps.length) {
-            showToast("📥 購入申請が来ました！", "success");
-            addNotification("購入申請が来ました", "success", { type: "trade", id: apps[0].id });
-          }
-          if (msgs.length) {
-            showToast("💬 新しいメッセージがあります！", "info");
-            addNotification("新しいメッセージが届きました", "info", { type: "trade", id: msgs[0].id });
-          }
-          apps.forEach(t => window._seenTradeIds.add(t.id));
-          myTrades.forEach(t => window._seenTradeIds.add(t.id));
-          myTrades.forEach(t => { window._tradeMsgAt[t.id] = tsMillis(t.lastMessageAt); });
+          window._tradeToastLeft = 3;
+          const keep = {};
+          myTrades.forEach(t => {
+            const prev = window._tradeWatch[t.id];
+            if (!prev) {
+              if (t.ownerId === currentUser.uid && t.applicantId !== currentUser.uid) announceTrade(tradeRequestCopy(t), t.id);
+            } else {
+              announceTrade(tradeUpdateCopy(t, prev), t.id);
+            }
+            keep[t.id] = tradeWatchSnap(t);
+          });
+          window._tradeWatch = keep;
         }
         prevUnreadCount = unread;
         updateBadge();

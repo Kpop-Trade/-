@@ -830,14 +830,31 @@ exports.registerAutoGoReceipt = onCall(async (request) => {
   return { ok: true };
 });
 
+function tradePushCopy(t) {
+  const who = String(t.applicantName || "相手").slice(0, 24);
+  const item = String(t.postGive || "出品").replace(/\s+/g, " ").slice(0, 60);
+  const price = Number(t.postPrice || 0);
+  const yen = price > 0 ? " ¥" + price.toLocaleString("ja-JP") : "";
+  const slots = Array.isArray(t.bundleIndexes) && t.bundleIndexes.length
+    ? " 枠" + t.bundleIndexes.map((n) => Number(n) + 1).join("・")
+    : "";
+  if (t.kind === "group") return { title: "共同購入の参加", text: `${who}さんが参加しました：${item}` };
+  if (t.isBundle) return { title: "枠の申し込み", text: `${who}さんが申し込みました${slots}：${item}` };
+  if (t.isBuy) return { title: "買取の申し込み", text: `${who}さんから買取の申し込み：${item}${yen}` };
+  if (t.isSell) return { title: "購入申請", text: `${who}さんから購入申請：${item}${yen}` };
+  if (t.postWant) return { title: "交換申請", text: `${who}さんから交換申請：${item} → ${String(t.postWant).slice(0, 40)}` };
+  return { title: "新しい申し込み", text: `${who}さんから申し込み：${item}${yen}` };
+}
+
 // ===== 新しい申し込み／参加 → 出品者へ =====
 exports.onTradeCreated = onDocumentCreated("trades/{tradeId}", async (event) => {
   const t = event.data.data();
+  const copy = tradePushCopy(t);
   await notify(t.ownerId, {
-    text: `${t.applicantName} さんから${t.kind === "group" ? "参加" : "申し込み"}がありました：${t.postGive}`,
+    text: copy.text,
     type: "success",
     link: { k: "trade", id: event.params.tradeId },
-    title: "新しい申し込み"
+    title: copy.title
   });
 });
 
@@ -873,22 +890,22 @@ exports.onTradeUpdated = onDocumentUpdated("trades/{tradeId}", async (event) => 
 
   if (a.status !== b.status) {
     if (a.status === "shipping") {
-      both.forEach((u) => jobs.push(notify(u, { text: `合意が成立しました。決済・発送へ進んでください：${a.postGive}`, type: "success", link })));
+      both.forEach((u) => jobs.push(notify(u, { text: `合意が成立しました。決済・発送へ進んでください：${a.postGive}`, type: "success", link, title: "合意が成立" })));
     } else if (a.status === "completed") {
-      both.forEach((u) => jobs.push(notify(u, { text: `取引が完了しました。相手の評価をお願いします：${a.postGive}`, type: "success", link })));
+      both.forEach((u) => jobs.push(notify(u, { text: `取引が完了しました。相手の評価をお願いします：${a.postGive}`, type: "success", link, title: "取引が完了" })));
     } else if (a.status === "cancelled") {
       if (a.adminCancelled) {
-        both.forEach((u) => jobs.push(notify(u, { text: `運営により取引がキャンセルされました：${a.postGive}`, type: "admin", link })));
+        both.forEach((u) => jobs.push(notify(u, { text: `運営により取引がキャンセルされました：${a.postGive}`, type: "admin", link, title: "運営がキャンセル" })));
       } else {
         const by = a.cancelledBy || (a.cancelRequest && a.cancelRequest.by);
-        if (by) jobs.push(notify(other(by), { text: `${name(by)} さんが取引をキャンセルしました：${a.postGive}`, link }));
+        if (by) jobs.push(notify(other(by), { text: `${name(by)} さんが取引をキャンセルしました：${a.postGive}`, link, title: "取引がキャンセル" }));
       }
     }
   }
 
   for (const u of both) {
     if (a.shipped && a.shipped[u] && !(b.shipped && b.shipped[u])) {
-      jobs.push(notify(other(u), { text: `${name(u)} さんが決済／発送を完了しました。内容を確認してください`, link }));
+      jobs.push(notify(other(u), { text: `${name(u)} さんが決済／発送を完了しました：${a.postGive || "取引"}`, link, title: "発送・決済の更新" }));
     }
   }
   await Promise.all(jobs);
