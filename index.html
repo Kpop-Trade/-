@@ -94,21 +94,43 @@
     modal.style.setProperty("inset", "0px", "important");
     modal.style.setProperty("z-index", "10000", "important");
     document.body.style.overflow = "hidden";
-    if (poolId && typeof window.__selectAutoGoPool === "function") {
-      window.__pendingAutoGoPoolId = poolId;
+    if (poolId) window.__pendingAutoGoPoolId = poolId;
+
+    // キャッシュ済みなら即描画（待ち時間を短縮）
+    if (typeof window.__renderAutoGoCached === "function") {
+      try { window.__renderAutoGoCached(); } catch (e) {}
+    } else {
+      var title = document.getElementById("ag-pool-title");
+      var desc = document.getElementById("ag-pool-desc");
+      if (title && (!title.textContent || title.textContent === "Auto-GO")) {
+        title.textContent = "読み込み中...";
+      }
+      if (desc) desc.textContent = "プール情報を取得しています";
     }
-    if (typeof window.__loadAutoGoPools === "function") {
-      Promise.resolve(window.__loadAutoGoPools()).catch(function(error) {
-        var message = error && error.message ? error.message : "読み込めませんでした";
-        var title = document.getElementById("ag-pool-title");
-        var desc = document.getElementById("ag-pool-desc");
-        if (title) title.textContent = "Auto-GOを開けませんでした";
-        if (desc) desc.textContent = message;
-        if (typeof showToast === "function") {
-          showToast("Auto-GOの読み込みに失敗しました: " + message, "error");
-        }
-      });
-    }
+
+    var attempts = 0;
+    var loadPools = function() {
+      attempts += 1;
+      if (typeof window.__loadAutoGoPools === "function") {
+        Promise.resolve(window.__loadAutoGoPools({ force: !!poolId })).catch(function(error) {
+          var message = error && error.message ? error.message : "読み込めませんでした";
+          var titleEl = document.getElementById("ag-pool-title");
+          var descEl = document.getElementById("ag-pool-desc");
+          if (titleEl) titleEl.textContent = "Auto-GOを開けませんでした";
+          if (descEl) descEl.textContent = message;
+          if (typeof showToast === "function") {
+            showToast("Auto-GOの読み込みに失敗しました: " + message, "error");
+          }
+        });
+        return;
+      }
+      if (attempts < 40) {
+        setTimeout(loadPools, 100);
+      } else if (typeof showToast === "function") {
+        showToast("Auto-GOの準備に時間がかかっています。再読み込みしてください", "error");
+      }
+    };
+    loadPools();
   };
   window.closeAutoGoModal = function() {
     var modal = document.getElementById("autogo-modal");
@@ -4300,6 +4322,12 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         // ログイン済み・規約同意済みなら初回のみ通知オン確認
         if (typeof maybeShowPushPrompt === "function") maybeShowPushPrompt();
         recordDailyActiveUser().catch(() => {});
+        // Auto-GO プールを先読み（開いたときの待ちを減らす）
+        setTimeout(function() {
+          if (typeof window.__loadAutoGoPools === "function") {
+            Promise.resolve(window.__loadAutoGoPools({ prefetch: true })).catch(function() {});
+          }
+        }, 300);
       } else {
         loginBtn.classList.remove("hidden"); userProfile.classList.add("hidden");
         if (unsubTrades) unsubTrades(); if (unsubUser) unsubUser(); if (unsubNotifs) unsubNotifs(); unsubTrades=null; unsubUser=null; unsubNotifs=null; serverNotifs = [];
@@ -14367,6 +14395,9 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
   let unsubPool = null;
   let unsubEntry = null;
   let unsubEntries = null;
+  let subscribedPoolId = "";
+  let poolsListenerReady = false;
+  let selectPoolSeq = 0;
 
   function getActiveMembers() {
     return (currentPoolData && Array.isArray(currentPoolData.members) && currentPoolData.members.length)
@@ -15303,9 +15334,21 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       return selectAutoGoPool(poolId);
     }
   };
+  window.__renderAutoGoCached = function() {
+    if (currentPoolData) {
+      try { renderAutoGoUI(); } catch (e) {}
+      return true;
+    }
+    return false;
+  };
   window.__loadAutoGoPools = initPoolsListListener;
+  // ホーム表示中に先読みして、開いた瞬間すぐ出るようにする
+  setTimeout(function() {
+    try { initPoolsListListener({ prefetch: true }); } catch (e) {}
+  }, 0);
 
-  async function initPoolsListListener() {
+  async function initPoolsListListener(opts) {
+    const options = opts || {};
     const titleEl = document.getElementById("ag-pool-title");
     const descEl = document.getElementById("ag-pool-desc");
     const gridEl = document.getElementById("ag-member-grid");
@@ -15314,10 +15357,21 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       window.__pendingAutoGoPoolId = "";
     }
     if (!window.__autoGoRefs) {
-      if (titleEl) titleEl.textContent = "Auto-GOを準備しています";
-      if (descEl) descEl.textContent = "通信の準備が終わるまで少し待ってから、もう一度開いてください。";
-      if (typeof showToast === "function") {
-        showToast("Auto-GOの準備中です。数秒後にもう一度開いてください", "info");
+      if (!options.prefetch) {
+        if (titleEl) titleEl.textContent = "Auto-GOを準備しています";
+        if (descEl) descEl.textContent = "通信の準備が終わるまで自動で再試行します…";
+      }
+      // 準備完了まで短間隔でリトライ（ユーザーに「数秒後にもう一度」させない）
+      if (!window.__agPoolsRetryTimer) {
+        let tries = 0;
+        window.__agPoolsRetryTimer = setInterval(function() {
+          tries += 1;
+          if (window.__autoGoRefs || tries > 50) {
+            clearInterval(window.__agPoolsRetryTimer);
+            window.__agPoolsRetryTimer = null;
+            if (window.__autoGoRefs) initPoolsListListener(options);
+          }
+        }, 120);
       }
       return;
     }
@@ -15330,29 +15384,75 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       }
       return;
     }
+
+    // すでに購読中なら、必要なら対象プールだけ切替して終了（毎回張り直ししない）
+    if (poolsListenerReady && unsubPoolsList && !options.force) {
+      if (allPools.length && currentPoolData) {
+        renderPoolTabs();
+        renderAutoGoUI();
+      }
+      const wantId = activePoolId || (allPools[0] && allPools[0].id) || "";
+      if (wantId && wantId !== subscribedPoolId) {
+        await selectAutoGoPool(wantId);
+      }
+      return;
+    }
+
     if (unsubPoolsList) {
       unsubPoolsList();
       unsubPoolsList = null;
+      poolsListenerReady = false;
     }
+
     const poolsQuery = refs.query(refs.collection(refs.db, "auto_go_pools"), refs.orderBy("createdAt", "desc"), refs.limit(10));
+
+    // 先に getDocs で一発描画 → その後 onSnapshot で追従（初回待ちを短縮）
+    try {
+      const firstSnap = await refs.getDocs(poolsQuery);
+      allPools = firstSnap.docs.map(function(poolDoc) {
+        const row = poolDoc.data();
+        row.id = poolDoc.id;
+        return row;
+      });
+      renderPoolTabs();
+      const stillVisible = allPools.some(function(p) { return p.id === activePoolId; });
+      if (!activePoolId || !stillVisible) {
+        if (allPools.length > 0) await selectAutoGoPool(allPools[0].id);
+        else {
+          if (titleEl) titleEl.textContent = "まだ開催中のプールがありません";
+          if (descEl) descEl.textContent = "管理者が公開すると、ここに参加できます。";
+          if (gridEl) gridEl.innerHTML = "";
+        }
+      } else {
+        await selectAutoGoPool(activePoolId);
+      }
+    } catch (bootErr) {
+      console.warn("Auto-GO pools getDocs:", bootErr);
+    }
+
     unsubPoolsList = refs.onSnapshot(poolsQuery, async function(snap) {
       allPools = snap.docs.map(function(poolDoc) {
         const row = poolDoc.data();
         row.id = poolDoc.id;
         return row;
       });
+      poolsListenerReady = true;
       renderPoolTabs();
       const stillVisible = snap.docs.some(function(poolDoc) { return poolDoc.id === activePoolId; });
       if (!activePoolId || (!stillVisible && allPools.length > 0)) {
         if (allPools.length > 0) {
-          await selectAutoGoPool(allPools[0].id);
+          // 未選択時だけ切替。毎回 select し直さない
+          if (subscribedPoolId !== allPools[0].id) await selectAutoGoPool(allPools[0].id);
         } else {
           if (titleEl) titleEl.textContent = "まだ開催中のプールがありません";
           if (descEl) descEl.textContent = "管理者が公開すると、ここに参加できます。";
           if (gridEl) gridEl.innerHTML = "";
         }
-      } else if (activePoolId) {
+      } else if (activePoolId && subscribedPoolId !== activePoolId) {
         await selectAutoGoPool(activePoolId);
+      } else if (activePoolId && currentPoolData) {
+        // 一覧の人数表示だけ更新
+        renderPoolTabs();
       }
     }, function(error) {
       console.error(error);
@@ -15381,34 +15481,73 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
   }
 
   window.selectAutoGoPool = async function(poolId) {
-    activePoolId = poolId;
-    currentEntryData = null;
-    window.__agActivePoolId = poolId;
-    window.__agCurrentEntryData = null;
-    renderPoolTabs();
-    const { db, auth, doc, onSnapshot } = window.__autoGoRefs;
+    if (!poolId || !window.__autoGoRefs) return;
+    // 同じプールを再購読し直すと購入報告画面が一瞬消えて待ちが発生するためスキップ
+    if (poolId === subscribedPoolId && currentPoolData && (unsubPool || unsubEntry)) {
+      activePoolId = poolId;
+      window.__agActivePoolId = poolId;
+      renderPoolTabs();
+      renderAutoGoUI();
+      return;
+    }
 
-    if (unsubPool) unsubPool();
-    if (unsubEntry) unsubEntry();
-    if (unsubEntries) unsubEntries();
+    const seq = ++selectPoolSeq;
+    activePoolId = poolId;
+    window.__agActivePoolId = poolId;
+    renderPoolTabs();
+
+    const refs = window.__autoGoRefs;
+    const { db, auth, doc, getDoc, onSnapshot, collection } = refs;
+    const user = auth.currentUser;
+
+    if (unsubPool) { unsubPool(); unsubPool = null; }
+    if (unsubEntry) { unsubEntry(); unsubEntry = null; }
+    if (unsubEntries) { unsubEntries(); unsubEntries = null; }
+    // 切替中だけクリア（同プール再入時は上で return 済み）
+    currentPoolData = null;
+    currentEntryData = null;
+    window.__agCurrentEntryData = null;
+    currentEntries = [];
+    subscribedPoolId = poolId;
+
+    // getDoc で即描画 → onSnapshot で追従
+    try {
+      const reads = [getDoc(doc(db, "auto_go_pools", poolId))];
+      if (user) reads.push(getDoc(doc(db, "auto_go_pools", poolId, "entries", user.uid)));
+      const snaps = await Promise.all(reads);
+      if (seq !== selectPoolSeq || activePoolId !== poolId) return;
+      if (snaps[0].exists()) {
+        currentPoolData = snaps[0].data();
+      }
+      if (user && snaps[1]) {
+        currentEntryData = snaps[1].exists() ? snaps[1].data() : null;
+        window.__agCurrentEntryData = currentEntryData;
+      }
+      if (currentPoolData) renderAutoGoUI();
+    } catch (e) {
+      console.warn("Auto-GO select getDoc:", e);
+    }
+
     unsubPool = onSnapshot(doc(db, "auto_go_pools", poolId), (snap) => {
+      if (activePoolId !== poolId) return;
       if (!snap.exists()) return;
       currentPoolData = snap.data();
       renderAutoGoUI();
     });
 
-    const user = auth.currentUser;
     if (user) {
       unsubEntry = onSnapshot(doc(db, "auto_go_pools", poolId, "entries", user.uid), (snap) => {
+        if (activePoolId !== poolId) return;
         currentEntryData = snap.exists() ? snap.data() : null;
         window.__agCurrentEntryData = currentEntryData;
         renderAutoGoUI();
       });
     }
-    currentEntries = [];
+
     // 管理者のみ全参加者を購読（一般ユーザーは他人の応募内容を読めない）
-    if (window.__isAutoGoAdmin?.()) {
+    if (window.__isAutoGoAdmin?.() && typeof collection === "function") {
       unsubEntries = onSnapshot(collection(db, "auto_go_pools", poolId, "entries"), (snap) => {
+        if (activePoolId !== poolId) return;
         currentEntries = snap.docs.map(entry => ({ uid: entry.id, ...entry.data() }));
         renderAutoGoUI();
       }, (error) => {
@@ -15540,9 +15679,20 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
                   <p>・アルバム名（商品名）が確認できること</p>
                   <p>・注文完了／購入履歴など、自分の注文だと分かる画面</p>
                 </div>
-                <label class="block text-sm font-bold text-gray-800">購入証明の画像
-                  <input id="ag-purchase-proof" type="file" accept="image/*" capture="environment" onchange="previewAutoGoPurchaseProof(this)" class="block w-full mt-1.5 text-[11px]">
-                </label>
+                <div class="space-y-1.5">
+                  <p class="text-sm font-bold text-gray-800">購入証明の画像</p>
+                  <div class="grid grid-cols-2 gap-2">
+                    <label class="flex items-center justify-center min-h-[44px] rounded-xl border border-gray-300 bg-white text-[12px] font-bold text-gray-800 active:scale-[0.99]">
+                      📁 アルバムから選ぶ
+                      <input id="ag-purchase-proof" type="file" accept="image/*" onchange="previewAutoGoPurchaseProof(this)" class="hidden">
+                    </label>
+                    <label class="flex items-center justify-center min-h-[44px] rounded-xl border border-purple-200 bg-purple-50 text-[12px] font-bold text-purple-800 active:scale-[0.99]">
+                      📷 写真を撮る
+                      <input id="ag-purchase-proof-camera" type="file" accept="image/*" capture="environment" onchange="previewAutoGoPurchaseProof(this)" class="hidden">
+                    </label>
+                  </div>
+                  <p class="text-[10px] text-gray-500">スクショは「アルバムから選ぶ」がおすすめです</p>
+                </div>
                 <div id="ag-purchase-proof-preview-wrap" class="${window.__agPurchaseProofPreview ? "" : "hidden"} rounded-2xl border border-pink-100 bg-gray-50 overflow-hidden">
                   <img id="ag-purchase-proof-preview" src="${window.__agPurchaseProofPreview || ""}" alt="購入証明プレビュー" class="w-full max-h-[70vh] object-contain bg-black/5">
                   <p class="text-[10px] text-center text-gray-500 py-1.5">選択中の写真プレビュー</p>
@@ -15618,9 +15768,19 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
                   ? `<div class="text-center text-[11px] text-gray-600 py-2">発送完了</div>`
                   : `<div class="col-span-2 space-y-1"><label class="block text-[10px] text-gray-700">追跡番号（必須・ハイフンなし半角数字）
                       <input id="ag-shipping-tracking" type="text" inputmode="numeric" pattern="[0-9]{10,}" minlength="10" maxlength="30" required autocomplete="off" placeholder="例: 12345678901" class="block w-full mt-1 rounded border border-gray-300 px-2 py-1.5 text-xs text-gray-900">
-                    </label><label class="block text-[10px] text-gray-700">発送写真
-                      <input id="ag-shipping-proof" type="file" accept="image/*" capture="environment" class="block w-full mt-1 text-[10px]">
-                    </label><button type="button" onclick="markAutoGoShipped()" class="w-full border border-gray-300 text-gray-900 text-[11px] font-medium py-2">写真を登録して発送完了</button></div>`
+                    </label>                    <div class="space-y-1">
+                      <p class="text-[10px] font-bold text-gray-700">発送写真</p>
+                      <div class="grid grid-cols-2 gap-1.5">
+                        <label class="flex items-center justify-center min-h-[40px] rounded-lg border border-gray-300 bg-white text-[11px] font-bold text-gray-800">
+                          📁 アルバム
+                          <input id="ag-shipping-proof" type="file" accept="image/*" class="hidden">
+                        </label>
+                        <label class="flex items-center justify-center min-h-[40px] rounded-lg border border-purple-200 bg-purple-50 text-[11px] font-bold text-purple-800">
+                          📷 撮影
+                          <input id="ag-shipping-proof-camera" type="file" accept="image/*" capture="environment" class="hidden">
+                        </label>
+                      </div>
+                    </div><button type="button" onclick="markAutoGoShipped()" class="w-full border border-gray-300 text-gray-900 text-[11px] font-medium py-2">写真を登録して発送完了</button></div>`
                 }
                 ${currentEntryData.receivedDone
                   ? `<div class="text-center text-[11px] text-gray-600 py-2">受取完了</div>`
@@ -15939,7 +16099,8 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
 
   window.markAutoGoPurchased = async function() {
     const input = document.getElementById("ag-purchase-proof");
-    const file = input?.files?.[0] || window.__agPurchaseProofFile;
+    const cameraInput = document.getElementById("ag-purchase-proof-camera");
+    const file = input?.files?.[0] || cameraInput?.files?.[0] || window.__agPurchaseProofFile;
     if (!file) {
       showToast("購入日時とアルバムが見えるスクリーンショットを選択してください", "error");
       return;
@@ -16058,7 +16219,8 @@ window.markAutoGoShipped = async function() {
     alert("追跡番号は半角数字10桁以上で入力してください。");
     return;
   }
-  const file = document.getElementById("ag-shipping-proof")?.files?.[0];
+  const file = document.getElementById("ag-shipping-proof")?.files?.[0]
+    || document.getElementById("ag-shipping-proof-camera")?.files?.[0];
   if (!file) { alert("伝票の住所が見える写真を選択してください。"); return; }
   try {
     const refs = window.__autoGoRefs;
