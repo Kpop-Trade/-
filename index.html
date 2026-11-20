@@ -77,10 +77,10 @@
       return;
     }
     var rulesConsent = document.getElementById("ag-rules-consent");
-    if (rulesConsent) {
-      rulesConsent.checked = false;
-      window.toggleAutoGoRulesConsent?.();
-    }
+    var shipConsent = document.getElementById("ag-auto-ship-consent");
+    if (rulesConsent) rulesConsent.checked = false;
+    if (shipConsent) shipConsent.checked = false;
+    window.toggleAutoGoRulesConsent?.();
     if (modal.parentElement !== document.body) {
       document.body.appendChild(modal);
     }
@@ -14098,9 +14098,11 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     <div id="ag-pool-tabs" class="flex gap-1.5 overflow-x-auto pb-1"></div>
 
         <!-- 選択中プールの写真・タイトル・詳細カード -->
-    <div id="ag-pool-detail-card" class="bg-white border border-gray-200 overflow-hidden">
-      <img id="ag-pool-image" src="" alt="" class="hidden w-full h-40 object-cover bg-gray-100">
-      <div class="py-2">
+    <div id="ag-pool-detail-card" class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      <div id="ag-pool-image-wrap" class="hidden w-full bg-gray-50">
+        <img id="ag-pool-image" src="" alt="" class="w-full h-auto max-h-[70vh] object-contain object-top bg-gray-50">
+      </div>
+      <div class="py-2 px-0.5">
         <h3 id="ag-pool-title" class="font-semibold text-lg text-gray-900">Auto-GO</h3>
         <p id="ag-pool-desc" class="hidden"></p>
       </div>
@@ -14115,20 +14117,11 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       <span id="ag-prob-text" class="hidden">20%</span>
       <div class="hidden"><div id="ag-progress-bar" style="width: 0%"></div></div>
     </div>
-    <div class="bg-white rounded-xl border border-pink-100 p-2.5 my-2">
-      <div class="flex items-end justify-between mb-1">
-        <div class="text-[11px] font-bold text-gray-700">人数に対する第1希望獲得確率</div>
-        <div class="text-[22px] leading-none font-black text-pink-600"><span id="ag-prob-big">0.0</span><span class="text-xs">%</span></div>
-      </div>
-      <svg id="ag-prob-svg" viewBox="0 0 340 196" class="w-full h-52" role="img" aria-label="参加人数と第1希望獲得確率。最低成立人数から企画成立"></svg>
-      <p class="text-[10px] text-gray-500 mt-1">縦軸は確率（%）、横軸は参加人数です。緑の帯は20人以降の<strong class="font-bold text-emerald-700">ここから企画成立</strong>ゾーン。紫の点線がいまの人数。20人で82.5%、50人で88%の参考値で、獲得を保証するものではありません。</p>
-    </div>
-    <div id="ag-participant-list" class="rounded-xl border border-gray-100 px-3 py-2"></div>
 
     <!-- 自分の参加ステータス＆自動URL配布エリア -->
     <div id="ag-my-status-box" class="hidden bg-white space-y-2.5"></div>
 
-    <!-- エントリー枠選択（未参加時） -->
+    <!-- エントリー枠選択（未参加時）※グラフより上に置き予約操作をすぐ押せるようにする -->
     <div id="ag-entry-section" class="space-y-3">
       <details class="rounded-xl border-2 border-red-300 bg-red-50 text-gray-900 dark:border-red-800 dark:bg-red-950/40 dark:text-gray-100">
         <summary class="cursor-pointer list-none px-3 py-3 flex items-center justify-between gap-2 [&::-webkit-details-marker]:hidden">
@@ -14169,7 +14162,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       <div id="ag-consent-box" class="rounded-xl border border-gray-200 bg-white p-3 space-y-2.5">
         <p class="text-[12px] font-black text-gray-800">① 同意してから予約</p>
         <label class="flex items-start gap-2 cursor-pointer">
-          <input type="checkbox" id="ag-auto-ship-consent" required class="mt-0.5 rounded accent-pink-600">
+          <input type="checkbox" id="ag-auto-ship-consent" required onchange="toggleAutoGoRulesConsent()" class="mt-0.5 rounded accent-pink-600">
           <span class="text-[11px] text-gray-700 leading-snug">開封結果を期限内に登録し、発送先が指定されたら指定先へ発送します（住所は発送先に共有されます）</span>
         </label>
         <label class="flex items-start gap-2 cursor-pointer rounded-lg border border-red-200 bg-red-50 p-2.5">
@@ -14186,6 +14179,16 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
         <div id="ag-member-grid" class="grid grid-cols-1 gap-2"></div>
       </div>
     </div>
+
+    <div class="bg-white rounded-xl border border-pink-100 p-2.5 my-2">
+      <div class="flex items-end justify-between mb-1">
+        <div class="text-[11px] font-bold text-gray-700">人数に対する第1希望獲得確率</div>
+        <div class="text-[22px] leading-none font-black text-pink-600"><span id="ag-prob-big">0.0</span><span class="text-xs">%</span></div>
+      </div>
+      <svg id="ag-prob-svg" viewBox="0 0 340 196" class="w-full h-52" role="img" aria-label="参加人数と第1希望獲得確率。最低成立人数から企画成立"></svg>
+      <p class="text-[10px] text-gray-500 mt-1">縦軸は確率（%）、横軸は参加人数です。緑の帯は20人以降の<strong class="font-bold text-emerald-700">ここから企画成立</strong>ゾーン。紫の点線がいまの人数。20人で82.5%、50人で88%の参考値で、獲得を保証するものではありません。</p>
+    </div>
+    <div id="ag-participant-list" class="rounded-xl border border-gray-100 px-3 py-2"></div>
 
     <!-- X集客用 自動招待URLシェア -->
     <div class="pt-2 border-t border-gray-200/70 flex gap-2">
@@ -14316,17 +14319,20 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
         '<rect x="' + establishX.toFixed(1) + '" y="' + top + '" width="' + zoneWidth.toFixed(1) + '" height="' + (height - top - bottom).toFixed(1) + '" fill="#6ee7b7" fill-opacity="0.35"></rect>';
       establishMarker =
         '<line x1="' + establishX.toFixed(1) + '" y1="' + top + '" x2="' + establishX.toFixed(1) + '" y2="' + (height - bottom) + '" stroke="#059669" stroke-dasharray="4 3" stroke-width="1.6"></line>';
-      const labelPad = 6;
-      let establishLabelX = establishX + labelPad;
-      let establishAnchor = "start";
+      // 成立人数が左側に寄る場合でもラベルが軸に食い込まないよう、常に帯の内側（右寄り）に置く
       const labelW = 92;
-      if (establishX + labelPad + labelW > width - right) {
-        establishLabelX = establishX - labelPad;
-        establishAnchor = "end";
-      }
+      const labelPad = 6;
+      const minLabelX = left + 2;
+      const maxLabelX = width - right - labelW - 2;
+      let labelLeft = establishX + labelPad;
+      if (labelLeft < minLabelX) labelLeft = minLabelX;
+      if (labelLeft > maxLabelX) labelLeft = Math.max(minLabelX, maxLabelX);
+      // 成立線が左端付近のときは帯の開始直後に固定して「場所がおかしい」見え方を防ぐ
+      if (establishX - left < 28) labelLeft = Math.min(Math.max(establishX + 4, minLabelX), maxLabelX);
+      const establishLabelX = labelLeft + 4;
       establishMarker +=
-        '<rect x="' + (establishAnchor === "start" ? establishLabelX : establishLabelX - labelW).toFixed(1) + '" y="' + (top - 2) + '" width="' + labelW + '" height="14" rx="3" fill="#059669"></rect>' +
-        '<text x="' + establishLabelX.toFixed(1) + '" y="' + (top + 9) + '" text-anchor="' + establishAnchor + '" font-size="9" font-weight="700" fill="#ffffff">ここから企画成立</text>';
+        '<rect x="' + labelLeft.toFixed(1) + '" y="' + (top - 2) + '" width="' + labelW + '" height="14" rx="3" fill="#059669"></rect>' +
+        '<text x="' + establishLabelX.toFixed(1) + '" y="' + (top + 9) + '" text-anchor="start" font-size="9" font-weight="700" fill="#ffffff">ここから企画成立</text>';
     }
     let guides = "";
     [50].forEach((count) => {
@@ -14359,16 +14365,42 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       guides += '<text x="' + (pillX + pillW / 2).toFixed(1) + '" y="' + (pillY + 11.5).toFixed(1) + '" text-anchor="middle" font-size="9" font-weight="800" fill="#047857">' + pctText + '</text>';
     }
     let xLabels = "";
-    const seen = {};
-    [0, establishAt, Math.round(maxCount)].forEach((count) => {
-      if (count < 0 || count > maxCount + 0.01 || seen[count]) return;
-      seen[count] = true;
+    // 0人・成立人数・最大人数が近接すると「02人」のように潰れるため、ピクセル距離で間引き
+    const xTickCandidates = [0, establishAt, Math.round(maxCount)];
+    const placedTicks = [];
+    const minTickGapPx = 36;
+    xTickCandidates.forEach((count) => {
+      if (count < 0 || count > maxCount + 0.01) return;
       const x = xOf(count);
-      const anchor = count <= 0 ? "start" : (count >= maxCount - 0.5 ? "end" : "middle");
       const isEstablish = Math.abs(count - establishAt) < 0.5;
-      xLabels += '<text x="' + x.toFixed(1) + '" y="' + (height - 18) + '" text-anchor="' + anchor + '" font-size="9" font-weight="' + (isEstablish ? "700" : "400") + '" fill="' + (isEstablish ? "#047857" : "#6b7280") + '">' + count + "人</text>";
-      if (isEstablish) {
-        xLabels += '<text x="' + x.toFixed(1) + '" y="' + (height - 6) + '" text-anchor="' + anchor + '" font-size="8" font-weight="700" fill="#059669">企画成立〜</text>';
+      const conflict = placedTicks.some((tick) => Math.abs(tick.x - x) < minTickGapPx);
+      if (conflict) {
+        // 成立マーカーを優先。0人側と重なるときは0人ラベルを落とす
+        if (isEstablish) {
+          for (let i = placedTicks.length - 1; i >= 0; i--) {
+            if (Math.abs(placedTicks[i].x - x) < minTickGapPx && !placedTicks[i].isEstablish) {
+              placedTicks.splice(i, 1);
+            }
+          }
+          placedTicks.push({ count, x, isEstablish: true });
+        }
+        return;
+      }
+      placedTicks.push({ count, x, isEstablish });
+    });
+    placedTicks.forEach((tick) => {
+      let anchor = "middle";
+      let labelX = tick.x;
+      if (tick.count <= 0) { anchor = "start"; labelX = left; }
+      else if (tick.count >= maxCount - 0.5) { anchor = "end"; labelX = width - right; }
+      else if (tick.isEstablish && tick.x - left < 40) {
+        // 成立人数が左端付近のとき、ラベルを右へずらして重なりを回避
+        anchor = "start";
+        labelX = Math.min(tick.x + 4, width - right - 8);
+      }
+      xLabels += '<text x="' + labelX.toFixed(1) + '" y="' + (height - 18) + '" text-anchor="' + anchor + '" font-size="9" font-weight="' + (tick.isEstablish ? "700" : "400") + '" fill="' + (tick.isEstablish ? "#047857" : "#6b7280") + '">' + tick.count + "人</text>";
+      if (tick.isEstablish) {
+        xLabels += '<text x="' + labelX.toFixed(1) + '" y="' + (height - 6) + '" text-anchor="' + anchor + '" font-size="8" font-weight="700" fill="#059669">企画成立〜</text>';
       }
     });
     const nowX = xOf(clamped);
@@ -15289,11 +15321,16 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
   document.getElementById("ag-pool-title").textContent = rawTitle || "Auto-GO";
   document.getElementById("ag-pool-desc").textContent = currentPoolData.description || "";
   const imgEl = document.getElementById("ag-pool-image");
+  const imgWrap = document.getElementById("ag-pool-image-wrap");
   if (currentPoolData.imageUrl) {
     imgEl.src = currentPoolData.imageUrl;
-    imgEl.classList.remove("hidden");
+    imgEl.alt = (currentPoolData.title || "Auto-GO") + " アルバム";
+    if (imgWrap) imgWrap.classList.remove("hidden");
+    else imgEl.classList.remove("hidden");
   } else {
-    imgEl.classList.add("hidden");
+    imgEl.removeAttribute("src");
+    if (imgWrap) imgWrap.classList.add("hidden");
+    else imgEl.classList.add("hidden");
   }
 
   document.getElementById("ag-total-count").textContent = total;
@@ -15460,6 +15497,8 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     const caps = currentPoolData.memberCaps || {};
     const counts = currentPoolData.memberCounts || {};
     const rulesAgreed = document.getElementById("ag-rules-consent")?.checked === true;
+    const shipAgreed = document.getElementById("ag-auto-ship-consent")?.checked === true;
+    const consentsOk = rulesAgreed && shipAgreed;
     const albumPrice = Number(currentPoolData.albumPrice || currentPoolData.purchasePrice || 0);
     const priceHint = albumPrice > 0
       ? `成立後に各自購入 · 目安 ¥${albumPrice.toLocaleString()}`
@@ -15469,57 +15508,64 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       const cnt = counts[m] ?? 0;
       const rem = Math.max(0, cap - cnt);
       const isFull = rem === 0;
-      const disabled = isFull || recruitmentClosed || !rulesAgreed;
+      const unavailable = isFull || recruitmentClosed;
+      // 同意未チェックでもボタンは押せる（クリック時に同意へ誘導）。満枠・受付終了のみ disabled。
       const pct = cap > 0 ? Math.min(100, Math.round((cnt / cap) * 100)) : 0;
       const safeName = String(m).replace(/\\/g, "\\\\").replace(/'/g, "\\'");
-      return `<div class="rounded-2xl border ${isFull || recruitmentClosed ? "border-gray-200 bg-gray-50" : "border-pink-100 bg-white"} p-3 shadow-sm">
+      return `<div class="rounded-2xl border ${unavailable ? "border-gray-200 bg-gray-50" : "border-pink-100 bg-white"} p-3 shadow-sm">
         <div class="flex items-center justify-between gap-2">
           <div class="min-w-0">
             <p class="text-[15px] font-black text-gray-900 truncate">${escapeAutoGoHtml(m)}</p>
             <p class="text-[11px] text-gray-500 mt-0.5">残り <span class="font-bold text-gray-800">${rem}</span> / ${cap} 枠 · ${escapeAutoGoHtml(priceHint)}</p>
           </div>
-          <button type="button" onclick="reserveAutoGoMember('${safeName}')" data-unavailable="${isFull || recruitmentClosed}" ${disabled ? "disabled" : ""}
-            class="shrink-0 min-h-[44px] px-4 py-2.5 rounded-full text-[13px] font-black transition ${
-              disabled
+          <button type="button" onclick="reserveAutoGoMember('${safeName}')" data-unavailable="${unavailable}" ${unavailable ? "disabled" : ""}
+            class="shrink-0 min-h-[44px] px-4 py-2.5 rounded-full text-[13px] font-black transition touch-manipulation ${
+              unavailable
                 ? "bg-gray-200 text-gray-400 cursor-not-allowed"
                 : "bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-md active:scale-[0.98]"
-            }">
+            }" style="position:relative;z-index:6;touch-action:manipulation;">
             ${isFull ? "満枠" : (recruitmentClosed ? "受付終了" : "このメンバーで予約")}
           </button>
         </div>
         <div class="mt-2 h-1.5 rounded-full bg-gray-100 overflow-hidden">
           <div class="h-full rounded-full ${isFull ? "bg-gray-400" : "bg-pink-400"}" style="width:${pct}%"></div>
         </div>
-        ${!isFull && !recruitmentClosed ? `<p data-ag-need-consent class="text-[10px] text-amber-700 mt-1.5 font-medium ${rulesAgreed ? "hidden" : ""}">上の同意チェックを入れると予約できます</p>` : ""}
+        ${!unavailable ? `<p data-ag-need-consent class="text-[10px] text-amber-700 mt-1.5 font-medium ${consentsOk ? "hidden" : ""}">上の同意チェックを両方入れると予約できます</p>` : ""}
       </div>`;
     }).join("");
   }
 
+  window.focusAutoGoConsent = function(message) {
+    const box = document.getElementById("ag-consent-box");
+    if (box) {
+      box.classList.add("ring-2", "ring-rose-400", "ring-offset-2");
+      box.scrollIntoView({ behavior: "smooth", block: "center" });
+      setTimeout(() => box.classList.remove("ring-2", "ring-rose-400", "ring-offset-2"), 2200);
+    }
+    if (message) {
+      if (typeof showToast === "function") showToast(message, "error");
+      else alert(message);
+    }
+  };
+
   window.toggleAutoGoRulesConsent = function() {
-    const agreed = document.getElementById("ag-rules-consent")?.checked === true;
-    document.querySelectorAll("#ag-member-grid button[data-unavailable]").forEach(button => {
-      const unavailable = button.dataset.unavailable === "true";
-      const disabled = !agreed || unavailable;
-      button.disabled = disabled;
-      button.classList.toggle("cursor-not-allowed", disabled);
-      if (!unavailable) {
-        button.classList.toggle("bg-gray-200", disabled);
-        button.classList.toggle("text-gray-400", disabled);
-        button.classList.toggle("bg-gradient-to-r", !disabled);
-        button.classList.toggle("from-pink-500", !disabled);
-        button.classList.toggle("to-rose-500", !disabled);
-        button.classList.toggle("text-white", !disabled);
-        button.classList.toggle("shadow-md", !disabled);
-      }
-    });
+    const rulesAgreed = document.getElementById("ag-rules-consent")?.checked === true;
+    const shipAgreed = document.getElementById("ag-auto-ship-consent")?.checked === true;
+    const consentsOk = rulesAgreed && shipAgreed;
     document.querySelectorAll("#ag-member-grid [data-ag-need-consent]").forEach(hint => {
-      hint.classList.toggle("hidden", agreed);
+      hint.classList.toggle("hidden", consentsOk);
     });
   };
 
   window.reserveAutoGoMember = async function(memberName) {
-    if (!document.getElementById("ag-rules-consent")?.checked) {
-      alert("申し込み前にルールを確認してチェックを入れてください");
+    const rulesOk = document.getElementById("ag-rules-consent")?.checked === true;
+    const shipOk = document.getElementById("ag-auto-ship-consent")?.checked === true;
+    if (!rulesOk || !shipOk) {
+      window.focusAutoGoConsent(
+        !shipOk && !rulesOk
+          ? "先に上の同意チェックを2つ入れてください"
+          : (!shipOk ? "発送同意のチェックを入れてください" : "仕組み・ルール同意のチェックを入れてください")
+      );
       return;
     }
     if (!activePoolId) return;
@@ -15576,10 +15622,6 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
           showToast(`参加には完了取引が${minCompletedTrades}件以上必要です（現在${completedTrades}件）`, "error");
           return;
         }
-      }
-      if (!document.getElementById("ag-auto-ship-consent")?.checked) {
-        showToast("自動発送の事前同意にチェックしてください", "error");
-        return;
       }
       const albumPrice = Number(currentPoolData?.albumPrice || currentPoolData?.purchasePrice || 0);
       const priceLine = albumPrice > 0
