@@ -1394,8 +1394,16 @@ html, body {
       <div id="profile-section-address" class="space-y-3 text-xs md:text-sm hidden">
         <div class="bg-amber-50/80 border border-amber-200 rounded-xl p-2.5 text-[11px] text-amber-800 leading-relaxed">Auto-GOへの参加には、お名前・郵便番号・住所・XアカウントIDの登録が必要です。</div>
         <div><label class="block font-medium text-gray-700 mb-1">お名前（郵送時の宛名） <span class="text-pink-600">必須</span></label><input type="text" id="profile-name" maxlength="50" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
-        <div><label class="block font-medium text-gray-700 mb-1">郵便番号 <span class="text-pink-600">必須</span></label><input type="text" id="profile-zip" maxlength="10" inputmode="numeric" placeholder="例: 123-4567" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
-        <div><label class="block font-medium text-gray-700 mb-1">都道府県・市区町村・番地 <span class="text-pink-600">必須</span></label><input type="text" id="profile-address1" maxlength="100" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
+        <div>
+          <label class="block font-medium text-gray-700 mb-1">郵便番号 <span class="text-pink-600">必須</span></label>
+          <div class="flex gap-2">
+            <input type="text" id="profile-zip" maxlength="8" inputmode="numeric" autocomplete="postal-code" placeholder="例: 1234567" class="liquid-glass-input flex-1 rounded-xl p-2.5 text-gray-800">
+            <button type="button" id="profile-zip-lookup-btn" onclick="lookupProfileZipAddress()" class="shrink-0 px-3 rounded-xl bg-purple-100 text-purple-800 text-[11px] font-bold border border-purple-200 active:scale-[0.98]">住所検索</button>
+          </div>
+          <p id="profile-zip-hint" class="text-[10px] text-gray-500 mt-1">7桁入れると下に候補が出ます。タップで住所を入れられます。</p>
+          <div id="profile-zip-suggestions" class="hidden mt-2 space-y-1.5"></div>
+        </div>
+        <div><label class="block font-medium text-gray-700 mb-1">都道府県・市区町村・番地 <span class="text-pink-600">必須</span></label><input type="text" id="profile-address1" maxlength="100" placeholder="例: 東京都渋谷区道玄坂1-2-3" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
         <div><label class="block font-medium text-gray-700 mb-1">X（Twitter）アカウントID <span class="text-pink-600">Auto-GO参加時必須</span></label><input type="text" id="profile-xid" maxlength="50" placeholder="例: your_account" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
         <div><label class="block font-medium text-gray-700 mb-1">建物名・部屋番号（任意）</label><input type="text" id="profile-address2" maxlength="100" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
         <div><label class="block font-medium text-gray-700 mb-1">電話番号（任意・伝票用）</label><input type="text" id="profile-phone" maxlength="20" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
@@ -3820,6 +3828,164 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       document.getElementById("detail-like-count").innerText = likesCount;
     }
 
+    function normalizeProfileZipDigits(value) {
+      return String(value || "").replace(/\D/g, "").slice(0, 7);
+    }
+    function formatProfileZipDisplay(digits) {
+      const d = normalizeProfileZipDigits(digits);
+      if (d.length > 3) return d.slice(0, 3) + "-" + d.slice(3);
+      return d;
+    }
+    function clearProfileZipSuggestions() {
+      const box = document.getElementById("profile-zip-suggestions");
+      const hint = document.getElementById("profile-zip-hint");
+      if (box) {
+        box.innerHTML = "";
+        box.classList.add("hidden");
+      }
+      if (hint) hint.textContent = "7桁入れると下に候補が出ます。タップで住所を入れられます。";
+    }
+    function renderProfileZipSuggestions(results, zipDigits) {
+      const box = document.getElementById("profile-zip-suggestions");
+      const hint = document.getElementById("profile-zip-hint");
+      if (!box) return;
+      if (!results || !results.length) {
+        box.classList.remove("hidden");
+        box.innerHTML = `<p class="text-[11px] text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2">該当する住所が見つかりませんでした。郵便番号を確認してください。</p>`;
+        if (hint) hint.textContent = "候補なし";
+        return;
+      }
+      const uniq = [];
+      const seen = new Set();
+      results.forEach((row) => {
+        const pref = String(row.address1 || "");
+        const city = String(row.address2 || "");
+        const town = String(row.address3 || "");
+        const line = (pref + city + town).trim();
+        if (!line || seen.has(line)) return;
+        seen.add(line);
+        uniq.push({ pref, city, town, line });
+      });
+      box.classList.remove("hidden");
+      box.innerHTML =
+        `<p class="text-[10px] font-bold text-purple-700 px-0.5">候補をタップして住所を入れる（番地は手入力）</p>` +
+        uniq.map((row, idx) =>
+          `<button type="button" data-zip-suggest="${idx}" class="w-full text-left rounded-xl border border-purple-100 bg-white px-3 py-2.5 shadow-sm active:scale-[0.99] transition">
+            <div class="text-[13px] font-bold text-gray-900 leading-snug">${escapeHtml(row.line)}</div>
+            <div class="text-[10px] text-gray-500 mt-0.5">〒${escapeHtml(formatProfileZipDisplay(zipDigits))} · 続けて番地を入力</div>
+          </button>`
+        ).join("");
+      box.querySelectorAll("[data-zip-suggest]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const i = Number(btn.getAttribute("data-zip-suggest"));
+          const picked = uniq[i];
+          if (!picked) return;
+          const zipEl = document.getElementById("profile-zip");
+          const addrEl = document.getElementById("profile-address1");
+          if (zipEl) zipEl.value = formatProfileZipDisplay(zipDigits);
+          if (addrEl) {
+            addrEl.value = picked.line;
+            addrEl.focus();
+            try {
+              const len = addrEl.value.length;
+              addrEl.setSelectionRange(len, len);
+            } catch (e) {}
+          }
+          if (typeof showToast === "function") {
+            showToast("住所を入れました。番地・建物名を続けて入力してください", "success");
+          }
+          box.querySelectorAll("button").forEach((b) => {
+            b.classList.remove("ring-2", "ring-purple-400", "bg-purple-50");
+          });
+          btn.classList.add("ring-2", "ring-purple-400", "bg-purple-50");
+        });
+      });
+      if (hint) hint.textContent = uniq.length + "件の候補があります。タップで入力できます。";
+    }
+    window.lookupProfileZipAddress = async function(options = {}) {
+      const silent = !!options.silent;
+      const zipEl = document.getElementById("profile-zip");
+      const hint = document.getElementById("profile-zip-hint");
+      const box = document.getElementById("profile-zip-suggestions");
+      const digits = normalizeProfileZipDigits(zipEl && zipEl.value);
+      if (zipEl && zipEl.value !== formatProfileZipDisplay(digits) && digits.length >= 3) {
+        // 入力中の整形は7桁到達時のみ（途中でのカーソル飛びを避ける）
+        if (digits.length === 7) zipEl.value = formatProfileZipDisplay(digits);
+      }
+      if (digits.length !== 7) {
+        if (!silent) {
+          clearProfileZipSuggestions();
+          if (hint) hint.textContent = "郵便番号は7桁で入力してください";
+          if (typeof showToast === "function") showToast("郵便番号は7桁で入力してください", "error");
+        }
+        return;
+      }
+      if (hint) hint.textContent = "住所を検索中...";
+      if (box) {
+        box.classList.remove("hidden");
+        box.innerHTML = `<p class="text-[11px] text-gray-500 bg-gray-50 border border-gray-100 rounded-xl px-3 py-2">検索中...</p>`;
+      }
+      try {
+        const res = await fetch("https://zipcloud.ibsnet.co.jp/api/search?zipcode=" + encodeURIComponent(digits), {
+          method: "GET",
+          cache: "no-store"
+        });
+        if (!res.ok) throw new Error("lookup failed");
+        const data = await res.json();
+        if (data && data.status === 200) {
+          renderProfileZipSuggestions(data.results || [], digits);
+        } else {
+          renderProfileZipSuggestions([], digits);
+        }
+      } catch (error) {
+        console.warn("zip lookup error:", error);
+        if (box) {
+          box.classList.remove("hidden");
+          box.innerHTML = `<p class="text-[11px] text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2">住所検索に失敗しました。通信状況を確認するか、住所を手入力してください。</p>`;
+        }
+        if (hint) hint.textContent = "検索に失敗しました。手入力もできます。";
+        if (!silent && typeof showToast === "function") {
+          showToast("住所検索に失敗しました", "error");
+        }
+      }
+    };
+    function bindProfileZipLookup() {
+      const zipEl = document.getElementById("profile-zip");
+      if (!zipEl || zipEl.dataset.zipBound === "1") return;
+      zipEl.dataset.zipBound = "1";
+      let timer = null;
+      const schedule = () => {
+        clearTimeout(timer);
+        const digits = normalizeProfileZipDigits(zipEl.value);
+        if (digits.length === 7) {
+          timer = setTimeout(() => window.lookupProfileZipAddress({ silent: true }), 280);
+        } else {
+          timer = setTimeout(() => clearProfileZipSuggestions(), 120);
+        }
+      };
+      zipEl.addEventListener("input", () => {
+        const digits = normalizeProfileZipDigits(zipEl.value);
+        // 入力中は数字以外を除去しつつ、7桁でハイフン付き表示
+        if (/[^\d-]/.test(zipEl.value) || zipEl.value.replace(/\D/g, "").length !== digits.length) {
+          zipEl.value = digits.length === 7 ? formatProfileZipDisplay(digits) : digits;
+          try { zipEl.setSelectionRange(zipEl.value.length, zipEl.value.length); } catch (e) {}
+        } else if (digits.length === 7 && zipEl.value !== formatProfileZipDisplay(digits)) {
+          zipEl.value = formatProfileZipDisplay(digits);
+        }
+        schedule();
+      });
+      zipEl.addEventListener("blur", () => {
+        const digits = normalizeProfileZipDigits(zipEl.value);
+        if (digits.length === 7) zipEl.value = formatProfileZipDisplay(digits);
+      });
+      zipEl.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          window.lookupProfileZipAddress();
+        }
+      });
+    }
+
     window.openProfileModal = async function(section = "basic") {
       if (!currentUser) return;
       profileSection = section;
@@ -3840,11 +4006,13 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       document.getElementById("profile-nickname").value = s.nickname || "";
       const pp = document.getElementById("profile-paypay"); if (pp) pp.value = s.paypay || "";
       document.getElementById("profile-name").value = s.name || currentUser.displayName || "";
-      document.getElementById("profile-zip").value = s.zip || "";
+      document.getElementById("profile-zip").value = s.zip ? formatProfileZipDisplay(s.zip) : "";
       document.getElementById("profile-address1").value = s.address1 || "";
       document.getElementById("profile-xid").value = s.xId || s.twitter || s.xUsername || "";
       document.getElementById("profile-address2").value = s.address2 || "";
       document.getElementById("profile-phone").value = s.phone || "";
+      clearProfileZipSuggestions();
+      bindProfileZipLookup();
       const preview = document.getElementById("profile-photo-preview");
       const clearBtn = document.getElementById("profile-photo-clear");
       if (s.photo && isJpegData(s.photo)) {
@@ -3855,6 +4023,12 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       }
       renderBlockedBox(); updatePushUI();
       document.getElementById("profile-modal").classList.remove("hidden");
+      if (section === "address") {
+        const existingZip = normalizeProfileZipDigits(s.zip || "");
+        if (existingZip.length === 7 && !(s.address1 || "").trim()) {
+          setTimeout(() => window.lookupProfileZipAddress({ silent: true }), 50);
+        }
+      }
     };
     window.closeProfileModal = function() { document.getElementById("profile-modal").classList.add("hidden"); pendingProfilePhoto = null; };
 
