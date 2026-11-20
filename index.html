@@ -1866,8 +1866,8 @@ window.__autoGoRefs = {
   db: getFirestore(app),
   collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc,
   query, where, orderBy, limit, onSnapshot, serverTimestamp, increment, runTransaction,
-  uploadAutoGoEvidence: httpsCallable(getFunctions(app, "asia-northeast1"), "uploadAutoGoEvidence"),
-  registerAutoGoPurchase: httpsCallable(getFunctions(app, "asia-northeast1"), "registerAutoGoPurchase"),
+  uploadAutoGoEvidence: httpsCallable(getFunctions(app, "asia-northeast1"), "uploadAutoGoEvidence", { timeout: 180000 }),
+  registerAutoGoPurchase: httpsCallable(getFunctions(app, "asia-northeast1"), "registerAutoGoPurchase", { timeout: 60000 }),
   reserveAutoGoEntry: httpsCallable(getFunctions(app, "asia-northeast1"), "reserveAutoGoEntry"),
   cancelAutoGoEntry: httpsCallable(getFunctions(app, "asia-northeast1"), "cancelAutoGoEntry"),
   registerAutoGoReveal: httpsCallable(getFunctions(app, "asia-northeast1"), "registerAutoGoReveal"),
@@ -15532,12 +15532,25 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
                 <p class="text-xs text-gray-600">購入期限</p>
                 <p id="ag-purchase-countdown" class="text-sm font-black text-rose-600 tracking-wider mt-0.5">計算中...</p>
               </div>
-              <div id="ag-purchase-active-actions" class="space-y-2">
-                <a href="${currentPoolData.purchaseUrl || '#'}" target="_blank" rel="noopener" class="block border border-gray-300 text-center text-sm text-gray-900 py-2">公式ショップで購入</a>
-                <label class="block text-sm text-gray-700">購入証明の画像
-                  <input id="ag-purchase-proof" type="file" accept="image/*" class="block w-full mt-1 text-[10px]">
+              <div id="ag-purchase-active-actions" class="space-y-3">
+                <a href="${currentPoolData.purchaseUrl || '#'}" target="_blank" rel="noopener" class="block border border-gray-300 text-center text-sm text-gray-900 py-2.5 rounded-xl font-bold">公式ショップで購入</a>
+                <div class="rounded-xl border border-amber-200 bg-amber-50 p-3 text-[11px] text-amber-950 space-y-1 leading-relaxed">
+                  <p class="font-black text-amber-900">購入証明に必要なもの</p>
+                  <p>・購入日時が画面に写っていること</p>
+                  <p>・アルバム名（商品名）が確認できること</p>
+                  <p>・注文完了／購入履歴など、自分の注文だと分かる画面</p>
+                </div>
+                <label class="block text-sm font-bold text-gray-800">購入証明の画像
+                  <input id="ag-purchase-proof" type="file" accept="image/*" capture="environment" onchange="previewAutoGoPurchaseProof(this)" class="block w-full mt-1.5 text-[11px]">
                 </label>
-                <button onclick="markAutoGoPurchased()" class="w-full border border-gray-300 text-sm text-gray-900 py-2">購入を報告</button>
+                <div id="ag-purchase-proof-preview-wrap" class="${window.__agPurchaseProofPreview ? "" : "hidden"} rounded-2xl border border-pink-100 bg-gray-50 overflow-hidden">
+                  <img id="ag-purchase-proof-preview" src="${window.__agPurchaseProofPreview || ""}" alt="購入証明プレビュー" class="w-full max-h-[70vh] object-contain bg-black/5">
+                  <p class="text-[10px] text-center text-gray-500 py-1.5">選択中の写真プレビュー</p>
+                </div>
+                <label class="block text-[12px] text-gray-700">注文番号（任意）
+                  <input id="ag-purchase-order-note" type="text" maxlength="120" placeholder="例: 注文番号・受付番号" value="${escapeAutoGoHtml(window.__agPurchaseOrderNote || "")}" oninput="window.__agPurchaseOrderNote=this.value" class="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-900">
+                </label>
+                <button type="button" onclick="markAutoGoPurchased()" class="w-full min-h-[48px] rounded-full bg-gradient-to-r from-pink-500 to-rose-500 text-white text-sm font-black shadow-md active:scale-[0.99]">購入を報告</button>
               </div>
               <div id="ag-purchase-expired-msg" class="hidden py-2 text-center">
                 <p class="text-sm text-gray-700">購入期限切れ</p>
@@ -15843,7 +15856,11 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
   };
 
   function readAutoGoEvidence(file) {
-    if (!file || !file.type.startsWith("image/")) {
+    if (!file) {
+      return Promise.reject(new Error("画像ファイルを選択してください"));
+    }
+    const type = String(file.type || "");
+    if (type && !type.startsWith("image/") && !/\.(jpe?g|png|webp|heic|heif)$/i.test(file.name || "")) {
       return Promise.reject(new Error("画像ファイルを選択してください"));
     }
     return new Promise((resolve, reject) => {
@@ -15851,14 +15868,30 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       reader.onerror = () => reject(new Error("画像を読み込めませんでした"));
       reader.onload = () => {
         const image = new Image();
-        image.onerror = () => reject(new Error("画像を開けませんでした"));
+        image.onerror = () => reject(new Error("この画像形式を開けませんでした。JPG/PNGのスクリーンショットで再試行してください"));
         image.onload = () => {
-          const scale = Math.min(1, 1600 / image.width);
+          // 大きすぎると Functions 呼び出しが失敗しやすいので長辺1280・品質0.72に抑える
+          const maxSide = 1280;
+          const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
           const canvas = document.createElement("canvas");
-          canvas.width = Math.round(image.width * scale);
-          canvas.height = Math.round(image.height * scale);
-          canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
-          resolve(canvas.toDataURL("image/jpeg", 0.82));
+          canvas.width = Math.max(1, Math.round(image.width * scale));
+          canvas.height = Math.max(1, Math.round(image.height * scale));
+          const ctx = canvas.getContext("2d");
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+          let quality = 0.72;
+          let dataUrl = canvas.toDataURL("image/jpeg", quality);
+          // おおよそ 1.5MB 未満になるまで品質を下げる
+          while (dataUrl.length > 2_000_000 && quality > 0.45) {
+            quality -= 0.08;
+            dataUrl = canvas.toDataURL("image/jpeg", quality);
+          }
+          if (!/^data:image\/jpeg;base64,/.test(dataUrl)) {
+            reject(new Error("画像の変換に失敗しました"));
+            return;
+          }
+          resolve(dataUrl);
         };
         image.src = reader.result;
       };
@@ -15866,24 +15899,101 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     });
   }
 
+  function formatAutoGoCallableError(error) {
+    const code = String(error?.code || "");
+    const msg = String(error?.message || error || "");
+    const blob = (code + " " + msg).toLowerCase();
+    if (/unauthenticated|login required/.test(blob)) return "ログインの有効期限が切れています。再ログインしてください";
+    if (/deadline-exceeded|deadline has passed/.test(blob)) return "購入登録の期限が過ぎています";
+    if (/purchase evidence is not expected|failed-precondition.*purchase/.test(blob)) return "いまのステータスでは購入報告できません（専用URL発行後のみ）";
+    if (/upload the purchase screenshot first/.test(blob)) return "購入証明画像のアップロードが完了していません。もう一度お試しください";
+    if (/unsupported image/.test(blob)) return "対応していない画像形式です。JPG/PNGのスクリーンショットを選んでください";
+    if (/4 mb or smaller|too large|413|payload/.test(blob)) return "画像が大きすぎます。別のスクリーンショットで再試行してください";
+    if (/failed to save purchase image|storage|internal/.test(blob)) return "画像の保存に失敗しました。通信環境を確認して再試行してください";
+    if (/not-found|entry not found/.test(blob)) return "予約データが見つかりません。画面を閉じて開き直してください";
+    if (/prepar|準備中/.test(blob)) return msg;
+    return msg || "不明なエラーです";
+  }
+
+  window.previewAutoGoPurchaseProof = function(input) {
+    const file = input?.files?.[0] || null;
+    window.__agPurchaseProofFile = file;
+    const wrap = document.getElementById("ag-purchase-proof-preview-wrap");
+    const img = document.getElementById("ag-purchase-proof-preview");
+    if (window.__agPurchaseProofObjectUrl) {
+      try { URL.revokeObjectURL(window.__agPurchaseProofObjectUrl); } catch (e) {}
+      window.__agPurchaseProofObjectUrl = "";
+    }
+    if (!file) {
+      window.__agPurchaseProofPreview = "";
+      if (wrap) wrap.classList.add("hidden");
+      if (img) img.removeAttribute("src");
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    window.__agPurchaseProofObjectUrl = url;
+    window.__agPurchaseProofPreview = url;
+    if (img) img.src = url;
+    if (wrap) wrap.classList.remove("hidden");
+  };
+
   window.markAutoGoPurchased = async function() {
     const input = document.getElementById("ag-purchase-proof");
-    const file = input?.files?.[0];
-    if (!file) { alert("購入日時とアルバムが見えるスクリーンショットを選択してください。"); return; }
-    const orderNote = prompt("注文番号（任意）を入力してください:", "") || "";
+    const file = input?.files?.[0] || window.__agPurchaseProofFile;
+    if (!file) {
+      showToast("購入日時とアルバムが見えるスクリーンショットを選択してください", "error");
+      return;
+    }
+    const orderNote = String(
+      document.getElementById("ag-purchase-order-note")?.value ||
+      window.__agPurchaseOrderNote ||
+      ""
+    ).trim();
+    const confirmMsg =
+      "購入報告の確認\n\n" +
+      "□ 購入日時が写真に写っていますか？\n" +
+      "□ アルバム名（商品名）が確認できますか？\n" +
+      "□ 自分の注文完了／購入履歴画面ですか？\n" +
+      (orderNote ? `□ 注文番号: ${orderNote}\n` : "□ 注文番号: （未入力・任意）\n") +
+      "\n内容に問題なければ「報告する」を押してください。";
+    const agreed = typeof window.appConfirm === "function"
+      ? await window.appConfirm(confirmMsg, "報告する", false)
+      : window.confirm(confirmMsg);
+    if (!agreed) return;
+
+    const btn = document.querySelector("#ag-purchase-active-actions button[onclick*=\"markAutoGoPurchased\"]");
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "送信中...";
+    }
     try {
       const refs = window.__autoGoRefs;
       if (!refs?.uploadAutoGoEvidence || !refs?.registerAutoGoPurchase) {
         throw new Error("Auto-GOの準備中です。数秒後にもう一度お試しください。");
       }
+      if (!activePoolId) throw new Error("企画が選択されていません。画面を開き直してください。");
       const dataUrl = await readAutoGoEvidence(file);
       await refs.uploadAutoGoEvidence({ poolId: activePoolId, kind: "purchase", dataUrl });
-      await refs.registerAutoGoPurchase({ poolId: activePoolId, orderNote: orderNote.trim() });
+      await refs.registerAutoGoPurchase({ poolId: activePoolId, orderNote });
+      window.__agPurchaseProofFile = null;
+      window.__agPurchaseProofPreview = "";
+      window.__agPurchaseOrderNote = "";
+      if (window.__agPurchaseProofObjectUrl) {
+        try { URL.revokeObjectURL(window.__agPurchaseProofObjectUrl); } catch (e) {}
+        window.__agPurchaseProofObjectUrl = "";
+      }
       showToast("購入スクリーンショットを登録しました", "success");
       window.openAutoGoModal(activePoolId);
     } catch (error) {
       console.error("markAutoGoPurchased error:", error);
-      alert("購入報告エラー: " + (error?.message || error));
+      const friendly = formatAutoGoCallableError(error);
+      showToast("購入報告エラー: " + friendly, "error");
+      alert("購入報告エラー: " + friendly);
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "購入を報告";
+      }
     }
   };
 

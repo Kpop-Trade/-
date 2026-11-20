@@ -562,15 +562,23 @@ exports.processAutoGoDeadlines = onSchedule({
   }
 });
 
-exports.uploadAutoGoEvidence = onCall({ maxInstances: 10 }, async (request) => {
+exports.uploadAutoGoEvidence = onCall({
+  maxInstances: 10,
+  timeoutSeconds: 120,
+  memory: "512MiB"
+}, async (request) => {
   if (!request.auth) throw new HttpsError("unauthenticated", "login required");
   const { poolId, kind, dataUrl } = request.data || {};
   if (!/^[\w-]{1,120}$/.test(String(poolId || "")) || !["purchase", "shipping"].includes(kind)) {
     throw new HttpsError("invalid-argument", "invalid pool or evidence type");
   }
-  if (typeof dataUrl !== "string") throw new HttpsError("invalid-argument", "image required");
-  const match = dataUrl.match(/^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/);
+  if (typeof dataUrl !== "string" || !dataUrl) throw new HttpsError("invalid-argument", "image required");
+  // charset 等が付く data URL や改行混じり base64 も受け付ける
+  const match = String(dataUrl).replace(/\s+/g, "").match(
+    /^data:image\/(jpeg|jpg|png|webp)(?:;[^;]+)*;base64,([A-Za-z0-9+/=]+)$/i
+  );
   if (!match) throw new HttpsError("invalid-argument", "unsupported image");
+  const imageType = match[1].toLowerCase() === "jpg" ? "jpeg" : match[1].toLowerCase();
   const buffer = Buffer.from(match[2], "base64");
   if (!buffer.length || buffer.length > 4 * 1024 * 1024) {
     throw new HttpsError("invalid-argument", "image must be 4 MB or smaller");
@@ -586,21 +594,32 @@ exports.uploadAutoGoEvidence = onCall({ maxInstances: 10 }, async (request) => {
   if (kind === "shipping" && (entry.status !== "matched" || !entry.shipToAddress)) {
     throw new HttpsError("failed-precondition", "shipping evidence is not expected");
   }
-  if (kind === "purchase" && timestampMillis(entry.purchaseDeadlineAt) <= Date.now()) {
+  // 期限未設定のエントリは拒否しない（手動確認データ等）。期限がある場合のみチェック。
+  const purchaseDeadlineMs = timestampMillis(entry.purchaseDeadlineAt);
+  if (kind === "purchase" && purchaseDeadlineMs > 0 && purchaseDeadlineMs <= Date.now()) {
     throw new HttpsError("deadline-exceeded", "purchase registration deadline has passed");
   }
 
-  const extension = match[1] === "jpeg" ? "jpg" : match[1];
+  const extension = imageType === "jpeg" ? "jpg" : imageType;
   const path = `auto-go/${poolId}/${uid}/${kind}-${Date.now()}.${extension}`;
   const token = randomUUID();
-  const bucket = admin.storage().bucket(STORAGE_BUCKET);
-  await bucket.file(path).save(buffer, {
-    resumable: false,
-    metadata: {
-      contentType: `image/${match[1]}`,
-      metadata: { firebaseStorageDownloadTokens: token }
-    }
-  });
+  const defaultBucket = admin.app().options.storageBucket || STORAGE_BUCKET;
+  const bucket = admin.storage().bucket(defaultBucket || STORAGE_BUCKET);
+  try {
+    await bucket.file(path).save(buffer, {
+      resumable: false,
+      metadata: {
+        contentType: `image/${imageType}`,
+        metadata: { firebaseStorageDownloadTokens: token }
+      }
+    });
+  } catch (storageError) {
+    console.error("uploadAutoGoEvidence storage save failed:", storageError);
+    throw new HttpsError(
+      "internal",
+      "failed to save purchase image: " + (storageError && storageError.message ? storageError.message : "storage error")
+    );
+  }
   const url = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(path)}?alt=media&token=${token}`;
   if (kind === "purchase") {
     await entryRef.update({ purchaseProofUrl: url });
@@ -655,7 +674,8 @@ exports.registerAutoGoPurchase = onCall(async (request) => {
     if (!snap.exists || snap.data().status !== "confirmed" || !snap.data().purchaseProofUrl) {
       throw new HttpsError("failed-precondition", "upload the purchase screenshot first");
     }
-    if (timestampMillis(snap.data().purchaseDeadlineAt) <= Date.now()) {
+    const purchaseDeadlineMs = timestampMillis(snap.data().purchaseDeadlineAt);
+    if (purchaseDeadlineMs > 0 && purchaseDeadlineMs <= Date.now()) {
       throw new HttpsError("deadline-exceeded", "purchase registration deadline has passed");
     }
     tx.update(entryRef, {
