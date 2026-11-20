@@ -1,150 +1,339 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
     // ===== 共通ヘルパー =====
     function isSignedIn() {
       return request.auth != null;
     }
+
     function isAdmin() {
       return isSignedIn() && request.auth.uid in [
         "Ay6VCS8HTgM3RqjDYZ0wKdHrSKz1",
         "GvVhAmT56GZjsWrl1YRaStB81im1"
       ];
     }
+
     function isNotSuspended() {
-      return isSignedIn() && !exists(/databases/$(database)/documents/suspensions/$(request.auth.uid));
+      return isSignedIn() &&
+        !exists(/databases/$(database)/documents/suspensions/$(request.auth.uid));
     }
+
     function isDeviceLinked() {
-      return isSignedIn() && (
-        isAdmin() ||
-        !("deviceId" in request.resource.data) ||
-        !exists(/databases/$(database)/documents/devices/$(request.resource.data.deviceId)) ||
+      return isAdmin() || (
+        'deviceId' in request.resource.data &&
+        exists(/databases/$(database)/documents/devices/$(request.resource.data.deviceId)) &&
         get(/databases/$(database)/documents/devices/$(request.resource.data.deviceId)).data.uid == request.auth.uid
       );
     }
+
     function isTradeParticipant(tradeId) {
       return isSignedIn()
         && exists(/databases/$(database)/documents/trades/$(tradeId))
         && request.auth.uid in get(/databases/$(database)/documents/trades/$(tradeId)).data.get("participants", []);
     }
-    // 通知配列の先頭1件追加のみ（本文200文字まで）
-    function isOnePrependOnly() {
-      let before = resource.data.get("notifications", []);
-      let after = request.resource.data.get("notifications", []);
-      let first = after[0];
-      return after.size() == before.size() + 1
-        && first.keys().hasAll(["id", "text", "type", "read", "createdAt"])
-        && first.text is string
-        && first.text.size() <= 200
-        && first.read == false
-        && after[1:] == before;
+
+    function likeOnlyUpdate(postId) {
+      let likeDoc = /databases/$(database)/documents/posts/$(postId)/likes/$(request.auth.uid);
+      let before = resource.data.get('likesCount', 0);
+      let after = request.resource.data.get('likesCount', 0);
+      return isSignedIn()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likesCount'])
+        && (
+             (!exists(likeDoc) && existsAfter(likeDoc) && after == before + 1)
+          || ( exists(likeDoc) && !existsAfter(likeDoc) && after == before - 1)
+        );
     }
 
-    // ===== users =====
-    match /users/{uid} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn() && request.auth.uid == uid && isNotSuspended();
-      allow update: if isAdmin()
-        // カードウォッチ等：他ユーザーからの通知1件先頭追加（本文200文字まで）
-        || (isNotSuspended()
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["notifications"])
-          && isOnePrependOnly())
-        // 本人の公開プロフィール等（評価集計は改ざん不可）
-        || (isSignedIn() && request.auth.uid == uid && isNotSuspended()
-          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(["ratingSum", "ratingCount"]));
-      allow delete: if isAdmin();
+    function joinCountOnlyUpdate(postId) {
+      let joinDoc = /databases/$(database)/documents/posts/$(postId)/joins/$(request.auth.uid);
+      let before = resource.data.get('joinsCount', 0);
+      let after = request.resource.data.get('joinsCount', 0);
+      return isNotSuspended()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['joinsCount'])
+        && (
+             (!exists(joinDoc) && existsAfter(joinDoc) && after == before + 1 && after <= resource.data.target)
+          || ( exists(joinDoc) && !existsAfter(joinDoc) && after == before - 1 && after >= 0)
+        );
+    }
 
-      match /tokens/{tokenId} {
-        allow read, write: if isSignedIn() && request.auth.uid == uid;
-        allow read: if isAdmin();
-      }
-      match /notifications/{notifId} {
-        allow read, update: if isSignedIn() && request.auth.uid == uid;
-        allow create: if isAdmin() || (isSignedIn() && request.auth.uid == uid);
-        allow delete: if isSignedIn() && (isAdmin() || request.auth.uid == uid);
-      }
-      // 配送先などの非公開個人情報
-      match /private/{docId} {
-        allow read, write: if isSignedIn() && (isAdmin() || request.auth.uid == uid);
-      }
+    // 通知配列の先頭1件追加のみ（本文200文字まで）
+    function isOnePrependOnly() {
+      let oldN = resource.data.get('notifications', []);
+      let newN = request.resource.data.notifications;
+      let first = newN[0];
+      return first.keys().hasAll(['id', 'text', 'type', 'read', 'createdAt'])
+        && first.text is string
+        && first.text.size() <= 200
+        && first.type != 'admin'
+        && first.read == false
+        && newN.size() >= 1
+        && newN.size() <= 50
+        && (
+          (oldN.size() < 50 && newN.size() == oldN.size() + 1
+            && newN[1:newN.size()] == oldN)
+          ||
+          (oldN.size() >= 50 && newN.size() == 50
+            && newN[1:50] == oldN[0:49])
+        );
+    }
+
+    // ===== suspensions =====
+    match /suspensions/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow create, update, delete: if isAdmin();
+      allow list: if isAdmin();
     }
 
     // ===== posts =====
     match /posts/{postId} {
       allow read: if true;
-      allow create: if isNotSuspended() && isDeviceLinked()
-        && request.resource.data.userId == request.auth.uid;
-      allow update: if isAdmin()
-        || (
-          // 投稿者本人：いいね数・参加人数は改ざん不可
-          isNotSuspended()
-          && resource.data.userId == request.auth.uid
-          && request.resource.data.get("likesCount", 0) == resource.data.get("likesCount", 0)
-          && request.resource.data.get("joinsCount", 0) == resource.data.get("joinsCount", 0)
+
+      allow create: if isNotSuspended()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.get('likesCount', 0) == 0
+        && request.resource.data.get('joinsCount', 0) == 0
+        && isDeviceLinked();
+
+      allow update: if isNotSuspended() && (
+        isAdmin() ||
+        (
+          resource.data.userId == request.auth.uid &&
+          request.resource.data.userId == resource.data.userId &&
+          request.resource.data.get('likesCount', 0) == resource.data.get('likesCount', 0) &&
+          request.resource.data.get('joinsCount', 0) == resource.data.get('joinsCount', 0)
+        ) ||
+        likeOnlyUpdate(postId) ||
+        joinCountOnlyUpdate(postId) ||
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewsCount']) &&
+          request.resource.data.get('viewsCount', 0) == resource.data.get('viewsCount', 0) + 1
+        ) ||
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']) &&
+          resource.data.status == "active" &&
+          request.resource.data.status == "traded" &&
+          (
+            resource.data.userId == request.auth.uid ||
+            (
+              'tradedByTradeId' in request.resource.data &&
+              request.auth.uid in get(/databases/$(database)/documents/trades/$(request.resource.data.tradedByTradeId)).data.participants
+            )
+          )
+        ) ||
+        (
+          resource.data.userId == request.auth.uid &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'bundleBoxes',
+            'bundleLeft',
+            'bulkSlots',
+            'status',
+            'updatedAt'
+          ]) &&
+          request.resource.data.get('status', 'active') in ['active', 'traded', 'closed']
         )
-        || (
-          // いいね数の増減など（サブコレクション連動）はクライアントの専用パスで扱う
-          isNotSuspended()
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["likesCount", "viewsCount", "joinsCount", "status", "price", "updatedAt", "editedAt"])
-        );
-      allow delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      );
+
+      allow delete: if isSignedIn() &&
+        (resource.data.userId == request.auth.uid || isAdmin());
 
       match /photos/{photoId} {
         allow read: if true;
-        allow write: if isNotSuspended() && (
-          isAdmin() || get(/databases/$(database)/documents/posts/$(postId)).data.userId == request.auth.uid
+        allow create: if isNotSuspended()
+          && request.auth.uid == get(/databases/$(database)/documents/posts/$(postId)).data.userId;
+        allow delete: if isSignedIn() && (
+          request.auth.uid == get(/databases/$(database)/documents/posts/$(postId)).data.userId ||
+          isAdmin()
         );
       }
-      match /likes/{likeUid} {
-        allow read: if true;
-        allow create, delete: if isNotSuspended() && request.auth.uid == likeUid;
+
+      match /photoHistory/{photoId} {
+        allow read: if isSignedIn();
+        allow create, delete: if isNotSuspended() && (
+          request.auth.uid == get(/databases/$(database)/documents/posts/$(postId)).data.userId ||
+          isAdmin()
+        );
       }
-      match /joins/{joinUid} {
-        allow read: if true;
-        allow create: if isNotSuspended() && request.auth.uid == joinUid;
-        allow delete: if isAdmin()
-          || (isSignedIn() && request.auth.uid == joinUid)
-          || (isSignedIn() && get(/databases/$(database)/documents/posts/$(postId)).data.userId == request.auth.uid);
-      }
+
       match /comments/{commentId} {
         allow read: if true;
         allow create: if isNotSuspended() && request.resource.data.userId == request.auth.uid;
         allow update, delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
       }
+
       match /offers/{offerId} {
         allow read: if isSignedIn();
-        allow create: if isNotSuspended() && request.resource.data.userId == request.auth.uid;
+        allow create: if isNotSuspended()
+          && request.resource.data.userId == request.auth.uid
+          && isDeviceLinked();
         allow update: if isNotSuspended() && (
+          request.auth.uid == resource.data.userId ||
+          request.auth.uid == get(/databases/$(database)/documents/posts/$(postId)).data.userId ||
           isAdmin()
-          || resource.data.userId == request.auth.uid
-          || get(/databases/$(database)/documents/posts/$(postId)).data.userId == request.auth.uid
+        );
+        allow delete: if isSignedIn() && (
+          request.auth.uid == resource.data.userId ||
+          request.auth.uid == get(/databases/$(database)/documents/posts/$(postId)).data.userId ||
+          isAdmin()
         );
       }
-      match /photoHistory/{histId} {
+
+      match /joins/{uid} {
         allow read: if isSignedIn();
-        allow write: if isNotSuspended() && (
-          isAdmin() || get(/databases/$(database)/documents/posts/$(postId)).data.userId == request.auth.uid
+        allow create: if isNotSuspended()
+          && request.auth.uid == uid
+          && request.resource.data.uid == request.auth.uid
+          && isDeviceLinked();
+        allow delete: if isSignedIn() && (
+          request.auth.uid == uid ||
+          request.auth.uid == get(/databases/$(database)/documents/posts/$(postId)).data.userId ||
+          isAdmin()
         );
+      }
+
+      match /likes/{uid} {
+        allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+        allow create: if isAdmin() || (
+          isNotSuspended()
+          && request.auth.uid == uid
+          && request.resource.data.uid == request.auth.uid
+          && isDeviceLinked()
+        );
+        allow update: if false;
+        allow delete: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+      }
+    }
+
+    match /{path=**}/joins/{uid} {
+      allow read: if isSignedIn();
+    }
+
+    match /{path=**}/likes/{uid} {
+      allow read: if isAdmin();
+    }
+
+    match /{path=**}/entries/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+    }
+
+    // ===== users =====
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.auth.uid == userId && isNotSuspended();
+
+      allow update: if isSignedIn() && (
+        (
+          (request.auth.uid == userId || isAdmin()) &&
+          (
+            isAdmin() ||
+            (
+              isNotSuspended() &&
+              request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['profile', 'notifications', 'terms', 'cancelHistory', 'cancelTimestamps', 'cancelLockedUntil', 'updatedAt', 'lastLoginAt',
+                          'likes', 'blocked', 'reads', 'migrated',
+                          'myCards', 'collectionPublic', 'customCards', 'cardWatch']) &&
+              (
+                !('cancelLockedUntil' in request.resource.data.diff(resource.data).affectedKeys()) ||
+                (
+                  request.resource.data.cancelLockedUntil != null &&
+                  request.resource.data.cancelLockedUntil >= resource.data.get('cancelLockedUntil', 0)
+                )
+              )
+            )
+          )
+        )
+        ||
+        (
+          isNotSuspended() &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['notifications']) &&
+          isOnePrependOnly()
+        )
+      );
+
+      allow delete: if isAdmin();
+
+      match /tokens/{tokenId} {
+        allow read, write: if isSignedIn() &&
+          (request.auth.uid == userId || isAdmin());
+      }
+
+      match /notifications/{notifId} {
+        allow read, update: if isSignedIn() && request.auth.uid == userId;
+        allow create: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
+        allow delete: if isSignedIn() && (isAdmin() || request.auth.uid == userId);
+      }
+
+      // 配送先などの非公開個人情報（本人・管理者のみ）
+      match /private/{docId} {
+        allow read, write: if isSignedIn() &&
+          (request.auth.uid == userId || isAdmin());
       }
     }
 
     // ===== trades =====
     match /trades/{tradeId} {
-      allow read: if isAdmin() || (isSignedIn() && request.auth.uid in resource.data.get("participants", []));
+      allow read: if isSignedIn() &&
+        (isAdmin() || request.auth.uid in resource.data.participants);
+
       allow create: if isNotSuspended()
-        && request.auth.uid in request.resource.data.get("participants", []);
-      allow update: if isAdmin()
-        || (isNotSuspended() && request.auth.uid in resource.data.get("participants", []));
+        && request.resource.data.applicantId == request.auth.uid
+        && request.auth.uid in request.resource.data.participants
+        && request.resource.data.participants.size() == 2
+        && (isDeviceLinked() || request.resource.data.get('isXTrade', false) == true);
+
+      allow update: if isNotSuspended()
+        && (isAdmin() || request.auth.uid in resource.data.participants)
+        && (
+          isAdmin() ||
+          (
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'status',
+              'agreed',
+              'shipped',
+              'received',
+              'disputed',
+              'cancelRequest',
+              'cancelAgreed',
+              'cancelledBy',
+              'lastMessageAt',
+              'lastSenderId',
+              'updatedAt'
+            ])
+            && request.resource.data.ownerId == resource.data.ownerId
+            && request.resource.data.applicantId == resource.data.applicantId
+            && request.resource.data.postId == resource.data.postId
+            && request.resource.data.participants == resource.data.participants
+            && (
+              !('cancelledBy' in request.resource.data.diff(resource.data).affectedKeys()) ||
+              request.resource.data.cancelledBy == request.auth.uid
+            )
+            && (
+              !('agreed' in request.resource.data.diff(resource.data).affectedKeys()) ||
+              request.resource.data.agreed.diff(resource.data.get('agreed', {})).affectedKeys().hasOnly([request.auth.uid])
+            )
+            && (
+              !('shipped' in request.resource.data.diff(resource.data).affectedKeys()) ||
+              request.resource.data.shipped.diff(resource.data.get('shipped', {})).affectedKeys().hasOnly([request.auth.uid])
+            )
+            && (
+              !('received' in request.resource.data.diff(resource.data).affectedKeys()) ||
+              request.resource.data.received.diff(resource.data.get('received', {})).affectedKeys().hasOnly([request.auth.uid])
+            )
+          )
+        );
+
       allow delete: if isAdmin();
 
       match /messages/{messageId} {
-        allow read: if isTradeParticipant(tradeId);
-        allow create: if isNotSuspended() && isTradeParticipant(tradeId)
-          && request.resource.data.senderId == request.auth.uid;
+        allow read: if isAdmin() || isTradeParticipant(tradeId);
+        allow create: if isNotSuspended()
+          && request.resource.data.senderId == request.auth.uid
+          && isTradeParticipant(tradeId)
+          && (isDeviceLinked() || get(/databases/$(database)/documents/trades/$(tradeId)).data.get('isXTrade', false) == true);
         allow update, delete: if isAdmin();
       }
 
-      // 取引当事者のみが読める配送先共有
+      // 取引当事者のみが読める配送先共有（完了後に自動削除）
       match /shipping/{userId} {
         allow read: if isAdmin() || isTradeParticipant(tradeId);
         allow create, update: if isNotSuspended()
@@ -154,66 +343,110 @@ service cloud.firestore {
       }
     }
 
-    // ===== その他コレクション（既存挙動を維持） =====
-    match /reviews/{reviewId} {
-      allow read: if true;
-      allow create: if isNotSuspended() && request.resource.data.fromId == request.auth.uid;
-      allow update, delete: if isAdmin();
-    }
-    match /reports/{reportId} {
-      allow read: if isAdmin();
-      allow create: if isNotSuspended() && request.resource.data.reporterId == request.auth.uid;
-      allow update, delete: if isAdmin();
-    }
-    match /inquiries/{inquiryId} {
-      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
-      allow create: if isNotSuspended() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isAdmin();
-    }
-    match /suspensions/{uid} {
-      allow read: if isSignedIn() && (isAdmin() || request.auth.uid == uid);
-      allow write: if isAdmin();
-    }
+    // ===== devices =====
     match /devices/{deviceId} {
-      allow read: if isSignedIn();
-      allow create, update: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow read: if isSignedIn() && (
+        resource.data.uid == request.auth.uid || isAdmin()
+      );
+      allow create: if isSignedIn()
+        && request.resource.data.uid == request.auth.uid
+        && !exists(/databases/$(database)/documents/devices/$(deviceId));
+      allow update: if isSignedIn()
+        && request.resource.data.uid == request.auth.uid
+        && resource.data.uid == request.auth.uid;
       allow delete: if isAdmin();
     }
+
     match /deviceBans/{deviceId} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
     }
-    match /adminLogs/{logId} {
-      allow read, write: if isAdmin();
-    }
+
     match /siteConfig/{docId} {
       allow read: if true;
       allow write: if isAdmin();
     }
-    match /cardWatchers/{cardId}/users/{uid} {
+
+    // ===== reviews（双方受取完了後のみ投稿可） =====
+    match /reviews/{reviewId} {
       allow read: if true;
+      allow create: if isNotSuspended()
+        && request.resource.data.fromId == request.auth.uid
+        && request.resource.data.toId != request.auth.uid
+        && reviewId == request.resource.data.tradeId + '_' + request.auth.uid
+        && request.resource.data.rating is number
+        && request.resource.data.rating >= 1
+        && request.resource.data.rating <= 5
+        && request.auth.uid in get(/databases/$(database)/documents/trades/$(request.resource.data.tradeId)).data.participants
+        && request.resource.data.toId in get(/databases/$(database)/documents/trades/$(request.resource.data.tradeId)).data.participants
+        && get(/databases/$(database)/documents/trades/$(request.resource.data.tradeId)).data.received[request.auth.uid] == true
+        && get(/databases/$(database)/documents/trades/$(request.resource.data.tradeId)).data.received[request.resource.data.toId] == true;
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+
+    match /reports/{reportId} {
+      allow read: if isAdmin();
+      allow create: if isNotSuspended()
+        && request.resource.data.reporterId == request.auth.uid
+        && isDeviceLinked();
+      allow update, delete: if isAdmin();
+    }
+
+    match /inquiries/{inquiryId} {
+      allow read: if isAdmin() ||
+        (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isNotSuspended()
+        && request.resource.data.userId == request.auth.uid
+        && isDeviceLinked();
+      allow update, delete: if isAdmin();
+    }
+
+    match /cardCatalog/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /cardPhotos/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /cardPhotosClean/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /cardCatalogAlbums/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /cardWatchers/{cardId}/users/{uid} {
+      allow read: if isSignedIn();
       allow write: if isSignedIn() && request.auth.uid == uid;
     }
-    match /cardCatalog/{cardId} {
-      allow read: if true;
-      allow write: if isAdmin();
+
+    match /adminLogs/{logId} {
+      allow read, create, delete: if isAdmin();
+      allow update: if false;
     }
-    match /cardPhotos/{cardId} {
-      allow read: if true;
-      allow write: if isAdmin();
+
+    match /auditLogs/{logId} {
+      allow read, create, delete: if isAdmin();
+      allow update: if false;
     }
-    match /cardPhotosClean/{cardId} {
-      allow read, write: if isAdmin();
-    }
+
     match /auto_go_pools/{poolId} {
       allow read: if true;
-      allow write: if isAdmin();
-      match /entries/{entryUid} {
-        // 自分のエントリーのみ読取可（管理者は全員）
-        allow read: if isAdmin() || (isSignedIn() && request.auth.uid == entryUid);
-        allow write: if false; // Cloud Functions のみ
+      allow create, update, delete: if isAdmin();
+
+      match /entries/{userId} {
+        allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+        allow create, update, delete: if isAdmin();
       }
     }
+
     match /auto_go_shipping_hashes/{hashId} {
       allow read, write: if false;
     }
