@@ -117,6 +117,40 @@ async function notify(uid, { id, text, type = "info", link = null, title = "ILLI
 const autoGoEntryRef = (poolId, uid) =>
   db.collection("auto_go_pools").doc(poolId).collection("entries").doc(uid);
 
+/** 非公開配送先（users/{uid}/private/shipping）を優先し、移行期間は公開profileもフォールバック */
+async function loadUserShippingAddress(uid) {
+  const [userSnap, shipSnap] = await Promise.all([
+    db.collection("users").doc(uid).get(),
+    db.collection("users").doc(uid).collection("private").doc("shipping").get()
+  ]);
+  const user = userSnap.exists ? userSnap.data() : {};
+  const profile = user.profile || {};
+  const shipping = shipSnap.exists ? (shipSnap.data() || {}) : {};
+  return {
+    user,
+    profile,
+    name: String(shipping.name || profile.name || "").trim(),
+    zip: String(shipping.zip || profile.zip || "").trim(),
+    address1: String(shipping.address1 || profile.address1 || "").trim(),
+    address2: String(shipping.address2 || profile.address2 || "").trim(),
+    phone: String(shipping.phone || profile.phone || "").trim(),
+    xId: String(profile.xId || profile.twitter || profile.xUsername || "").trim().replace(/^@/, "")
+  };
+}
+
+async function clearTradeShippingCollection(tradeId) {
+  if (!tradeId) return;
+  try {
+    const snap = await db.collection("trades").doc(tradeId).collection("shipping").get();
+    if (snap.empty) return;
+    const batch = db.batch();
+    snap.docs.forEach((d) => batch.delete(d.ref));
+    await batch.commit();
+  } catch (e) {
+    console.warn("clearTradeShippingCollection", tradeId, e);
+  }
+}
+
 function timestampMillis(value) {
   if (value && typeof value.toMillis === "function") return value.toMillis();
   return Number(value) || 0;
@@ -325,18 +359,14 @@ async function closeAutoGoRevealWindow(poolId, poolRef, poolData) {
     if (used.has(start.id)) continue;
     const cycle = findAutoGoCycle(start, candidates, used);
     if (!cycle) continue;
-    const profiles = await Promise.all(cycle.map((entry) =>
-      db.collection("users").doc(entry.id).get()));
-    if (profiles.some((profile) => {
-      const address = profile.exists ? profile.data().profile || {} : {};
-      return !address.name || !address.zip || !address.address1;
-    })) continue;
+    const shippingProfiles = await Promise.all(cycle.map((entry) => loadUserShippingAddress(entry.id)));
+    if (shippingProfiles.some((address) => !address.name || !address.zip || !address.address1)) continue;
     cycle.forEach((entry) => used.add(entry.id));
     const cycleId = `ag_${poolId}_${start.id}`;
     cycle.forEach((sender, index) => {
       const receiver = cycle[(index + 1) % cycle.length];
       const provider = cycle[(index + cycle.length - 1) % cycle.length];
-      const receiverProfile = profiles[(index + 1) % cycle.length].data().profile || {};
+      const receiverAddress = shippingProfiles[(index + 1) % cycle.length];
       updates.push({
         ref: autoGoEntryRef(poolId, sender.id),
         data: {
@@ -345,9 +375,9 @@ async function closeAutoGoRevealWindow(poolId, poolRef, poolData) {
           cycleSize: cycle.length,
           sendToUid: receiver.id,
           sendToName: receiver.userName || receiver.displayName || "参加者",
-          shipToName: receiverProfile.name,
-          shipToZip: receiverProfile.zip,
-          shipToAddress: [receiverProfile.address1, receiverProfile.address2].filter(Boolean).join(" "),
+          shipToName: receiverAddress.name,
+          shipToZip: receiverAddress.zip,
+          shipToAddress: [receiverAddress.address1, receiverAddress.address2].filter(Boolean).join(" "),
           receiveFromUid: provider.id,
           receiveFromName: provider.userName || provider.displayName || "参加者",
           receivingCard: provider.pulledMember,
@@ -667,11 +697,13 @@ exports.reserveAutoGoEntry = onCall(async (request) => {
   }
   const poolRef = db.collection("auto_go_pools").doc(poolId);
   const entryRef = autoGoEntryRef(poolId, uid);
+  const shippingRef = db.collection("users").doc(uid).collection("private").doc("shipping");
   await db.runTransaction(async (tx) => {
-    const [poolSnap, entrySnap, userSnap] = await Promise.all([
+    const [poolSnap, entrySnap, userSnap, privateShipSnap] = await Promise.all([
       tx.get(poolRef),
       tx.get(entryRef),
-      tx.get(db.collection("users").doc(uid))
+      tx.get(db.collection("users").doc(uid)),
+      tx.get(shippingRef)
     ]);
     if (!poolSnap.exists) throw new HttpsError("not-found", "pool not found");
     if (entrySnap.exists) throw new HttpsError("already-exists", "one entry per person is allowed");
@@ -692,9 +724,12 @@ exports.reserveAutoGoEntry = onCall(async (request) => {
       : (Array.isArray(pool.memberNames) ? pool.memberNames : []);
     if (!members.includes(wantedMember)) throw new HttpsError("invalid-argument", "unknown member");
     const profile = user.profile || {};
+    const privateShip = privateShipSnap.exists ? (privateShipSnap.data() || {}) : {};
+    const shipName = String(privateShip.name || profile.name || "").trim();
+    const shipZip = String(privateShip.zip || profile.zip || "").trim();
+    const shipAddr1 = String(privateShip.address1 || profile.address1 || "").trim();
     const xId = String(profile.xId || profile.twitter || profile.xUsername || "").trim().replace(/^@/, "");
-    if (!String(profile.name || "").trim() || !String(profile.zip || "").trim() ||
-        !String(profile.address1 || "").trim() || !xId) {
+    if (!shipName || !shipZip || !shipAddr1 || !xId) {
       throw new HttpsError("failed-precondition", "shipping address and X account are required");
     }
     const minCompletedTrades = Number(pool.minCompletedTrades) || 0;
@@ -993,6 +1028,7 @@ exports.onTradeUpdated = onDocumentUpdated("trades/{tradeId}", async (event) => 
       both.forEach((u) => jobs.push(notify(u, { text: `合意が成立しました。決済・発送へ進んでください：${a.postGive}`, type: "success", link, title: "合意が成立" })));
     } else if (a.status === "completed") {
       both.forEach((u) => jobs.push(notify(u, { text: `取引が完了しました。相手の評価をお願いします：${a.postGive}`, type: "success", link, title: "取引が完了" })));
+      jobs.push(clearTradeShippingCollection(tid));
     } else if (a.status === "cancelled") {
       if (a.adminCancelled) {
         both.forEach((u) => jobs.push(notify(u, { text: `運営により取引がキャンセルされました：${a.postGive}`, type: "admin", link, title: "運営がキャンセル" })));
