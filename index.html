@@ -2025,7 +2025,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     let currentUser = null, allPosts = [], unsubPosts = null, selectedMember = "すべて", kindFilter = "all", sortFilter = "random", bundleFilter = "all", searchText = "", activeOnly = false, currentDetailIndex = -1; window.currentUser = currentUser; window.currentUser = currentUser; window.currentUser = currentUser;
     let pendingPostId = new URLSearchParams(location.search).get("post");
     let postMode = "exchange", postPhotos = [], processingPhotos = false, submittingPost = false, submittingGroup = false, detailPhotos = [], roomPhotos = [], roomPhotosFor = null;
-    let myTrades = [], unsubTrades = null, groupJoins = {}, unsubJoins = null, currentTrade = null, roomMessages = [], unsubRoom = null, unsubMsgs = null;
+    let myTrades = [], unsubTrades = null, groupJoins = {}, unsubJoins = null, currentTrade = null, roomMessages = [], unsubRoom = null, unsubMsgs = null, unsubTradeShipping = null, roomTradeShipping = {};
     let reviewState = { tradeId: null, done: null }, selectedRating = 0, sendingImage = false, roomBoxKey = null, userData = { profile: {}, blocked: [], likes: [], reads: {}, notifications: [], cancelHistory: [], myCards: {}, collectionPublic: false, customCards: [], cardWatch: {} };
     let unsubUser = null, unsubNotifs = null, editingPostId = null, migratingLocal = false, photoCache = {};
     let notifTab = "all";
@@ -2069,7 +2069,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
 
     // 申込者の配送先情報（お名前・郵便番号・住所）が登録済みか
     function hasShippingInfo() {
-      const p = getMyProfile();
+      const p = (typeof getMyShipping === "function" ? getMyShipping() : null) || getMyProfile() || {};
       return !!(p && p.name && p.zip && p.address1);
     }
     function requireShippingInfo() {
@@ -2616,6 +2616,90 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       } catch (e) { console.warn("announce load", e); }
     }
     function saveUserData(data) { return setDoc(doc(db, "users", currentUser.uid), data, { merge: true }); }
+
+    // ===== 配送先個人情報（非公開サブコレクション） =====
+    const SHIPPING_PII_KEYS = ["name", "zip", "address1", "address2", "phone"];
+    function shippingPrivateRef(uid) {
+      return doc(db, "users", uid || currentUser.uid, "private", "shipping");
+    }
+    function tradeShippingRef(tradeId, uid) {
+      return doc(db, "trades", tradeId, "shipping", uid);
+    }
+    function pickShippingFields(source) {
+      const out = {};
+      SHIPPING_PII_KEYS.forEach((key) => {
+        if (source && source[key] != null && String(source[key]).length) out[key] = String(source[key]);
+        else if (source && source[key] === "") out[key] = "";
+      });
+      return out;
+    }
+    function stripShippingFromProfile(profile) {
+      const next = { ...(profile || {}) };
+      SHIPPING_PII_KEYS.forEach((key) => { delete next[key]; });
+      return next;
+    }
+    function mergeShippingIntoLocalProfile(shipping) {
+      if (!userData.profile) userData.profile = {};
+      userData.shipping = { ...(shipping || {}) };
+      SHIPPING_PII_KEYS.forEach((key) => {
+        if (shipping && shipping[key] != null) userData.profile[key] = shipping[key];
+      });
+    }
+    async function loadPrivateShipping(uid) {
+      const targetUid = uid || currentUser?.uid;
+      if (!targetUid) return {};
+      try {
+        const snap = await getDoc(shippingPrivateRef(targetUid));
+        return snap.exists() ? (snap.data() || {}) : {};
+      } catch (e) {
+        console.warn("private shipping read:", e?.code || e);
+        return {};
+      }
+    }
+    async function savePrivateShipping(fields) {
+      if (!currentUser) return;
+      const payload = {
+        ...pickShippingFields(fields),
+        updatedAt: serverTimestamp()
+      };
+      await setDoc(shippingPrivateRef(currentUser.uid), payload, { merge: true });
+      mergeShippingIntoLocalProfile(payload);
+    }
+    async function migratePublicProfileShippingIfNeeded(profile) {
+      if (!currentUser || !profile) return profile || {};
+      const hasPublicPii = SHIPPING_PII_KEYS.some((key) => String(profile[key] || "").trim());
+      if (!hasPublicPii) return profile;
+      try {
+        const existing = await loadPrivateShipping(currentUser.uid);
+        const hasPrivate = SHIPPING_PII_KEYS.some((key) => String(existing[key] || "").trim());
+        if (!hasPrivate) {
+          await setDoc(shippingPrivateRef(currentUser.uid), {
+            ...pickShippingFields(profile),
+            migratedFromProfileAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          }, { merge: true });
+        }
+        const cleaned = stripShippingFromProfile(profile);
+        await saveUserData({ profile: cleaned });
+        return cleaned;
+      } catch (e) {
+        console.warn("shipping migration:", e?.code || e);
+        return profile;
+      }
+    }
+    async function clearTradeShippingDocs(tradeId) {
+      if (!tradeId) return;
+      try {
+        const snap = await getDocs(collection(db, "trades", tradeId, "shipping"));
+        await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
+      } catch (e) {
+        console.warn("clear trade shipping:", e?.code || e);
+      }
+    }
+    window.loadPrivateShipping = loadPrivateShipping;
+    window.savePrivateShipping = savePrivateShipping;
+    window.clearTradeShippingDocs = clearTradeShippingDocs;
+    window.pickShippingFields = pickShippingFields;
     function updateUserAvatar() {
       const avatar = document.getElementById("user-avatar");
       if (!avatar) return;
@@ -2651,7 +2735,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         if (Array.isArray(d.notifications) && storedNotifs.length !== d.notifications.length) {
           saveUserData({ notifications: storedNotifs }).catch(() => {});
         }
-        userData = { profile: d.profile || {}, blocked: d.blocked || [], likes: d.likes || [], reads: d.reads || {}, notifications: storedNotifs, cancelHistory: d.cancelHistory || [], myCards: d.myCards || {}, collectionPublic: !!d.collectionPublic, customCards: Array.isArray(d.customCards) ? d.customCards : [], cardWatch: d.cardWatch && typeof d.cardWatch === "object" ? d.cardWatch : {} };
+        userData = { profile: d.profile || {}, blocked: d.blocked || [], likes: d.likes || [], reads: d.reads || {}, notifications: storedNotifs, cancelHistory: d.cancelHistory || [], myCards: d.myCards || {}, collectionPublic: !!d.collectionPublic, customCards: Array.isArray(d.customCards) ? d.customCards : [], cardWatch: d.cardWatch && typeof d.cardWatch === "object" ? d.cardWatch : {}, shipping: userData.shipping || {} };
         if (currentUser) {
           document.getElementById("user-name").innerText = getMyDisplayName();
           updateUserAvatar();
@@ -2662,6 +2746,17 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         if (!document.getElementById("trades-modal").classList.contains("hidden")) renderTradesList();
         if (!document.getElementById("wallet-modal").classList.contains("hidden")) renderWallet();
         if (!document.getElementById("notifications-modal").classList.contains("hidden")) renderNotificationsList();
+        // 公開プロフィールから配送先PIIを分離し、非公開サブコレクションをローカルへマージ
+        (async () => {
+          try {
+            const cleaned = await migratePublicProfileShippingIfNeeded(userData.profile || {});
+            userData.profile = cleaned;
+            const shipping = await loadPrivateShipping(currentUser.uid);
+            mergeShippingIntoLocalProfile(shipping);
+          } catch (e) {
+            console.warn("private shipping hydrate:", e?.code || e);
+          }
+        })();
       }, (err) => console.warn("user snapshot error:", err?.code || err));
       subscribeNotifInbox();
     }
@@ -3610,7 +3705,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       document.getElementById("detail-like-count").innerText = likesCount;
     }
 
-    window.openProfileModal = function(section = "basic") {
+    window.openProfileModal = async function(section = "basic") {
       if (!currentUser) return;
       profileSection = section;
       const titles = { basic: "✏️ プロフィール・写真", address: "📦 住所・配送先", paypay: "🔒 アズカリ決済ガイド", push: "📢 プッシュ通知", block: "🚫 ブロック管理" };
@@ -3619,6 +3714,12 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         const el = document.getElementById("profile-section-" + s);
         if (el) el.classList.toggle("hidden", s !== section);
       });
+      if (section === "address") {
+        try {
+          const shipping = await loadPrivateShipping(currentUser.uid);
+          mergeShippingIntoLocalProfile(shipping);
+        } catch (e) { console.warn("openProfile shipping:", e?.code || e); }
+      }
       const s = userData.profile || {};
       pendingProfilePhoto = null;
       document.getElementById("profile-nickname").value = s.nickname || "";
@@ -3664,19 +3765,22 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       if (!currentUser) return;
       const prev = userData.profile || {};
       let p = {};
+      let shippingPatch = null;
 
       // セクションごとに更新する項目を限定（他項目を空で上書きしない）
       if (profileSection === "address") {
-        p = {
+        shippingPatch = {
           name: document.getElementById("profile-name").value.trim(),
           zip: document.getElementById("profile-zip").value.trim(),
           address1: document.getElementById("profile-address1").value.trim(),
-          xId: document.getElementById("profile-xid").value.trim().replace(/^@/, ""),
           address2: document.getElementById("profile-address2").value.trim(),
           phone: document.getElementById("profile-phone").value.trim()
         };
-        if (!p.name || !p.zip || !p.address1) return /* alert hidden */ console.log("お名前・郵便番号・住所は必須です。");
-        if (!/^\d{3}-?\d{4}$/.test(p.zip)) return /* alert hidden */ console.log("郵便番号は7桁の数字で入力してください。（例: 123-4567）");
+        p = {
+          xId: document.getElementById("profile-xid").value.trim().replace(/^@/, "")
+        };
+        if (!shippingPatch.name || !shippingPatch.zip || !shippingPatch.address1) return /* alert hidden */ console.log("お名前・郵便番号・住所は必須です。");
+        if (!/^\d{3}-?\d{4}$/.test(shippingPatch.zip)) return /* alert hidden */ console.log("郵便番号は7桁の数字で入力してください。（例: 123-4567）");
       } else if (profileSection === "basic") {
         p = {
           nickname: document.getElementById("profile-nickname").value.trim()
@@ -3698,19 +3802,31 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         const address1 = document.getElementById("profile-address1").value.trim();
         const address2 = document.getElementById("profile-address2").value.trim();
         const phone = document.getElementById("profile-phone").value.trim();
+        const xId = document.getElementById("profile-xid").value.trim().replace(/^@/, "");
         if (nick) p.nickname = nick;
         if (paypay || paypay === "") p.paypay = paypay;
-        if (name) p.name = name;
-        if (zip) p.zip = zip;
-        if (address1) p.address1 = address1;
-        if (address2 || address2 === "") p.address2 = address2;
-        if (phone || phone === "") p.phone = phone;
+        if (xId) p.xId = xId;
+        if (name || zip || address1) {
+          shippingPatch = {
+            name: name || "",
+            zip: zip || "",
+            address1: address1 || "",
+            address2: address2 || "",
+            phone: phone || ""
+          };
+        }
         if (pendingProfilePhoto !== null) p.photo = pendingProfilePhoto;
       }
 
-      userData.profile = { ...prev, ...p };
       try {
-        await saveUserData({ profile: userData.profile });
+        if (shippingPatch) {
+          await savePrivateShipping(shippingPatch);
+        }
+        // 公開プロフィールには配送先PIIを残さない
+        const mergedPublic = stripShippingFromProfile({ ...prev, ...p });
+        userData.profile = mergedPublic;
+        if (shippingPatch) mergeShippingIntoLocalProfile(shippingPatch);
+        await saveUserData({ profile: mergedPublic });
       } catch (e) {
         console.error(e);
         return /* alert hidden */ console.log("失敗しました。\n" + (e?.code || e?.message || ""));
@@ -3726,11 +3842,51 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     };
     function getMyProfile() { return currentUser && userData.profile && Object.keys(userData.profile).length ? userData.profile : null; }
     function getMyDisplayName() { return getMyProfile()?.nickname || currentUser?.displayName || "匿名ファン"; }
+    function getMyShipping() {
+      const fromPrivate = userData.shipping || {};
+      const fromProfile = userData.profile || {};
+      return {
+        name: fromPrivate.name || fromProfile.name || "",
+        zip: fromPrivate.zip || fromProfile.zip || "",
+        address1: fromPrivate.address1 || fromProfile.address1 || "",
+        address2: fromPrivate.address2 || fromProfile.address2 || "",
+        phone: fromPrivate.phone || fromProfile.phone || ""
+      };
+    }
+    window.getMyShipping = getMyShipping;
 
     window.sendMyAddress = async function() {
       if (!currentTrade || !currentUser) return;
-      const p = getMyProfile(); if (!p || !p.zip || !p.address1 || !p.name) { /* alert hidden */ console.log("マイページから住所を入力してください。"); openProfileModal("address"); return; }
-      try { await postMessage({ senderId: currentUser.uid, senderName: getMyDisplayName(), text: `【配送先情報】\nお名前: ${p.name}\n郵便番号: 〒${p.zip}\n住所: ${p.address1} ${p.address2 || ''}\n電話番号: ${p.phone || 'なし'}`, createdAt: serverTimestamp() }); } catch(e){}
+      let ship = getMyShipping();
+      if (!ship.zip || !ship.address1 || !ship.name) {
+        try {
+          ship = { ...ship, ...(await loadPrivateShipping(currentUser.uid)) };
+          mergeShippingIntoLocalProfile(ship);
+        } catch (e) {}
+      }
+      if (!ship.zip || !ship.address1 || !ship.name) {
+        /* alert hidden */ console.log("マイページから住所を入力してください。");
+        openProfileModal("address");
+        return;
+      }
+      try {
+        await setDoc(tradeShippingRef(currentTrade.id, currentUser.uid), {
+          ...pickShippingFields(ship),
+          sharedAt: serverTimestamp(),
+          sharedBy: currentUser.uid
+        }, { merge: true });
+        await postMessage({
+          senderId: currentUser.uid,
+          senderName: getMyDisplayName(),
+          text: "【配送先情報を共有しました】取引ルーム上部の「配送先の共有」から確認できます。",
+          createdAt: serverTimestamp()
+        });
+        renderRoomAddressBox();
+        showToast("配送先を相手と共有しました", "success");
+      } catch (e) {
+        console.error(e);
+        showToast("配送先の共有に失敗しました", "error");
+      }
     };
     window.copyPayPayId = function(idStr) { navigator.clipboard.writeText(idStr).then(()=>/* alert hidden */ console.log("コピーしました！")).catch(()=>{}); };
 
@@ -6562,16 +6718,41 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     function cleanupRoom() {
       if (unsubRoom) { unsubRoom(); unsubRoom = null; }
       if (unsubMsgs) { unsubMsgs(); unsubMsgs = null; }
+      if (unsubTradeShipping) { unsubTradeShipping(); unsubTradeShipping = null; }
+      roomTradeShipping = {};
       currentTrade = null; roomMessages = []; roomPhotos = []; roomPhotosFor = null; roomBoxKey = null; roomActionsKey = null; reviewState = { tradeId: null, done: null }; selectedRating = 0;
     }
     async function loadRoomPhotos(t) {
       const el = document.getElementById("room-photos"); if (t.kind === "serial" || !t.postPhotoCount) { el.innerHTML = ""; return; }
       try { const list = await getPhotos(t.postId); if (currentTrade?.id !== t.id) return; roomPhotos = list; if (list.length === 0) { el.innerHTML = ""; return; } el.innerHTML = `<div><div class="text-[11px] font-medium text-gray-700 mb-1">📷 出品時の写真</div><div class="flex gap-2 overflow-x-auto pb-1 hide-scrollbar">${list.map((src, i) => `<img src="${src}" onclick="viewPhoto('room', ${i})" class="w-20 h-20 object-cover rounded-xl border border-white/50 cursor-pointer shadow-sm hover:opacity-80 transition">`).join("")}</div></div>`; } catch(e){ el.innerHTML = ""; }
     }
+    function formatTradeShippingHtml(ship) {
+      if (!ship || !ship.name || !ship.zip || !ship.address1) return "";
+      return `<div class="mt-2 text-[11px] text-gray-800 leading-relaxed bg-white/80 rounded-lg p-2.5 border border-white/80">
+        <div>お名前: ${escapeHtml(ship.name)}</div>
+        <div>郵便番号: 〒${escapeHtml(ship.zip)}</div>
+        <div>住所: ${escapeHtml(ship.address1)}${ship.address2 ? " " + escapeHtml(ship.address2) : ""}</div>
+        <div>電話番号: ${escapeHtml(ship.phone || "なし")}</div>
+      </div>`;
+    }
     function renderRoomAddressBox() {
       const el = document.getElementById("room-address-box");
+      if (!el) return;
       if (!currentTrade || currentTrade.status !== "shipping") { el.innerHTML = ""; return; }
-      el.innerHTML = `<div class="bg-white/60 rounded-xl p-3 border border-white flex items-center justify-between shadow-sm"><div class="text-xs font-medium text-gray-800">📦 配送先の共有</div><button onclick="sendMyAddress()" class="bg-white/80 hover:bg-white text-illit-darkPurple font-medium text-xs px-4 py-2 rounded-full transition shadow-md border border-white">住所を送る</button></div>`;
+      const uid = currentUser?.uid;
+      const otherId = currentTrade.ownerId === uid ? currentTrade.applicantId : currentTrade.ownerId;
+      const mine = (roomTradeShipping && roomTradeShipping[uid]) || {};
+      const theirs = (roomTradeShipping && roomTradeShipping[otherId]) || {};
+      const myShared = !!(mine.name && mine.zip && mine.address1);
+      const theirShared = !!(theirs.name && theirs.zip && theirs.address1);
+      el.innerHTML = `<div class="bg-white/60 rounded-xl p-3 border border-white space-y-2 shadow-sm">
+        <div class="flex items-center justify-between gap-2">
+          <div class="text-xs font-medium text-gray-800">📦 配送先の共有</div>
+          <button onclick="sendMyAddress()" class="bg-white/80 hover:bg-white text-illit-darkPurple font-medium text-xs px-4 py-2 rounded-full transition shadow-md border border-white">${myShared ? "住所を再送する" : "住所を送る"}</button>
+        </div>
+        <div class="text-[10px] text-gray-600">あなた: ${myShared ? "共有済み" : "未共有"} ／ 相手: ${theirShared ? "共有済み" : "未共有"}</div>
+        ${theirShared ? `<div class="text-[11px] font-bold text-gray-700">相手の配送先</div>${formatTradeShippingHtml(theirs)}` : `<p class="text-[10px] text-gray-500">相手が住所を送ると、ここに表示されます（公開プロフィールには保存されません）。</p>`}
+      </div>`;
     }
     const PAYPAY_LINK_RE = /^https:\/\/(pay\.)?paypay\.ne\.jp\/[^\s]+$/;
         async function renderRoomPayPayBox() {
@@ -6693,7 +6874,12 @@ window.openAzukariApp = function() {
       closeTradesModal(); closeDetailModal(); cleanupRoom();
       document.getElementById("room-messages").innerHTML = ""; document.getElementById("room-modal").classList.remove("hidden");
       unsubRoom = onSnapshot(doc(db, "trades", id), (snap) => {
-        if (!snap.exists()) { closeRoom(); return; } currentTrade = { id: snap.id, ...snap.data() };
+        if (!snap.exists()) { closeRoom(); return; }
+        const prevStatus = currentTrade && currentTrade.status;
+        currentTrade = { id: snap.id, ...snap.data() };
+        if (currentTrade.status === "completed" && prevStatus && prevStatus !== "completed") {
+          clearTradeShippingDocs(currentTrade.id);
+        }
         renderRoom();
     if (typeof renderRoomTaskBanner === "function") renderRoomTaskBanner();
         const boxKey = currentTrade.id + ":" + currentTrade.status;
@@ -6703,6 +6889,11 @@ window.openAzukariApp = function() {
         advanceIfNeeded(); checkReview();
       });
       unsubMsgs = onSnapshot(query(collection(db, "trades", id, "messages"), orderBy("createdAt", "asc")), (snap) => { roomMessages = snap.docs.map(d => d.data()); renderMessages(); });
+      unsubTradeShipping = onSnapshot(collection(db, "trades", id, "shipping"), (snap) => {
+        roomTradeShipping = {};
+        snap.docs.forEach((d) => { roomTradeShipping[d.id] = d.data() || {}; });
+        renderRoomAddressBox();
+      }, (err) => console.warn("trade shipping snapshot:", err?.code || err));
     };
     window.closeRoom = function() { document.getElementById("room-modal").classList.add("hidden"); closeImageViewer(); cleanupRoom(); };
 
@@ -6714,7 +6905,11 @@ window.openAzukariApp = function() {
         next = "shipping";
         if (t.postId && t.kind !== "group") try { await updateDoc(doc(db, "posts", t.postId), { status: "traded" }); const lp = allPosts.find(x => x.id === t.postId); if (lp) { lp.status = "traded"; renderPosts(); } } catch(e){}
       } else if (t.status === "shipping" && both("received")) { next = "completed"; }
-      if (next) updateDoc(doc(db, "trades", t.id), { status: next, updatedAt: serverTimestamp() }).catch(()=>{});
+      if (next) {
+        updateDoc(doc(db, "trades", t.id), { status: next, updatedAt: serverTimestamp() })
+          .then(() => { if (next === "completed") clearTradeShippingDocs(t.id); })
+          .catch(()=>{});
+      }
     }
     function reviewFormHtml(buttonClass) {
       return `<div class="bg-white rounded-2xl p-4 border border-gray-200 space-y-3 shadow-md">
@@ -7065,6 +7260,7 @@ if(field==="received"){window.__localReceivedTrades=window.__localReceivedTrades
           try {
             await updateDoc(doc(db, "trades", tradeId), { status: "completed", updatedAt: serverTimestamp() });
             currentTrade.status = "completed";
+            await clearTradeShippingDocs(tradeId);
           } catch (error) {
             console.error(error);
             showToast("取引完了の保存に失敗しました", "error");
@@ -7205,6 +7401,7 @@ if(field==="received"){window.__localReceivedTrades=window.__localReceivedTrades
         if (ownerReceived && applicantReceived && trade.status !== "completed" && trade.status !== "cancelled") {
           await updateDoc(doc(db, "trades", trade.id), { status: "completed", updatedAt: serverTimestamp() });
           trade.status = "completed";
+          await clearTradeShippingDocs(trade.id);
         }
         reviewState = { tradeId: trade.id, done: true };
         const host = document.getElementById("room-review-slot");
@@ -14516,8 +14713,20 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
         const slice = pending.slice(start, start + 10);
         await Promise.all(slice.map(async function(entry) {
           try {
-            const userSnap = await getDoc(doc(db, "users", entry.uid));
-            pool.userDocs[entry.uid] = userSnap.exists() ? userSnap.data() : {};
+            const [userSnap, shipSnap] = await Promise.all([
+              getDoc(doc(db, "users", entry.uid)),
+              getDoc(doc(db, "users", entry.uid, "private", "shipping"))
+            ]);
+            const data = userSnap.exists() ? userSnap.data() : {};
+            const shipping = shipSnap.exists() ? (shipSnap.data() || {}) : {};
+            // 管理画面表示用に非公開配送先を profile へ重ねる（公開ドキュメント自体は変更しない）
+            const shipOverlay = {};
+            ["name", "zip", "address1", "address2", "phone"].forEach((key) => {
+              if (shipping[key] != null && String(shipping[key]).length) shipOverlay[key] = String(shipping[key]);
+            });
+            data.profile = { ...(data.profile || {}), ...shipOverlay };
+            data._privateShipping = shipping;
+            pool.userDocs[entry.uid] = data;
           } catch (error) {
             pool.userDocs[entry.uid] = {};
           }
@@ -15120,8 +15329,17 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
         return;
       }
       const profile = userData.profile || {};
-      if (!String(profile.name || "").trim() || !String(profile.zip || "").trim() ||
-          !String(profile.address1 || "").trim() || !getAutoGoXId(profile)) {
+      let shipping = {};
+      try {
+        const shipSnap = await refs.getDoc(refs.doc(refs.db, "users", user.uid, "private", "shipping"));
+        shipping = shipSnap.exists() ? (shipSnap.data() || {}) : {};
+      } catch (e) {
+        console.warn("Auto-GO private shipping:", e?.code || e);
+      }
+      const shipName = String(shipping.name || profile.name || "").trim();
+      const shipZip = String(shipping.zip || profile.zip || "").trim();
+      const shipAddr = String(shipping.address1 || profile.address1 || "").trim();
+      if (!shipName || !shipZip || !shipAddr || !getAutoGoXId(profile)) {
         showToast("Auto-GOへの参加には配送先住所とXアカウントの登録が必要です", "error");
         window.closeAutoGoModal?.();
         window.openProfileModal?.("address");
