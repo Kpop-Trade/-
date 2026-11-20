@@ -234,6 +234,12 @@
     #admin-content button[data-ag-act] { position: relative; z-index: 6; pointer-events: auto !important; touch-action: manipulation; min-height: 40px; cursor: pointer; }
     .ag-person-late { background: #fee2e2 !important; border-color: #dc2626 !important; color: #991b1b !important; }
     #ag-person-modal { z-index: 10050; }
+    /* Auto-GO(10000) の上に確認ダイアログを出し、予約確定ボタンが裏に隠れないようにする */
+    #app-confirm:not(.hidden) {
+      z-index: 11000 !important;
+      display: flex !important;
+      pointer-events: auto !important;
+    }
     #autogo-modal.is-open {
       display: flex !important;
       visibility: visible !important;
@@ -1777,8 +1783,8 @@ html, body {
     </div>
   </div>
 
-  <!-- アプリ内の確認ダイアログ（confirm() が出ない環境用） -->
-  <div id="app-confirm" class="fixed inset-0 modal-backdrop hidden z-[90] flex items-center justify-center p-4">
+  <!-- アプリ内の確認ダイアログ（confirm() が出ない環境用） ※Auto-GO(z=10000)より上に出す -->
+  <div id="app-confirm" class="fixed inset-0 modal-backdrop hidden z-[11000] flex items-center justify-center p-4">
     <div class="liquid-glass-heavy w-full max-w-sm rounded-[2rem] p-6 space-y-5 shadow-2xl">
       <p id="app-confirm-msg" class="text-sm font-medium text-gray-800 whitespace-pre-wrap leading-relaxed"></p>
       <div class="flex space-x-2">
@@ -2251,6 +2257,8 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           yes.className = "flex-1 text-white font-medium py-3 rounded-full transition text-sm shadow-md " + (danger ? "bg-red-500 hover:bg-red-600" : "bg-gradient-to-r from-illit-purple to-illit-accent");
           const done = (v) => {
             m.classList.add("hidden");
+            m.style.removeProperty("display");
+            m.style.removeProperty("pointer-events");
             yes.onclick = null;
             no.onclick = null;
             resolve(v);
@@ -2258,7 +2266,10 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           yes.onclick = () => done(true);
           no.onclick = () => done(false);
           m.classList.remove("hidden");
-          m.style.zIndex = "200";
+          // Auto-GO など z-index 10000 のモーダルの背面に隠れないよう最前面へ
+          m.style.setProperty("z-index", "11000", "important");
+          m.style.setProperty("display", "flex", "important");
+          m.style.setProperty("pointer-events", "auto", "important");
         } catch (e) {
           console.error("appConfirm failed", e);
           resolve(window.confirm(String(message || "")));
@@ -15777,7 +15788,8 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       try {
         const overlay = document.createElement("div");
         overlay.id = "ag-reserve-done-modal";
-        overlay.className = "fixed inset-0 z-[220] bg-black/50 flex items-center justify-center p-4";
+        overlay.className = "fixed inset-0 z-[12000] bg-black/50 flex items-center justify-center p-4";
+        overlay.style.zIndex = "12000";
         overlay.innerHTML = `<div class="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl space-y-3 text-center">
           <div class="text-3xl">✅</div>
           <h3 class="text-base font-black text-gray-900">予約完了</h3>
