@@ -13775,6 +13775,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
   let singleMode = "post";
   window.openSingleGuideCam = async function(mode){
     singleMode = mode || "post";
+    window.__singleGuideMode = singleMode;
     const modal = document.getElementById("single-guide-modal");
     const vid = document.getElementById("single-guide-vid");
     if(!modal || !vid) return;
@@ -13796,11 +13797,44 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       singleStream = null;
     }
   };
+  function dispatchGuideShotFile(file){
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    closeSingleGuideCam();
+    const mode = window.__singleGuideMode || singleMode || "post";
+    if(mode === "mycards"){
+      const inp = document.querySelector("input[onchange*='runMyCardsImageSearch']");
+      if(inp){ window.__fromGuide=true; inp.files = dt.files; inp.dispatchEvent(new Event("change", { bubbles: true })); }
+    } else {
+      const inp = document.getElementById("post-photo-input") || document.getElementById("post-camera-input");
+      if(inp){ window.__fromGuide=true; inp.files = dt.files; inp.dispatchEvent(new Event("change", { bubbles: true })); }
+    }
+  }
+  window.__dispatchGuideShotFile = dispatchGuideShotFile;
   window.snapSingleGuideCam = function(){
     const vid = document.getElementById("single-guide-vid");
     const frame = document.getElementById("single-guide-frame");
     const br = document.getElementById("single-cam-bright");
     if(!vid || !vid.videoWidth) return;
+    const brightness = br ? br.value : 110;
+
+    // 自動検出の4頂点がある場合は射影変換（台形補正）して切り抜き
+    const corners = window.__detectedCardCorners;
+    if (corners && corners.length === 4 && typeof window.__warpCardFromVideo === "function") {
+      try {
+        const warped = window.__warpCardFromVideo(vid, corners, brightness);
+        if (warped) {
+          warped.toBlob(function(blob){
+            if(!blob) return;
+            dispatchGuideShotFile(new File([blob], "single_guide_card.jpg", { type: "image/jpeg" }));
+          }, "image/jpeg", 0.92);
+          return;
+        }
+      } catch (e) {
+        console.warn("perspective warp failed, fallback crop:", e);
+      }
+    }
+
     const vRect = vid.getBoundingClientRect();
     const fRect = frame.getBoundingClientRect();
     const scaleX = vid.videoWidth / vRect.width;
@@ -13813,21 +13847,11 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     cv.width = Math.round(sw);
     cv.height = Math.round(sh);
     const cx = cv.getContext("2d");
-    cx.filter = "brightness(" + (br ? br.value : 110) + "%) contrast(104%)";
+    cx.filter = "brightness(" + brightness + "%) contrast(104%)";
     cx.drawImage(vid, sx, sy, sw, sh, 0, 0, cv.width, cv.height);
     cv.toBlob(function(blob){
       if(!blob) return;
-      const file = new File([blob], "single_guide_card.jpg", { type: "image/jpeg" });
-      const dt = new DataTransfer();
-      dt.items.add(file);
-      closeSingleGuideCam();
-      if(singleMode === "mycards"){
-        const inp = document.querySelector("input[onchange*='runMyCardsImageSearch']");
-        if(inp){ window.__fromGuide=true; inp.files = dt.files; inp.dispatchEvent(new Event("change", { bubbles: true })); }
-      } else {
-        const inp = document.getElementById("post-photo-input") || document.getElementById("post-camera-input");
-        if(inp){ window.__fromGuide=true; inp.files = dt.files; inp.dispatchEvent(new Event("change", { bubbles: true })); }
-      }
+      dispatchGuideShotFile(new File([blob], "single_guide_card.jpg", { type: "image/jpeg" }));
     }, "image/jpeg", 0.92);
   };
 })();
@@ -13924,7 +13948,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
 })();
 
   </script>
-  <script src="./card-frame-detector.js?v=20261118"></script>
+  <script src="./card-frame-detector.js?v=20261120"></script>
 
 <script>
 (function() {
