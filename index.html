@@ -13946,18 +13946,15 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     const establishY = yOf(establishPercent);
     if (Math.abs(establishAt - clamped) >= 3) {
       guides += '<circle cx="' + establishX.toFixed(1) + '" cy="' + establishY.toFixed(1) + '" r="2.8" fill="#059669" stroke="#ffffff" stroke-width="1.5"></circle>';
-      // 折れ線の上に重ねず、点の横にピル表示
-      let pctX = establishX + 12;
-      let pctAnchor = "start";
-      if (establishX > width * 0.58) {
-        pctX = establishX - 12;
-        pctAnchor = "end";
-      }
+      // 折れ線の下側にピルを置き、線との重なりを避ける
       const pctText = establishPercent.toFixed(1) + "%";
-      const pillW = 42;
-      const pillX = pctAnchor === "start" ? pctX - 4 : pctX - pillW + 4;
-      guides += '<rect x="' + pillX.toFixed(1) + '" y="' + (establishY - 9).toFixed(1) + '" width="' + pillW + '" height="16" rx="8" fill="#ecfdf5" stroke="#059669" stroke-width="1"></rect>';
-      guides += '<text x="' + pctX.toFixed(1) + '" y="' + (establishY + 2.5).toFixed(1) + '" text-anchor="' + pctAnchor + '" font-size="9" font-weight="800" fill="#047857">' + pctText + '</text>';
+      const pillW = 44;
+      const pillH = 16;
+      let pillY = establishY + 10;
+      if (pillY + pillH > height - bottom - 2) pillY = establishY - 28;
+      const pillX = Math.max(left + 2, Math.min(establishX - pillW / 2, width - right - pillW));
+      guides += '<rect x="' + pillX.toFixed(1) + '" y="' + pillY.toFixed(1) + '" width="' + pillW + '" height="' + pillH + '" rx="8" fill="#ffffff" stroke="#059669" stroke-width="1.2"></rect>';
+      guides += '<text x="' + (pillX + pillW / 2).toFixed(1) + '" y="' + (pillY + 11.5).toFixed(1) + '" text-anchor="middle" font-size="9" font-weight="800" fill="#047857">' + pctText + '</text>';
     }
     let xLabels = "";
     const seen = {};
