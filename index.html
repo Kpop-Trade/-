@@ -231,6 +231,9 @@
     #autogo-home-wrap { position: relative; overflow: visible; padding-top: 10px; }
     #autogo-home-banner { position: relative; overflow: hidden; }
     .autogo-new-tag { position: absolute; top: 0; right: 12px; z-index: 3; transform: rotate(28deg); background: #ff2a2a; color: #fff; font-size: 12px; font-weight: 900; letter-spacing: .04em; padding: 3px 14px; box-shadow: 0 3px 8px rgba(0,0,0,.28); pointer-events: none; }
+    #admin-content button[data-ag-act] { position: relative; z-index: 6; pointer-events: auto !important; touch-action: manipulation; min-height: 40px; cursor: pointer; }
+    .ag-person-late { background: #fee2e2 !important; border-color: #dc2626 !important; color: #991b1b !important; }
+    #ag-person-modal { z-index: 10050; }
     #autogo-modal.is-open {
       display: flex !important;
       visibility: visible !important;
@@ -1847,7 +1850,7 @@ html, body {
 window.__autoGoRefs = {
   app, auth,
   db: getFirestore(app),
-  collection, doc, getDoc, getDocs, setDoc, updateDoc,
+  collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc,
   query, where, orderBy, limit, onSnapshot, serverTimestamp, increment, runTransaction,
   uploadAutoGoEvidence: httpsCallable(getFunctions(app, "asia-northeast1"), "uploadAutoGoEvidence"),
   registerAutoGoPurchase: httpsCallable(getFunctions(app, "asia-northeast1"), "registerAutoGoPurchase"),
@@ -1865,7 +1868,7 @@ window.__autoGoRefs = {
     const db = getFirestore(app);
     window.db = db;
     window.collection = collection;
-    window.getDocs = getDocs; window.query = query; window.where = where; window.orderBy = orderBy; window.limit = limit; window.getDoc = getDoc; window.doc = doc; window.setDoc = setDoc; window.updateDoc = updateDoc; window.addDoc = addDoc; window.serverTimestamp = serverTimestamp;
+    window.getDocs = getDocs; window.query = query; window.where = where; window.orderBy = orderBy; window.limit = limit; window.getDoc = getDoc; window.doc = doc; window.setDoc = setDoc; window.updateDoc = updateDoc; window.addDoc = addDoc; window.deleteDoc = deleteDoc; window.serverTimestamp = serverTimestamp;
     window.getDocs = getDocs;
     window.addDoc = addDoc;
     window.serverTimestamp = serverTimestamp;
@@ -1903,6 +1906,7 @@ getRedirectResult(auth)
     const ADMIN_UIDS = ["Ay6VCS8HTgM3RqjDYZ0wKdHrSKz1", "GvVhAmT56GZjsWrl1YRaStB81im1"];
     function isAdmin() { return currentUser && ADMIN_UIDS.includes(currentUser.uid); }
     window.__isAutoGoAdmin = isAdmin;
+    window.isAdmin = isAdmin;
 
     const MEMBERS = ["すべて", "ウォニ (Wonhee)", "ミンジュ (Minju)", "イロハ (Iroha)", "モカ (Moka)", "ユナ (Yuna)"];
     const KINDS = [
@@ -13369,6 +13373,14 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       <span id="ag-prob-text" class="hidden">20%</span>
       <div class="hidden"><div id="ag-progress-bar" style="width: 0%"></div></div>
     </div>
+    <div class="bg-white rounded-xl border border-pink-100 p-2.5 my-2">
+      <div class="flex items-end justify-between mb-1">
+        <div class="text-[11px] font-bold text-gray-700">人数に対する第1希望獲得確率</div>
+        <div class="text-[22px] leading-none font-black text-pink-600"><span id="ag-prob-big">0.0</span><span class="text-xs">%</span></div>
+      </div>
+      <svg id="ag-prob-svg" viewBox="0 0 320 128" class="w-full h-32" role="img" aria-label="参加人数と第1希望獲得確率"></svg>
+      <p class="text-[10px] text-gray-500 mt-1">横の線は参加人数、縦は第1希望が当たる確率の参考値です。紫の点線がいまの人数です。20人で82.5%、50人で88%になる計算で、獲得を保証するものではありません。</p>
+    </div>
     <div id="ag-participant-list" class="rounded-xl border border-gray-100 px-3 py-2"></div>
 
     <!-- 自分の参加ステータス＆自動URL配布エリア -->
@@ -13433,6 +13445,16 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
   </div>
 </div>
 
+<div id="ag-person-modal" class="fixed inset-0 hidden bg-black/55 items-end md:items-center justify-center p-0 md:p-4" style="display:none" onclick="if(event.target===this) window.closeAutoGoPerson()">
+  <div class="bg-white w-full max-w-md rounded-t-3xl md:rounded-3xl max-h-[88vh] overflow-y-auto shadow-2xl">
+    <div class="sticky top-0 bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between">
+      <h3 class="text-sm font-black text-gray-900">参加者の登録情報</h3>
+      <button type="button" onclick="window.closeAutoGoPerson()" class="w-8 h-8 rounded-full bg-gray-100 text-gray-600 font-bold">&times;</button>
+    </div>
+    <div id="ag-person-body" class="p-4 space-y-3 text-xs text-gray-800"></div>
+  </div>
+</div>
+
 <script>
 (function() {
   const PRESET_4 = ["ウォンヒ (Wonhee)", "ミンジュ (Minju)", "モカ (Moka)", "ユナ (Yuna)"];
@@ -13467,6 +13489,301 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
   function getAutoGoXId(profile) {
     return String(profile?.xId || profile?.twitter || profile?.xUsername || "").trim().replace(/^@/, "");
   }
+
+  function agTimeMs(value) {
+    if (!value) return 0;
+    if (typeof value === "number") return value;
+    if (typeof value.toMillis === "function") return value.toMillis();
+    if (value.seconds) return value.seconds * 1000;
+    if (typeof value === "string") {
+      const parsed = Date.parse(value);
+      if (!isNaN(parsed)) return parsed;
+    }
+    return 0;
+  }
+  function agFormatTime(value) {
+    const ms = agTimeMs(value);
+    if (!ms) return "未登録";
+    const date = new Date(ms);
+    const month = String(date.getMonth() + 1);
+    const day = String(date.getDate());
+    const hour = String(date.getHours()).padStart(2, "0");
+    const minute = String(date.getMinutes()).padStart(2, "0");
+    return month + "/" + day + " " + hour + ":" + minute;
+  }
+  function agFirstChoicePercent(count, memberCount) {
+    const members = Math.max(1, Number(memberCount) || 1);
+    const baseline = 100 / members;
+    const total = Math.max(0, Number(count) || 0);
+    let probability;
+    if (total <= 20) {
+      probability = baseline + (82.5 - baseline) * (total / 20);
+    } else if (total <= 50) {
+      probability = 82.5 + (88 - 82.5) * ((total - 20) / 30);
+    } else {
+      probability = Math.min(99, 88 + (12 * (total - 50) / 65));
+    }
+    return Math.round(probability * 10) / 10;
+  }
+  function drawFirstChoiceChart(total, memberCount, targetCount) {
+    const svg = document.getElementById("ag-prob-svg");
+    const big = document.getElementById("ag-prob-big");
+    const nowPercent = agFirstChoicePercent(total, memberCount);
+    if (big) big.textContent = nowPercent.toFixed(1);
+    if (!svg) return;
+    const width = 320;
+    const height = 128;
+    const left = 36;
+    const right = 8;
+    const top = 14;
+    const bottom = 22;
+    const innerW = width - left - right;
+    const innerH = height - top - bottom;
+    const maxCount = Math.max(50, Number(total) || 0, Number(targetCount) || 0);
+    const steps = 40;
+    let points = "";
+    for (let i = 0; i <= steps; i++) {
+      const count = (maxCount * i) / steps;
+      const percent = agFirstChoicePercent(count, memberCount);
+      const x = left + (count / maxCount) * innerW;
+      const y = top + (1 - percent / 100) * innerH;
+      if (i === 0) points = x.toFixed(1) + "," + y.toFixed(1);
+      else points = points + " " + x.toFixed(1) + "," + y.toFixed(1);
+    }
+    const clamped = Math.max(0, Math.min(Number(total) || 0, maxCount));
+    const nowX = left + (clamped / maxCount) * innerW;
+    const nowY = top + (1 - nowPercent / 100) * innerH;
+    const y20 = top + (1 - agFirstChoicePercent(20, memberCount) / 100) * innerH;
+    const labelX = Math.min(nowX + 6, width - 52);
+    const labelY = Math.max(16, nowY - 8);
+    svg.innerHTML = '<line x1="' + left + '" y1="' + top + '" x2="' + left + '" y2="' + (height - bottom) + '" stroke="#e5e7eb" stroke-width="1"></line>'
+      + '<line x1="' + left + '" y1="' + (height - bottom) + '" x2="' + (width - right) + '" y2="' + (height - bottom) + '" stroke="#e5e7eb" stroke-width="1"></line>'
+      + '<text x="2" y="' + (y20 + 3) + '" font-size="9" fill="#9ca3af">20人</text>'
+      + '<polyline fill="none" stroke="#db2777" stroke-width="2.5" points="' + points + '"></polyline>'
+      + '<line x1="' + nowX.toFixed(1) + '" y1="' + top + '" x2="' + nowX.toFixed(1) + '" y2="' + (height - bottom) + '" stroke="#7c3aed" stroke-dasharray="3 3" stroke-width="1"></line>'
+      + '<circle cx="' + nowX.toFixed(1) + '" cy="' + nowY.toFixed(1) + '" r="4.5" fill="#db2777" stroke="#ffffff" stroke-width="1.5"></circle>'
+      + '<text x="' + left + '" y="' + (height - 6) + '" font-size="9" fill="#6b7280">0人</text>'
+      + '<text x="' + (width - right - 28) + '" y="' + (height - 6) + '" font-size="9" fill="#6b7280">' + Math.round(maxCount) + '人</text>'
+      + '<text x="' + labelX.toFixed(1) + '" y="' + labelY.toFixed(1) + '" font-size="11" font-weight="700" fill="#be185d">' + nowPercent.toFixed(1) + '%</text>';
+  }
+  function agPurchaseDeadline(entry) {
+    return agTimeMs(entry && entry.purchaseDeadlineAt);
+  }
+  function agShipDeadline(entry) {
+    const own = agTimeMs(entry && (entry.shipDeadlineAt || entry.shippingDeadlineAt));
+    if (own) return own;
+    const matched = agTimeMs(entry && entry.matchedAt);
+    if (matched) return matched + 72 * 60 * 60 * 1000;
+    return 0;
+  }
+  function agPurchaseLate(entry) {
+    if (!entry || entry.status !== "confirmed") return false;
+    const deadline = agPurchaseDeadline(entry);
+    if (!deadline) return false;
+    return Date.now() > deadline;
+  }
+  function agShipLate(entry) {
+    if (!entry) return false;
+    if (entry.status === "unshipped_penalty") return true;
+    if (entry.shippedAt || entry.shippedDone) return false;
+    if (entry.status !== "matched" || entry.noMatchResult || !entry.shipToAddress) return false;
+    const deadline = agShipDeadline(entry);
+    if (!deadline) return false;
+    return Date.now() > deadline;
+  }
+  function agPushImage(list, value) {
+    if (typeof value === "string" && (value.indexOf("data:image") === 0 || value.indexOf("https://") === 0 || value.indexOf("http://") === 0)) {
+      list.push(value);
+    }
+  }
+  function agImageList(entry) {
+    const purchase = [];
+    const shipping = [];
+    if (!entry) return { purchase: purchase, shipping: shipping };
+    agPushImage(purchase, entry.purchaseProofUrl);
+    agPushImage(purchase, entry.purchasePhoto);
+    agPushImage(purchase, entry.purchaseImage);
+    agPushImage(shipping, entry.shippingProofUrl);
+    agPushImage(shipping, entry.shipPhoto);
+    agPushImage(shipping, entry.shippingPhoto);
+    return { purchase: purchase, shipping: shipping };
+  }
+  function agRenderImages(title, urls) {
+    if (!urls || !urls.length) {
+      return '<div class="rounded-xl border border-gray-200 p-2"><div class="font-bold mb-1">' + escapeAutoGoHtml(title) + '</div><p class="text-gray-500">写真はまだ登録されていません。</p></div>';
+    }
+    let html = '<div class="rounded-xl border border-gray-200 p-2"><div class="font-bold mb-1">' + escapeAutoGoHtml(title) + '</div><div class="grid grid-cols-2 gap-2">';
+    for (let i = 0; i < urls.length; i++) {
+      html += '<img src="' + urls[i] + '" alt="" class="w-full rounded-lg border border-gray-100 bg-gray-50">';
+    }
+    html += "</div></div>";
+    return html;
+  }
+  function agPersonButton(poolId, entry, profile, pool) {
+    const latePurchase = agPurchaseLate(entry);
+    const lateShip = agShipLate(entry);
+    const late = latePurchase || lateShip;
+    const name = (profile && profile.nickname) || entry.userName || entry.displayName || "参加者";
+    const photo = profile && profile.photo ? profile.photo : "";
+    let face = '<div class="w-10 h-10 rounded-full bg-purple-100 text-purple-800 flex items-center justify-center font-black">' + escapeAutoGoHtml(String(name).slice(0, 1)) + "</div>";
+    if (typeof photo === "string" && photo.indexOf("data:image") === 0) {
+      face = '<img src="' + photo + '" alt="" class="w-10 h-10 rounded-full object-cover border border-white">';
+    }
+    let lateLabel = "";
+    if (latePurchase && lateShip) lateLabel = "購入・発送期限超過";
+    else if (latePurchase) lateLabel = "購入期限超過";
+    else if (lateShip) lateLabel = "発送期限超過";
+    const cls = late ? "ag-person-late border-2" : "bg-white border border-gray-200 text-gray-900";
+    return '<button type="button" data-ag-act="person" data-pool-id="' + escapeAutoGoHtml(poolId) + '" data-uid="' + escapeAutoGoHtml(entry.uid) + '" onclick="window.openAutoGoPerson(this.getAttribute(\'data-pool-id\'), this.getAttribute(\'data-uid\'))" class="' + cls + ' rounded-2xl px-2 py-2 min-h-[44px] w-[108px] shrink-0 text-left" style="position:relative;z-index:6;touch-action:manipulation;">'
+      + face
+      + '<div class="text-[11px] font-black truncate mt-1">' + escapeAutoGoHtml(name) + "</div>"
+      + '<div class="text-[9px] truncate">希望 ' + escapeAutoGoHtml(entry.wantedMember || "-") + "</div>"
+      + (lateLabel ? '<div class="text-[9px] font-black leading-tight">' + lateLabel + "</div>" : '<div class="text-[9px] text-gray-500 truncate">' + escapeAutoGoHtml(entry.status || "参加中") + "</div>")
+      + "</button>";
+  }
+  function agOrderCycle(list) {
+    if (!list.length) return [];
+    const byId = {};
+    for (let i = 0; i < list.length; i++) byId[list[i].uid] = list[i];
+    const ordered = [list[0]];
+    const seen = {};
+    seen[list[0].uid] = true;
+    let cursor = list[0];
+    for (let step = 0; step < list.length + 1; step++) {
+      const nextId = cursor.sendToUid;
+      if (!nextId || !byId[nextId] || seen[nextId]) break;
+      ordered.push(byId[nextId]);
+      seen[nextId] = true;
+      cursor = byId[nextId];
+    }
+    for (let i = 0; i < list.length; i++) {
+      if (!seen[list[i].uid]) ordered.push(list[i]);
+    }
+    return ordered;
+  }
+  function agMatchDiagram(pool) {
+    const entries = pool.entries || [];
+    const users = pool.userDocs || {};
+    if (!entries.length) {
+      return '<div class="text-[11px] text-gray-500 bg-gray-50 rounded-xl p-2">まだ参加者はいません。</div>';
+    }
+    const rooms = {};
+    const loose = [];
+    for (let i = 0; i < entries.length; i++) {
+      const entry = entries[i];
+      if (entry.matchRoomId && entry.sendToUid) {
+        if (!rooms[entry.matchRoomId]) rooms[entry.matchRoomId] = [];
+        rooms[entry.matchRoomId].push(entry);
+      } else {
+        loose.push(entry);
+      }
+    }
+    let html = '<div class="space-y-2"><div class="text-[11px] font-black text-gray-800">マッチング図（矢印は発送する方向）</div>';
+    html += '<p class="text-[10px] text-gray-500">赤い人は購入登録期限または発送期限（マッチングから72時間）を過ぎています。名前か写真をタップすると、購入・発送の写真と住所が開きます。</p>';
+    const roomIds = Object.keys(rooms);
+    if (!roomIds.length) {
+      html += '<p class="text-[10px] text-gray-500">まだ発送先が決まったペアはありません。</p>';
+    }
+    for (let r = 0; r < roomIds.length; r++) {
+      const ordered = agOrderCycle(rooms[roomIds[r]]);
+      html += '<div class="overflow-x-auto pb-1"><div class="flex items-center gap-1 min-w-max">';
+      for (let i = 0; i < ordered.length; i++) {
+        const entry = ordered[i];
+        const profile = (users[entry.uid] && users[entry.uid].profile) || {};
+        html += agPersonButton(pool.id, entry, profile, pool);
+        if (i < ordered.length - 1) {
+          const linked = entry.sendToUid === ordered[i + 1].uid;
+          const color = (agPurchaseLate(entry) || agShipLate(entry)) ? "#dc2626" : "#7c3aed";
+          html += '<div class="text-center shrink-0" style="color:' + color + '"><div class="text-lg font-black leading-none">' + (linked ? "→" : "·") + '</div><div class="text-[8px] font-bold">発送</div></div>';
+        }
+      }
+      if (ordered.length > 1 && ordered[ordered.length - 1].sendToUid === ordered[0].uid) {
+        html += '<div class="text-[10px] font-black text-purple-700 px-1">↩ 先頭へ</div>';
+      }
+      html += "</div></div>";
+    }
+    if (loose.length) {
+      html += '<div class="text-[10px] font-bold text-gray-500">未マッチング / 発送先未確定</div><div class="flex gap-2 overflow-x-auto pb-1">';
+      for (let i = 0; i < loose.length; i++) {
+        const entry = loose[i];
+        const profile = (users[entry.uid] && users[entry.uid].profile) || {};
+        html += agPersonButton(pool.id, entry, profile, pool);
+      }
+      html += "</div>";
+    }
+    html += "</div>";
+    return html;
+  }
+  window.openAutoGoPerson = function(poolId, uid) {
+    const modal = document.getElementById("ag-person-modal");
+    const body = document.getElementById("ag-person-body");
+    if (!modal || !body) return;
+    const cache = window.__agAdminCache && window.__agAdminCache[poolId];
+    if (!cache) {
+      body.innerHTML = "<p>参加者情報を読み込めませんでした。Auto-GOパネルを開き直してください。</p>";
+      modal.classList.remove("hidden");
+      modal.style.display = "flex";
+      return;
+    }
+    let entry = null;
+    for (let i = 0; i < cache.entries.length; i++) {
+      if (cache.entries[i].uid === uid) entry = cache.entries[i];
+    }
+    if (!entry) {
+      body.innerHTML = "<p>この参加者の記録が見つかりません。</p>";
+      modal.classList.remove("hidden");
+      modal.style.display = "flex";
+      return;
+    }
+    const user = cache.users[uid] || {};
+    const profile = user.profile || {};
+    const name = profile.nickname || entry.userName || entry.displayName || "参加者";
+    const photo = profile.photo || "";
+    let face = '<div class="w-14 h-14 rounded-full bg-purple-100 text-purple-800 flex items-center justify-center text-xl font-black">' + escapeAutoGoHtml(String(name).slice(0, 1)) + "</div>";
+    if (typeof photo === "string" && photo.indexOf("data:image") === 0) {
+      face = '<img src="' + photo + '" alt="" class="w-14 h-14 rounded-full object-cover border">';
+    }
+    const addressLines = [];
+    if (profile.name) addressLines.push("氏名: " + profile.name);
+    if (profile.zip) addressLines.push("郵便番号: 〒" + profile.zip);
+    if (profile.address1) addressLines.push("住所: " + profile.address1);
+    if (profile.address2) addressLines.push(profile.address2);
+    if (profile.phone) addressLines.push("電話: " + profile.phone);
+    const addressHtml = addressLines.length
+      ? addressLines.map(function(line) { return "<div>" + escapeAutoGoHtml(line) + "</div>"; }).join("")
+      : "<p class=\"text-gray-500\">住所はまだ登録されていません。</p>";
+    const shipLines = [];
+    if (entry.shipToName) shipLines.push("宛名: " + entry.shipToName);
+    if (entry.shipToZip) shipLines.push("郵便番号: 〒" + entry.shipToZip);
+    if (entry.shipToAddress) shipLines.push("住所: " + entry.shipToAddress);
+    if (entry.sendToName) shipLines.push("送り先の表示名: " + entry.sendToName);
+    const shipHtml = shipLines.length
+      ? shipLines.map(function(line) { return "<div>" + escapeAutoGoHtml(line) + "</div>"; }).join("")
+      : "<p class=\"text-gray-500\">発送先はまだ決まっていません。</p>";
+    const images = agImageList(entry);
+    const latePurchase = agPurchaseLate(entry);
+    const lateShip = agShipLate(entry);
+    let warn = "";
+    if (latePurchase) warn += '<div class="rounded-xl bg-red-50 border border-red-300 text-red-700 font-bold p-2">購入登録期限を過ぎています（期限 ' + escapeAutoGoHtml(agFormatTime(agPurchaseDeadline(entry))) + "）</div>";
+    if (lateShip) warn += '<div class="rounded-xl bg-red-50 border border-red-300 text-red-700 font-bold p-2">発送期限を過ぎています（期限 ' + escapeAutoGoHtml(agFormatTime(agShipDeadline(entry))) + "）</div>";
+    body.innerHTML = '<div class="flex items-center gap-3">' + face + '<div><div class="text-sm font-black">' + escapeAutoGoHtml(name) + "</div><div class=\"text-[11px] text-gray-500\">" + escapeAutoGoHtml(entry.status || "") + "</div></div></div>"
+      + warn
+      + '<div class="rounded-xl border border-gray-200 p-2 space-y-1"><div class="font-bold">希望と開封</div><div>第1希望: ' + escapeAutoGoHtml(entry.wantedMember || "未登録") + "</div><div>引いたメンバー: " + escapeAutoGoHtml(entry.pulledMember || entry.openedCard || "未登録") + "</div><div>発送相手: " + escapeAutoGoHtml(entry.sendToName || "未確定") + "</div><div>受取相手: " + escapeAutoGoHtml(entry.receiveFromName || "未確定") + "</div></div>"
+      + '<div class="rounded-xl border border-gray-200 p-2 space-y-1"><div class="font-bold">購入登録</div><div>注文メモ: ' + escapeAutoGoHtml(entry.orderNote || "未登録") + "</div><div>購入報告: " + escapeAutoGoHtml(agFormatTime(entry.purchasedAt)) + "</div><div>購入期限: " + escapeAutoGoHtml(agFormatTime(agPurchaseDeadline(entry))) + "</div></div>"
+      + agRenderImages("購入登録の写真", images.purchase)
+      + '<div class="rounded-xl border border-gray-200 p-2 space-y-1"><div class="font-bold">発送登録</div><div>追跡番号: ' + escapeAutoGoHtml(entry.trackingNumber || "未登録") + "</div><div>発送報告: " + (entry.shippedDone || entry.shippedAt ? "済み " + escapeAutoGoHtml(agFormatTime(entry.shippedAt)) : "まだ") + "</div><div>発送期限: " + escapeAutoGoHtml(agFormatTime(agShipDeadline(entry))) + "</div></div>"
+      + agRenderImages("発送の写真", images.shipping)
+      + '<div class="rounded-xl border border-gray-200 p-2 space-y-1"><div class="font-bold">この人の住所</div>' + addressHtml + "</div>"
+      + '<div class="rounded-xl border border-gray-200 p-2 space-y-1"><div class="font-bold">この人が送る宛先</div>' + shipHtml + "</div>";
+    modal.classList.remove("hidden");
+    modal.style.display = "flex";
+  };
+  window.closeAutoGoPerson = function() {
+    const modal = document.getElementById("ag-person-modal");
+    if (!modal) return;
+    modal.classList.add("hidden");
+    modal.style.display = "none";
+  };
 
   window.toggleAutoGoAdminForm = function() {
     const form = document.getElementById("ag-admin-form");
@@ -13706,6 +14023,21 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
         console.warn("Auto-GO participant list read warn:", pool.id, error);
         pool.entries = [];
       }
+      pool.userDocs = {};
+      const pending = pool.entries.slice(0, 80);
+      for (let start = 0; start < pending.length; start += 10) {
+        const slice = pending.slice(start, start + 10);
+        await Promise.all(slice.map(async function(entry) {
+          try {
+            const userSnap = await getDoc(doc(db, "users", entry.uid));
+            pool.userDocs[entry.uid] = userSnap.exists() ? userSnap.data() : {};
+          } catch (error) {
+            pool.userDocs[entry.uid] = {};
+          }
+        }));
+      }
+      if (!window.__agAdminCache) window.__agAdminCache = {};
+      window.__agAdminCache[pool.id] = { entries: pool.entries, users: pool.userDocs, pool: pool };
     }));
 
     const poolRows = pools.length === 0
@@ -13718,10 +14050,10 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
           const participants = (p.entries || []).map(entry => {
             const xId = getAutoGoXId(entry);
             const canRemove = !["unshipped_penalty", "cancelled"].includes(entry.status);
-            return `<div class="flex items-center justify-between gap-2 text-[10px] border-t border-gray-100 py-1">
-              <span class="truncate">${escapeAutoGoHtml(entry.userName || "参加者")} · ${escapeAutoGoHtml(entry.wantedMember || "")} · ${escapeAutoGoHtml(entry.status || "")}
+            const late = agPurchaseLate(entry) || agShipLate(entry);
+            return `<div class="flex items-center justify-between gap-2 text-[10px] border-t border-gray-100 py-1 ${late ? "ag-person-late rounded-lg px-1" : ""}">
+              <button type="button" data-ag-act="person" data-pool-id="${escapeAutoGoHtml(p.id)}" data-uid="${escapeAutoGoHtml(entry.uid)}" onclick="window.openAutoGoPerson(this.getAttribute('data-pool-id'), this.getAttribute('data-uid'))" class="truncate text-left font-bold ${late ? "text-red-700" : "text-gray-800"}" style="position:relative;z-index:6;touch-action:manipulation;">${escapeAutoGoHtml(entry.userName || "参加者")} · ${escapeAutoGoHtml(entry.wantedMember || "")} · ${escapeAutoGoHtml(entry.status || "")}${late ? " · 期限超過" : ""}</button>
                 ${xId ? `<a href="https://x.com/${encodeURIComponent(xId)}" target="_blank" rel="noopener" class="ml-1 text-blue-600 underline">@${escapeAutoGoHtml(xId)}</a>` : ""}
-              </span>
               ${canRemove ? `<button type="button" data-pool="${escapeAutoGoHtml(p.id)}" data-uid="${escapeAutoGoHtml(entry.uid)}" onclick="window.adminRemoveAutoGoEntry(this.dataset.pool,this.dataset.uid)" class="shrink-0 text-red-600 underline">除外</button>` : ""}
             </div>`;
           }).join("");
@@ -13738,10 +14070,15 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
                     <p class="text-sm font-black text-gray-900 truncate mt-0.5">${p.title || "無題プール"}</p>
                   </div>
                 </div>
-                ${p.status === "active" ? `<span class="shrink-0 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-xl border border-emerald-200">✅ 成立済</span>` : `<span class="shrink-0 text-[11px] font-bold text-amber-700 bg-amber-50 px-2.5 py-1.5 rounded-xl border border-amber-200">${p.status === "cancelled" ? "募集終了" : "自動成立待ち"}</span>`} <button type="button" onclick="window.deleteAdminAutoGoPool('${p.id}')" class="shrink-0 text-[11px] font-bold text-red-500 bg-red-50 hover:bg-red-100 px-2.5 py-1.5 rounded-xl border border-red-200">削除</button>
+                ${p.status === "active" ? `<span class="shrink-0 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-xl border border-emerald-200">✅ 成立済</span>` : `<span class="shrink-0 text-[11px] font-bold text-amber-700 bg-amber-50 px-2.5 py-1.5 rounded-xl border border-amber-200">${p.status === "cancelled" || p.recruitmentClosedAt ? "募集終了" : "自動成立待ち"}</span>`}
+              </div>
+              <div class="flex flex-wrap gap-2">
+                ${(p.status === "cancelled" || p.recruitmentClosedAt) ? `<button type="button" disabled class="text-[11px] font-bold text-gray-500 bg-gray-100 px-3 py-2 rounded-xl border border-gray-200 min-h-[40px]">募集終了済み</button>` : `<button type="button" data-ag-act="close" data-pool-id="${escapeAutoGoHtml(p.id)}" onclick="window.closeAdminAutoGoRecruit(this.getAttribute('data-pool-id'))" class="text-[11px] font-bold text-amber-900 bg-amber-100 px-3 py-2 rounded-xl border border-amber-300 min-h-[40px]" style="position:relative;z-index:6;touch-action:manipulation;">募集終了</button>`}
+                <button type="button" data-ag-act="delete" data-pool-id="${escapeAutoGoHtml(p.id)}" onclick="window.deleteAdminAutoGoPool(this.getAttribute('data-pool-id'))" class="text-[11px] font-bold text-white bg-red-500 px-3 py-2 rounded-xl min-h-[40px]" style="position:relative;z-index:6;touch-action:manipulation;">削除</button>
               </div>
               <p class="text-[11px] text-gray-600 line-clamp-2">${p.description || ""}</p>
               <div class="text-[10px] font-bold text-purple-700 bg-purple-50/80 px-2.5 py-1.5 rounded-xl">${breakdown}</div>
+              ${agMatchDiagram(p)}
               <div class="rounded-xl border border-gray-100 px-2.5 py-1.5">
                 <p class="text-[10px] font-bold text-gray-600">参加者 ${p.entries?.length || 0}人</p>
                 ${participants || '<p class="text-[10px] text-gray-400 py-1">参加者はいません</p>'}
@@ -13813,14 +14150,68 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
   };
 
   window.deleteAdminAutoGoPool = async function(poolId) {
-    if (!isAdmin()) return;
-    if (!confirm("この Auto-GO プールを削除しますか？")) return;
+    if (typeof window.__isAutoGoAdmin !== "function" || window.__isAutoGoAdmin() !== true) {
+      if (typeof showToast === "function") showToast("管理者だけが削除できます", "error");
+      return;
+    }
+    let agreed = false;
+    if (typeof window.appConfirm === "function") {
+      agreed = await window.appConfirm("この Auto-GO プールを削除しますか？参加データも消えます。", "削除する", true);
+    } else {
+      agreed = window.confirm("この Auto-GO プールを削除しますか？参加データも消えます。");
+    }
+    if (!agreed) return;
+    const refs = window.__autoGoRefs || {};
+    const deleteFn = refs.deleteDoc || window.deleteDoc;
+    const docFn = refs.doc || window.doc;
+    const getDocsFn = refs.getDocs || window.getDocs;
+    const collectionFn = refs.collection || window.collection;
+    const database = refs.db || window.db;
+    if (typeof deleteFn !== "function" || typeof docFn !== "function" || typeof getDocsFn !== "function" || typeof collectionFn !== "function" || !database) {
+      if (typeof showToast === "function") showToast("削除機能の準備中です。数秒後にもう一度押してください", "error");
+      return;
+    }
     try {
-      await deleteDoc(doc(db, "auto_go_pools", poolId));
-      showToast("プールを削除しました", "info");
+      const entrySnap = await getDocsFn(collectionFn(database, "auto_go_pools", poolId, "entries"));
+      for (let i = 0; i < entrySnap.docs.length; i++) {
+        await deleteFn(entrySnap.docs[i].ref);
+      }
+      await deleteFn(docFn(database, "auto_go_pools", poolId));
+      if (typeof showToast === "function") showToast("プールを削除しました", "info");
       await window.renderAdminAutoGoPanel();
-    } catch (e) {
-      showToast("削除エラー: " + (e?.code || e?.message), "error");
+    } catch (error) {
+      console.error(error);
+      const message = error && error.message ? error.message : "失敗しました";
+      if (typeof showToast === "function") showToast("削除エラー: " + message, "error");
+    }
+  };
+  window.closeAdminAutoGoRecruit = async function(poolId) {
+    if (typeof window.__isAutoGoAdmin !== "function" || window.__isAutoGoAdmin() !== true) {
+      if (typeof showToast === "function") showToast("管理者だけが募集を終了できます", "error");
+      return;
+    }
+    let agreed = false;
+    if (typeof window.appConfirm === "function") {
+      agreed = await window.appConfirm("このプールの新規募集を終了しますか？今いる参加者の購入・発送情報は残します。", "募集を終了する", true);
+    } else {
+      agreed = window.confirm("このプールの新規募集を終了しますか？今いる参加者の購入・発送情報は残します。");
+    }
+    if (!agreed) return;
+    const refs = window.__autoGoRefs || {};
+    if (!refs.db || typeof refs.doc !== "function" || typeof refs.updateDoc !== "function") {
+      if (typeof showToast === "function") showToast("募集終了の準備中です。数秒後にもう一度押してください", "error");
+      return;
+    }
+    try {
+      await refs.updateDoc(refs.doc(refs.db, "auto_go_pools", poolId), {
+        recruitmentClosedAt: refs.serverTimestamp ? refs.serverTimestamp() : new Date()
+      });
+      if (typeof showToast === "function") showToast("新規の募集を終了しました", "success");
+      await window.renderAdminAutoGoPanel();
+    } catch (error) {
+      console.error(error);
+      const message = error && error.message ? error.message : "失敗しました";
+      if (typeof showToast === "function") showToast("募集終了に失敗しました: " + message, "error");
     }
   };
   window.__selectAutoGoPool = function(poolId) {
@@ -13974,13 +14365,8 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     const recruitmentClosed = currentPoolData.status === "cancelled" || !!currentPoolData.recruitmentClosedAt ||
       (recruitEndMs > 0 && Date.now() >= recruitEndMs);
     const memberCnt = Math.max(1, getActiveMembers().length);
-    const baselineProbability = 100 / memberCnt;
-    const probability = total <= 20
-      ? baselineProbability + (82.5 - baselineProbability) * (total / 20)
-      : total <= 50
-        ? 82.5 + (88 - 82.5) * ((total - 20) / 30)
-        : Math.min(99, 88 + (12 * (total - 50) / 65));
-    const prob = `${probability.toFixed(1)}%（参考値）`;
+    const probability = agFirstChoicePercent(total, memberCnt);
+    const prob = probability.toFixed(1) + "%（参考値）";
 
   const rawTitle = (currentPoolData.title || "Auto-GO").replace(/全体プール/g, "").trim();
   document.getElementById("ag-pool-title").textContent = rawTitle || "Auto-GO";
@@ -13999,6 +14385,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     document.getElementById("ag-progress-bar").style.width = pct + "%";
     document.getElementById("ag-prob-text").textContent = prob;
     document.getElementById("ag-prob-text").title = "20人で82.5%、50人で88%となるよう補間した参考値です。獲得を保証するものではありません。";
+    drawFirstChoiceChart(total, memberCnt, targetP);
     renderAutoGoParticipants();
 
     const badge = document.getElementById("ag-status-badge");
@@ -14474,6 +14861,7 @@ ${currentPoolData.title}
       setTimeout(() => window.openAutoGoModal(), 600);
     }
   });
+  drawFirstChoiceChart(0, 5, 20);
 })();
 </script>
 
