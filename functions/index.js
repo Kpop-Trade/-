@@ -4,12 +4,18 @@ const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const admin = require("firebase-admin");
 const { randomUUID, createHash } = require("crypto");
-admin.initializeApp();
+// Admin SDK の Storage は GCS 実バケット名（通常 *.appspot.com）を使う
+admin.initializeApp({
+  storageBucket: "illit-7ecd4.appspot.com"
+});
 setGlobalOptions({ region: "asia-northeast1", maxInstances: 10 });
 
 const db = admin.firestore();
 const FV = admin.firestore.FieldValue;
-const STORAGE_BUCKET = "illit-7ecd4.firebasestorage.app";
+const STORAGE_BUCKET_CANDIDATES = [
+  "illit-7ecd4.appspot.com",
+  "illit-7ecd4.firebasestorage.app"
+];
 
 // ★ 要変更：実際のサイトURL（https・末尾 / まで）
 const SITE = "https://kpop-trade.jp/";
@@ -603,26 +609,67 @@ exports.uploadAutoGoEvidence = onCall({
   const extension = imageType === "jpeg" ? "jpg" : imageType;
   const path = `auto-go/${poolId}/${uid}/${kind}-${Date.now()}.${extension}`;
   const token = randomUUID();
-  const defaultBucket = admin.app().options.storageBucket || STORAGE_BUCKET;
-  const bucket = admin.storage().bucket(defaultBucket || STORAGE_BUCKET);
-  try {
+
+  async function saveToStorageBucket(bucketName) {
+    const bucket = admin.storage().bucket(bucketName);
     await bucket.file(path).save(buffer, {
       resumable: false,
+      validation: false,
       metadata: {
         contentType: `image/${imageType}`,
+        cacheControl: "private, max-age=0",
         metadata: { firebaseStorageDownloadTokens: token }
       }
     });
-  } catch (storageError) {
-    console.error("uploadAutoGoEvidence storage save failed:", storageError);
-    throw new HttpsError(
-      "internal",
-      "failed to save purchase image: " + (storageError && storageError.message ? storageError.message : "storage error")
-    );
+    return bucket;
   }
-  const url = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(path)}?alt=media&token=${token}`;
+
+  let bucket = null;
+  let lastStorageError = null;
+  for (const bucketName of STORAGE_BUCKET_CANDIDATES) {
+    try {
+      bucket = await saveToStorageBucket(bucketName);
+      lastStorageError = null;
+      break;
+    } catch (storageError) {
+      lastStorageError = storageError;
+      console.error("uploadAutoGoEvidence storage save failed:", bucketName, storageError && storageError.message ? storageError.message : storageError);
+    }
+  }
+
+  let url = "";
+  if (bucket) {
+    url = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(path)}?alt=media&token=${token}`;
+  } else {
+    // Storage 権限/バケット不調時のフォールバック: Firestore に縮小JPEGを保存
+    const MAX_INLINE = 700 * 1024; // Firestore 1MiB制限に余裕を残す
+    if (buffer.length > MAX_INLINE) {
+      throw new HttpsError(
+        "resource-exhausted",
+        "failed to save purchase image (storage unavailable, image too large for fallback). please retry with a smaller screenshot"
+      );
+    }
+    const inlineUrl = `data:image/${imageType};base64,${buffer.toString("base64")}`;
+    url = inlineUrl;
+    console.warn("uploadAutoGoEvidence falling back to Firestore inline image", {
+      kind,
+      bytes: buffer.length,
+      storageError: lastStorageError && lastStorageError.message ? lastStorageError.message : String(lastStorageError || "")
+    });
+  }
+
   if (kind === "purchase") {
-    await entryRef.update({ purchaseProofUrl: url });
+    const patch = {
+      purchaseProofUrl: url,
+      purchaseProofSavedAt: FV.serverTimestamp()
+    };
+    if (url.startsWith("data:")) {
+      patch.purchaseProofStorage = "firestore";
+    } else {
+      patch.purchaseProofStorage = "gcs";
+      patch.purchaseProofPath = path;
+    }
+    await entryRef.update(patch);
   } else {
     const hash = createHash("sha256").update(buffer).digest("hex");
     const hashRef = db.collection("auto_go_shipping_hashes").doc(hash);
@@ -644,21 +691,29 @@ exports.uploadAutoGoEvidence = onCall({
           uid,
           kind: "shipping",
           sha256: hash,
-          storagePath: path,
+          storagePath: url.startsWith("data:") ? "inline" : path,
           createdAt: FV.serverTimestamp()
         });
-        tx.update(entryRef, { shippingProofUrl: url, shippingProofHash: hash });
+        const shipPatch = {
+          shippingProofUrl: url,
+          shippingProofHash: hash,
+          shippingProofSavedAt: FV.serverTimestamp(),
+          shippingProofStorage: url.startsWith("data:") ? "firestore" : "gcs"
+        };
+        tx.update(entryRef, shipPatch);
       });
     } catch (error) {
-      try {
-        await bucket.file(path).delete({ ignoreNotFound: true });
-      } catch (cleanupError) {
-        console.error("Duplicate shipping evidence cleanup failed:", cleanupError);
+      if (bucket) {
+        try {
+          await bucket.file(path).delete({ ignoreNotFound: true });
+        } catch (cleanupError) {
+          console.error("Duplicate shipping evidence cleanup failed:", cleanupError);
+        }
       }
       throw error;
     }
   }
-  return { url };
+  return { url: url.startsWith("data:") ? "inline" : url, storage: url.startsWith("data:") ? "firestore" : "gcs" };
 });
 
 exports.registerAutoGoPurchase = onCall(async (request) => {
