@@ -7572,10 +7572,11 @@ if(field==="received"){window.__localReceivedTrades=window.__localReceivedTrades
     });
 
         // ==========================================
-    // 🔍 トレカ画像認識（v3: pHash + パッチ相関 + 顔領域・厳格ゲート）
+    // 🔍 トレカ画像認識（v4: 前処理強化 + dHash/pHash + エッジ + 局所色）
     // ==========================================
     const _cardFeatureCache = {};
-    const CARD_FEAT_VERSION = 3;
+    const CARD_FEAT_VERSION = 4;
+    const CARD_CANDIDATE_TOP_K = 3;
 
     function _cosineVec(a, b) {
       if (!a || !b || a.length !== b.length) return 0;
@@ -7634,7 +7635,6 @@ if(field==="received"){window.__localReceivedTrades=window.__localReceivedTrades
 
     /** 白フチを大まかに除去した有効矩形を推定 */
     function _detectContentRect(data, w, h) {
-      // 四隅の平均を背景色とみなす
       const corners = [[0, 0], [w - 1, 0], [0, h - 1], [w - 1, h - 1]];
       let br = 0, bg = 0, bb = 0;
       corners.forEach(([x, y]) => {
@@ -7663,7 +7663,6 @@ if(field==="received"){window.__localReceivedTrades=window.__localReceivedTrades
       if (!found || maxX - minX < w * 0.25 || maxY - minY < h * 0.25) {
         return { x: 0, y: 0, w, h };
       }
-      // 少し余白を残す
       const padX = Math.round((maxX - minX) * 0.02);
       const padY = Math.round((maxY - minY) * 0.02);
       minX = Math.max(0, minX - padX);
@@ -7671,6 +7670,54 @@ if(field==="received"){window.__localReceivedTrades=window.__localReceivedTrades
       maxX = Math.min(w - 1, maxX + padX);
       maxY = Math.min(h - 1, maxY + padY);
       return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
+    }
+
+    /** 照明・反射対策: コントラスト正規化（ヒストグラム均等化寄り）を ImageData に適用 */
+    function _normalizeLightingInPlace(data, w, h, rect) {
+      const x0 = Math.max(0, rect?.x | 0);
+      const y0 = Math.max(0, rect?.y | 0);
+      const x1 = Math.min(w, x0 + Math.max(1, rect?.w | w));
+      const y1 = Math.min(h, y0 + Math.max(1, rect?.h | h));
+      const hist = new Uint32Array(256);
+      const lumArr = [];
+      for (let y = y0; y < y1; y++) {
+        for (let x = x0; x < x1; x++) {
+          const i = (y * w + x) * 4;
+          const lum = Math.max(0, Math.min(255, Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2])));
+          hist[lum]++;
+          lumArr.push(lum);
+        }
+      }
+      const total = Math.max(1, lumArr.length);
+      // 端の1%を切り捨てて実効レンジを取る（反射ハイライト耐性）
+      const cut = Math.max(1, Math.floor(total * 0.01));
+      let acc = 0, lo = 0, hi = 255;
+      for (let i = 0; i < 256; i++) { acc += hist[i]; if (acc >= cut) { lo = i; break; } }
+      acc = 0;
+      for (let i = 255; i >= 0; i--) { acc += hist[i]; if (acc >= cut) { hi = i; break; } }
+      if (hi <= lo + 8) { lo = 0; hi = 255; }
+      const range = hi - lo || 1;
+      // CDF ベースの弱い均等化 + レンジ正規化を混合
+      const cdf = new Float32Array(256);
+      let running = 0;
+      for (let i = 0; i < 256; i++) {
+        running += hist[i];
+        cdf[i] = running / total;
+      }
+      for (let y = y0; y < y1; y++) {
+        for (let x = x0; x < x1; x++) {
+          const i = (y * w + x) * 4;
+          const r = data[i], g = data[i + 1], b = data[i + 2];
+          const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+          const stretched = ((lum - lo) / range) * 255;
+          const equalized = cdf[Math.max(0, Math.min(255, Math.round(lum)))] * 255;
+          const target = stretched * 0.65 + equalized * 0.35;
+          const scale = lum > 1e-3 ? target / lum : 1;
+          data[i] = Math.max(0, Math.min(255, r * scale));
+          data[i + 1] = Math.max(0, Math.min(255, g * scale));
+          data[i + 2] = Math.max(0, Math.min(255, b * scale));
+        }
+      }
     }
 
     function _sampleGrayRect(data, srcW, srcH, rect, outW, outH) {
@@ -7707,11 +7754,41 @@ if(field==="received"){window.__localReceivedTrades=window.__localReceivedTrades
       return vec;
     }
 
+    /** 局所色分布（セル内の平均RGB + 簡易ヒストグラム） */
+    function _sampleLocalColorHist(data, srcW, srcH, rect, gw, gh) {
+      const vec = [];
+      const bins = 4;
+      for (let by = 0; by < gh; by++) {
+        for (let bx = 0; bx < gw; bx++) {
+          const x0 = rect.x + Math.floor(bx * rect.w / gw);
+          const x1 = rect.x + Math.floor((bx + 1) * rect.w / gw);
+          const y0 = rect.y + Math.floor(by * rect.h / gh);
+          const y1 = rect.y + Math.floor((by + 1) * rect.h / gh);
+          let r = 0, g = 0, b = 0, c = 0;
+          const hr = new Float32Array(bins), hg = new Float32Array(bins), hb = new Float32Array(bins);
+          for (let y = y0; y < y1; y++) {
+            for (let x = x0; x < x1; x++) {
+              const i = (y * srcW + x) * 4;
+              const rv = data[i], gv = data[i + 1], bv = data[i + 2];
+              r += rv; g += gv; b += bv; c++;
+              hr[Math.min(bins - 1, rv >> 6)]++;
+              hg[Math.min(bins - 1, gv >> 6)]++;
+              hb[Math.min(bins - 1, bv >> 6)]++;
+            }
+          }
+          const inv = 1 / Math.max(1, c);
+          vec.push(r * inv / 255, g * inv / 255, b * inv / 255);
+          for (let k = 0; k < bins; k++) {
+            vec.push(hr[k] * inv, hg[k] * inv, hb[k] * inv);
+          }
+        }
+      }
+      return vec;
+    }
+
     function _makePHash(gray32) {
-      // gray32: 32x32
       const N = 32;
       const dct = _dct2d(gray32, N);
-      // 低周波 8x8（DC除外）
       const coeffs = [];
       for (let u = 0; u < 8; u++) {
         for (let v = 0; v < 8; v++) {
@@ -7726,12 +7803,46 @@ if(field==="received"){window.__localReceivedTrades=window.__localReceivedTrades
       return hash;
     }
 
+    /** 差分ハッシュ（水平方向）— 複数解像度対応 */
+    function _makeDHash(gray, gw, gh) {
+      // gray は (gw+1) * gh を想定し、各行で隣接比較
+      let hash = "";
+      for (let y = 0; y < gh; y++) {
+        for (let x = 0; x < gw; x++) {
+          hash += gray[y * (gw + 1) + x] < gray[y * (gw + 1) + x + 1] ? "1" : "0";
+        }
+      }
+      return hash;
+    }
+
+    /** Sobel風エッジ強度マップ（正規化） */
+    function _makeEdgeMap(gray, w, h) {
+      const out = new Float32Array(w * h);
+      let maxV = 1e-6;
+      for (let y = 1; y < h - 1; y++) {
+        for (let x = 1; x < w - 1; x++) {
+          const i = y * w + x;
+          const gx =
+            -gray[i - w - 1] - 2 * gray[i - 1] - gray[i + w - 1] +
+             gray[i - w + 1] + 2 * gray[i + 1] + gray[i + w + 1];
+          const gy =
+            -gray[i - w - 1] - 2 * gray[i - w] - gray[i - w + 1] +
+             gray[i + w - 1] + 2 * gray[i + w] + gray[i + w + 1];
+          const v = Math.sqrt(gx * gx + gy * gy);
+          out[i] = v;
+          if (v > maxV) maxV = v;
+        }
+      }
+      for (let i = 0; i < out.length; i++) out[i] /= maxV;
+      return out;
+    }
+
     function _featuresFromCanvasData(data, w, h) {
       const content = _detectContentRect(data, w, h);
+      // 照明・反射のバラつきを抑えてから特徴抽出
+      _normalizeLightingInPlace(data, w, h, content);
 
-      // 全体パッチ 32x32
       const patch = _sampleGrayRect(data, w, h, content, 32, 32);
-      // 顔寄り（上側中央）: 縦10–55%, 横15–85%
       const faceRect = {
         x: content.x + Math.round(content.w * 0.15),
         y: content.y + Math.round(content.h * 0.08),
@@ -7739,7 +7850,6 @@ if(field==="received"){window.__localReceivedTrades=window.__localReceivedTrades
         h: Math.round(content.h * 0.48)
       };
       const face = _sampleGrayRect(data, w, h, faceRect, 24, 24);
-      // 下半分（衣装・背景）も補助
       const lowerRect = {
         x: content.x + Math.round(content.w * 0.1),
         y: content.y + Math.round(content.h * 0.5),
@@ -7748,11 +7858,43 @@ if(field==="received"){window.__localReceivedTrades=window.__localReceivedTrades
       };
       const lower = _sampleGrayRect(data, w, h, lowerRect, 16, 16);
 
+      // マルチサイズ知覚ハッシュ
       const pHash = _makePHash(patch);
-      const colorGrid = _sampleRgbGrid(data, w, h, content, 6, 8); // 縦長トレカ向け
-      const faceColor = _sampleRgbGrid(data, w, h, faceRect, 4, 4);
+      const dHashSm = _makeDHash(_sampleGrayRect(data, w, h, content, 9, 8), 8, 8);
+      const dHashMd = _makeDHash(_sampleGrayRect(data, w, h, content, 17, 16), 16, 16);
+      // 3x3 グリッド dHash（局所構造）
+      const gridDHashes = [];
+      for (let gy = 0; gy < 3; gy++) {
+        for (let gx = 0; gx < 3; gx++) {
+          const cell = {
+            x: content.x + Math.floor(gx * content.w / 3),
+            y: content.y + Math.floor(gy * content.h / 3),
+            w: Math.floor(content.w / 3),
+            h: Math.floor(content.h / 3)
+          };
+          gridDHashes.push(_makeDHash(_sampleGrayRect(data, w, h, cell, 9, 8), 8, 8));
+        }
+      }
 
-      // 平均輝度でパッチを正規化（照明差）
+      const edgeFull = _makeEdgeMap(patch, 32, 32);
+      // エッジを 8x8 に畳み込み（速度とノイズ耐性）
+      const edgeGrid = new Float32Array(64);
+      for (let by = 0; by < 8; by++) {
+        for (let bx = 0; bx < 8; bx++) {
+          let s = 0, c = 0;
+          for (let y = by * 4; y < by * 4 + 4; y++) {
+            for (let x = bx * 4; x < bx * 4 + 4; x++) {
+              s += edgeFull[y * 32 + x]; c++;
+            }
+          }
+          edgeGrid[by * 8 + bx] = s / Math.max(1, c);
+        }
+      }
+
+      const colorGrid = _sampleRgbGrid(data, w, h, content, 6, 8);
+      const faceColor = _sampleRgbGrid(data, w, h, faceRect, 4, 4);
+      const localColor = _sampleLocalColorHist(data, w, h, content, 3, 4);
+
       const norm = (arr) => {
         let s = 0;
         for (let i = 0; i < arr.length; i++) s += arr[i];
@@ -7764,11 +7906,16 @@ if(field==="received"){window.__localReceivedTrades=window.__localReceivedTrades
 
       return {
         pHash,
+        dHashSm,
+        dHashMd,
+        gridDHashes,
+        edgeGrid: Array.from(edgeGrid),
         patch: Array.from(norm(patch)),
         face: Array.from(norm(face)),
         lower: Array.from(norm(lower)),
         colorGrid,
         faceColor,
+        localColor,
         version: CARD_FEAT_VERSION
       };
     }
@@ -7791,11 +7938,11 @@ if(field==="received"){window.__localReceivedTrades=window.__localReceivedTrades
           try { img.crossOrigin = "anonymous"; } catch (_) {}
         }
         const cleanup = () => { if (resolvedSrc.startsWith("blob:")) try { URL.revokeObjectURL(resolvedSrc); } catch (_) {} };
-    const timer = setTimeout(() => { cleanup(); resolve(null); }, 15000);
+        const timer = setTimeout(() => { cleanup(); resolve(null); }, 15000);
         img.onload = () => {
           clearTimeout(timer);
           try {
-            const maxSide = 240;
+            const maxSide = 280;
             const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
             const tw = Math.max(48, Math.round(img.width * scale));
             const th = Math.max(48, Math.round(img.height * scale));
@@ -7804,52 +7951,64 @@ if(field==="received"){window.__localReceivedTrades=window.__localReceivedTrades
             canvas.height = th;
             const ctx = canvas.getContext("2d", { willReadFrequently: true });
             ctx.drawImage(img, 0, 0, tw, th);
-            const data = ctx.getImageData(0, 0, tw, th).data;
-            const feat = _featuresFromCanvasData(data, tw, th);
+            const imageData = ctx.getImageData(0, 0, tw, th);
+            const feat = _featuresFromCanvasData(imageData.data, tw, th);
             canvas.width = 0; canvas.height = 0;
+            cleanup();
             resolve(feat);
           } catch (e) {
             console.warn("extractImageFeatures", e);
+            cleanup();
             resolve(null);
           }
         };
-        img.onerror = () => { clearTimeout(timer); resolve(null); };
+        img.onerror = () => { clearTimeout(timer); cleanup(); resolve(null); };
         img.src = resolvedSrc;
       });
     }
 
     /**
      * 類似度 0–100
-     * 構造（pHash・パッチ）が弱い場合は大きく減点して「全然違う」誤検知を抑える
+     * dHash/pHash + エッジ + 局所色の重み付け。似た構図の別メンバー誤判定を抑える。
      */
     function calcFeatureSimilarity(fa, fb) {
       if (!fa || !fb) return 0;
-      // 旧形式（配列 / v2）は不一致扱い → 再計算させる
       if (Array.isArray(fa) || Array.isArray(fb)) return 0;
       if (fa.version !== CARD_FEAT_VERSION || fb.version !== CARD_FEAT_VERSION) return 0;
       if (!fa.pHash || !fb.pHash) return 0;
 
       const pHash = _hammingSim(fa.pHash, fb.pHash);
+      const dSm = _hammingSim(fa.dHashSm, fb.dHashSm);
+      const dMd = _hammingSim(fa.dHashMd, fb.dHashMd);
+      let gridD = 0;
+      if (Array.isArray(fa.gridDHashes) && Array.isArray(fb.gridDHashes) && fa.gridDHashes.length === fb.gridDHashes.length) {
+        let s = 0;
+        for (let i = 0; i < fa.gridDHashes.length; i++) s += _hammingSim(fa.gridDHashes[i], fb.gridDHashes[i]);
+        gridD = s / fa.gridDHashes.length;
+      }
+      const hashScore = pHash * 0.34 + dSm * 0.22 + dMd * 0.22 + gridD * 0.22;
+
       const patch = _ncc(fa.patch, fb.patch);
       const face = _ncc(fa.face, fb.face);
       const lower = _ncc(fa.lower, fb.lower);
+      const edge = _ncc(fa.edgeGrid, fb.edgeGrid);
       const color = _cosineVec(fa.colorGrid, fb.colorGrid);
       const faceCol = _cosineVec(fa.faceColor, fb.faceColor);
+      const localCol = _cosineVec(fa.localColor, fb.localColor);
 
-      // 構造スコア（写真の形・模様）
-      const structure = pHash * 0.40 + patch * 0.35 + face * 0.25;
-      // 色スコア
-      const colorScore = color * 0.55 + faceCol * 0.30 + lower * 0.15;
+      const structure = hashScore * 0.42 + patch * 0.22 + face * 0.18 + edge * 0.18;
+      const colorScore = localCol * 0.40 + color * 0.30 + faceCol * 0.20 + lower * 0.10;
+      let score = structure * 0.70 + colorScore * 0.30;
 
-      let score = structure * 0.72 + colorScore * 0.28;
-
-      // 厳格ゲート: 構造が弱いのに色だけ似ている誤爆を落とす
-      if (pHash < 0.70) score *= 0.55;
-      if (pHash < 0.62) score *= 0.45;
-      if (patch < 0.55) score *= 0.60;
-      if (face < 0.50) score *= 0.75;
-      // 両方とも高いときだけボーナス
-      if (pHash >= 0.88 && patch >= 0.80 && face >= 0.72) score = Math.min(1, score * 1.08);
+      // 厳格ゲート: 構図だけ似て別メンバーになる誤爆を落とす
+      if (hashScore < 0.68) score *= 0.55;
+      if (pHash < 0.62) score *= 0.50;
+      if (edge < 0.45) score *= 0.70;
+      if (face < 0.48) score *= 0.72;
+      if (localCol < 0.55 && face >= 0.55) score *= 0.85;
+      if (hashScore >= 0.88 && edge >= 0.72 && face >= 0.70 && localCol >= 0.70) {
+        score = Math.min(1, score * 1.10);
+      }
 
       return Math.round(Math.max(0, Math.min(100, score * 100)));
     }
@@ -8050,7 +8209,7 @@ function getAiCardVectors() {
       const w0 = img.naturalWidth || img.width;
       const h0 = img.naturalHeight || img.height;
       if (!w0 || !h0) return img;
-      const scale = Math.min(1, 320 / w0);
+      const scale = Math.min(1, 360 / w0);
       const w = Math.max(48, Math.round(w0 * scale));
       const h = Math.max(48, Math.round(h0 * scale));
       const c = document.createElement("canvas");
@@ -8058,7 +8217,8 @@ function getAiCardVectors() {
       c.height = h;
       const ctx = c.getContext("2d", { willReadFrequently: true });
       ctx.drawImage(img, 0, 0, w, h);
-      const data = ctx.getImageData(0, 0, w, h).data;
+      const imageData = ctx.getImageData(0, 0, w, h);
+      const data = imageData.data;
       const samples = [];
       const take = (x, y) => {
         const i = (y * w + x) * 4;
@@ -8087,18 +8247,29 @@ function getAiCardVectors() {
       const bw = maxX - minX;
       const bh = maxY - minY;
       const area = (bw * bh) / (w * h);
-      if (count < 60 || bw < 24 || bh < 24 || area < 0.2 || area > 0.9) return img;
-      const inv = w0 / w;
-      const padX = bw * 0.04;
-      const padY = bh * 0.04;
-      const sx = Math.max(0, (minX - padX) * inv);
-      const sy = Math.max(0, (minY - padY) * inv);
-      const sw = Math.min(w0 - sx, (bw + padX * 2) * inv);
-      const sh = Math.min(h0 - sy, (bh + padY * 2) * inv);
+      let sx, sy, sw, sh;
+      if (count < 60 || bw < 24 || bh < 24 || area < 0.2 || area > 0.9) {
+        sx = 0; sy = 0; sw = w0; sh = h0;
+      } else {
+        const inv = w0 / w;
+        const padX = bw * 0.04;
+        const padY = bh * 0.04;
+        sx = Math.max(0, (minX - padX) * inv);
+        sy = Math.max(0, (minY - padY) * inv);
+        sw = Math.min(w0 - sx, (bw + padX * 2) * inv);
+        sh = Math.min(h0 - sy, (bh + padY * 2) * inv);
+      }
       const out = document.createElement("canvas");
       out.width = Math.max(1, Math.round(sw));
       out.height = Math.max(1, Math.round(sh));
-      out.getContext("2d").drawImage(img, sx, sy, sw, sh, 0, 0, out.width, out.height);
+      const octx = out.getContext("2d", { willReadFrequently: true });
+      octx.drawImage(img, sx, sy, sw, sh, 0, 0, out.width, out.height);
+      // クロップ後に照明正規化（DINOv2・特徴量の両方に効かせる）
+      try {
+        const od = octx.getImageData(0, 0, out.width, out.height);
+        _normalizeLightingInPlace(od.data, out.width, out.height, { x: 0, y: 0, w: out.width, h: out.height });
+        octx.putImageData(od, 0, 0);
+      } catch (_) {}
       return out;
     }
     function paintSquareView(img, mode) {
@@ -8145,9 +8316,10 @@ function getAiCardVectors() {
     function pickNearMatches(scored) {
       if (!scored.length || scored[0].raw < 0.5) return [];
       const best = scored[0].raw;
-      const span = best >= 0.93 ? 0.016 : best >= 0.86 ? 0.028 : 0.045;
+      const span = best >= 0.93 ? 0.018 : best >= 0.86 ? 0.032 : 0.050;
       const near = scored.filter(s => best - s.raw <= span);
-      return (near.length ? near : scored).slice(0, 6);
+      // 上位3件を常に提示（似た構図の別メンバーを選べるように）
+      return (near.length ? near : scored).slice(0, CARD_CANDIDATE_TOP_K);
     }
     function dinov2MatchScore(dot) {
       return Math.max(1, Math.min(99, Math.round(((dot - 0.88) / 0.12) * 70 + 29)));
@@ -8215,14 +8387,22 @@ function getAiCardVectors() {
       try {
         const qFeat = await extractImageFeatures(views[0]);
         if (qFeat) {
+          // 上位候補だけマルチ特徴量で再ランク（体感速度を維持）
           await Promise.all(head.map(async (s) => {
             const url = typeof getCardPhoto === "function" ? getCardPhoto(s.card && s.card.id) : "";
             if (!url) return;
-            const feat = await extractImageFeatures(url);
+            let feat = _cardFeatureCache[s.card.id];
+            if (!feat || feat.version !== CARD_FEAT_VERSION) {
+              feat = await extractImageFeatures(url);
+              if (feat) _cardFeatureCache[s.card.id] = feat;
+            }
             if (!feat) return;
             const pix = calcFeatureSimilarity(qFeat, feat) / 100;
             s.base = s.raw;
-            if (pix > 0) s.raw += pix * 0.05;
+            s.pix = pix;
+            // DINOv2 を主軸にしつつ、マルチ特徴量の寄与を強化（誤判定低減）
+            if (pix > 0) s.raw = s.base * 0.82 + pix * 0.18;
+            s.score = Math.max(1, Math.min(99, Math.round((s.raw * 0.55 + pix * 0.45) * 100)));
           }));
           head.sort((a, b) => b.raw - a.raw);
         }
@@ -8296,20 +8476,19 @@ function getAiCardVectors() {
         if (!cardVec) continue;
 
         const score = calcFeatureSimilarity(targetVec, cardVec);
-        // 厳格: かなり似ているものだけ
-        if (score >= 72) {
-          results.push({ card, photoUrl, score, vec: cardVec });
+        // 厳格だが上位候補提示のため閾値を少し緩和
+        if (score >= 68) {
+          results.push({ card, photoUrl, score, vec: cardVec, raw: score / 100 });
         }
         if (i % 10 === 0) await new Promise(r => setTimeout(r, 0));
       }
 
       results.sort((a, b) => b.score - a.score);
 
-      // 1位と差が大きい候補は落とす
       if (results.length) {
         const top = results[0].score;
         for (let i = results.length - 1; i >= 1; i--) {
-          if (top - results[i].score >= 18 && results[i].score < 85) {
+          if (top - results[i].score >= 20 && results[i].score < 82) {
             results.splice(i, 1);
           }
         }
@@ -8320,7 +8499,7 @@ function getAiCardVectors() {
         const dup = unique.some(u => calcFeatureSimilarity(u.vec, r.vec) >= 94);
         if (!dup) unique.push(r);
       }
-      return unique.slice(0, 4).map(({ card, photoUrl, score }) => ({ card, photoUrl, score }));
+      return unique.slice(0, CARD_CANDIDATE_TOP_K).map(({ card, photoUrl, score, raw }) => ({ card, photoUrl, score, raw }));
     }
 
     // CLIP用に画像を224x224に縮小
@@ -8340,6 +8519,17 @@ function getAiCardVectors() {
       });
     }
 
+    function _candidateAlbumName(card) {
+      if (!card) return "";
+      if (card.albumName) return card.albumName;
+      try {
+        const albums = window.ILLIT_CARD_ALBUMS || (typeof ILLIT_CARD_ALBUMS !== "undefined" ? ILLIT_CARD_ALBUMS : []);
+        const hit = albums.find(a => a && a.id === card.albumId);
+        if (hit && hit.name) return hit.name;
+      } catch (_) {}
+      return card.albumId || "";
+    }
+
     function renderAiCandidates(container, matches) {
       if (!container) return;
       const esc = window.escapeHtml || ((s) => String(s || "").replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m] || m)));
@@ -8348,24 +8538,29 @@ function getAiCardVectors() {
         container.innerHTML = `<div class="text-[11px] text-gray-400 py-1.5 text-center">一致する候補が見つかりませんでした（手動で選択してください）</div>`;
         return;
       }
-      const top = matches.slice(0, 6);
+      const top = matches.slice(0, CARD_CANDIDATE_TOP_K);
       container.classList.remove("hidden");
       container.innerHTML = `
         <div class="text-[11px] font-bold text-purple-700 mb-1.5 flex items-center justify-between">
-          <span>✨ AI候補（タップで自動入力）</span>
-          <span class="text-[10px] text-gray-400">${top.length}件</span>
+          <span>✨ 候補トップ${top.length}（タップで確定）</span>
+          <span class="text-[10px] text-gray-400">一致度順</span>
         </div>
         <div class="grid grid-cols-3 gap-1.5">
-          ${top.map(m => {
+          ${top.map((m, idx) => {
             const c = m.card || {};
             const img = (typeof getCardPhoto === "function" && getCardPhoto(c.id)) || c.img || c.photoUrl || m.photoUrl || "";
-            return `<button type="button" onclick="applyRecognizedCard('${esc(c.id)}')" class="bg-white border-2 border-purple-300 hover:border-purple-600 rounded-xl p-1.5 text-left shadow-md transition active:scale-95">
+            const album = _candidateAlbumName(c);
+            const pct = Math.max(0, Math.min(99, Number(m.score) || 0));
+            const rank = idx === 0 ? "1位" : idx === 1 ? "2位" : "3位";
+            return `<button type="button" onclick="applyRecognizedCard('${esc(c.id)}')" class="bg-white border-2 ${idx === 0 ? "border-purple-500" : "border-purple-200"} hover:border-purple-600 rounded-xl p-1.5 text-left shadow-md transition active:scale-95">
               <div class="relative aspect-[3/4] bg-gray-100 rounded-lg overflow-hidden mb-1">
-                ${img ? `<img src="${esc(img)}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center text-[10px] text-gray-400">No Img</div>`}
-                <span class="absolute top-1 right-1 bg-purple-600 text-white text-[9px] font-bold px-1 rounded">${m.score || 0}%</span>
+                ${img ? `<img src="${esc(img)}" class="w-full h-full object-cover" loading="lazy">` : `<div class="w-full h-full flex items-center justify-center text-[10px] text-gray-400">No Img</div>`}
+                <span class="absolute top-1 left-1 bg-black/70 text-white text-[9px] font-bold px-1 rounded">${rank}</span>
+                <span class="absolute top-1 right-1 bg-purple-600 text-white text-[9px] font-bold px-1 rounded">${pct}%</span>
               </div>
               <div class="text-[10px] font-bold text-gray-800 truncate">${esc(c.member || "")}</div>
-              <div class="text-[9px] text-gray-500 truncate">${esc(c.name || "")}</div>
+              <div class="text-[9px] text-gray-500 truncate">${esc(album || c.name || "")}</div>
+              <div class="text-[9px] text-gray-400 truncate">${esc(c.name || "")}</div>
             </button>`;
           }).join("")}
         </div>
@@ -8421,7 +8616,8 @@ function getAiCardVectors() {
         const second = matches && matches[1];
         const raw = best ? Number(best.raw || 0) : 0;
         const gap = second ? raw - Number(second.raw || 0) : 1;
-        if (best && best.card && best.card.id && (raw >= 0.9 || (raw >= 0.86 && gap >= 0.015) || Number(best.score) >= 60)) {
+        // 十分自信があるときだけ1位を仮入力（候補リストは残してワンタップ修正可能）
+        if (best && best.card && best.card.id && (raw >= 0.92 || (raw >= 0.88 && gap >= 0.025) || (Number(best.score) >= 88 && gap >= 0.02))) {
           applyRecognizedCard(best.card.id, true);
         }
         return matches || [];
@@ -8448,27 +8644,7 @@ function getAiCardVectors() {
           container.innerHTML = `<div class="text-[11px] text-gray-400 py-1.5 text-center">一致する候補が見つかりませんでした（手動で選択してください）</div>`;
           return;
         }
-        const top = matches.slice(0, 6);
-        container.innerHTML = `
-          <div class="text-[11px] font-bold text-purple-700 mb-1.5 flex items-center justify-between">
-            <span>✨ AI候補（タップで自動入力）</span>
-            <span class="text-[10px] text-gray-400">${top.length}件</span>
-          </div>
-          <div class="grid grid-cols-3 gap-1.5">
-            ${top.map(m => {
-              const c = m.card || {};
-              const img = getCardPhoto(c.id) || c.img || "";
-              return `<button type="button" onclick="applyRecognizedCard('${escapeHtml(c.id)}')" class="bg-white border border-purple-200 hover:border-purple-500 rounded-xl p-1 text-left shadow-sm transition active:scale-95">
-                <div class="relative aspect-[3/4] bg-gray-100 rounded-lg overflow-hidden mb-1">
-                  ${img ? `<img src="${escapeHtml(img)}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center text-[10px] text-gray-400">No Img</div>`}
-                  <span class="absolute top-1 right-1 bg-purple-600 text-white text-[9px] font-bold px-1 rounded">${m.score}%</span>
-                </div>
-                <div class="text-[10px] font-bold text-gray-800 truncate">${escapeHtml(c.member || "")}</div>
-                <div class="text-[9px] text-gray-500 truncate">${escapeHtml(c.name || "")}</div>
-              </button>`;
-            }).join("")}
-          </div>
-        `;
+        renderAiCandidates(container, matches);
       } catch (e) {
         console.warn("runCardImageRecognition AI error:", e);
         container.innerHTML = `<div class="text-[11px] text-gray-400 py-1 text-center">AI解析をスキップしました</div>`;
@@ -12017,25 +12193,30 @@ window.buildAndDownloadCardPackZip = async function() {
         window._myCardsQueryImage = dataUrl;
         if (resultEl) {
           const esc = window.escapeHtml || ((s) => String(s || ""));
-          const top6 = matches.slice(0, 6);
+          const top3 = matches.slice(0, CARD_CANDIDATE_TOP_K || 3);
           resultEl.innerHTML = `
             <div class="bg-white border border-gray-200 rounded-2xl p-3">
               <div class="flex gap-3 items-center mb-3">
                 <img src="${dataUrl}" alt="" class="w-16 h-20 object-cover rounded-lg bg-gray-100">
                 <div>
                   <div class="text-[13px] font-medium text-gray-900">検索した画像</div>
-                  <div class="text-[12px] text-gray-500 mt-0.5">${top6.length}件の候補</div>
+                  <div class="text-[12px] text-gray-500 mt-0.5">候補トップ${top3.length}（タップで開く）</div>
                 </div>
               </div>
               <div class="grid grid-cols-3 gap-2">
-                ${top6.map(m => {
+                ${top3.map((m, idx) => {
                   const c = m.card || {};
                   const img = (typeof getCardPhoto === "function" && getCardPhoto(c.id)) || c.photoUrl || "";
+                  const album = (typeof _candidateAlbumName === "function") ? _candidateAlbumName(c) : (c.albumName || "");
+                  const pct = Math.max(0, Math.min(99, Number(m.score) || 0));
                   return `<button type="button" onclick="jumpToSearchedCard('${esc(c.id)}')" class="text-left">
-                    <div class="aspect-[3/4] bg-gray-100 rounded-lg overflow-hidden">
-                      ${img ? `<img src="${esc(img)}" class="w-full h-full object-cover">` : ""}
+                    <div class="relative aspect-[3/4] bg-gray-100 rounded-lg overflow-hidden">
+                      ${img ? `<img src="${esc(img)}" class="w-full h-full object-cover" loading="lazy">` : ""}
+                      <span class="absolute top-1 right-1 bg-purple-600 text-white text-[9px] font-bold px-1 rounded">${pct}%</span>
+                      <span class="absolute top-1 left-1 bg-black/70 text-white text-[9px] font-bold px-1 rounded">${idx + 1}位</span>
                     </div>
                     <div class="text-[11px] text-gray-800 truncate mt-1">${esc(c.member || "")}</div>
+                    <div class="text-[10px] text-gray-500 truncate">${esc(album || "")}</div>
                     <div class="text-[10px] text-gray-400 truncate">${esc(c.name || "")}</div>
                   </button>`;
                 }).join("")}
