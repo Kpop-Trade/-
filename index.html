@@ -946,7 +946,8 @@ html, body {
         <button onclick="openProfileModal('basic')" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">✏️ プロフィール・写真</span><span class="text-gray-400">›</span></button>
         <button onclick="openProfileModal('address')" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">📦 住所・配送先</span><span class="text-gray-400">›</span></button>
         <button onclick="openAzukariGuide()" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">🔒 アズカリ決済ガイド</span><span class="text-gray-400">›</span></button>
-        <button onclick="openNotificationsModal()" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">🔔 通知一覧</span><span class="text-gray-400">›</span></button>
+        <button onclick="openNotificationsModal('all')" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">🔔 通知一覧</span><span class="text-gray-400">›</span></button>
+        <button onclick="openNotificationsModal('autogo')" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">⚡ Auto-GOの連絡（URL・催促）</span><span class="text-gray-400">›</span></button>
         <button onclick="openProfileModal('push')" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">📢 プッシュ通知設定</span><span class="text-gray-400">›</span></button>
         <button onclick="openProfileModal('block')" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">🚫 ブロック管理</span><span class="text-gray-400">›</span></button>
         <button onclick="openWalletModal()" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">👛 おさいふ・売上管理</span><span class="text-gray-400">›</span></button>
@@ -1292,14 +1293,21 @@ html, body {
 
   <!-- 通知一覧 -->
   <div id="notifications-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
-    <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[85vh] flex flex-col">
+    <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-3 shadow-2xl max-h-[85vh] flex flex-col">
       <div class="flex justify-between items-center border-b border-purple-200/50 pb-3 shrink-0">
-        <h3 class="font-bold text-base text-gray-800">🔔 通知一覧</h3>
+        <h3 class="font-bold text-base text-gray-800">🔔 通知</h3>
         <div class="flex items-center gap-2">
           <button onclick="markAllNotificationsRead()" class="text-[11px] font-medium text-illit-darkPurple underline">すべて既読</button>
           <button onclick="closeNotificationsModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
         </div>
       </div>
+      <div id="notif-tabs" class="flex gap-1.5 overflow-x-auto shrink-0" role="tablist">
+        <button type="button" data-notif-tab="all" onclick="setNotifTab('all')" class="notif-tab shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold border bg-gray-900 text-white border-gray-900">すべて</button>
+        <button type="button" data-notif-tab="trade" onclick="setNotifTab('trade')" class="notif-tab shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold border bg-white/70 text-gray-600 border-white">取引</button>
+        <button type="button" data-notif-tab="notice" onclick="setNotifTab('notice')" class="notif-tab shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold border bg-white/70 text-gray-600 border-white">お知らせ</button>
+        <button type="button" data-notif-tab="autogo" onclick="setNotifTab('autogo')" class="notif-tab shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold border bg-white/70 text-gray-600 border-white">Auto-GO</button>
+      </div>
+      <p class="text-[10px] text-gray-500 shrink-0">届いてから1ヶ月間残ります。Auto-GOの購入URLと催促は「Auto-GO」に届きます。</p>
       <div id="notifications-list" class="flex-1 overflow-y-auto space-y-2"></div>
     </div>
   </div>
@@ -1939,7 +1947,54 @@ getRedirectResult(auth)
     const CHAT_PHOTO = { maxSide: 1000, quality: 0.75, maxChars: 600000 };
     const PROFILE_PHOTO = { maxSide: 300, quality: 0.72, maxChars: 90000 };
     const MAX_POST_PHOTOS = 3;
-    const MAX_NOTIFICATIONS = 50;
+    const NOTIF_KEEP_MS = 30 * 24 * 60 * 60 * 1000;
+    const MAX_NOTIFICATIONS = 300;
+    function notifCreatedMs(n) {
+      const c = n && n.createdAt;
+      if (typeof c === "number") return c;
+      if (c && typeof c.toMillis === "function") return c.toMillis();
+      if (c && typeof c.seconds === "number") return c.seconds * 1000;
+      return 0;
+    }
+    function notifCategory(n) {
+      if (!n) return "notice";
+      if (n.category === "trade" || n.category === "notice" || n.category === "autogo") return n.category;
+      const linkK = n.link && n.link.k;
+      const targetType = n.target && n.target.type;
+      const blob = String((n.title || "") + " " + (n.text || ""));
+      if (linkK === "autogo" || targetType === "autogo" || /Auto-GO/i.test(blob)) return "autogo";
+      if (n.type === "admin" || n.type === "card_list") return "notice";
+      if (linkK === "trade" || targetType === "trade" || n.type === "trade") return "trade";
+      if (/申し込み|発送完了|発送・|合意|取引が|メッセージ/.test(blob)) return "trade";
+      return "notice";
+    }
+    function trimNotifications(list) {
+      const now = Date.now();
+      const kept = [];
+      const src = Array.isArray(list) ? list : [];
+      for (let i = 0; i < src.length; i++) {
+        const n = src[i];
+        if (!n) continue;
+        const t = notifCreatedMs(n);
+        if (t && now - t >= NOTIF_KEEP_MS) continue;
+        kept.push(n);
+        if (kept.length >= MAX_NOTIFICATIONS) break;
+      }
+      return kept;
+    }
+    function capNotifications(list) {
+      if (!Array.isArray(list)) return list;
+      const trimmed = trimNotifications(list);
+      if (trimmed.length !== list.length) list.splice(0, list.length, ...trimmed);
+      return list;
+    }
+    function safeHttpUrl(raw) {
+      try {
+        const u = new URL(String(raw || ""));
+        if (u.protocol === "https:" || u.protocol === "http:") return u.href;
+      } catch (e) {}
+      return "";
+    }
 
     const ILLIT_MEMBERS = ["ユナ", "ミンジュ", "モカ", "ウォニ", "イロハ", "OT5"];
 
@@ -1972,7 +2027,9 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     let postMode = "exchange", postPhotos = [], processingPhotos = false, submittingPost = false, submittingGroup = false, detailPhotos = [], roomPhotos = [], roomPhotosFor = null;
     let myTrades = [], unsubTrades = null, groupJoins = {}, unsubJoins = null, currentTrade = null, roomMessages = [], unsubRoom = null, unsubMsgs = null;
     let reviewState = { tradeId: null, done: null }, selectedRating = 0, sendingImage = false, roomBoxKey = null, userData = { profile: {}, blocked: [], likes: [], reads: {}, notifications: [], cancelHistory: [], myCards: {}, collectionPublic: false, customCards: [], cardWatch: {} };
-    let unsubUser = null, editingPostId = null, migratingLocal = false, photoCache = {};
+    let unsubUser = null, unsubNotifs = null, editingPostId = null, migratingLocal = false, photoCache = {};
+    let notifTab = "all";
+    let serverNotifs = [];
     let pendingProfilePhoto = null;
     let prevUnreadCount = -1;
     let prevTradeCountAsOwner = -1;
@@ -2230,84 +2287,133 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     }
     window.showToast = showToast;
 
-    function addNotification(text, type = "info", target = null) {
+    function addNotification(text, type = "info", target = null, category = null) {
       if (!currentUser) return;
-      const list = [...(userData.notifications || [])];
       const item = { id: "n_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7), text, type, read: false, createdAt: Date.now(), target: target || null };
-      list.unshift(item);
-      if (list.length > MAX_NOTIFICATIONS) list.length = MAX_NOTIFICATIONS;
+      item.category = category || notifCategory(item);
+      const list = trimNotifications([item, ...(userData.notifications || [])]);
       userData.notifications = list;
       saveUserData({ notifications: list }).catch(() => {});
       updateNotifBadge();
     }
 
+    function inboxNotifications() {
+      return trimNotifications([...(userData.notifications || [])]).sort((a, b) => notifCreatedMs(b) - notifCreatedMs(a));
+    }
+
     function updateNotifBadge() {
       const badge = document.getElementById("notif-badge");
       if (!badge) return;
-      const unread = (userData.notifications || []).filter(n => !n.read).length;
+      const unread = inboxNotifications().filter(n => !n.read).length;
       badge.innerText = unread > 99 ? "99+" : unread;
       badge.classList.toggle("hidden", unread === 0);
+    }
+
+    function paintNotifTabs(list) {
+      const counts = { all: 0, trade: 0, notice: 0, autogo: 0 };
+      list.forEach(n => {
+        if (n.read) return;
+        const c = notifCategory(n);
+        counts.all += 1;
+        if (counts[c] !== undefined) counts[c] += 1;
+      });
+      const labels = { all: "すべて", trade: "取引", notice: "お知らせ", autogo: "Auto-GO" };
+      document.querySelectorAll("[data-notif-tab]").forEach(btn => {
+        const tab = btn.dataset.notifTab;
+        const on = tab === notifTab;
+        const n = counts[tab] || 0;
+        btn.textContent = n ? labels[tab] + " " + n : labels[tab];
+        btn.className = "notif-tab shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold border " + (on
+          ? (tab === "autogo" ? "bg-purple-600 text-white border-purple-600" : "bg-gray-900 text-white border-gray-900")
+          : "bg-white/70 text-gray-600 border-white");
+      });
     }
 
     window.openPwaGuideModal = function() { document.getElementById("pwa-modal").classList.remove("hidden"); };
     window.closePwaGuideModal = function() { document.getElementById("pwa-modal").classList.add("hidden"); };
 
-    window.openNotificationsModal = function() {
-  if (!currentUser) return /* alert hidden */ console.log("ログインが必要です。");
-  const currentList = Array.isArray(userData.notifications) ? userData.notifications : [];
-  const hasUnread = currentList.some(n => !n.read);
-  if (hasUnread) {
-    const updatedList = currentList.map(n => ({ ...n, read: true }));
-    userData.notifications = updatedList;
-    if (typeof updateNotifBadge === "function") {
-      updateNotifBadge();
-    }
-    if (typeof saveUserData === "function") {
-      saveUserData({ notifications: updatedList }).catch(() => {});
-    }
-  }
-  renderNotificationsList();
-  document.getElementById("notifications-modal").classList.remove("hidden");
-};
+    window.openNotificationsModal = function(tab) {
+      if (!currentUser) return /* alert hidden */ console.log("ログインが必要です。");
+      if (tab === "all" || tab === "trade" || tab === "notice" || tab === "autogo") notifTab = tab;
+      renderNotificationsList();
+      document.getElementById("notifications-modal").classList.remove("hidden");
+    };
+    window.setNotifTab = function(tab) {
+      if (tab !== "all" && tab !== "trade" && tab !== "notice" && tab !== "autogo") return;
+      notifTab = tab;
+      renderNotificationsList();
+    };
     window.closeNotificationsModal = function() { document.getElementById("notifications-modal").classList.add("hidden"); };
     function renderNotificationsList() {
       const el = document.getElementById("notifications-list");
-      const list = userData.notifications || [];
+      if (!el) return;
+      const all = inboxNotifications();
+      paintNotifTabs(all);
+      const list = notifTab === "all" ? all : all.filter(n => notifCategory(n) === notifTab);
+      const emptyCopy = {
+        all: "通知はありません",
+        trade: "取引の通知はありません",
+        notice: "お知らせはありません",
+        autogo: "Auto-GOの購入URLや催促は、まだ届いていません"
+      };
       if (list.length === 0) {
-        el.innerHTML = '<p class="text-xs text-gray-500 text-center py-8 font-medium bg-white/30 rounded-xl">通知はありません</p>';
+        el.innerHTML = '<p class="text-xs text-gray-500 text-center py-8 font-medium bg-white/30 rounded-xl">' + emptyCopy[notifTab] + '</p>';
         return;
       }
       el.innerHTML = list.map(n => {
-        const time = new Date(n.createdAt);
-        const timeStr = (time.getMonth()+1) + "/" + time.getDate() + " " + String(time.getHours()).padStart(2,"0") + ":" + String(time.getMinutes()).padStart(2,"0");
-        const isAdminNotif = n.type === "admin";
-        const hasTarget = n.target && n.target.type && n.target.id;
-        const clickAttr = hasTarget ? `onclick="handleNotificationClick('${escapeHtml(n.id)}')" class="cursor-pointer active:scale-[.99] transition"` : "";
-        const arrow = hasTarget ? '<span class="text-gray-400 text-sm">›</span>' : "";
-        return `<div data-notif-id="${escapeHtml(n.id)}" ${clickAttr} class="liquid-glass-input rounded-xl p-3 ${n.read ? 'opacity-70' : (isAdminNotif ? 'border-red-300 bg-red-50/50' : 'border-pink-200')} ${hasTarget ? 'hover:bg-white/80' : ''}">
+        const ms = notifCreatedMs(n);
+        const time = ms ? new Date(ms) : null;
+        const timeStr = time ? ((time.getMonth()+1) + "/" + time.getDate() + " " + String(time.getHours()).padStart(2,"0") + ":" + String(time.getMinutes()).padStart(2,"0")) : "";
+        const cat = notifCategory(n);
+        const isAdminNotif = n.type === "admin" || cat === "notice";
+        const purchaseUrl = safeHttpUrl(n.purchaseUrl || (n.link && n.link.purchaseUrl));
+        const hasTarget = (n.target && n.target.type && n.target.id) || cat === "autogo";
+        const catLabel = cat === "trade" ? "取引" : cat === "autogo" ? "Auto-GO" : "お知らせ";
+        const catClass = cat === "trade" ? "text-pink-600" : cat === "autogo" ? "text-purple-700" : "text-amber-700";
+        const urlBtn = purchaseUrl ? `<a href="${escapeHtml(purchaseUrl)}" target="_blank" rel="noopener" data-notif-url="1" class="mt-2 inline-flex items-center justify-center px-3 py-1.5 rounded-full bg-purple-600 text-white text-[11px] font-bold">購入URLを開く</a>` : "";
+        return `<div data-notif-id="${escapeHtml(n.id)}" class="liquid-glass-input rounded-xl p-3 ${n.read ? "opacity-70" : (cat === "autogo" ? "border-purple-300 bg-purple-50/60" : isAdminNotif ? "border-amber-200 bg-amber-50/40" : "border-pink-200")} ${hasTarget ? "cursor-pointer" : ""}">
           <div class="flex justify-between items-start gap-2">
-            <p class="text-xs font-medium text-gray-800 leading-relaxed flex-1">${isAdminNotif ? '<span class="text-red-600">[運営]</span> ' : ''}${escapeHtml(n.text)}</p>
+            <div class="flex-1 min-w-0">
+              <div class="text-[10px] font-bold ${catClass} mb-0.5">${catLabel}${n.title ? " · " + escapeHtml(n.title) : ""}</div>
+              <p class="text-xs font-medium text-gray-800 leading-relaxed">${escapeHtml(n.text)}</p>
+              ${urlBtn}
+            </div>
             <div class="flex items-center gap-1.5 shrink-0">
-              ${!n.read ? '<span class="w-2 h-2 rounded-full bg-pink-500"></span>' : ''}
-              ${arrow}
+              ${!n.read ? '<span class="w-2 h-2 rounded-full bg-pink-500"></span>' : ""}
+              ${hasTarget ? '<span class="text-gray-400 text-sm">›</span>' : ""}
             </div>
           </div>
-          <div class="text-[10px] text-gray-500 mt-1 font-medium">${timeStr}${hasTarget ? ' · タップで開く' : ''}</div>
+          <div class="text-[10px] text-gray-500 mt-1 font-medium">${timeStr}${hasTarget ? " · タップで開く" : ""}</div>
         </div>`;
       }).join("");
     }
-    window.handleNotificationClick = async function(notifId) {
-      const n = (userData.notifications || []).find(x => x.id === notifId);
-      if (!n) return;
-      // mark read
-      if (!n.read) {
-        n.read = true;
-        userData.notifications = [...userData.notifications];
-        saveUserData({ notifications: userData.notifications }).catch(() => {});
-        updateNotifBadge();
+    async function markOneNotificationRead(n) {
+      if (!n || n.read) return;
+      n.read = true;
+      const list = (userData.notifications || []).map(x => x.id === n.id ? { ...x, read: true } : x);
+      if (list.some(x => x.id === n.id)) {
+        userData.notifications = list;
+        saveUserData({ notifications: list }).catch(() => {});
       }
+      const remote = (serverNotifs || []).find(x => x.id === n.id);
+      if (remote) {
+        remote.read = true;
+        updateDoc(doc(db, "users", currentUser.uid, "notifications", n.id), { read: true }).catch(() => {});
+      }
+      updateNotifBadge();
+    }
+    window.handleNotificationClick = async function(notifId) {
+      const n = inboxNotifications().find(x => x.id === notifId);
+      if (!n) return;
+      await markOneNotificationRead(n);
       closeNotificationsModal();
-      const t = n.target;
+      const cat = notifCategory(n);
+      const t = n.target || (n.link && n.link.k ? { type: n.link.k === "autogo" ? "autogo" : n.link.k, id: n.link.id } : null);
+      if (cat === "autogo" || (t && t.type === "autogo")) {
+        const poolId = (t && t.id) || (n.link && n.link.id) || "";
+        if (poolId && typeof openAutoGoModal === "function") openAutoGoModal(poolId);
+        return;
+      }
       if (!t || !t.type) return;
       if (t.type === "trade" && t.id) {
         openTrade(t.id);
@@ -2327,10 +2433,25 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       if (!currentUser) return;
       const list = (userData.notifications || []).map(n => ({ ...n, read: true }));
       userData.notifications = list;
+      serverNotifs = (serverNotifs || []).map(n => ({ ...n, read: true }));
       try { await saveUserData({ notifications: list }); } catch(e) {}
+      const unreadRemote = [];
+      try {
+        const snap = await getDocs(query(collection(db, "users", currentUser.uid, "notifications"), limit(200)));
+        for (const d of snap.docs) {
+          if (!d.data().read) unreadRemote.push(d.ref);
+        }
+        await Promise.all(unreadRemote.slice(0, 80).map(ref => updateDoc(ref, { read: true }).catch(() => {})));
+      } catch (e) {}
       updateNotifBadge();
       renderNotificationsList();
     };
+    document.getElementById("notifications-list")?.addEventListener("click", (e) => {
+      if (e.target.closest("[data-notif-url]")) return;
+      const card = e.target.closest("[data-notif-id]");
+      if (!card) return;
+      handleNotificationClick(card.dataset.notifId);
+    });
 
     window.openFaq = function() { document.getElementById("faq-modal").classList.remove("hidden"); };
     window.closeFaq = function() { document.getElementById("faq-modal").classList.add("hidden"); };
@@ -2526,7 +2647,11 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           if (p && Object.keys(p).length > 0) payload.profile = p;
           setDoc(ref, payload, { merge: true }).finally(() => migratingLocal = false);
         }
-        userData = { profile: d.profile || {}, blocked: d.blocked || [], likes: d.likes || [], reads: d.reads || {}, notifications: d.notifications || [], cancelHistory: d.cancelHistory || [], myCards: d.myCards || {}, collectionPublic: !!d.collectionPublic, customCards: Array.isArray(d.customCards) ? d.customCards : [], cardWatch: d.cardWatch && typeof d.cardWatch === "object" ? d.cardWatch : {} };
+        const storedNotifs = trimNotifications(d.notifications || []);
+        if (Array.isArray(d.notifications) && storedNotifs.length !== d.notifications.length) {
+          saveUserData({ notifications: storedNotifs }).catch(() => {});
+        }
+        userData = { profile: d.profile || {}, blocked: d.blocked || [], likes: d.likes || [], reads: d.reads || {}, notifications: storedNotifs, cancelHistory: d.cancelHistory || [], myCards: d.myCards || {}, collectionPublic: !!d.collectionPublic, customCards: Array.isArray(d.customCards) ? d.customCards : [], cardWatch: d.cardWatch && typeof d.cardWatch === "object" ? d.cardWatch : {} };
         if (currentUser) {
           document.getElementById("user-name").innerText = getMyDisplayName();
           updateUserAvatar();
@@ -2538,6 +2663,80 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         if (!document.getElementById("wallet-modal").classList.contains("hidden")) renderWallet();
         if (!document.getElementById("notifications-modal").classList.contains("hidden")) renderNotificationsList();
       }, (err) => console.warn("user snapshot error:", err?.code || err));
+      subscribeNotifInbox();
+    }
+    function mapServerNotif(d) {
+      const x = d.data() || {};
+      const link = x.link || null;
+      const purchaseUrl = safeHttpUrl((link && link.purchaseUrl) || x.purchaseUrl);
+      const item = {
+        id: d.id,
+        text: x.text || "",
+        type: x.type || "info",
+        title: x.title || "",
+        link,
+        purchaseUrl: purchaseUrl || null,
+        read: !!x.read,
+        createdAt: notifCreatedMs(x) || Date.now(),
+        target: link && link.k === "autogo" ? { type: "autogo", id: link.id } : (link && link.k === "trade" ? { type: "trade", id: link.id } : null)
+      };
+      item.category = x.category || notifCategory(item);
+      return item;
+    }
+    function absorbServerNotifs(items) {
+      const incoming = (items || []).filter(n => {
+        const c = notifCategory(n);
+        if (c === "autogo") return true;
+        if (c === "trade" && !(n.link && n.link.k)) return true;
+        return false;
+      });
+      if (!incoming.length || !currentUser) return;
+      const list = [...(userData.notifications || [])];
+      let changed = false;
+      incoming.forEach(n => {
+        if (list.some(x => x.id === n.id)) return;
+        list.unshift({
+          id: n.id,
+          text: n.text,
+          type: n.type,
+          title: n.title || "",
+          category: notifCategory(n),
+          link: n.link || null,
+          purchaseUrl: n.purchaseUrl || null,
+          target: n.target || null,
+          read: !!n.read,
+          createdAt: notifCreatedMs(n) || Date.now()
+        });
+        changed = true;
+      });
+      if (!changed) return;
+      const trimmed = trimNotifications(list);
+      userData.notifications = trimmed;
+      saveUserData({ notifications: trimmed }).catch(() => {});
+      updateNotifBadge();
+    }
+    function subscribeNotifInbox() {
+      if (!currentUser) return;
+      if (unsubNotifs) unsubNotifs();
+      const colRef = collection(db, "users", currentUser.uid, "notifications");
+      const apply = (snap) => {
+        serverNotifs = snap.docs.map(mapServerNotif);
+        absorbServerNotifs(serverNotifs);
+        updateNotifBadge();
+        const modal = document.getElementById("notifications-modal");
+        if (modal && !modal.classList.contains("hidden")) renderNotificationsList();
+      };
+      const fallback = () => {
+        if (unsubNotifs) unsubNotifs();
+        unsubNotifs = onSnapshot(query(colRef, limit(200)), apply, (err2) => {
+          console.warn("notif inbox", err2?.code || err2);
+          serverNotifs = [];
+        });
+      };
+      unsubNotifs = onSnapshot(query(colRef, orderBy("createdAt", "desc"), limit(200)), apply, (err) => {
+        console.warn("notif inbox order", err?.code || err);
+        fallback();
+      });
     }
     // 共同購入の参加者は、詳細を開いたときにその投稿の分だけ取得
     const joinsFresh = {};
@@ -2933,7 +3132,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           read: false, 
           createdAt: Date.now() 
         });
-        if (list.length > MAX_NOTIFICATIONS) list.length = MAX_NOTIFICATIONS;
+        capNotifications(list);
         await updateDoc(userRef, { notifications: list });
         /* alert hidden */ console.log("警告を送信しました。");
       } catch (e) { /* alert hidden */ console.log("送信に失敗しました。"); }
@@ -2958,7 +3157,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           read: false,
           createdAt: Date.now()
         });
-        if (typeof MAX_NOTIFICATIONS === "number" && list.length > MAX_NOTIFICATIONS) list.length = MAX_NOTIFICATIONS;
+        capNotifications(list);
         await updateDoc(userRef, { notifications: list });
         /* alert hidden */ console.log("返信を送信しました。相手の通知一覧に届きます。");
       } catch (e) {
@@ -3073,7 +3272,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         if (us.exists()) {
           const list = Array.isArray(us.data().notifications) ? [...us.data().notifications] : [];
           list.unshift({ id: "admin_reply_" + Date.now(), text: "【運営からの返信】" + msg.trim(), type: "admin", read: false, createdAt: Date.now() });
-          if (typeof MAX_NOTIFICATIONS === "number" && list.length > MAX_NOTIFICATIONS) list.length = MAX_NOTIFICATIONS;
+          capNotifications(list);
           await updateDoc(userRef, { notifications: list });
         }
         await logAdminAction("inquiry_reply", inquiryId, msg.trim().slice(0, 80));
@@ -3097,7 +3296,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         if (us.exists()) {
           const list = Array.isArray(us.data().notifications) ? [...us.data().notifications] : [];
           list.unshift({ id: "admin_reply_" + Date.now(), text: "【運営からの返信】" + msg.trim(), type: "admin", read: false, createdAt: Date.now() });
-          if (typeof MAX_NOTIFICATIONS === "number" && list.length > MAX_NOTIFICATIONS) list.length = MAX_NOTIFICATIONS;
+          capNotifications(list);
           await updateDoc(userRef, { notifications: list });
         }
         await logAdminAction("report_reply", reportId, msg.trim().slice(0, 80));
@@ -3252,7 +3451,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
               const data = userDoc.data() || {};
               const list = Array.isArray(data.notifications) ? [...data.notifications] : [];
               list.unshift(notifItem);
-              if (list.length > MAX_NOTIFICATIONS) list.length = MAX_NOTIFICATIONS;
+              capNotifications(list);
               await updateDoc(doc(db, "users", userDoc.id), { notifications: list });
             } catch (e) {}
             done++; statusEl.innerText = `送信中… ${done} / ${total}`;
@@ -3802,7 +4001,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         if (typeof maybeShowPushPrompt === "function") maybeShowPushPrompt();
       } else {
         loginBtn.classList.remove("hidden"); userProfile.classList.add("hidden");
-        if (unsubTrades) unsubTrades(); if (unsubUser) unsubUser(); unsubTrades=null; unsubUser=null;
+        if (unsubTrades) unsubTrades(); if (unsubUser) unsubUser(); if (unsubNotifs) unsubNotifs(); unsubTrades=null; unsubUser=null; unsubNotifs=null; serverNotifs = [];
         tradesLoaded = false;
         if (typeof loadPosts === "function" && allPosts.length === 0) { loadingPosts = false; loadPosts(true); }
         if (unsubSusp) { unsubSusp(); unsubSusp = null; }
@@ -4261,7 +4460,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
             const us = await getDoc(uref);
             const list = us.exists() ? [...(us.data().notifications || [])] : [];
             list.unshift({ ...itemBase, id: "n_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7) });
-            if (list.length > MAX_NOTIFICATIONS) list.length = MAX_NOTIFICATIONS;
+            capNotifications(list);
             await updateDoc(uref, { notifications: list });
           } catch (e) { console.warn("notify user failed", uid, e?.code || e); }
         }
@@ -6673,7 +6872,7 @@ window.openAzukariApp = function() {
         if (noticeText) {
           const list = Array.isArray(data.notifications) ? [...data.notifications] : [];
           list.unshift({ id: "p_" + Date.now(), text: noticeText, type: "admin", read: false, createdAt: Date.now() });
-          if (list.length > MAX_NOTIFICATIONS) list.length = MAX_NOTIFICATIONS;
+          capNotifications(list);
           update.notifications = list;
         }
         await updateDoc(userRef, update);
