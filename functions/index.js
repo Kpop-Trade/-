@@ -14,7 +14,58 @@ const STORAGE_BUCKET = "illit-7ecd4.firebasestorage.app";
 // ★ 要変更：実際のサイトURL（https・末尾 / まで）
 const SITE = "https://kpop-trade.jp/";
 const ADMIN_UIDS = ["Ay6VCS8HTgM3RqjDYZ0wKdHrSKz1", "GvVhAmT56GZjsWrl1YRaStB81im1"];
-const expireAt = () => admin.firestore.Timestamp.fromMillis(Date.now() + 60 * 86400000); // TTL用(60日)
+const NOTIF_KEEP_MS = 30 * 86400000;
+const expireAt = () => admin.firestore.Timestamp.fromMillis(Date.now() + NOTIF_KEEP_MS);
+
+function inboxCategory({ type, link, text, title }) {
+  if (link && link.k === "autogo") return "autogo";
+  if ((link && link.k === "trade") || type === "trade") return "trade";
+  const blob = `${title || ""} ${text || ""}`;
+  if (/Auto-GO/i.test(blob)) return "autogo";
+  return "notice";
+}
+
+function notifMillis(value) {
+  if (typeof value === "number") return value;
+  if (value && typeof value.toMillis === "function") return value.toMillis();
+  if (value && typeof value.seconds === "number") return value.seconds * 1000;
+  return 0;
+}
+
+async function mirrorInbox(uid, item) {
+  if (!uid || !item) return;
+  const ref = db.collection("users").doc(uid);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const now = Date.now();
+    let list = snap.exists && Array.isArray(snap.data().notifications) ? snap.data().notifications.slice() : [];
+    list = list.filter((n) => {
+      const t = notifMillis(n && n.createdAt);
+      return !t || now - t < NOTIF_KEEP_MS;
+    });
+    const row = {
+      id: item.id,
+      text: String(item.text || ""),
+      type: item.type || "info",
+      title: item.title || "",
+      category: item.category,
+      link: item.link || null,
+      purchaseUrl: item.link && item.link.purchaseUrl ? String(item.link.purchaseUrl) : null,
+      target: item.link && item.link.k === "autogo"
+        ? { type: "autogo", id: String(item.link.id || "") }
+        : item.link && item.link.k === "trade"
+          ? { type: "trade", id: String(item.link.id || "") }
+          : null,
+      read: false,
+      createdAt: now
+    };
+    const idx = row.id ? list.findIndex((n) => n && n.id === row.id) : -1;
+    if (idx >= 0) list[idx] = row;
+    else list.unshift(row);
+    if (list.length > 300) list.length = 300;
+    tx.set(ref, { notifications: list }, { merge: true });
+  });
+}
 
 // ===== プッシュ送信（data のみ → 表示は firebase-messaging-sw.js に一本化） =====
 async function push(uid, title, body, link) {
@@ -47,13 +98,19 @@ async function push(uid, title, body, link) {
       ? snap.docs[i].ref.delete() : null));
 }
 
-// アプリ内通知（サブコレクション）＋プッシュ
+// アプリ内通知（サブコレクション）＋必要なら通知欄へコピー＋プッシュ
 async function notify(uid, { id, text, type = "info", link = null, title = "ILLIT Trade" }) {
   if (!uid) return;
+  const category = inboxCategory({ type, link, text, title });
   const col = db.collection("users").doc(uid).collection("notifications");
-  await (id ? col.doc(id) : col.doc()).set({
-    text, type, link, read: false, createdAt: FV.serverTimestamp(), expireAt: expireAt()
+  const ref = id ? col.doc(id) : col.doc();
+  await ref.set({
+    text, type, title, link, category, read: false, createdAt: FV.serverTimestamp(), expireAt: expireAt()
   });
+  const shouldMirror = category === "autogo" || (category === "trade" && !(link && link.k));
+  if (shouldMirror) {
+    await mirrorInbox(uid, { id: id || ref.id, text, type, link, title, category }).catch((e) => console.warn("inbox mirror", e));
+  }
   await push(uid, title, text, link).catch((e) => console.warn("push error", e));
 }
 
@@ -1008,7 +1065,7 @@ exports.adminBroadcast = onCall({ timeoutSeconds: 300, memory: "512MiB" }, async
   const bw = db.bulkWriter();
   users.docs.forEach((u) =>
     bw.set(u.ref.collection("notifications").doc(), {
-      text: message, type: "admin", link: null, read: false, createdAt: FV.serverTimestamp(), expireAt: expireAt()
+      text: message, type: "admin", category: "notice", title: "運営からのお知らせ", link: null, read: false, createdAt: FV.serverTimestamp(), expireAt: expireAt()
     }));
   await bw.close();
 
