@@ -1719,12 +1719,12 @@ html, body {
 
   <!-- 取引一覧 -->
   <div id="trades-modal" class="fixed inset-0 bg-black/40 hidden z-50 flex items-end sm:items-center justify-center">
-    <div class="bg-[#f5f5f5] w-full max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[88vh] flex flex-col">
-      <div class="flex justify-between items-center px-5 h-14 shrink-0">
-        <h3 class="font-bold text-[16px] text-gray-900">あなたの取引</h3>
-        <button onclick="closeTradesModal()" class="w-8 h-8 text-gray-400 text-xl leading-none" aria-label="閉じる">×</button>
+    <div class="bg-[#f3f4f6] w-full max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[88vh] flex flex-col">
+      <div class="flex justify-between items-center px-5 h-14 shrink-0 bg-white/90 border-b border-gray-100 rounded-t-3xl">
+        <h3 class="font-bold text-[17px] text-gray-900">あなたの取引</h3>
+        <button onclick="closeTradesModal()" class="w-9 h-9 rounded-full bg-gray-100 text-gray-500 text-xl leading-none" aria-label="閉じる">×</button>
       </div>
-      <div id="trades-list" class="px-4 pb-6 space-y-4 overflow-y-auto"></div>
+      <div id="trades-list" class="px-3.5 py-3 pb-8 space-y-4 overflow-y-auto"></div>
     </div>
   </div>
 
@@ -6464,31 +6464,69 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     }
     window.renderTradesList = function() {
       const el = document.getElementById("trades-list");
-      if (myTrades.length === 0) { el.innerHTML = '<p class="text-xs text-gray-500 text-center py-6 font-medium bg-white/30 rounded-xl p-4 shadow-inner">取引はありません。</p>'; return; }
+      if (myTrades.length === 0) {
+        el.innerHTML = '<div class="text-center py-10 px-4 bg-white rounded-2xl border border-gray-100"><p class="text-sm font-bold text-gray-700">まだ取引はありません</p><p class="text-xs text-gray-400 mt-1">出品や購入が始まるとここに表示されます</p></div>';
+        return;
+      }
+      const kindLabel = (t) => {
+        if (t.kind === "group") return "共同購入";
+        if (t.isBundle) return "枠取引";
+        if (t.isBuy) return "買取";
+        if (t.isSell) return "購入";
+        return "交換";
+      };
+      const nextHint = (t) => {
+        if (t.status === "negotiating") return "チャットで条件を確認しましょう";
+        if (t.status === "shipping") {
+          const iAmOwner = currentUser && currentUser.uid === t.ownerId;
+          if (usesAzukariPayment(t)) return iAmOwner ? "発送・受取の進捗を確認" : "支払い・受取の進捗を確認";
+          return "発送・住所共有を進めましょう";
+        }
+        if (t.status === "completed") return "取引完了";
+        if (t.status === "cancelled") return "キャンセル済み";
+        return "";
+      };
+      const accent = { negotiating: "border-l-amber-400", shipping: "border-l-sky-500", completed: "border-l-emerald-500", cancelled: "border-l-gray-300" };
       const card = (t) => {
         const otherName = currentUser.uid === t.ownerId ? t.applicantName : t.ownerName;
+        const initial = String(otherName || "相").slice(0, 1);
         let note = "";
         if (t.status === "cancelled") {
           const side = cancelSide(t);
-          const who = side === "admin" ? "運営によりキャンセル" : "";
+          const who = side === "admin" ? "運営によりキャンセル" : (side === "other" ? "相手側のキャンセル" : (side === "me" ? "あなたのキャンセル" : ""));
           const reason = t.cancelRequest && t.cancelRequest.reasonText ? "理由: " + t.cancelRequest.reasonText : "";
           const text = [who, reason].filter(Boolean).join(" ／ ");
-          if (text) note = `<div class="text-[11px] text-gray-500 relative z-10">${escapeHtml(text)}</div>`;
+          if (text) note = `<div class="mt-1.5 text-[11px] text-gray-500 leading-snug">${escapeHtml(text)}</div>`;
         }
         const unread = !!(currentUser && t.lastSenderId !== currentUser.uid && isUnread(t));
-        const unreadCls = unread ? "bg-white border-pink-200" : "bg-white border-gray-200";
         const when = formatRelativeTimeJa(t.lastMessageAt || t.updatedAt || t.createdAt);
-        return `<button data-trade-id="${escapeHtml(t.id)}" class="w-full text-left rounded-2xl px-4 py-3.5 border ${unreadCls}">
-            <div class="flex items-center justify-between gap-2">
-              <span class="text-[15px] font-medium text-gray-900 truncate">${escapeHtml(otherName || "相手")}さん</span>
-              <span class="shrink-0 text-[11px] font-medium px-2 py-0.5 rounded-full ${STATUS_CLASS[t.status] || "bg-gray-100 text-gray-600"}">${STATUS_LABEL[t.status] || ""}</span>
+        const price = Number(t.postPrice || 0);
+        const priceTxt = price > 0 ? "¥" + price.toLocaleString() : "";
+        const hint = nextHint(t);
+        return `<button data-trade-id="${escapeHtml(t.id)}" class="w-full text-left rounded-2xl bg-white border border-gray-100 shadow-sm border-l-4 ${accent[t.status] || "border-l-gray-200"} ${unread ? "ring-2 ring-pink-200" : ""} px-3.5 py-3.5 active:scale-[0.99] transition">
+            <div class="flex gap-3">
+              <div class="w-11 h-11 rounded-full ${unread ? "bg-pink-100 text-pink-700" : "bg-purple-100 text-purple-800"} flex items-center justify-center text-base font-black shrink-0">${escapeHtml(initial)}</div>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center justify-between gap-2">
+                  <span class="text-[15px] font-bold text-gray-900 truncate">${escapeHtml(otherName || "相手")}さん</span>
+                  <span class="shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full ${STATUS_CLASS[t.status] || "bg-gray-100 text-gray-600"}">${STATUS_LABEL[t.status] || ""}</span>
+                </div>
+                <div class="mt-1 flex flex-wrap items-center gap-1.5">
+                  <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-gray-100 text-gray-600">${kindLabel(t)}</span>
+                  ${priceTxt ? `<span class="text-[12px] font-bold text-gray-800">${priceTxt}</span>` : ""}
+                </div>
+                <div class="mt-1 text-[13px] text-gray-700 leading-snug line-clamp-2 font-medium">${escapeHtml(t.postGive || "取引")}</div>
+                ${hint ? `<div class="mt-1.5 text-[11px] font-medium ${t.status === "completed" || t.status === "cancelled" ? "text-gray-400" : "text-purple-700"}">${escapeHtml(hint)}</div>` : ""}
+                <div class="mt-1.5 flex items-center justify-between gap-2 text-[11px] text-gray-400">
+                  <span class="flex items-center gap-2">
+                    ${unread ? '<span class="inline-flex items-center gap-1 text-pink-600 font-bold"><span class="w-1.5 h-1.5 rounded-full bg-pink-500"></span>新しいメッセージ</span>' : "<span>ルームを開く</span>"}
+                    ${when ? `<span>· ${escapeHtml(when)}</span>` : ""}
+                  </span>
+                  <span class="text-gray-300 text-sm">›</span>
+                </div>
+                ${note}
+              </div>
             </div>
-            <div class="mt-1 text-[13px] text-gray-700 leading-snug line-clamp-2">${escapeHtml(t.postGive || "取引")}</div>
-            <div class="mt-1.5 flex items-center gap-2 text-[11px] text-gray-400">
-              ${unread ? '<span class="text-pink-500 font-medium">新しいメッセージ</span>' : ""}
-              ${when ? `<span>${escapeHtml(when)}</span>` : ""}
-            </div>
-            ${note}
           </button>`;
       };
       const active = myTrades.filter(t => t.status === "negotiating" || t.status === "shipping");
@@ -6497,22 +6535,27 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       const byOther = cancelled.filter(t => { const x = cancelSide(t); return x === "other" || x === "admin"; });
       const byMe = cancelled.filter(t => cancelSide(t) === "me");
       const unknown = cancelled.filter(t => cancelSide(t) === "unknown");
-      const section = (id, title, list, emptyText) => {
+      const unreadActive = active.filter(t => isUnread(t)).length;
+      const section = (id, title, list, emptyText, tone) => {
         if (list.length === 0 && !emptyText) return "";
-        return `<details id="trades-sec-${id}" ${tradeSecOpen[id] ? "open" : ""} ontoggle="tradeSecToggle('${id}', this.open)">
-          <summary class="flex items-center justify-between cursor-pointer list-none [&::-webkit-details-marker]:hidden px-1 py-1">
-            <span class="text-[13px] font-medium text-gray-500">${title}<span class="ml-1">${list.length}</span></span>
-            <span class="text-gray-300 text-xs">▾</span>
+        const toneCls = tone || "bg-white text-gray-600 border-gray-200";
+        return `<details id="trades-sec-${id}" class="rounded-2xl bg-white/70 border border-gray-100 overflow-hidden" ${tradeSecOpen[id] ? "open" : ""} ontoggle="tradeSecToggle('${id}', this.open)">
+          <summary class="flex items-center justify-between cursor-pointer list-none [&::-webkit-details-marker]:hidden px-3.5 py-3 bg-white border-b border-gray-50">
+            <span class="inline-flex items-center gap-2">
+              <span class="text-[12px] font-black px-2.5 py-1 rounded-full border ${toneCls}">${title}</span>
+              <span class="text-[13px] font-bold text-gray-800">${list.length}</span>
+            </span>
+            <span class="text-gray-400 text-xs font-bold">開閉 ▾</span>
           </summary>
-          <div class="space-y-2 mt-2">${list.length ? list.map(card).join("") : `<p class="text-[12px] text-gray-400 text-center py-4">${emptyText}</p>`}</div>
+          <div class="space-y-2.5 p-2.5">${list.length ? list.map(card).join("") : `<p class="text-[12px] text-gray-400 text-center py-5">${emptyText}</p>`}</div>
         </details>`;
       };
       el.innerHTML = [
-        section("active", "取引中" + (active.filter(t => isUnread(t)).length ? ` · 未読${active.filter(t => isUnread(t)).length}` : ""), active, "取引中のものはありません"),
-        section("done", "完了", done, ""),
-        section("cancel_other", "キャンセルされたもの", byOther, ""),
-        section("cancel_me", "キャンセルしたもの", byMe, ""),
-        section("cancel_unknown", "キャンセル（どちらがしたか不明）", unknown, "")
+        section("active", "取引中" + (unreadActive ? ` · 未読${unreadActive}` : ""), active, "取引中のものはありません", "bg-amber-50 text-amber-800 border-amber-200"),
+        section("done", "完了", done, "", "bg-emerald-50 text-emerald-800 border-emerald-200"),
+        section("cancel_other", "キャンセルされたもの", byOther, "", "bg-gray-50 text-gray-600 border-gray-200"),
+        section("cancel_me", "キャンセルしたもの", byMe, "", "bg-gray-50 text-gray-600 border-gray-200"),
+        section("cancel_unknown", "キャンセル（不明）", unknown, "", "bg-gray-50 text-gray-600 border-gray-200")
       ].join("");
     };
 
@@ -13675,7 +13718,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
         <div class="text-[11px] font-bold text-gray-700">人数に対する第1希望獲得確率</div>
         <div class="text-[22px] leading-none font-black text-pink-600"><span id="ag-prob-big">0.0</span><span class="text-xs">%</span></div>
       </div>
-      <svg id="ag-prob-svg" viewBox="0 0 340 186" class="w-full h-48" role="img" aria-label="参加人数と第1希望獲得確率。最低成立人数から企画成立"></svg>
+      <svg id="ag-prob-svg" viewBox="0 0 340 196" class="w-full h-52" role="img" aria-label="参加人数と第1希望獲得確率。最低成立人数から企画成立"></svg>
       <p class="text-[10px] text-gray-500 mt-1">縦軸は確率（%）、横軸は参加人数です。緑の帯は20人以降の<strong class="font-bold text-emerald-700">ここから企画成立</strong>ゾーン。紫の点線がいまの人数。20人で82.5%、50人で88%の参考値で、獲得を保証するものではありません。</p>
     </div>
     <div id="ag-participant-list" class="rounded-xl border border-gray-100 px-3 py-2"></div>
@@ -13684,15 +13727,18 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     <div id="ag-my-status-box" class="hidden bg-white space-y-2.5"></div>
 
     <!-- エントリー枠選択（未参加時） -->
-    <div id="ag-entry-section" class="space-y-2">
-      <section class="mb-3 rounded-xl border-2 border-red-300 bg-red-50 p-3 text-gray-900 dark:border-red-800 dark:bg-red-950/40 dark:text-gray-100">
-        <div class="mb-3 flex items-start gap-2">
-          <span class="shrink-0 rounded bg-red-600 px-2 py-1 text-[10px] font-black text-white">必読</span>
-          <h3 class="text-sm font-black leading-snug">⚠️ 申し込み前に必ずお読みください（Auto-GOの仕組みとルール）</h3>
-        </div>
-        <div class="space-y-4 text-xs leading-relaxed sm:text-sm">
+    <div id="ag-entry-section" class="space-y-3">
+      <details class="rounded-xl border-2 border-red-300 bg-red-50 text-gray-900 dark:border-red-800 dark:bg-red-950/40 dark:text-gray-100">
+        <summary class="cursor-pointer list-none px-3 py-3 flex items-center justify-between gap-2 [&::-webkit-details-marker]:hidden">
+          <span class="flex items-center gap-2 min-w-0">
+            <span class="shrink-0 rounded bg-red-600 px-2 py-1 text-[10px] font-black text-white">必読</span>
+            <span class="text-sm font-black leading-snug truncate">仕組みとルール（タップで開く）</span>
+          </span>
+          <span class="text-[11px] font-bold text-red-700 shrink-0">詳細 ▾</span>
+        </summary>
+        <div class="px-3 pb-3 space-y-4 text-xs leading-relaxed sm:text-sm border-t border-red-200/80 pt-3">
           <div>
-            <h4 class="mb-2 font-black">【Auto-GO（自動共同購入・トレカ自動割り当て）の仕組み】</h4>
+            <h4 class="mb-2 font-black">【Auto-GOの仕組み】</h4>
             <ol class="space-y-3">
               <li class="flex items-start gap-2"><span class="shrink-0 rounded-full bg-red-600 px-2 py-0.5 font-bold text-white">1.</span><div><h5 class="font-bold">仮予約（エントリー）</h5><ul class="list-disc space-y-1 pl-4"><li>希望メンバーを1人選んで仮予約します（参加には配送先住所とXアカウントの登録が必要です）。</li><li>募集締切までに最低成立人数（通常20人）に達すると企画が成立し、本確定となります。未達の場合は自動キャンセルされ、購入は不要です。</li></ul></div></li>
               <li class="flex items-start gap-2"><span class="shrink-0 rounded-full bg-red-600 px-2 py-0.5 font-bold text-white">2.</span><div><h5 class="font-bold">企画成立後、購入用URLが届くので各自でCDを購入・報告</h5><ul class="list-disc space-y-1 pl-4"><li>企画成立後、プッシュ通知・アプリ内通知（およびX等）にて対象ショップの購入用URLが届きます。</li><li>指定期限までにそのURLから各自でCDを1枚購入し、購入完了スクリーンショットを登録してください。</li></ul></div></li>
@@ -13706,32 +13752,37 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
             <p class="mt-2">開封結果の未登録・期限超過は進行の妨げとなるためペナルティ対象となります</p>
           </div>
           <div class="border-t border-red-200 pt-3 dark:border-red-800">
-            <h4 class="mb-2 font-black">【必ず守るルール・不正防止ポリシー】</h4>
+            <h4 class="mb-2 font-black">【必ず守るルール】</h4>
             <ul class="list-disc space-y-2 pl-4">
-              <li>事前登録・通知設定の必須化：エントリー前に「氏名・郵便番号・住所」「XアカウントID」の登録、および「プッシュ通知のオン」が必要です（企画成立後の購入URLや発送期限の通知を確実に受け取るため）。</li>
+              <li>事前登録・通知設定の必須化：エントリー前に「氏名・郵便番号・住所」「XアカウントID」の登録、および「プッシュ通知のオン」が必要です。</li>
               <li>成立後のキャンセル不可：最低人数に達して企画が成立した後は、自己都合での購入キャンセルはできません。</li>
-              <li class="rounded-lg bg-red-100 p-2 font-bold text-red-900 dark:bg-red-900/40 dark:text-red-100">72時間以内の発送義務：マッチング確定後、72時間以内に発送および伝票写真の登録を行ってください。期限超過・未発送が確認された場合、Auto-GOの利用資格を永久停止（アカウント凍結対象）とします。</li>
-              <li>伝票画像の使い回し禁止：発送証明画像はシステムで重複検知（ハッシュ照合）を行っています。過去画像や他人の画像の流用、虚偽報告は即座にペナルティ対象となります。</li>
-              <li>発送方法の統一（追跡必須）：トラブル・未着防止のため、普通郵便（追跡なし）は禁止です。必ず『クリックポスト（185円）』『レターパックライト（430円）』『特定記録郵便』など追跡番号が発行される方法で発送し、発送報告時に追跡番号と伝票（控え）写真を登録してください。トレカはスリーブ＋硬質ケース（または厚紙補強）＋防水対策を行ってください。</li>
+              <li class="rounded-lg bg-red-100 p-2 font-bold text-red-900 dark:bg-red-900/40 dark:text-red-100">72時間以内の発送義務：マッチング確定後、72時間以内に発送および伝票写真の登録を行ってください。期限超過は永久停止の対象です。</li>
+              <li>伝票画像の使い回し禁止：発送証明画像は重複検知されます。</li>
+              <li>発送方法の統一（追跡必須）：普通郵便は禁止。クリックポスト等の追跡ありで発送してください。</li>
             </ul>
           </div>
         </div>
-      </section>
-      <div class="text-sm font-medium text-gray-800">メンバーを選択</div>
-      <div id="ag-consent-box" class="border-b border-gray-200 pb-3 mb-2 space-y-1.5">
-            <div class="text-sm font-medium text-gray-800">自動発送に同意（必須）</div>
-            <label class="flex items-start gap-1.5 cursor-pointer pt-0.5">
-              <input type="checkbox" id="ag-auto-ship-consent" required class="mt-0.5 rounded">
-              <span class="text-[10px] text-gray-700 leading-tight">
-                開封結果を期限内に登録し、自動割り当ての結果、発送先が指定された場合は指定先へ発送することに同意します。住所は発送先に共有されます。
-              </span>
-            </label>
-          </div>
-      <label class="mb-2 flex items-start gap-2 rounded-xl border border-red-300 bg-red-50 p-3 text-xs font-bold leading-relaxed text-gray-900 dark:border-red-800 dark:bg-red-950/40 dark:text-gray-100">
-        <input type="checkbox" id="ag-rules-consent" required onchange="toggleAutoGoRulesConsent()" class="mt-0.5 shrink-0 rounded">
-        <span>上記の仕組み・ルール（成立後のキャンセル不可・72時間以内の発送義務）を確認し同意します</span>
-      </label>
-<div id="ag-member-grid" class="grid grid-cols-1 gap-2"></div>
+      </details>
+
+      <div id="ag-consent-box" class="rounded-xl border border-gray-200 bg-white p-3 space-y-2.5">
+        <p class="text-[12px] font-black text-gray-800">① 同意してから予約</p>
+        <label class="flex items-start gap-2 cursor-pointer">
+          <input type="checkbox" id="ag-auto-ship-consent" required class="mt-0.5 rounded accent-pink-600">
+          <span class="text-[11px] text-gray-700 leading-snug">開封結果を期限内に登録し、発送先が指定されたら指定先へ発送します（住所は発送先に共有されます）</span>
+        </label>
+        <label class="flex items-start gap-2 cursor-pointer rounded-lg border border-red-200 bg-red-50 p-2.5">
+          <input type="checkbox" id="ag-rules-consent" required onchange="toggleAutoGoRulesConsent()" class="mt-0.5 shrink-0 rounded accent-red-600">
+          <span class="text-[11px] font-bold leading-snug text-gray-900">仕組み・ルールを確認し同意します（成立後キャンセル不可・72時間以内発送）</span>
+        </label>
+      </div>
+
+      <div>
+        <div class="flex items-end justify-between mb-2 px-0.5">
+          <p class="text-[12px] font-black text-gray-800">② 希望メンバーを選んで予約</p>
+          <p class="text-[10px] text-gray-500">今は支払いなし</p>
+        </div>
+        <div id="ag-member-grid" class="grid grid-cols-1 gap-2"></div>
+      </div>
     </div>
 
     <!-- X集客用 自動招待URLシェア -->
@@ -13829,11 +13880,11 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     if (big) big.textContent = nowPercent.toFixed(1);
     if (!svg) return;
     const width = 340;
-    const height = 186;
+    const height = 196;
     const left = 38;
-    const right = 12;
-    const top = 22;
-    const bottom = 40;
+    const right = 14;
+    const top = 28;
+    const bottom = 42;
     const establishAt = Math.max(1, Number(minThreshold) || 20);
     const maxCount = Math.max(50, Number(total) || 0, Number(targetCount) || 0, establishAt);
     const yOf = (percent) => top + (1 - Math.max(0, Math.min(100, percent)) / 100) * (height - top - bottom);
@@ -13884,15 +13935,29 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       const nearNow = Math.abs(count - clamped) < 3;
       guides += '<line x1="' + x.toFixed(1) + '" y1="' + top + '" x2="' + x.toFixed(1) + '" y2="' + (height - bottom) + '" stroke="#fbcfe8" stroke-dasharray="2 3" stroke-width="1"></line>';
       if (!nearNow) {
-        guides += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="2.4" fill="#f9a8d4"></circle>';
-        guides += '<text x="' + x.toFixed(1) + '" y="' + Math.max(top + 18, y - 7).toFixed(1) + '" text-anchor="middle" font-size="8" fill="#9d174d">' + percent.toFixed(1) + '%</text>';
+        guides += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="2.4" fill="#f9a8d4" stroke="#ffffff" stroke-width="1"></circle>';
+        let pctX = x + 10;
+        let pctAnchor = "start";
+        if (x > width * 0.7) { pctX = x - 10; pctAnchor = "end"; }
+        guides += '<text x="' + pctX.toFixed(1) + '" y="' + (y + 3).toFixed(1) + '" text-anchor="' + pctAnchor + '" font-size="8" font-weight="700" fill="#9d174d">' + percent.toFixed(1) + '%</text>';
       }
     });
     const establishPercent = agFirstChoicePercent(establishAt, memberCount);
     const establishY = yOf(establishPercent);
     if (Math.abs(establishAt - clamped) >= 3) {
-      guides += '<circle cx="' + establishX.toFixed(1) + '" cy="' + establishY.toFixed(1) + '" r="2.6" fill="#059669"></circle>';
-      guides += '<text x="' + establishX.toFixed(1) + '" y="' + Math.max(top + 24, establishY - 8).toFixed(1) + '" text-anchor="middle" font-size="8" font-weight="700" fill="#047857">' + establishPercent.toFixed(1) + '%</text>';
+      guides += '<circle cx="' + establishX.toFixed(1) + '" cy="' + establishY.toFixed(1) + '" r="2.8" fill="#059669" stroke="#ffffff" stroke-width="1.5"></circle>';
+      // 折れ線の上に重ねず、点の横にピル表示
+      let pctX = establishX + 12;
+      let pctAnchor = "start";
+      if (establishX > width * 0.58) {
+        pctX = establishX - 12;
+        pctAnchor = "end";
+      }
+      const pctText = establishPercent.toFixed(1) + "%";
+      const pillW = 42;
+      const pillX = pctAnchor === "start" ? pctX - 4 : pctX - pillW + 4;
+      guides += '<rect x="' + pillX.toFixed(1) + '" y="' + (establishY - 9).toFixed(1) + '" width="' + pillW + '" height="16" rx="8" fill="#ecfdf5" stroke="#059669" stroke-width="1"></rect>';
+      guides += '<text x="' + pctX.toFixed(1) + '" y="' + (establishY + 2.5).toFixed(1) + '" text-anchor="' + pctAnchor + '" font-size="9" font-weight="800" fill="#047857">' + pctText + '</text>';
     }
     let xLabels = "";
     const seen = {};
@@ -14038,11 +14103,28 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     if (entry.status === "unshipped_penalty") return "罰";
     return String(entry.status || "―").slice(0, 1);
   }
+  function agStatusFull(entry) {
+    if (!entry) return "不明";
+    if (entry.receivedDone) return "受取完了";
+    if (entry.shippedDone || entry.shippedAt) return "発送済み";
+    if (entry.status === "matched" && entry.noMatchResult) return "対象外";
+    if (entry.status === "matched" && entry.shipToAddress) return "発送待ち";
+    if (entry.status === "waiting_match") return "マッチング待ち";
+    if (entry.status === "arrived") return "到着済み";
+    if (entry.status === "purchased") return "購入済み";
+    if (entry.status === "confirmed") return "購入待ち";
+    if (entry.status === "reserved") return "仮予約";
+    if (entry.status === "cancelled") return "キャンセル";
+    if (entry.status === "unshipped_penalty") return "発送期限超過";
+    if (entry.status === "delayed") return "遅延報告";
+    if (entry.status === "self_pulled") return "自引き";
+    return String(entry.status || "参加中");
+  }
   function agMatchDiagram(pool) {
     const entries = (pool.entries || []).filter(function(e) { return e && e.status !== "cancelled"; });
     const users = pool.userDocs || {};
     if (!entries.length) {
-      return '<div class="text-[11px] text-gray-500 bg-gray-50 rounded-xl p-2">まだ参加者はいません。</div>';
+      return '<div class="text-[11px] text-gray-500 bg-gray-50 rounded-xl p-3">まだ参加者はいません。</div>';
     }
     const rooms = {};
     const loose = [];
@@ -14056,93 +14138,62 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       }
     }
     const roomIds = Object.keys(rooms);
-    let html = '<div class="space-y-2 rounded-2xl border border-purple-100 bg-gradient-to-b from-purple-50/60 to-white p-2.5">';
-    html += '<div class="text-[11px] font-black text-gray-800">取引マップ（矢印＝発送方向）</div>';
-    html += '<p class="text-[10px] text-gray-500">人型をタップすると、その人のAuto-GO全情報（住所・写真・期限・取引先）が開きます。赤枠は期限超過です。</p>';
-
-    function drawCycleSvg(ordered, roomLabel) {
-      const n = ordered.length;
-      const size = Math.min(340, 160 + n * 28);
-      const cx = size / 2;
-      const cy = size / 2;
-      const radius = Math.max(48, size * 0.32);
-      const positions = {};
-      for (let i = 0; i < n; i++) {
-        const angle = (-Math.PI / 2) + (2 * Math.PI * i / n);
-        positions[ordered[i].uid] = {
-          x: cx + radius * Math.cos(angle),
-          y: cy + radius * Math.sin(angle),
-          entry: ordered[i]
-        };
-      }
-      let svg = '<div class="rounded-xl border border-white bg-white/90 overflow-hidden shadow-sm">';
-      if (roomLabel) svg += '<div class="px-2 py-1 text-[10px] font-bold text-purple-700 bg-purple-50 border-b border-purple-100">' + escapeAutoGoHtml(roomLabel) + '</div>';
-      svg += '<svg viewBox="0 0 ' + size + ' ' + size + '" class="w-full h-auto max-h-80" role="img" aria-label="取引サイクル図">';
-      // arrows first
-      for (let i = 0; i < n; i++) {
-        const from = ordered[i];
-        const toUid = from.sendToUid;
-        if (!toUid || !positions[toUid]) continue;
-        const a = positions[from.uid];
-        const b = positions[toUid];
-        const late = agPurchaseLate(from) || agShipLate(from);
-        const color = late ? "#dc2626" : "#7c3aed";
-        const dx = b.x - a.x;
-        const dy = b.y - a.y;
-        const len = Math.sqrt(dx * dx + dy * dy) || 1;
-        const pad = 28;
-        const x1 = a.x + (dx / len) * pad;
-        const y1 = a.y + (dy / len) * pad;
-        const x2 = b.x - (dx / len) * pad;
-        const y2 = b.y - (dy / len) * pad;
-        svg += '<defs><marker id="ag-arr-' + escapeAutoGoHtml(pool.id) + '-' + i + '" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="' + color + '"/></marker></defs>';
-        svg += '<line x1="' + x1.toFixed(1) + '" y1="' + y1.toFixed(1) + '" x2="' + x2.toFixed(1) + '" y2="' + y2.toFixed(1) + '" stroke="' + color + '" stroke-width="2.2" marker-end="url(#ag-arr-' + escapeAutoGoHtml(pool.id) + '-' + i + ')"></line>';
-      }
-      for (let i = 0; i < n; i++) {
-        const entry = ordered[i];
-        const profile = (users[entry.uid] && users[entry.uid].profile) || {};
-        const name = (profile.nickname || entry.userName || entry.displayName || "参加者").slice(0, 8);
-        const pos = positions[entry.uid];
-        const late = agPurchaseLate(entry) || agShipLate(entry);
-        const stroke = late ? "#dc2626" : "#a78bfa";
-        const fill = late ? "#fee2e2" : "#ede9fe";
-        const mark = agStatusShort(entry);
-        svg += '<g style="cursor:pointer" onclick="window.openAutoGoPerson(\'' + escapeAutoGoHtml(pool.id) + '\',\'' + escapeAutoGoHtml(entry.uid) + '\')">';
-        svg += '<circle cx="' + pos.x.toFixed(1) + '" cy="' + pos.y.toFixed(1) + '" r="22" fill="' + fill + '" stroke="' + stroke + '" stroke-width="2.5"></circle>';
-        svg += '<text x="' + pos.x.toFixed(1) + '" y="' + (pos.y - 2).toFixed(1) + '" text-anchor="middle" font-size="13" font-weight="800" fill="#4c1d95">' + escapeAutoGoHtml(mark) + '</text>';
-        // stick-figure legs
-        svg += '<line x1="' + (pos.x - 6).toFixed(1) + '" y1="' + (pos.y + 22).toFixed(1) + '" x2="' + (pos.x - 10).toFixed(1) + '" y2="' + (pos.y + 34).toFixed(1) + '" stroke="#6b7280" stroke-width="2" stroke-linecap="round"></line>';
-        svg += '<line x1="' + (pos.x + 6).toFixed(1) + '" y1="' + (pos.y + 22).toFixed(1) + '" x2="' + (pos.x + 10).toFixed(1) + '" y2="' + (pos.y + 34).toFixed(1) + '" stroke="#6b7280" stroke-width="2" stroke-linecap="round"></line>';
-        svg += '<text x="' + pos.x.toFixed(1) + '" y="' + (pos.y + 46).toFixed(1) + '" text-anchor="middle" font-size="9" font-weight="700" fill="#374151">' + escapeAutoGoHtml(name) + '</text>';
-        svg += '</g>';
-      }
-      svg += '</svg></div>';
-      return svg;
+    function personCard(entry, showArrow) {
+      const profile = (users[entry.uid] && users[entry.uid].profile) || {};
+      const name = profile.nickname || entry.userName || entry.displayName || "参加者";
+      const late = agPurchaseLate(entry) || agShipLate(entry);
+      const status = agStatusFull(entry);
+      const want = entry.wantedMember || "-";
+      const pulled = entry.pulledMember || entry.openedCard || "";
+      const sendTo = entry.sendToName || "";
+      return (
+        (showArrow ? '<div class="flex justify-center py-0.5 text-purple-600 font-black text-lg leading-none" aria-hidden="true">↓ 発送</div>' : "") +
+        '<button type="button" data-ag-act="person" data-pool-id="' + escapeAutoGoHtml(pool.id) + '" data-uid="' + escapeAutoGoHtml(entry.uid) + '" onclick="window.openAutoGoPerson(this.getAttribute(\'data-pool-id\'), this.getAttribute(\'data-uid\'))" class="w-full text-left rounded-2xl border px-3 py-3 min-h-[64px] ' + (late ? "ag-person-late border-red-400 bg-red-50" : "border-purple-100 bg-white") + '" style="position:relative;z-index:6;touch-action:manipulation;">' +
+          '<div class="flex items-center gap-3">' +
+            '<div class="w-11 h-11 rounded-full ' + (late ? "bg-red-100 text-red-700" : "bg-purple-100 text-purple-800") + ' flex items-center justify-center text-sm font-black shrink-0">' + escapeAutoGoHtml(String(name).slice(0, 1)) + '</div>' +
+            '<div class="min-w-0 flex-1">' +
+              '<div class="flex items-center justify-between gap-2">' +
+                '<span class="text-[13px] font-black text-gray-900 truncate">' + escapeAutoGoHtml(name) + '</span>' +
+                '<span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full ' + (late ? "bg-red-600 text-white" : "bg-purple-100 text-purple-800") + '">' + escapeAutoGoHtml(status) + '</span>' +
+              '</div>' +
+              '<div class="mt-0.5 text-[11px] text-gray-600 truncate">希望: ' + escapeAutoGoHtml(want) + (pulled ? " · 開封: " + escapeAutoGoHtml(pulled) : "") + '</div>' +
+              (sendTo ? '<div class="mt-0.5 text-[10px] text-purple-700 font-medium truncate">発送先 → ' + escapeAutoGoHtml(sendTo) + '</div>' : "") +
+              (late ? '<div class="mt-0.5 text-[10px] font-bold text-red-700">期限超過</div>' : "") +
+            '</div>' +
+            '<span class="text-gray-300 text-lg shrink-0">›</span>' +
+          '</div>' +
+        '</button>'
+      );
     }
 
+    let html = '<div class="space-y-3 rounded-2xl border border-purple-100 bg-gradient-to-b from-purple-50/70 to-white p-3">';
+    html += '<div><div class="text-[12px] font-black text-gray-900">取引一覧（タップで詳細）</div>';
+    html += '<p class="text-[10px] text-gray-500 mt-0.5">矢印は発送方向です。赤い枠は購入または発送の期限超過です。</p></div>';
+
     if (!roomIds.length) {
-      html += '<p class="text-[10px] text-gray-500">まだ発送先が決まったサイクルはありません。下の未マッチング枠から個別に確認できます。</p>';
+      html += '<p class="text-[11px] text-gray-500 bg-white/80 rounded-xl px-3 py-2 border border-gray-100">まだ発送先が決まったサイクルはありません。</p>';
     }
     for (let r = 0; r < roomIds.length; r++) {
       const ordered = agOrderCycle(rooms[roomIds[r]]);
-      html += drawCycleSvg(ordered, "サイクル " + (r + 1) + "（" + ordered.length + "人）");
+      html += '<div class="rounded-2xl border border-white bg-white/95 shadow-sm overflow-hidden">';
+      html += '<div class="px-3 py-2 text-[11px] font-black text-purple-800 bg-purple-50 border-b border-purple-100">サイクル ' + (r + 1) + ' · ' + ordered.length + '人</div>';
+      html += '<div class="p-2 space-y-0">';
+      for (let i = 0; i < ordered.length; i++) {
+        html += personCard(ordered[i], i > 0);
+      }
+      if (ordered.length > 1 && ordered[ordered.length - 1].sendToUid === ordered[0].uid) {
+        html += '<div class="text-center text-[10px] font-bold text-purple-600 py-1.5">↩ 先頭へ戻る（循環）</div>';
+      }
+      html += '</div></div>';
     }
     if (loose.length) {
-      html += '<div class="text-[10px] font-bold text-gray-600 mt-1">未マッチング / 発送先未確定</div>';
-      // place loose people on a soft ring too when many
-      if (loose.length >= 3) {
-        html += drawCycleSvg(loose.map(function(e) { return Object.assign({}, e, { sendToUid: null }); }), "未マッチング");
-      } else {
-        html += '<div class="flex flex-wrap gap-2">';
-        for (let i = 0; i < loose.length; i++) {
-          const entry = loose[i];
-          const profile = (users[entry.uid] && users[entry.uid].profile) || {};
-          html += agPersonButton(pool.id, entry, profile, pool);
-        }
-        html += '</div>';
+      html += '<div class="rounded-2xl border border-dashed border-gray-200 bg-white/80 p-2 space-y-2">';
+      html += '<div class="text-[11px] font-black text-gray-700 px-1">未マッチング / 発送先未確定 · ' + loose.length + '人</div>';
+      for (let i = 0; i < loose.length; i++) {
+        html += personCard(loose[i], false);
       }
+      html += '</div>';
     }
-    html += '<div class="text-[9px] text-gray-400 pt-1">凡例: 予=仮予約 / 確=購入待ち / 購=購入済 / 着=到着 / 開=開封済 / 送=発送指示 / 済=発送済 / 完=受取完了</div>';
     html += '</div>';
     return html;
   }
@@ -14998,20 +15049,37 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     const caps = currentPoolData.memberCaps || {};
     const counts = currentPoolData.memberCounts || {};
     const rulesAgreed = document.getElementById("ag-rules-consent")?.checked === true;
+    const albumPrice = Number(currentPoolData.albumPrice || currentPoolData.purchasePrice || 0);
+    const priceHint = albumPrice > 0
+      ? `成立後に各自購入 · 目安 ¥${albumPrice.toLocaleString()}`
+      : "成立後に各自でショップ購入";
     grid.innerHTML = getActiveMembers().map(m => {
       const cap = caps[m] ?? Math.max(1, Math.ceil((currentPoolData.targetParticipants || 20) / Math.max(1, getActiveMembers().length)));
       const cnt = counts[m] ?? 0;
       const rem = Math.max(0, cap - cnt);
       const isFull = rem === 0;
       const disabled = isFull || recruitmentClosed || !rulesAgreed;
-      return `<div class="flex items-center justify-between py-2 border-b border-gray-200">
-        <div class="flex items-center gap-3">
-          <span class="text-sm text-gray-900">${m}</span>
-          <span class="text-xs text-gray-500">残り ${rem} / ${cap} 枠</span>
+      const pct = cap > 0 ? Math.min(100, Math.round((cnt / cap) * 100)) : 0;
+      const safeName = String(m).replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+      return `<div class="rounded-2xl border ${isFull || recruitmentClosed ? "border-gray-200 bg-gray-50" : "border-pink-100 bg-white"} p-3 shadow-sm">
+        <div class="flex items-center justify-between gap-2">
+          <div class="min-w-0">
+            <p class="text-[15px] font-black text-gray-900 truncate">${escapeAutoGoHtml(m)}</p>
+            <p class="text-[11px] text-gray-500 mt-0.5">残り <span class="font-bold text-gray-800">${rem}</span> / ${cap} 枠 · ${escapeAutoGoHtml(priceHint)}</p>
+          </div>
+          <button type="button" onclick="reserveAutoGoMember('${safeName}')" data-unavailable="${isFull || recruitmentClosed}" ${disabled ? "disabled" : ""}
+            class="shrink-0 min-h-[44px] px-4 py-2.5 rounded-full text-[13px] font-black transition ${
+              disabled
+                ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                : "bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-md active:scale-[0.98]"
+            }">
+            ${isFull ? "満枠" : (recruitmentClosed ? "受付終了" : "このメンバーで予約")}
+          </button>
         </div>
-        <button onclick="reserveAutoGoMember('${m}')" data-unavailable="${isFull || recruitmentClosed}" ${disabled ? 'disabled' : ''} class="px-3 py-1.5 text-sm ${disabled ? 'text-gray-400 cursor-not-allowed' : 'text-gray-900 underline underline-offset-2'}">
-          予約する
-        </button>
+        <div class="mt-2 h-1.5 rounded-full bg-gray-100 overflow-hidden">
+          <div class="h-full rounded-full ${isFull ? "bg-gray-400" : "bg-pink-400"}" style="width:${pct}%"></div>
+        </div>
+        ${!isFull && !recruitmentClosed ? `<p data-ag-need-consent class="text-[10px] text-amber-700 mt-1.5 font-medium ${rulesAgreed ? "hidden" : ""}">上の同意チェックを入れると予約できます</p>` : ""}
       </div>`;
     }).join("");
   }
@@ -15019,13 +15087,22 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
   window.toggleAutoGoRulesConsent = function() {
     const agreed = document.getElementById("ag-rules-consent")?.checked === true;
     document.querySelectorAll("#ag-member-grid button[data-unavailable]").forEach(button => {
-      const disabled = !agreed || button.dataset.unavailable === "true";
+      const unavailable = button.dataset.unavailable === "true";
+      const disabled = !agreed || unavailable;
       button.disabled = disabled;
-      button.classList.toggle("text-gray-400", disabled);
       button.classList.toggle("cursor-not-allowed", disabled);
-      button.classList.toggle("text-gray-900", !disabled);
-      button.classList.toggle("underline", !disabled);
-      button.classList.toggle("underline-offset-2", !disabled);
+      if (!unavailable) {
+        button.classList.toggle("bg-gray-200", disabled);
+        button.classList.toggle("text-gray-400", disabled);
+        button.classList.toggle("bg-gradient-to-r", !disabled);
+        button.classList.toggle("from-pink-500", !disabled);
+        button.classList.toggle("to-rose-500", !disabled);
+        button.classList.toggle("text-white", !disabled);
+        button.classList.toggle("shadow-md", !disabled);
+      }
+    });
+    document.querySelectorAll("#ag-member-grid [data-ag-need-consent]").forEach(hint => {
+      hint.classList.toggle("hidden", agreed);
     });
   };
 
