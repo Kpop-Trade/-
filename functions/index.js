@@ -649,6 +649,22 @@ exports.reserveAutoGoEntry = onCall(async (request) => {
   if (initialUserSnap.exists && initialUserSnap.data().autoGoBanned === true) {
     throw new HttpsError("permission-denied", "this account is banned from Auto-GO");
   }
+  const initialUser = initialUserSnap.exists ? initialUserSnap.data() : {};
+  const savedTokens = initialUser.fcmTokens;
+  let hasFcmToken = Boolean(
+    String(initialUser.fcmToken || "").trim() ||
+    (typeof savedTokens === "string" && savedTokens.trim()) ||
+    (Array.isArray(savedTokens) && savedTokens.some((token) => String(token || "").trim())) ||
+    (savedTokens && typeof savedTokens === "object" && !Array.isArray(savedTokens) &&
+      Object.values(savedTokens).some((token) => String(token || "").trim()))
+  );
+  if (!hasFcmToken) {
+    const tokenSnap = await db.collection("users").doc(uid).collection("tokens").limit(1).get();
+    hasFcmToken = !tokenSnap.empty;
+  }
+  if (!hasFcmToken) {
+    throw new HttpsError("failed-precondition", "push notification registration is required");
+  }
   const poolRef = db.collection("auto_go_pools").doc(poolId);
   const entryRef = autoGoEntryRef(poolId, uid);
   await db.runTransaction(async (tx) => {
@@ -662,17 +678,6 @@ exports.reserveAutoGoEntry = onCall(async (request) => {
     const user = userSnap.exists ? userSnap.data() : {};
     if (user.autoGoBanned === true) {
       throw new HttpsError("permission-denied", "this account is banned from Auto-GO");
-    }
-    const savedTokens = user.fcmTokens;
-    const hasFcmToken = Boolean(
-      String(user.fcmToken || "").trim() ||
-      (typeof savedTokens === "string" && savedTokens.trim()) ||
-      (Array.isArray(savedTokens) && savedTokens.some((token) => String(token || "").trim())) ||
-      (savedTokens && typeof savedTokens === "object" && !Array.isArray(savedTokens) &&
-        Object.values(savedTokens).some((token) => String(token || "").trim()))
-    );
-    if (!hasFcmToken) {
-      throw new HttpsError("failed-precondition", "push notification registration is required");
     }
     const pool = poolSnap.data();
     if (!["recruiting", "activating", "active"].includes(pool.status) || pool.recruitmentClosedAt) {
@@ -737,7 +742,20 @@ exports.reserveAutoGoEntry = onCall(async (request) => {
       createdAt: FV.serverTimestamp()
     });
   });
-  return { ok: true };
+  const poolSnap = await poolRef.get();
+  const pool = poolSnap.exists ? poolSnap.data() : {};
+  const priceYen = Number(pool.albumPrice || pool.purchasePrice || 0);
+  const priceText = priceYen > 0
+    ? `金額の目安: ¥${priceYen.toLocaleString("ja-JP")}（後で自身で購入）`
+    : "金額はショップの掲載価格です（後で自身で購入）";
+  await notify(uid, {
+    id: `autogo_reserved_${poolId}_${uid}`,
+    text: `「${pool.title || "Auto-GO"}」に仮予約しました。希望メンバー: ${wantedMember}。${priceText}。最低人数に達すると企画成立し、購入URLが届きます。`,
+    type: "success",
+    link: { k: "autogo", id: poolId },
+    title: "✅ Auto-GO予約完了"
+  });
+  return { ok: true, wantedMember, albumPrice: priceYen || null };
 });
 
 exports.cancelAutoGoEntry = onCall(async (request) => {
@@ -851,6 +869,7 @@ exports.registerAutoGoShipment = onCall(async (request) => {
   }
   const entryRef = autoGoEntryRef(poolId, request.auth.uid);
   const entriesRef = entryRef.parent;
+  let notifyUid = "";
   await db.runTransaction(async (tx) => {
     const [snap, entriesSnap] = await Promise.all([tx.get(entryRef), tx.get(entriesRef)]);
     if (!snap.exists || snap.data().status !== "matched" || !snap.data().shipToAddress || !snap.data().shippingProofUrl) {
@@ -863,12 +882,36 @@ exports.registerAutoGoShipment = onCall(async (request) => {
     if (duplicate) {
       throw new HttpsError("already-exists", "この追跡番号は同じプール内ですでに使用されています。");
     }
+    const sender = snap.data();
+    const receiverRef = sender.sendToUid ? autoGoEntryRef(poolId, sender.sendToUid) : null;
+    if (receiverRef) {
+      // Firestore: トランザクション内の読み取りは書き込みより前に行う
+      await tx.get(receiverRef);
+    }
     tx.update(entryRef, {
       shippedDone: true,
       shippedAt: FV.serverTimestamp(),
       trackingNumber
     });
+    // 受取側が他人のエントリーを読まなくても追跡できるようコピー
+    if (receiverRef) {
+      notifyUid = sender.sendToUid;
+      tx.update(receiverRef, {
+        incomingTrackingNumber: trackingNumber,
+        incomingShippedAt: FV.serverTimestamp(),
+        incomingShipperName: sender.userName || "参加者"
+      });
+    }
   });
+  if (notifyUid) {
+    await notify(notifyUid, {
+      id: `autogo_incoming_${poolId}_${request.auth.uid}`,
+      text: `Auto-GOのトレカが発送されました。追跡番号: ${trackingNumber}`,
+      type: "info",
+      link: { k: "autogo", id: poolId },
+      title: "📦 Auto-GO発送通知"
+    }).catch((e) => console.warn("incoming ship notify", e));
+  }
   return { ok: true };
 });
 

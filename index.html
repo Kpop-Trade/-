@@ -14023,8 +14023,23 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
     }
     return ordered;
   }
+  function agStatusShort(entry) {
+    if (!entry) return "―";
+    if (entry.receivedDone) return "完";
+    if (entry.shippedDone || entry.shippedAt) return "済";
+    if (entry.status === "matched" && entry.shipToAddress) return "送";
+    if (entry.status === "matched" && entry.noMatchResult) return "外";
+    if (entry.status === "waiting_match") return "開";
+    if (entry.status === "arrived") return "着";
+    if (entry.status === "purchased") return "購";
+    if (entry.status === "confirmed") return "確";
+    if (entry.status === "reserved") return "予";
+    if (entry.status === "cancelled") return "消";
+    if (entry.status === "unshipped_penalty") return "罰";
+    return String(entry.status || "―").slice(0, 1);
+  }
   function agMatchDiagram(pool) {
-    const entries = pool.entries || [];
+    const entries = (pool.entries || []).filter(function(e) { return e && e.status !== "cancelled"; });
     const users = pool.userDocs || {};
     if (!entries.length) {
       return '<div class="text-[11px] text-gray-500 bg-gray-50 rounded-xl p-2">まだ参加者はいません。</div>';
@@ -14040,40 +14055,95 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
         loose.push(entry);
       }
     }
-    let html = '<div class="space-y-2"><div class="text-[11px] font-black text-gray-800">マッチング図（矢印は発送する方向）</div>';
-    html += '<p class="text-[10px] text-gray-500">赤い人は購入登録期限または発送期限（マッチングから72時間）を過ぎています。名前か写真をタップすると、購入・発送の写真と住所が開きます。</p>';
     const roomIds = Object.keys(rooms);
+    let html = '<div class="space-y-2 rounded-2xl border border-purple-100 bg-gradient-to-b from-purple-50/60 to-white p-2.5">';
+    html += '<div class="text-[11px] font-black text-gray-800">取引マップ（矢印＝発送方向）</div>';
+    html += '<p class="text-[10px] text-gray-500">人型をタップすると、その人のAuto-GO全情報（住所・写真・期限・取引先）が開きます。赤枠は期限超過です。</p>';
+
+    function drawCycleSvg(ordered, roomLabel) {
+      const n = ordered.length;
+      const size = Math.min(340, 160 + n * 28);
+      const cx = size / 2;
+      const cy = size / 2;
+      const radius = Math.max(48, size * 0.32);
+      const positions = {};
+      for (let i = 0; i < n; i++) {
+        const angle = (-Math.PI / 2) + (2 * Math.PI * i / n);
+        positions[ordered[i].uid] = {
+          x: cx + radius * Math.cos(angle),
+          y: cy + radius * Math.sin(angle),
+          entry: ordered[i]
+        };
+      }
+      let svg = '<div class="rounded-xl border border-white bg-white/90 overflow-hidden shadow-sm">';
+      if (roomLabel) svg += '<div class="px-2 py-1 text-[10px] font-bold text-purple-700 bg-purple-50 border-b border-purple-100">' + escapeAutoGoHtml(roomLabel) + '</div>';
+      svg += '<svg viewBox="0 0 ' + size + ' ' + size + '" class="w-full h-auto max-h-80" role="img" aria-label="取引サイクル図">';
+      // arrows first
+      for (let i = 0; i < n; i++) {
+        const from = ordered[i];
+        const toUid = from.sendToUid;
+        if (!toUid || !positions[toUid]) continue;
+        const a = positions[from.uid];
+        const b = positions[toUid];
+        const late = agPurchaseLate(from) || agShipLate(from);
+        const color = late ? "#dc2626" : "#7c3aed";
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const len = Math.sqrt(dx * dx + dy * dy) || 1;
+        const pad = 28;
+        const x1 = a.x + (dx / len) * pad;
+        const y1 = a.y + (dy / len) * pad;
+        const x2 = b.x - (dx / len) * pad;
+        const y2 = b.y - (dy / len) * pad;
+        svg += '<defs><marker id="ag-arr-' + escapeAutoGoHtml(pool.id) + '-' + i + '" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="' + color + '"/></marker></defs>';
+        svg += '<line x1="' + x1.toFixed(1) + '" y1="' + y1.toFixed(1) + '" x2="' + x2.toFixed(1) + '" y2="' + y2.toFixed(1) + '" stroke="' + color + '" stroke-width="2.2" marker-end="url(#ag-arr-' + escapeAutoGoHtml(pool.id) + '-' + i + ')"></line>';
+      }
+      for (let i = 0; i < n; i++) {
+        const entry = ordered[i];
+        const profile = (users[entry.uid] && users[entry.uid].profile) || {};
+        const name = (profile.nickname || entry.userName || entry.displayName || "参加者").slice(0, 8);
+        const pos = positions[entry.uid];
+        const late = agPurchaseLate(entry) || agShipLate(entry);
+        const stroke = late ? "#dc2626" : "#a78bfa";
+        const fill = late ? "#fee2e2" : "#ede9fe";
+        const mark = agStatusShort(entry);
+        svg += '<g style="cursor:pointer" onclick="window.openAutoGoPerson(\'' + escapeAutoGoHtml(pool.id) + '\',\'' + escapeAutoGoHtml(entry.uid) + '\')">';
+        svg += '<circle cx="' + pos.x.toFixed(1) + '" cy="' + pos.y.toFixed(1) + '" r="22" fill="' + fill + '" stroke="' + stroke + '" stroke-width="2.5"></circle>';
+        svg += '<text x="' + pos.x.toFixed(1) + '" y="' + (pos.y - 2).toFixed(1) + '" text-anchor="middle" font-size="13" font-weight="800" fill="#4c1d95">' + escapeAutoGoHtml(mark) + '</text>';
+        // stick-figure legs
+        svg += '<line x1="' + (pos.x - 6).toFixed(1) + '" y1="' + (pos.y + 22).toFixed(1) + '" x2="' + (pos.x - 10).toFixed(1) + '" y2="' + (pos.y + 34).toFixed(1) + '" stroke="#6b7280" stroke-width="2" stroke-linecap="round"></line>';
+        svg += '<line x1="' + (pos.x + 6).toFixed(1) + '" y1="' + (pos.y + 22).toFixed(1) + '" x2="' + (pos.x + 10).toFixed(1) + '" y2="' + (pos.y + 34).toFixed(1) + '" stroke="#6b7280" stroke-width="2" stroke-linecap="round"></line>';
+        svg += '<text x="' + pos.x.toFixed(1) + '" y="' + (pos.y + 46).toFixed(1) + '" text-anchor="middle" font-size="9" font-weight="700" fill="#374151">' + escapeAutoGoHtml(name) + '</text>';
+        svg += '</g>';
+      }
+      svg += '</svg></div>';
+      return svg;
+    }
+
     if (!roomIds.length) {
-      html += '<p class="text-[10px] text-gray-500">まだ発送先が決まったペアはありません。</p>';
+      html += '<p class="text-[10px] text-gray-500">まだ発送先が決まったサイクルはありません。下の未マッチング枠から個別に確認できます。</p>';
     }
     for (let r = 0; r < roomIds.length; r++) {
       const ordered = agOrderCycle(rooms[roomIds[r]]);
-      html += '<div class="overflow-x-auto pb-1"><div class="flex items-center gap-1 min-w-max">';
-      for (let i = 0; i < ordered.length; i++) {
-        const entry = ordered[i];
-        const profile = (users[entry.uid] && users[entry.uid].profile) || {};
-        html += agPersonButton(pool.id, entry, profile, pool);
-        if (i < ordered.length - 1) {
-          const linked = entry.sendToUid === ordered[i + 1].uid;
-          const color = (agPurchaseLate(entry) || agShipLate(entry)) ? "#dc2626" : "#7c3aed";
-          html += '<div class="text-center shrink-0" style="color:' + color + '"><div class="text-lg font-black leading-none">' + (linked ? "→" : "·") + '</div><div class="text-[8px] font-bold">発送</div></div>';
-        }
-      }
-      if (ordered.length > 1 && ordered[ordered.length - 1].sendToUid === ordered[0].uid) {
-        html += '<div class="text-[10px] font-black text-purple-700 px-1">↩ 先頭へ</div>';
-      }
-      html += "</div></div>";
+      html += drawCycleSvg(ordered, "サイクル " + (r + 1) + "（" + ordered.length + "人）");
     }
     if (loose.length) {
-      html += '<div class="text-[10px] font-bold text-gray-500">未マッチング / 発送先未確定</div><div class="flex gap-2 overflow-x-auto pb-1">';
-      for (let i = 0; i < loose.length; i++) {
-        const entry = loose[i];
-        const profile = (users[entry.uid] && users[entry.uid].profile) || {};
-        html += agPersonButton(pool.id, entry, profile, pool);
+      html += '<div class="text-[10px] font-bold text-gray-600 mt-1">未マッチング / 発送先未確定</div>';
+      // place loose people on a soft ring too when many
+      if (loose.length >= 3) {
+        html += drawCycleSvg(loose.map(function(e) { return Object.assign({}, e, { sendToUid: null }); }), "未マッチング");
+      } else {
+        html += '<div class="flex flex-wrap gap-2">';
+        for (let i = 0; i < loose.length; i++) {
+          const entry = loose[i];
+          const profile = (users[entry.uid] && users[entry.uid].profile) || {};
+          html += agPersonButton(pool.id, entry, profile, pool);
+        }
+        html += '</div>';
       }
-      html += "</div>";
     }
-    html += "</div>";
+    html += '<div class="text-[9px] text-gray-400 pt-1">凡例: 予=仮予約 / 確=購入待ち / 購=購入済 / 着=到着 / 開=開封済 / 送=発送指示 / 済=発送済 / 完=受取完了</div>';
+    html += '</div>';
     return html;
   }
   window.openAutoGoPerson = function(poolId, uid) {
@@ -14293,6 +14363,12 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
             showToast("有効なアルバム購入URL（https://）を入力してください", "error");
             return;
           }
+          const albumPriceRaw = document.getElementById("adm-ag-album-price")?.value;
+          const albumPrice = albumPriceRaw === "" || albumPriceRaw == null ? 0 : Number(albumPriceRaw);
+          if (Number.isNaN(albumPrice) || albumPrice < 0 || albumPrice > 100000) {
+            showToast("アルバム金額は0〜100000の数字で入力してください", "error");
+            return;
+          }
 
           let imageUrl = "";
           if (fileInput?.files?.[0]) {
@@ -14331,6 +14407,7 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
             title,
             description: desc,
             purchaseUrl,
+            albumPrice: albumPrice > 0 ? albumPrice : null,
             imageUrl,
             memberCountType: memberNames.length,
             memberNames,
@@ -14470,9 +14547,15 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
           </div>
 
           <div class="grid grid-cols-2 gap-2">
+            <label class="block text-[11px] font-bold text-gray-700">アルバム金額の目安（円）
+              <input id="adm-ag-album-price" type="number" min="0" max="100000" value="" placeholder="例: 3500" class="mt-1 w-full liquid-glass-input rounded-xl p-2.5 text-xs text-gray-900">
+              <span class="text-[9px] text-gray-400 font-medium">予約確認時に「後で自身で購入」と表示</span>
+            </label>
             <label class="block text-[11px] font-bold text-gray-700">最低成立人数
               <input id="adm-ag-min-threshold" type="number" min="2" max="100" value="20" class="mt-1 w-full liquid-glass-input rounded-xl p-2.5 text-xs text-gray-900">
             </label>
+          </div>
+          <div>
             <label class="block text-[11px] font-bold text-gray-700">参加に必要な完了評価数
               <input id="adm-ag-min-completed-trades" type="number" min="0" value="0" class="mt-1 w-full liquid-glass-input rounded-xl p-2.5 text-xs text-gray-900">
             </label>
@@ -14684,30 +14767,40 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
       });
     }
     currentEntries = [];
-    unsubEntries = onSnapshot(collection(db, "auto_go_pools", poolId, "entries"), (snap) => {
-      currentEntries = snap.docs.map(entry => ({ uid: entry.id, ...entry.data() }));
-      renderAutoGoUI();
-    }, (error) => {
-      console.error("Auto-GO participant list error:", error);
-      const list = document.getElementById("ag-participant-list");
-      if (list) list.textContent = "参加者一覧を読み込めませんでした";
-    });
+    // 管理者のみ全参加者を購読（一般ユーザーは他人の応募内容を読めない）
+    if (window.__isAutoGoAdmin?.()) {
+      unsubEntries = onSnapshot(collection(db, "auto_go_pools", poolId, "entries"), (snap) => {
+        currentEntries = snap.docs.map(entry => ({ uid: entry.id, ...entry.data() }));
+        renderAutoGoUI();
+      }, (error) => {
+        console.error("Auto-GO participant list error:", error);
+        const list = document.getElementById("ag-participant-list");
+        if (list) list.textContent = "参加者一覧を読み込めませんでした";
+      });
+    }
   };
 
   function renderAutoGoParticipants() {
     const list = document.getElementById("ag-participant-list");
     if (!list) return;
-    const participants = currentEntries.filter(entry => entry.status !== "cancelled");
     const admin = !!window.__isAutoGoAdmin?.();
-    list.innerHTML = `<p class="text-[10px] font-bold text-gray-600 mb-1">参加者 ${participants.length}人</p>` +
+    const total = Number(currentPoolData?.totalCount || 0);
+    if (!admin) {
+      // 一般ユーザーには誰が応募しているか見せない（人数のみ）
+      list.innerHTML = `<p class="text-[11px] text-gray-600">現在の参加人数 <span class="font-bold text-gray-900">${total}</span>人</p>
+        <p class="text-[10px] text-gray-400 mt-0.5">他の参加者の名前・予約内容は非公開です</p>`;
+      return;
+    }
+    const participants = currentEntries.filter(entry => entry.status !== "cancelled");
+    list.innerHTML = `<p class="text-[10px] font-bold text-gray-600 mb-1">参加者 ${participants.length}人（管理者のみ表示）</p>` +
       (participants.length ? participants.map(entry => {
         const xId = getAutoGoXId(entry);
-        const canRemove = admin && !["unshipped_penalty", "cancelled"].includes(entry.status);
+        const canRemove = !["unshipped_penalty", "cancelled"].includes(entry.status);
         return `<div class="flex items-center justify-between gap-2 border-t border-gray-100 py-1 text-[10px]">
-          <span class="truncate">${escapeAutoGoHtml(entry.userName || "参加者")} · ${escapeAutoGoHtml(entry.wantedMember || "")}
-            ${xId ? `<a href="https://x.com/${encodeURIComponent(xId)}" target="_blank" rel="noopener" class="ml-1 text-blue-600 underline">@${escapeAutoGoHtml(xId)}</a>` : ""}
-          </span>
-          ${admin ? `<span class="shrink-0 text-gray-500">${escapeAutoGoHtml(entry.status || "")}</span>` : ""}
+          <button type="button" data-ag-act="person" data-pool-id="${escapeAutoGoHtml(activePoolId)}" data-uid="${escapeAutoGoHtml(entry.uid)}" onclick="window.openAutoGoPerson(this.getAttribute('data-pool-id'), this.getAttribute('data-uid'))" class="truncate text-left font-bold text-gray-800">${escapeAutoGoHtml(entry.userName || "参加者")} · ${escapeAutoGoHtml(entry.wantedMember || "")}
+            ${xId ? `<span class="ml-1 text-blue-600">@${escapeAutoGoHtml(xId)}</span>` : ""}
+          </button>
+          <span class="shrink-0 text-gray-500">${escapeAutoGoHtml(entry.status || "")}</span>
           ${canRemove ? `<button type="button" data-pool="${escapeAutoGoHtml(activePoolId)}" data-uid="${escapeAutoGoHtml(entry.uid)}" onclick="window.adminRemoveAutoGoEntry(this.dataset.pool,this.dataset.uid)" class="shrink-0 text-red-600 underline">除外</button>` : ""}
         </div>`;
       }).join("") : '<p class="text-[10px] text-gray-400">参加者はいません</p>');
@@ -14842,9 +14935,10 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
               ? `<p class="text-sm text-gray-700">受取元：${escapeAutoGoHtml(currentEntryData.receiveFromName || "参加者")} · ${escapeAutoGoHtml(currentEntryData.receivingCard || "トレカ")}</p>`
               : `<p class="text-xs text-gray-500">※あなたの発送伝票を登録すると表示されます</p>`;
           }
-          const receiveFromEntry = currentEntries.find(entry => entry.uid === currentEntryData.receiveFromUid);
-          const receiveTrackingNumber = String(receiveFromEntry?.trackingNumber || "").replace(/\D/g, "");
-          if (currentEntryData.shippedAt && receiveFromEntry?.shippedAt && receiveTrackingNumber.length >= 10) {
+          const receiveTrackingNumber = String(
+            currentEntryData.incomingTrackingNumber || ""
+          ).replace(/\D/g, "");
+          if (currentEntryData.shippedAt && receiveTrackingNumber.length >= 10) {
             html += `<div class="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-gray-900 dark:border-blue-800 dark:bg-blue-950/40 dark:text-gray-100">
               <div class="mb-1 font-bold">相手の追跡番号：${escapeAutoGoHtml(receiveTrackingNumber)}</div>
               <a href="https://trackings.post.japanpost.jp/services/srv/search/direct?reqCodeNo1=${encodeURIComponent(receiveTrackingNumber)}&locale=ja" target="_blank" rel="noopener" class="inline-block rounded-lg bg-blue-700 px-3 py-2 font-bold text-white">📦 追跡状況を確認する（日本郵便）</a>
@@ -14959,24 +15053,17 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
         window.openProfileModal?.("address");
         return;
       }
-      const savedTokens = userData.fcmTokens;
-      const hasFcmToken = Boolean(
-        String(userData.fcmToken || "").trim() ||
-        (typeof savedTokens === "string" && savedTokens.trim()) ||
-        (Array.isArray(savedTokens) && savedTokens.some(token => String(token || "").trim())) ||
-        (savedTokens && typeof savedTokens === "object" && !Array.isArray(savedTokens) &&
-          Object.values(savedTokens).some(token => String(token || "").trim()))
-      );
-      if (typeof Notification === "undefined" || Notification.permission !== "granted" || !hasFcmToken) {
+      // 通知ON済みでもトークン未保存のことがあるため、拒否せず再取得を試みる
+      const pushReady = typeof window.ensureAutoGoPushReady === "function"
+        ? await window.ensureAutoGoPushReady()
+        : (typeof Notification !== "undefined" && Notification.permission === "granted");
+      if (!pushReady) {
         const pushBox = document.getElementById("ag-push-req-box");
         const pushMessage = document.getElementById("ag-push-required-message");
-        const pushOffView = document.getElementById("ag-push-off-view");
-        const pushOnView = document.getElementById("ag-push-on-view");
         if (pushMessage) pushMessage.textContent = "企画成立後の購入URL通知や発送期限のお知らせを受け取るため、プッシュ通知をオンにしてから申し込んでください";
-        if (pushBox) pushBox.className = "mb-3 p-3 rounded-2xl bg-rose-50 border border-rose-200 shadow-sm transition";
-        pushOffView?.classList.remove("hidden");
-        pushOnView?.classList.add("hidden");
+        window.syncAutoGoPushBanner?.();
         pushBox?.scrollIntoView({ behavior: "smooth", block: "center" });
+        showToast("先に通知をオンにしてください", "error");
         return;
       }
       const minCompletedTrades = Number(currentPoolData?.minCompletedTrades) || 0;
@@ -14997,15 +15084,50 @@ window.openBundleFrameEditor=function(){const _b=!!(window.__isBulkMode||window.
         showToast("自動発送の事前同意にチェックしてください", "error");
         return;
       }
+      const albumPrice = Number(currentPoolData?.albumPrice || currentPoolData?.purchasePrice || 0);
+      const priceLine = albumPrice > 0
+        ? `金額の目安：¥${albumPrice.toLocaleString()}（後で自身で購入）`
+        : "金額：ショップ掲載価格（後で自身で購入）";
+      const poolTitle = (currentPoolData?.title || "Auto-GO").replace(/全体プール/g, "").trim() || "Auto-GO";
+      const confirmMsg = `予約を確定しますか？\n\n企画：${poolTitle}\n希望メンバー：${memberName}\n${priceLine}\n\n※今はお支払いは発生しません。企画成立後に各自でCDを購入します。`;
+      const agreed = typeof window.appConfirm === "function"
+        ? await window.appConfirm(confirmMsg, "予約を確定する", false)
+        : window.confirm(confirmMsg);
+      if (!agreed) return;
+
       await refs.reserveAutoGoEntry({
         poolId: activePoolId,
         wantedMember: memberName,
         consent: true
       });
-      showToast("仮予約しました", "success");
+      showToast("予約完了！希望メンバー「" + memberName + "」で仮予約しました", "success");
+      try {
+        const overlay = document.createElement("div");
+        overlay.id = "ag-reserve-done-modal";
+        overlay.className = "fixed inset-0 z-[220] bg-black/50 flex items-center justify-center p-4";
+        overlay.innerHTML = `<div class="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl space-y-3 text-center">
+          <div class="text-3xl">✅</div>
+          <h3 class="text-base font-black text-gray-900">予約完了</h3>
+          <p class="text-sm text-gray-700">希望メンバー：<strong>${escapeAutoGoHtml(memberName)}</strong></p>
+          <p class="text-xs text-gray-600">${escapeAutoGoHtml(priceLine)}</p>
+          <p class="text-[11px] text-gray-500">予約内容をプッシュ通知でもお送りしました。最低人数に達すると企画が成立します。</p>
+          <button type="button" class="w-full py-2.5 rounded-full bg-gradient-to-r from-purple-600 to-pink-500 text-white text-sm font-bold" onclick="document.getElementById('ag-reserve-done-modal')?.remove()">閉じる</button>
+        </div>`;
+        overlay.onclick = (ev) => { if (ev.target === overlay) overlay.remove(); };
+        document.body.appendChild(overlay);
+      } catch (modalErr) {
+        console.warn("reserve done modal", modalErr);
+      }
     } catch (error) {
       console.error("reserveAutoGoMember error:", error);
-      showToast("予約に失敗しました: " + (error?.message || error), "error");
+      const code = error?.code || "";
+      const msg = error?.message || String(error);
+      if (/push notification|failed-precondition/i.test(code + " " + msg)) {
+        window.syncAutoGoPushBanner?.();
+        showToast("通知の登録が完了していません。もう一度「通知をONにする」を押してから予約してください", "error");
+      } else {
+        showToast("予約に失敗しました: " + msg, "error");
+      }
     }
   };
 
@@ -15615,16 +15737,47 @@ ${currentPoolData.title}
 
 <script>
 (function() {
+  function agLocalPushToken() {
+    try {
+      const uid = (window.currentUser && window.currentUser.uid) ||
+        (window.__autoGoRefs && window.__autoGoRefs.auth && window.__autoGoRefs.auth.currentUser && window.__autoGoRefs.auth.currentUser.uid) || "";
+      if (!uid) return "";
+      return String(localStorage.getItem("illit_push_" + uid) || "").trim();
+    } catch (e) {}
+    return "";
+  }
+
+  window.isAutoGoPushReady = function() {
+    const granted = (typeof Notification !== "undefined" && Notification.permission === "granted");
+    if (!granted) return false;
+    if (agLocalPushToken()) return true;
+    try {
+      const ud = window.userData || {};
+      if (String(ud.fcmToken || "").trim()) return true;
+    } catch (e) {}
+    return false;
+  };
+
   window.syncAutoGoPushBanner = function() {
     const box = document.getElementById("ag-push-req-box");
     const offView = document.getElementById("ag-push-off-view");
     const onView = document.getElementById("ag-push-on-view");
     if (!box || !offView || !onView) return;
-    const granted = (typeof Notification !== "undefined" && Notification.permission === "granted");
-    if (granted) {
+    const ready = window.isAutoGoPushReady();
+    const grantedOnly = (typeof Notification !== "undefined" && Notification.permission === "granted");
+    if (ready) {
       box.className = "mb-3 p-2.5 rounded-2xl bg-emerald-50 border border-emerald-200 transition";
       offView.classList.add("hidden");
       onView.classList.remove("hidden");
+      const onText = onView.querySelector("p");
+      if (onText) onText.textContent = "通知ON";
+    } else if (grantedOnly) {
+      // 権限はあるがトークン未保存 → 「もう一度オン」ではなく準備中扱い
+      box.className = "mb-3 p-2.5 rounded-2xl bg-amber-50 border border-amber-200 transition";
+      offView.classList.add("hidden");
+      onView.classList.remove("hidden");
+      const onText = onView.querySelector("p");
+      if (onText) onText.textContent = "通知準備中（予約時に自動完了します）";
     } else {
       box.className = "mb-3 p-3 rounded-2xl bg-rose-50 border border-rose-200 shadow-sm transition";
       offView.classList.remove("hidden");
@@ -15632,7 +15785,11 @@ ${currentPoolData.title}
     }
   };
 
-  window.requestAutoGoPushPermission = async function() {
+  window.ensureAutoGoPushReady = async function() {
+    if (window.isAutoGoPushReady()) {
+      window.syncAutoGoPushBanner();
+      return true;
+    }
     try {
       if (typeof enablePush === "function") {
         await enablePush();
@@ -15641,14 +15798,27 @@ ${currentPoolData.title}
       } else if (typeof Notification !== "undefined" && Notification.requestPermission) {
         await Notification.requestPermission();
       }
+      // 権限だけ付いてトークン未保存のとき、もう一度保存を試す
+      if (typeof Notification !== "undefined" && Notification.permission === "granted" && !agLocalPushToken()) {
+        if (typeof enablePush === "function") await enablePush();
+        else if (typeof window.enablePush === "function") await window.enablePush();
+      }
     } catch (e) {
-      console.error("requestAutoGoPushPermission error:", e);
+      console.error("ensureAutoGoPushReady error:", e);
     }
     window.syncAutoGoPushBanner();
-    if (typeof Notification !== "undefined" && Notification.permission !== "granted") {
+    return window.isAutoGoPushReady() ||
+      (typeof Notification !== "undefined" && Notification.permission === "granted" && !!agLocalPushToken());
+  };
+
+  window.requestAutoGoPushPermission = async function() {
+    const ok = await window.ensureAutoGoPushReady();
+    if (!ok && typeof Notification !== "undefined" && Notification.permission !== "granted") {
       if (typeof showToast === "function") {
         showToast("ブラウザまたは端末の設定から通知を許可してください（iPhoneはホーム画面に追加後に通知ONできます）", "error");
       }
+    } else if (ok && typeof showToast === "function") {
+      showToast("通知の準備ができました", "success");
     }
   };
 
