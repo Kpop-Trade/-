@@ -504,7 +504,8 @@
         animation: none !important;
       }
     }
-  #posts-container>div:only-child,#posts-container .text-center{grid-column:1/-1!important;width:100%!important;text-align:center!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important}
+  #posts-container>div:only-child,#posts-container .text-center,#posts-container>.posts-status,#posts-container .posts-status{grid-column:1/-1!important;grid-row:auto!important;width:100%!important;max-width:100%!important;text-align:center!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;height:auto!important;min-height:0!important}
+  #posts-container>.posts-status:nth-child(6n+1),#posts-container>.posts-status{grid-column:1/-1!important;grid-row:span 1!important}
 /* 投稿詳細モーダル横ズレ完全防止 */
 html, body {
   max-width: 100%;
@@ -549,6 +550,23 @@ html, body {
 }
 </style>
 <style>#posts-container{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;grid-auto-flow:dense!important;gap:8px!important}#posts-container>*:nth-child(6n+1){grid-column:span 2!important;grid-row:span 2!important;display:flex!important;flex-direction:column!important;height:100%!important}#posts-container>*:nth-child(6n+1)>div:first-child{flex:1 1 auto!important;min-height:220px!important;height:100%!important}#posts-container>*:nth-child(6n+1) img{width:100%!important;height:100%!important;object-fit:cover!important}#posts-container>*:nth-child(6n+1)>div:last-child{padding:10px 12px!important;font-size:14px!important}#posts-container>*:nth-child(6n+1) .text-xs{font-size:13px!important;line-height:1.4!important}#posts-container>*:nth-child(6n+1) .text-sm{font-size:16px!important;font-weight:800!important}</style>
+<style id="posts-status-center-fix">
+/* 読み込み中・空状態・エラーはメッシュの 6n+1 スパンを打ち消し、常に全幅中央 */
+#posts-container > .posts-status,
+#posts-container > .posts-status:nth-child(6n+1) {
+  grid-column: 1 / -1 !important;
+  grid-row: span 1 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+}
+</style>
 <style id="ai-scan-anim-style">
 @keyframes aiScanBeam {
   0%   { top: 0%; opacity: 0.2; }
@@ -897,7 +915,10 @@ html, body {
       <!-- Auto-GO ホーム上部バナーボタン -->
 
 <div id="posts-container" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
-        <p class="text-xs text-gray-500 col-span-full text-center py-4 font-bold">読み込み中...</p>
+        <div class="posts-status col-span-full text-center py-10 px-4">
+          <p class="text-sm text-indigo-600 font-bold animate-pulse">読み込み中...</p>
+          <p class="text-[11px] text-gray-400 mt-2">募集一覧を取得しています</p>
+        </div>
       </div>
       <div id="load-more-wrap" class="hidden text-center pt-2">
         <button onclick="window.loadMorePosts && window.loadMorePosts()" class="liquid-glass-input text-xs font-medium text-illit-darkPurple px-6 py-2.5 rounded-full hover:bg-white/70 transition shadow-sm active:scale-95">もっと見る</button>
@@ -5242,7 +5263,13 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         `;
       });
       container.innerHTML = cards.length === 0
-          ? (loadingPosts && allPosts.length === 0 ? '<div class="col-span-full text-center py-8 bg-white/50 rounded-xl"><p class="text-xs text-indigo-600 font-bold animate-pulse mb-2">募集を読み込み中...</p><p class="text-[10px] text-gray-400 mb-2">しばらく待っても表示されない場合は下のボタンを押してください</p><button type="button" onclick="window._retriedInitialPosts=false; if(window.loadPosts) window.loadPosts(true);" class="text-[11px] text-indigo-600 underline font-bold">再試行する</button></div>' : '<p class="text-xs text-gray-500 col-span-full text-center py-8 font-medium bg-white/50 rounded-xl">条件に合う募集はありません。</p>')
+          ? (loadingPosts && allPosts.length === 0
+            ? `<div class="posts-status col-span-full text-center py-10 px-4 bg-white/50 rounded-xl">
+                <p class="text-sm text-indigo-600 font-bold animate-pulse mb-2">募集を読み込み中...</p>
+                <p class="text-[11px] text-gray-400 mb-3">しばらく待っても表示されない場合は下のボタンを押してください</p>
+                <button type="button" onclick="window._retriedInitialPosts=false; if(window.loadPosts) window.loadPosts(true);" class="text-[12px] text-indigo-600 underline font-bold">再試行する</button>
+              </div>`
+            : `<div class="posts-status col-span-full text-center py-10 px-4 bg-white/50 rounded-xl"><p class="text-xs text-gray-500 font-medium">条件に合う募集はありません。</p></div>`)
         : cards.join("");
       renderSellTab();
     }
@@ -5277,7 +5304,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           console.error("loadPosts query error:", loadErr);
           const container = document.getElementById("posts-container");
           if (container) {
-            container.innerHTML = `<div class="p-4 m-4 bg-red-100 text-red-700 text-sm rounded-xl border border-red-300 text-center font-bold">⚠️ データの読み込みに失敗しました<br><span class="text-xs font-normal">${loadErr.message}</span><br><button onclick="window.loadPosts && window.loadPosts(true)" class="mt-2 text-xs underline text-red-600">再試行</button></div>`;
+            container.innerHTML = `<div class="posts-status p-4 m-4 bg-red-100 text-red-700 text-sm rounded-xl border border-red-300 text-center font-bold">⚠️ データの読み込みに失敗しました<br><span class="text-xs font-normal">${loadErr.message}</span><br><button onclick="window.loadPosts && window.loadPosts(true)" class="mt-2 text-xs underline text-red-600">再試行</button></div>`;
           }
           loadingPosts = false;
           return;
