@@ -306,13 +306,42 @@
       z-index: 2;
     }
     #gllit-hub-schedule, #illit-calendar-modal .cal-sheet { background: #fff4c2 !important; }
-    #pull-gap { height: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #fff; margin: 0 -16px; }
-    .pull-spin { width: 28px; height: 28px; border-radius: 50%; background:
-      linear-gradient(#c8c8c8,#c8c8c8) center/2px 100% no-repeat,
-      linear-gradient(#c8c8c8,#c8c8c8) center/100% 2px no-repeat,
-      linear-gradient(45deg, transparent 46%, #c8c8c8 46% 54%, transparent 54%),
-      linear-gradient(-45deg, transparent 46%, #c8c8c8 46% 54%, transparent 54%);
-      animation: pullspin .8s linear infinite; }
+    #pull-gap {
+      height: 0;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f5f5f5;
+      margin: 0 -16px;
+      pointer-events: none;
+      transition: height 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+      will-change: height;
+    }
+    #pull-gap.is-dragging { transition: none; }
+    @media (prefers-reduced-motion: reduce) {
+      #pull-gap { transition: none; }
+    }
+    .pull-spin-wrap {
+      opacity: 0;
+      transform: scale(0.55);
+      transition: opacity 0.15s ease, transform 0.15s ease;
+    }
+    #pull-gap.is-refreshing .pull-spin-wrap {
+      opacity: 1;
+      transform: scale(1);
+    }
+    .pull-spin {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background:
+        linear-gradient(#9ca3af,#9ca3af) center/2px 100% no-repeat,
+        linear-gradient(#9ca3af,#9ca3af) center/100% 2px no-repeat,
+        linear-gradient(45deg, transparent 46%, #9ca3af 46% 54%, transparent 54%),
+        linear-gradient(-45deg, transparent 46%, #9ca3af 46% 54%, transparent 54%);
+      animation: pullspin .75s linear infinite;
+    }
     @keyframes pullspin { to { transform: rotate(360deg); } }
     #mycards-album-tabs button, #mycards-member-tabs button {
       border-radius: 12px !important;
@@ -751,7 +780,7 @@ html, body {
   </header>
 
   <main class="max-w-5xl mx-auto px-4 pb-6 space-y-6">
-    <div id="pull-gap" aria-hidden="true"><div class="pull-spin"></div></div>
+    <div id="pull-gap" aria-hidden="true"><div class="pull-spin-wrap"><div class="pull-spin"></div></div></div>
     <section id="intro-section" class="space-y-3">
       <div id="site-announcement" class="hidden bg-amber-50/90 border border-amber-200 rounded-2xl p-3 text-xs text-amber-900 leading-relaxed">
         <div class="font-bold mb-0.5">📢 お知らせ</div>
@@ -13369,11 +13398,40 @@ window.addEventListener("unhandledrejection", function(event) {
 });
 
 (function() {
-  let startY = 0, pulling = false, dy = 0, busy = false;
+  const MAX_PULL = 118;
+  const THRESHOLD = 62;
+  const HOLD = 54;
   const gap = document.getElementById("pull-gap");
+  const spinWrap = gap && gap.querySelector(".pull-spin-wrap");
+  let startY = 0, pulling = false, armed = false, pullH = 0, busy = false;
+
+  function rubber(raw) {
+    if (raw <= 0) return 0;
+    return MAX_PULL * (1 - Math.exp(-raw / MAX_PULL));
+  }
+  function scrollY() {
+    return window.scrollY || document.documentElement.scrollTop || 0;
+  }
+  function setDragging(on) {
+    if (!gap) return;
+    gap.classList.toggle("is-dragging", !!on);
+  }
   function setGap(h) {
     if (!gap) return;
-    gap.style.height = Math.max(0, h) + "px";
+    pullH = Math.max(0, h);
+    gap.style.height = pullH + "px";
+    const progress = Math.min(1, pullH / THRESHOLD);
+    if (spinWrap && !busy) {
+      spinWrap.style.opacity = String(progress);
+      spinWrap.style.transform = "scale(" + (0.55 + progress * 0.45) + ")";
+    }
+    gap.classList.toggle("is-refreshing", !!busy);
+    gap.setAttribute("aria-hidden", pullH < 1 && !busy ? "true" : "false");
+  }
+  function settleTo(h) {
+    setDragging(false);
+    // 次フレームで transition を効かせて閉じる／ホールドする
+    requestAnimationFrame(function() { setGap(h); });
   }
   function onHome() {
     const hub = document.getElementById("gllit-hub");
@@ -13382,33 +13440,63 @@ window.addEventListener("unhandledrejection", function(event) {
   function modalOpen() {
     return !!document.querySelector("#detail-modal:not(.hidden), .modal-backdrop:not(.hidden)");
   }
+
   document.addEventListener("touchstart", function(e) {
-    if (!onHome() || modalOpen() || busy || window.scrollY > 1 || e.touches.length !== 1) return;
+    if (!onHome() || modalOpen() || busy || scrollY() > 1 || e.touches.length !== 1) return;
     startY = e.touches[0].clientY;
     pulling = true;
-    dy = 0;
+    armed = false;
   }, { passive: true });
+
   document.addEventListener("touchmove", function(e) {
-    if (!pulling) return;
-    if (window.scrollY > 1) { pulling = false; if (!busy) setGap(0); return; }
-    dy = Math.max(0, e.touches[0].clientY - startY);
-    if (dy < 6) return;
+    if (!pulling || busy) return;
+    if (scrollY() > 1) {
+      pulling = false;
+      armed = false;
+      settleTo(0);
+      return;
+    }
+    const dy = Math.max(0, e.touches[0].clientY - startY);
+    if (dy < 8) return;
+    if (!armed) {
+      armed = true;
+      setDragging(true);
+    }
     e.preventDefault();
-    setGap(Math.min(220, dy * 0.55));
+    setGap(rubber(dy));
   }, { passive: false });
+
   async function endPull() {
     if (!pulling) return;
     pulling = false;
-    const go = dy > 90;
-    dy = 0;
-    if (!go) { setGap(0); return; }
-    setGap(180);
+    const shouldRefresh = armed && pullH >= THRESHOLD;
+    armed = false;
+    if (!shouldRefresh) {
+      settleTo(0);
+      return;
+    }
     busy = true;
-    try { if (typeof refreshPosts === "function") await refreshPosts(); }
-    finally { busy = false; setGap(0); }
+    if (spinWrap) {
+      spinWrap.style.opacity = "1";
+      spinWrap.style.transform = "scale(1)";
+    }
+    settleTo(HOLD);
+    try {
+      if (typeof refreshPosts === "function") await refreshPosts();
+    } finally {
+      await new Promise(function(r) { setTimeout(r, 160); });
+      busy = false;
+      settleTo(0);
+    }
   }
+
   document.addEventListener("touchend", endPull);
-  document.addEventListener("touchcancel", function() { pulling = false; dy = 0; if (!busy) setGap(0); });
+  document.addEventListener("touchcancel", function() {
+    if (busy) return;
+    pulling = false;
+    armed = false;
+    settleTo(0);
+  });
 })();
 </script>
 
