@@ -3879,7 +3879,13 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
             : `<button type="button" onclick="applyBundlePost(${index})" class="w-full bg-gradient-to-r from-illit-purple to-illit-accent text-white font-medium py-3 rounded-full shadow-md border border-white/30">バツを付けたカードを申し込む</button>`;
         } else {
           const pillWrap = document.getElementById("detail-pricecut-pill-wrap");
-      if (pillWrap) pillWrap.innerHTML = "";
+      if (pillWrap) {
+        if (p.isSell && (!currentUser || p.userId !== currentUser.uid)) {
+          pillWrap.innerHTML = `<button type="button" onclick="proposePriceCutById('${escapeHtml(p.id)}')" class="inline-flex items-center gap-1.5 rounded-full bg-[#f5f5f5] hover:bg-[#ebebeb] active:scale-95 transition px-3.5 py-2 text-[12px] font-bold text-[#333333]"><span class="w-4 h-4 rounded-full border border-[#555555] inline-flex items-center justify-center text-[10px] leading-none">¥</span><span>値下げ依頼</span></button>`;
+        } else {
+          pillWrap.innerHTML = "";
+        }
+      }
       const btnLabel = isGroup ? "応募する" : (p.isSell ? "購入へ" : "申し込む");
       const onclick = isGroup ? `joinGroup(${index})` : (p.isSell ? `confirmPurchase(${index})` : `applyToPost(${index})`);
       const btnGrad = isGroup ? "from-teal-400 to-teal-500" : "from-illit-purple to-illit-accent";
