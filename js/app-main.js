@@ -404,7 +404,6 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       }
       if (p.kind === "serial" && p.deadline) L.push("有効期限 " + p.deadline.slice(5).replace("-", "/"));
       if (p.description) L.push("", p.description);
-      if (p.isBuy || p.isSell || p.kind === "group") L.push("", usesAzukariPayment(p) ? "・アズカリ決済" : "・PayPay");
       if (link) L.push("", "詳細・申込はこちら", link);
       L.push("", "#ILLIT #アイリット " + (SHARE_TAG[type] || "#交換"));
       return L.join("\n");
@@ -2741,17 +2740,41 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       const isAlbum = mode.startsWith("album");
       const isDearlit = mode.startsWith("dearlit");
       const isSell = mode.endsWith("_sell") || mode === "buy";
+      const isActualSell = mode.endsWith("_sell");
       let title = "🔄 トレカ交換の出品";
       if (mode === "buy") title = "🤝 トレカの買取（購入希望）";
-      else if (mode === "card_sell") title = "💰 トレカ売却";
-      else if (mode === "album_sell") title = "💿 アルバム売却";
-      else if (mode === "dearlit_sell") title = "❤️ DEARLiT売却";
+      else if (isActualSell) title = "商品の情報を入力";
 
       const _byId = (id) => document.getElementById(id);
       if (_byId("post-modal-title")) _byId("post-modal-title").innerText = title;
-      if (_byId("label-give")) _byId("label-give").innerText = isBuy ? "【求】（買いたいもの）" : "【譲】（出すもの）";
+      if (_byId("label-give")) {
+        _byId("label-give").innerText = isBuy
+          ? "【求】（買いたいもの）"
+          : (isActualSell ? "商品名" : "【譲】（出すもの）");
+      }
+      if (_byId("input-give")) {
+        _byId("input-give").placeholder = isActualSell
+          ? "40字以内、例）ILLIT ミンジュ 封入トレカ"
+          : "";
+        _byId("input-give").maxLength = isActualSell ? 40 : 160;
+      }
+      if (_byId("label-member")) _byId("label-member").innerText = isActualSell ? "カテゴリー（メンバー）" : "対象メンバー";
+      if (_byId("label-desc")) {
+        _byId("label-desc").innerHTML = isActualSell
+          ? '商品の説明 <span class="text-[10px] font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-full ml-1">任意</span>'
+          : "説明文・備考（任意）";
+      }
+      if (_byId("input-desc")) {
+        _byId("input-desc").placeholder = isActualSell
+          ? "1,000字以内、例）スリーブ保管・折れなし。写真の状態です。"
+          : "";
+        _byId("input-desc").maxLength = isActualSell ? 1000 : 200;
+        _byId("input-desc").rows = isActualSell ? 5 : 2;
+      }
+      if (_byId("label-price")) _byId("label-price").innerText = isBuy ? "希望価格（円）" : "販売価格";
       if (_byId("want-container")) _byId("want-container").classList.toggle("hidden", isBuy || isSell);
       if (_byId("price-container")) _byId("price-container").classList.toggle("hidden", !(isBuy || isSell));
+      if (_byId("shipping-row")) _byId("shipping-row").classList.toggle("hidden", !isActualSell);
       if (_byId("photo-req-label")) _byId("photo-req-label").innerText = (isBuy) ? "（任意・最大3枚）" : "（必須・最大3枚）";
       if (_byId("condition-container")) _byId("condition-container").classList.remove("hidden");
 
@@ -2790,12 +2813,116 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       const detectEl = document.getElementById("bundle-detect");
       if (detectEl) detectEl.textContent = "";
       renderBundleList();
+      if (typeof applySellListingLayout === "function") applySellListingLayout(isActualSell, isBuy);
       if (_pm) {
         _pm.classList.remove("hidden");
         _pm.style.display = "";
       } else {
         /* alert hidden */ console.log("エラー: post-modal が見つかりません");
       }
+    };
+
+    const SELL_FEE_RATE = 0.044;
+    const POST_DRAFT_KEY = "illit_sell_listing_draft_v1";
+    function placePriceInput(isActualSell) {
+      const input = document.getElementById("input-price");
+      const buyHost = document.getElementById("price-input-host-buy");
+      const sellHost = document.getElementById("price-input-host-sell");
+      if (!input || !buyHost || !sellHost) return;
+      if (isActualSell) {
+        if (input.parentElement !== sellHost) sellHost.appendChild(input);
+        input.className = "sell-price-input";
+        input.placeholder = "300〜";
+        buyHost.classList.add("hidden");
+      } else {
+        if (input.parentElement !== buyHost) buyHost.appendChild(input);
+        input.className = "liquid-glass-input w-full rounded-xl p-2.5 text-gray-800";
+        input.placeholder = "希望価格";
+        buyHost.classList.remove("hidden");
+      }
+    }
+    function applySellListingLayout(isActualSell, isBuy) {
+      const modal = document.getElementById("post-modal");
+      const sellCard = document.getElementById("sell-price-card");
+      const labelPrice = document.getElementById("label-price");
+      const secondary = document.getElementById("post-secondary-btn");
+      const submit = document.getElementById("post-submit-btn");
+      if (modal) modal.classList.toggle("post-modal--sell", !!isActualSell);
+      if (sellCard) sellCard.classList.toggle("hidden", !isActualSell);
+      if (labelPrice) labelPrice.classList.toggle("hidden", !!isActualSell);
+      placePriceInput(!!isActualSell);
+      if (secondary) {
+        if (isActualSell) {
+          secondary.textContent = "下書きに保存";
+          secondary.onclick = function() { if (typeof saveSellListingDraft === "function") saveSellListingDraft(); };
+        } else {
+          secondary.textContent = "キャンセル";
+          secondary.onclick = function() { closePostModal(); };
+        }
+      }
+      if (submit) {
+        submit.textContent = "出品する";
+        if (isActualSell) submit.className = "flex-1 text-white font-medium py-3 transition";
+        else submit.className = "flex-1 bg-gradient-to-r from-illit-purple to-illit-accent text-white font-medium py-3 rounded-full hover:opacity-90 transition shadow-md border border-white/30";
+      }
+      updateSellFeePreview();
+      if (isActualSell) {
+        try {
+          const raw = localStorage.getItem(POST_DRAFT_KEY);
+          if (raw) {
+            const d = JSON.parse(raw);
+            if (d && d.postMode === postMode) {
+              const map = { "input-give": d.give, "input-desc": d.desc, "input-price": d.price, "input-condition": d.condition, "input-member": d.member };
+              Object.keys(map).forEach((id) => {
+                const el = document.getElementById(id);
+                if (el && map[id] != null && map[id] !== "") el.value = map[id];
+              });
+              updateSellFeePreview();
+            }
+          }
+        } catch (_) {}
+      }
+    }
+    window.updateSellFeePreview = function() {
+      const input = document.getElementById("input-price");
+      const feeEl = document.getElementById("sell-fee-display");
+      const profitEl = document.getElementById("sell-profit-display");
+      if (!feeEl || !profitEl) return;
+      const price = Number(input && input.value);
+      if (!price || price <= 0) {
+        feeEl.textContent = "—";
+        feeEl.className = "text-gray-400";
+        profitEl.textContent = "—";
+        profitEl.className = "text-gray-400";
+        return;
+      }
+      const fee = Math.floor(price * SELL_FEE_RATE);
+      const profit = Math.max(0, price - fee);
+      feeEl.textContent = "¥" + fee.toLocaleString();
+      feeEl.className = "text-gray-700 font-medium";
+      profitEl.textContent = "¥" + profit.toLocaleString();
+      profitEl.className = "text-gray-900 font-bold";
+    };
+    window.saveSellListingDraft = function() {
+      try {
+        const draft = {
+          postMode,
+          give: (document.getElementById("input-give") || {}).value || "",
+          desc: (document.getElementById("input-desc") || {}).value || "",
+          price: (document.getElementById("input-price") || {}).value || "",
+          condition: (document.getElementById("input-condition") || {}).value || "",
+          member: (document.getElementById("input-member") || {}).value || "",
+          savedAt: Date.now()
+        };
+        localStorage.setItem(POST_DRAFT_KEY, JSON.stringify(draft));
+        if (typeof showToast === "function") showToast("下書きを保存しました", "success");
+        else console.log("下書きを保存しました");
+      } catch (e) {
+        if (typeof showToast === "function") showToast("下書きの保存に失敗しました", "error");
+      }
+    };
+    window.clearSellListingDraft = function() {
+      try { localStorage.removeItem(POST_DRAFT_KEY); } catch (_) {}
     };
     window.setExchangeStyle = function(style) {
       window.exchangeStyle = style === "bundle" ? "bundle" : "single";
@@ -2842,7 +2969,11 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       window.exchangeStyle = "single";
       window.__presetGuideBoxes = null;
       try { if (typeof window.syncGuideCamByMode === "function") window.syncGuideCamByMode(); } catch (e) {}
-      document.getElementById("post-modal").classList.add("hidden");
+      const pm = document.getElementById("post-modal");
+      if (pm) {
+        pm.classList.add("hidden");
+        pm.classList.remove("post-modal--sell");
+      }
       selectedPostCard = null;
     };
     function renderPostCardPicker() {
@@ -3124,6 +3255,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
             give: item.give,
             want: item.want,
             price: (isBuy || isSell) ? price : 0,
+            sellFeeRate: (isSell && !isBuy) ? SELL_FEE_RATE : null,
             description: desc,
             condition: condition,
             status: "active",
@@ -3161,6 +3293,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
             notifyCardWatchers(item.catalogCardId, item.catalogCardName || item.give, ref.id).catch(function() {});
           }
         }
+        if (typeof clearSellListingDraft === "function") clearSellListingDraft();
         showToast(items.length > 1 ? items.length + "件出品しました" : "出品が完了しました", "success");
         closePostModal();
         loadPosts(true);
@@ -3808,8 +3941,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       const priceHead = document.getElementById("detail-price-head");
       if (priceHead) priceHead.innerText = "";
       if (isGroup || isBuy || p.isSell) {
-        const pay = paymentLabel(p);
-        document.getElementById("detail-price").innerHTML = "¥" + Number(p.price || 0).toLocaleString() + (pay ? `<span style="margin-left:6px;font-size:12px;font-weight:500;color:#666666">${escapeHtml(pay)}</span>` : "");
+        document.getElementById("detail-price").innerHTML = "¥" + Number(p.price || 0).toLocaleString();
       }
       document.getElementById("detail-give").innerText = p.give;
       document.getElementById("detail-want").innerText = p.want || "（なし）";

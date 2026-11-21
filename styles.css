@@ -733,3 +733,213 @@ html, body {
     .gllit-marquee-track:hover {
       animation-play-state: paused;
     }
+
+/* ===== 売却出品：メルカリ風レイアウト ===== */
+#post-modal.post-modal--sell {
+  align-items: stretch;
+  justify-content: stretch;
+  padding: 0 !important;
+  background: #f5f5f5;
+}
+#post-modal.post-modal--sell #post-modal-sheet {
+  max-width: none;
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: #fff !important;
+  border: 0 !important;
+  padding: 0 0 calc(88px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+}
+#post-modal.post-modal--sell #post-modal-sheet::before {
+  display: none;
+}
+#post-modal.post-modal--sell #post-modal-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: #fff;
+  border-bottom: 1px solid #ebebeb;
+  padding: 12px 16px;
+  margin: 0;
+  justify-content: center;
+}
+#post-modal.post-modal--sell #post-modal-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #222;
+}
+#post-modal.post-modal--sell #post-modal-header button {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: #f3f3f3;
+  color: #333;
+  font-size: 22px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#post-modal.post-modal--sell .space-y-3 {
+  padding: 12px 16px 24px;
+  gap: 18px;
+}
+#post-modal.post-modal--sell #post-photo-section {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  border-radius: 0;
+}
+#post-modal.post-modal--sell #photo-section-label {
+  font-size: 13px;
+  color: #222;
+}
+#post-modal.post-modal--sell .sell-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid #efefef;
+}
+#post-modal.post-modal--sell .sell-row-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #222;
+  flex-shrink: 0;
+}
+#post-modal.post-modal--sell .sell-ship-pill {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  color: #555;
+  background: #f0f0f0;
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+#post-modal.post-modal--sell #label-give,
+#post-modal.post-modal--sell #label-member,
+#post-modal.post-modal--sell #label-condition,
+#post-modal.post-modal--sell #label-desc,
+#post-modal.post-modal--sell #label-price {
+  font-size: 13px;
+  font-weight: 700;
+  color: #222;
+}
+#post-modal.post-modal--sell #input-give,
+#post-modal.post-modal--sell #input-member,
+#post-modal.post-modal--sell #input-condition,
+#post-modal.post-modal--sell #input-desc,
+#post-modal.post-modal--sell #input-price {
+  border: 1px solid #e5e5e5 !important;
+  box-shadow: none !important;
+  background: #fff !important;
+  border-radius: 10px !important;
+  font-size: 14px !important;
+}
+#post-modal.post-modal--sell #input-give::before,
+#post-modal.post-modal--sell #input-member::before,
+#post-modal.post-modal--sell #input-condition::before,
+#post-modal.post-modal--sell #input-desc::before,
+#post-modal.post-modal--sell #input-price::before {
+  display: none;
+}
+.sell-price-card {
+  border: 1.5px solid #3b82f6;
+  background: #f7f8fa;
+  border-radius: 14px;
+  overflow: hidden;
+}
+.sell-price-card-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px 14px 10px;
+}
+.sell-radio-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 5px solid #3b82f6;
+  background: #fff;
+  flex-shrink: 0;
+  margin-top: 2px;
+  box-sizing: border-box;
+}
+.sell-price-rows {
+  background: #fff;
+  border-top: 1px solid #e8e8e8;
+}
+.sell-price-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  font-size: 14px;
+  color: #333;
+  border-bottom: 1px solid #f0f0f0;
+}
+.sell-price-row:last-child { border-bottom: 0; }
+.sell-price-row--profit { font-weight: 700; }
+.sell-price-input-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+#post-modal.post-modal--sell #input-price.sell-price-input,
+.sell-price-input {
+  width: 110px;
+  border: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  text-align: right;
+  font-size: 15px !important;
+  font-weight: 600;
+  color: #222;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  outline: none;
+}
+#post-modal.post-modal--sell #input-price.sell-price-input::before {
+  display: none;
+}
+#post-modal.post-modal--sell #post-modal-actions {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  margin: 0;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+  background: #fff;
+  border-top: 1px solid #ebebeb;
+  gap: 10px;
+}
+#post-modal.post-modal--sell #post-secondary-btn {
+  flex: 1;
+  border-radius: 10px !important;
+  border: 1.5px solid #ff4d4f !important;
+  background: #fff !important;
+  color: #ff4d4f !important;
+  font-weight: 700;
+  box-shadow: none !important;
+}
+#post-modal.post-modal--sell #post-submit-btn {
+  flex: 1.15;
+  border-radius: 10px !important;
+  background: #ff4d4f !important;
+  border: 0 !important;
+  color: #fff !important;
+  font-weight: 800;
+  box-shadow: none !important;
+}
