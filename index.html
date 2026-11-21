@@ -876,15 +876,18 @@
             </div>
           </div>
           <div id="shipping-exchange-select" class="hidden space-y-1.5">
-            <label class="block font-medium text-gray-700" id="label-shipping">送料の負担</label>
+            <label class="block font-medium text-gray-700" id="label-shipping">配送方法 <span class="text-pink-600">必須</span></label>
             <select id="input-shipping" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800">
+              <option value="">選択してください</option>
               <option value="consult">相手と相談</option>
-              <option value="seller">出品者負担（送料込み）</option>
-              <option value="buyer">相手負担</option>
-              <option value="cod">着払い</option>
-              <option value="split">折半</option>
+              <option value="regular">普通郵便</option>
+              <option value="clickpost">クリックポスト</option>
+              <option value="yuupacket">ゆうパケット</option>
+              <option value="letterpack">レターパック（追跡あり）</option>
+              <option value="takkyubin">宅配便</option>
+              <option value="other">その他</option>
             </select>
-            <p class="text-[11px] text-gray-500 leading-snug">交換はアズカリ対象外です。配送手段は追跡の有無を問わず、普通郵便・クリックポストなど自由です。</p>
+            <p class="text-[11px] text-gray-500 leading-snug">交換はアズカリ対象外です。希望の配送方法を選んでください（相手と相談でも可）。</p>
           </div>
         </div>
         <div id="condition-container">
@@ -1283,7 +1286,7 @@
   </div>
 
   <script src="./js/mycards-binder.js?v=20261121"></script>
-  <script type="module" src="./js/app-main.js?v=20261122ship1"></script>
+  <script type="module" src="./js/app-main.js?v=20261122ship2"></script>
 
   <!-- 👇 案内用のポップアップモーダル（サイトのデザインに合わせた綺麗な見た目） 👇 -->
   <div id="inAppBrowserPrompt" class="hidden fixed inset-0 z-[9999] modal-backdrop flex items-center justify-center p-4">

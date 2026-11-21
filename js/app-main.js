@@ -2788,7 +2788,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       ["input-give", "input-want", "input-price", "input-desc", "input-condition"].forEach(id => {
         if (_byId(id)) _byId(id).value = "";
       });
-      if (_byId("input-shipping")) _byId("input-shipping").value = "consult";
+      if (_byId("input-shipping")) _byId("input-shipping").value = "";
       postPhotos = [];
       if (typeof renderPostPhotoPreview === "function") renderPostPhotoPreview();
       selectedPostCard = null;
@@ -2834,10 +2834,23 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     const POST_DRAFT_KEY = "illit_listing_draft_v2";
     const EXCHANGE_SHIPPING_LABEL = {
       consult: "相手と相談",
+      regular: "普通郵便",
+      clickpost: "クリックポスト",
+      yuupacket: "ゆうパケット",
+      letterpack: "レターパック（追跡あり）",
+      takkyubin: "宅配便",
+      other: "その他",
+      // 旧データの表示互換（送料負担の選択肢だった頃）
       seller: "出品者負担（送料込み）",
       buyer: "相手負担",
       cod: "着払い",
       split: "折半"
+    };
+    const EXCHANGE_SHIPPING_TRACKED = {
+      letterpack: true,
+      takkyubin: true,
+      yuupacket: true,
+      clickpost: true
     };
     function placePriceInput(isActualSell) {
       const input = document.getElementById("input-price");
@@ -2869,7 +2882,9 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       }
       if (exSelect) exSelect.classList.toggle("hidden", !isExchange);
       const shipLabel = document.getElementById("label-shipping");
-      if (shipLabel && isExchange) shipLabel.textContent = "送料の負担";
+      if (shipLabel && isExchange) {
+        shipLabel.innerHTML = '配送方法 <span class="text-pink-600">必須</span>';
+      }
     }
     function applyListingLayout(opts) {
       const isActualSell = !!(opts && opts.isActualSell);
@@ -3197,10 +3212,14 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       const isExchangePost = postMode === "exchange";
       const shippingMethod = isActualSellPost
         ? "azukari_anonymous"
-        : (isExchangePost ? String((shippingInput && shippingInput.value) || "consult") : "");
+        : (isExchangePost ? String((shippingInput && shippingInput.value) || "").trim() : "");
       const shippingLabel = isActualSellPost
         ? "アズカリ匿名配送"
         : (isExchangePost ? (EXCHANGE_SHIPPING_LABEL[shippingMethod] || shippingMethod) : "");
+      if (isExchangePost && !shippingMethod) {
+        showToast("配送方法を選択してください", "info");
+        return;
+      }
       if (!give) {
         showToast("出すものを入力してください", "info");
         return;
@@ -3315,7 +3334,9 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
             condition: condition,
             shippingMethod: shippingMethod || null,
             shippingLabel: shippingLabel || null,
-            shippingTrackingRequired: isActualSellPost ? true : false,
+            shippingTrackingRequired: isActualSellPost
+              ? true
+              : (isExchangePost ? !!EXCHANGE_SHIPPING_TRACKED[shippingMethod] : false),
             status: "active",
             photoCount: item.photos.length,
             thumb: item.photos.length > 0 ? item.photos[0].thumb : "",
