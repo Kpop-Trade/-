@@ -465,12 +465,19 @@ service cloud.firestore {
     }
 
     match /auto_go_pools/{poolId} {
+      // 一覧クエリ互換のため読取は公開。isTest プールはクライアント非表示＋Functions で一般参加拒否。
       allow read: if true;
       allow create, update, delete: if isAdmin();
 
       match /entries/{userId} {
         allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
         allow create, update, delete: if isAdmin();
+      }
+
+      // シミュレーション／緊急操作の監査ログ（管理者のみ）
+      match /auditLogs/{logId} {
+        allow read, create, delete: if isAdmin();
+        allow update: if false;
       }
     }
 
