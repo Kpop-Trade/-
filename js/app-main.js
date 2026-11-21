@@ -11130,9 +11130,9 @@ window.buildAndDownloadCardPackZip = async function() {
             const watching = !!(userData.cardWatch || {})[c.id];
             const isListing = listingCardIds.has(c.id);
             const nameLabel = String(c.member || "").split(/[ (]/)[0] || "";
-            const pocketClass = isOwned ? "is-owned" : (isWant ? "is-want is-missing" : "is-missing");
+            const pocketClass = isOwned ? "is-owned" : (isWant ? "is-want" : "is-missing");
             const imgHtml = photo
-              ? `<img src="${escapeHtml(photo)}" loading="lazy" decoding="async" alt="${escapeHtml(c.name)}" width="110" height="170">`
+              ? `<img src="${escapeHtml(photo)}" loading="lazy" decoding="async" alt="${escapeHtml(c.name)}" width="110" height="170" style="filter:none;-webkit-filter:none;opacity:1">`
               : `<div class="binder-fallback"><span>🃏</span><span>${escapeHtml(nameLabel || c.name || "")}</span></div>`;
             const countPill = isOwned && count >= 2
               ? `<span class="binder-count-pill">×${count}</span>`
