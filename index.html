@@ -25,7 +25,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js?v=20261121"></script>
 
   <script src="./js/tailwind-config.js?v=20261121"></script>
-  <link rel="stylesheet" href="./styles.css?v=20261121n">
+  <link rel="stylesheet" href="./styles.css?v=20261121p">
   <link rel="stylesheet" href="./liquid-glass.css?v=20261121">
   <link rel="stylesheet" href="./mycards-binder.css?v=20261121c">
 
@@ -798,10 +798,10 @@
 
   <!-- 出品モーダル -->
   <div id="post-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
-    <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
-      <div class="flex justify-between items-center border-b border-purple-200/50 pb-3">
+    <div id="post-modal-sheet" class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
+      <div id="post-modal-header" class="flex justify-between items-center border-b border-purple-200/50 pb-3">
         <h3 id="post-modal-title" class="font-bold text-base text-gray-800">🃏 トレカの出品</h3>
-        <button onclick="closePostModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
+        <button type="button" onclick="closePostModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none" aria-label="閉じる">&times;</button>
       </div>
       <div class="space-y-3 text-xs md:text-sm">
         <div id="exchange-style-box" class="hidden space-y-2">
@@ -811,7 +811,7 @@
           </div>
           <p id="exchange-style-guide" class="text-[12px] text-gray-600 leading-relaxed"></p>
         </div>
-        <div class="bg-purple-50/70 border border-purple-200/80 rounded-2xl p-3 space-y-2">
+        <div id="post-photo-section" class="bg-purple-50/70 border border-purple-200/80 rounded-2xl p-3 space-y-2">
                     <div class="flex items-center justify-between">
                         <label id="photo-section-label" class="block font-bold text-gray-800">📷 トレカ写真・AI自動入力 <span id="photo-req-label" class="text-pink-600">（必須・最大3枚）</span></label>
                     </div>
@@ -849,8 +849,13 @@
                     </div>
                     <div id="similar-cards-suggest" class="hidden mt-1 bg-pink-50/90 border border-pink-200 rounded-xl p-2.5"></div>
                 </div>
-                <div>
-                    <label class="block font-medium text-gray-700 mb-1">対象メンバー</label>
+        <div id="give-field-wrap">
+          <label id="label-give" class="block font-medium text-gray-700 mb-1">【譲】（出すもの）</label>
+          <input type="text" id="input-give" maxlength="160" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800" placeholder="">
+        </div>
+        <div id="want-container"><label id="label-want" class="block font-medium text-gray-700 mb-1">【求】（希望するもの）</label><input type="text" id="input-want" maxlength="100" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
+        <div id="member-field-wrap">
+          <label class="block font-medium text-gray-700 mb-1" id="label-member">対象メンバー</label>
           <select id="input-member" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800">
             <option value="ウォニ (Wonhee)">ウォニ (Wonhee)</option>
             <option value="ミンジュ (Minju)">ミンジュ (Minju)</option>
@@ -860,12 +865,18 @@
             <option value="指定なし">指定なし</option>
           </select>
         </div>
-        
-        <div><label id="label-give" class="block font-medium text-gray-700 mb-1">【譲】（出すもの）</label><input type="text" id="input-give" maxlength="160" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
-        <div id="want-container"><label id="label-want" class="block font-medium text-gray-700 mb-1">【求】（希望するもの）</label><input type="text" id="input-want" maxlength="100" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
-        <div id="price-container" class="hidden"><label class="block font-medium text-gray-700 mb-1">希望価格（円・アズカリ決済）</label><input type="number" id="input-price" min="1" max="100000" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
+        <div id="shipping-row" class="hidden sell-only-row">
+          <div class="sell-row">
+            <span class="sell-row-label">配送方法</span>
+            <div class="sell-row-value text-right">
+              <span class="sell-ship-pill">送料込み（出品者負担）</span>
+              <div class="font-bold text-[13px] text-gray-900 mt-0.5">クリックポスト等・追跡あり</div>
+              <div class="text-[11px] text-gray-500">発送元は登録住所・2〜3日で発送</div>
+            </div>
+          </div>
+        </div>
         <div id="condition-container">
-          <label class="block font-medium text-gray-700 mb-1">商品の状態 <span class="text-pink-600">必須</span></label>
+          <label class="block font-medium text-gray-700 mb-1" id="label-condition">商品の状態 <span class="text-pink-600">必須</span></label>
           <select id="input-condition" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800">
             <option value="">選択してください</option>
             <option value="s">S：新品同様・未使用</option>
@@ -874,13 +885,47 @@
             <option value="c">C：状態要確認</option>
           </select>
         </div>
-        <div><label class="block font-medium text-gray-700 mb-1">説明文・備考（任意）</label><textarea id="input-desc" maxlength="200" rows="2" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></textarea></div>
-                
-
+        <div id="desc-field-wrap">
+          <label id="label-desc" class="block font-medium text-gray-700 mb-1">説明文・備考（任意）</label>
+          <textarea id="input-desc" maxlength="1000" rows="3" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800" placeholder=""></textarea>
+        </div>
+        <div id="price-container" class="hidden">
+          <label id="label-price" class="block font-medium text-gray-700 mb-1">希望価格（円）</label>
+          <div id="price-input-host-buy" class="hidden">
+            <input type="number" id="input-price" min="1" max="100000" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800" inputmode="numeric" placeholder="希望価格" oninput="typeof updateSellFeePreview==='function'&&updateSellFeePreview()">
+          </div>
+          <div id="sell-price-card" class="hidden">
+            <div class="sell-price-card">
+              <div class="sell-price-card-head">
+                <span class="sell-radio-dot" aria-hidden="true"></span>
+                <div>
+                  <div class="font-bold text-[14px] text-gray-900">価格を設定する</div>
+                  <div class="text-[11px] text-gray-500 mt-0.5">売却が成立したときのみ手数料 4.4%</div>
+                </div>
+              </div>
+              <div class="sell-price-rows">
+                <div class="sell-price-row sell-price-row--input">
+                  <span>販売価格</span>
+                  <div class="sell-price-input-wrap" id="price-input-host-sell">
+                    <span class="text-gray-500 font-bold">¥</span>
+                  </div>
+                </div>
+                <div class="sell-price-row">
+                  <span>販売手数料 <span class="text-[10px] text-gray-400">（4.4%）</span></span>
+                  <span id="sell-fee-display" class="text-gray-400">—</span>
+                </div>
+                <div class="sell-price-row sell-price-row--profit">
+                  <span>販売利益</span>
+                  <span id="sell-profit-display" class="text-gray-400">—</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="flex space-x-2 pt-2">
-        <button onclick="closePostModal()" class="flex-1 bg-white/60 text-gray-700 border border-white font-medium py-3 rounded-full hover:bg-white transition shadow-sm">キャンセル</button>
-        <button id="post-submit-btn" onclick="submitPost()" class="flex-1 bg-gradient-to-r from-illit-purple to-illit-accent text-white font-medium py-3 rounded-full hover:opacity-90 transition shadow-md border border-white/30">出品する</button>
+      <div id="post-modal-actions" class="flex space-x-2 pt-2">
+        <button type="button" id="post-secondary-btn" onclick="closePostModal()" class="flex-1 bg-white/60 text-gray-700 border border-white font-medium py-3 rounded-full hover:bg-white transition shadow-sm">キャンセル</button>
+        <button type="button" id="post-submit-btn" onclick="submitPost()" class="flex-1 bg-gradient-to-r from-illit-purple to-illit-accent text-white font-medium py-3 rounded-full hover:opacity-90 transition shadow-md border border-white/30">出品する</button>
       </div>
     </div>
   </div>
@@ -1226,7 +1271,7 @@
   </div>
 
   <script src="./js/mycards-binder.js?v=20261121"></script>
-  <script type="module" src="./js/app-main.js?v=20261121h"></script>
+  <script type="module" src="./js/app-main.js?v=20261121i"></script>
 
   <!-- 👇 案内用のポップアップモーダル（サイトのデザインに合わせた綺麗な見た目） 👇 -->
   <div id="inAppBrowserPrompt" class="hidden fixed inset-0 z-[9999] modal-backdrop flex items-center justify-center p-4">
