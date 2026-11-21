@@ -25,7 +25,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js?v=20261121"></script>
 
   <script src="./js/tailwind-config.js?v=20261121"></script>
-  <link rel="stylesheet" href="./styles.css?v=20261121g">
+  <link rel="stylesheet" href="./styles.css?v=20261121i">
   <link rel="stylesheet" href="./liquid-glass.css?v=20261121">
 
 
@@ -37,7 +37,7 @@
     <div id="app-splash-content">
       <img id="app-splash-logo" src="icon-192.png" alt="K-pop Trade" onerror="this.hidden=true; document.getElementById('app-splash-fallback').style.display='flex';">
       <div id="app-splash-fallback" style="display:none" aria-hidden="true">K</div>
-      <p id="app-splash-name" class="brand-logo brand-logo--splash" aria-label="ILLIT Trade"><span class="brand-logo-illit">ILLIT</span><span class="brand-logo-trade">Trade</span><span class="brand-logo-spark" aria-hidden="true">✦</span></p>
+      <p id="app-splash-name" class="brand-logo brand-logo--splash" aria-label="ILLIT Trade"><span class="brand-logo-illit">ILLIT</span><span class="brand-logo-trade">Trade</span></p>
     </div>
   </div>
   <script src="./js/splash.js?v=20261121"></script>
@@ -60,7 +60,7 @@
           aria-label="ILLIT Trade（ホームへ）"
           onclick="if(typeof switchTab==='function')switchTab('home')"
           onkeydown="if((event.key==='Enter'||event.key===' ')&&typeof switchTab==='function'){event.preventDefault();switchTab('home');}"
-        ><span class="brand-logo-illit">ILLIT</span><span class="brand-logo-trade">Trade</span><span class="brand-logo-spark" aria-hidden="true">✦</span></h1>
+        ><span class="brand-logo-illit">ILLIT</span><span class="brand-logo-trade">Trade</span></h1>
       </div>
       <div id="auth-container" class="flex items-center space-x-2">
         <button id="login-btn" onclick="loginWithGoogle()" class="bg-white/80 backdrop-blur border border-white text-illit-darkPurple text-xs md:text-sm font-bold py-2 px-4 rounded-full transition shadow-sm hover:bg-white">Googleログイン</button>
