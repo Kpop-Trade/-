@@ -224,7 +224,6 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     }
     function postsEmptyHtml(msg, hint) {
       return `<div class="posts-status kp-empty">
-        <div class="text-2xl mb-2" aria-hidden="true">📭</div>
         <p class="text-sm font-bold text-gray-700">${msg || "まだ募集がありません"}</p>
         <p class="text-[12px] text-gray-500 mt-1.5 leading-relaxed">${hint || "条件を変えるか、右下の出品から投稿してみましょう"}</p>
       </div>`;
