@@ -2442,7 +2442,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         ctx.save();
         ctx.translate(canvas.width / 2, canvas.height / 2);
         ctx.rotate(-Math.PI / 6);
-        const fontSize = Math.max(12, Math.round(Math.min(canvas.width, canvas.height) * 0.16));
+        const fontSize = Math.max(16, Math.round(Math.min(canvas.width, canvas.height) * 0.28));
         ctx.font = `bold ${fontSize}px sans-serif`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
