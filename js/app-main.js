@@ -2862,8 +2862,14 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       const exSelect = document.getElementById("shipping-exchange-select");
       const show = !!(isActualSell || isExchange);
       if (row) row.classList.toggle("hidden", !show);
-      if (sellFixed) sellFixed.classList.toggle("hidden", !isActualSell);
+      // 売却のみアズカリ固定表示。交換では絶対に出さない
+      if (sellFixed) {
+        sellFixed.classList.toggle("hidden", !isActualSell);
+        sellFixed.setAttribute("aria-hidden", isActualSell ? "false" : "true");
+      }
       if (exSelect) exSelect.classList.toggle("hidden", !isExchange);
+      const shipLabel = document.getElementById("label-shipping");
+      if (shipLabel && isExchange) shipLabel.textContent = "送料の負担";
     }
     function applyListingLayout(opts) {
       const isActualSell = !!(opts && opts.isActualSell);
