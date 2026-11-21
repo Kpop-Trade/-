@@ -6,17 +6,29 @@
   function activeBtn() {
     return buttons.find(function (b) { return b.classList.contains("bg-white/70"); }) || buttons[0];
   }
-  function sync() {
+  function sync(opts) {
     const btn = activeBtn();
     if (!btn) return;
     const nr = nav.getBoundingClientRect();
     const br = btn.getBoundingClientRect();
-    glass.style.width = br.width + "px";
-    glass.style.transform = "translate3d(" + (br.left - nr.left) + "px,0,0)";
+    const stretch = opts && opts.stretch;
+    glass.style.transition = stretch
+      ? "transform .42s cubic-bezier(.34,1.56,.64,1), width .42s cubic-bezier(.34,1.56,.64,1)"
+      : "transform .38s cubic-bezier(.2,.8,.2,1), width .38s cubic-bezier(.2,.8,.2,1)";
+    glass.style.width = (stretch ? br.width * 1.12 : br.width) + "px";
+    glass.style.transform = "translate3d(" + (br.left - nr.left - (stretch ? br.width * 0.06 : 0)) + "px,0,0)";
+    if (stretch) {
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+          glass.style.width = br.width + "px";
+          glass.style.transform = "translate3d(" + (br.left - nr.left) + "px,0,0)";
+        });
+      });
+    }
   }
-  window.syncNavGlass = function () { requestAnimationFrame(sync); };
-  nav.addEventListener("click", function () { setTimeout(sync, 0); });
-  window.addEventListener("resize", sync);
+  window.syncNavGlass = function () { requestAnimationFrame(function () { sync({ stretch: true }); }); };
+  nav.addEventListener("click", function () { setTimeout(function () { sync({ stretch: true }); }, 0); });
+  window.addEventListener("resize", function () { sync(); });
   sync();
 })();
 (function () {

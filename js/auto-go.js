@@ -1223,16 +1223,16 @@
     const badge = document.getElementById("ag-status-badge");
     if (currentPoolData.status === "cancelled") {
       badge.textContent = "募集終了";
-      badge.className = "font-medium text-gray-700";
+      badge.className = "font-medium text-gray-700 lg-badge";
     } else if (total >= targetP) {
       badge.textContent = "満員";
-      badge.className = "font-medium text-gray-700";
+      badge.className = "font-medium text-gray-700 lg-badge";
     } else if (total >= minP) {
       badge.textContent = "開催確定";
-      badge.className = "font-medium text-gray-700";
+      badge.className = "font-medium text-gray-700 lg-badge";
     } else {
       badge.textContent = "募集中";
-      badge.className = "font-medium text-gray-700";
+      badge.className = "font-medium text-gray-700 lg-badge";
     }
 
     const statusBox = document.getElementById("ag-my-status-box");
