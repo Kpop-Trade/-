@@ -20,12 +20,12 @@
   <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png?v=20261121">
   <link rel="apple-touch-icon" sizes="152x152" href="icon-152.png?v=20261121">
   <link rel="apple-touch-icon" sizes="120x120" href="icon-120.png?v=20261121">
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap&v=20261121" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700;800&family=Noto+Sans+JP:wght@400;500;700&display=swap&v=20261121" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com?v=20261121"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js?v=20261121"></script>
 
   <script src="./js/tailwind-config.js?v=20261121"></script>
-  <link rel="stylesheet" href="./styles.css?v=20261121d">
+  <link rel="stylesheet" href="./styles.css?v=20261121e">
   <link rel="stylesheet" href="./liquid-glass.css?v=20261121">
 
 
@@ -53,7 +53,9 @@
   <header class="liquid-glass lg-header border-b-0 mb-4">
     <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
       <div class="flex items-center space-x-2">
-        <h1 class="text-xl md:text-2xl font-extrabold tracking-tight font-bold text-gray-900">ILLIT-Trade</h1>
+        <h1 class="site-logo" aria-label="ILLIT Trade">
+          <span class="site-logo-illit">ILLIT</span><span class="site-logo-trade">Trade</span><span class="site-logo-heart" aria-hidden="true">♡</span>
+        </h1>
       </div>
       <div id="auth-container" class="flex items-center space-x-2">
         <button id="login-btn" onclick="loginWithGoogle()" class="bg-white/80 backdrop-blur border border-white text-illit-darkPurple text-xs md:text-sm font-bold py-2 px-4 rounded-full transition shadow-sm hover:bg-white">Googleログイン</button>
