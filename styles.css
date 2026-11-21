@@ -368,12 +368,59 @@
       border-top: 0 !important;
       margin-bottom: 0 !important;
     }
-    header h1 {
+    /* ホーム左上ロゴ：丸ゴシック＋グラデで可愛く */
+    header h1.site-logo {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 0.12em;
+      margin: 0;
+      font-family: "M PLUS Rounded 1c", "Hiragino Maru Gothic ProN", "Noto Sans JP", sans-serif !important;
+      font-weight: 800 !important;
+      font-size: 18px !important;
+      letter-spacing: 0.02em !important;
+      line-height: 1.1;
       background: none !important;
-      -webkit-text-fill-color: #111 !important;
-      color: #111 !important;
-      font-size: 17px;
-      letter-spacing: -0.02em;
+      -webkit-text-fill-color: unset !important;
+      color: inherit !important;
+      text-shadow: 0 1px 0 rgba(255, 255, 255, 0.65);
+      -webkit-font-smoothing: antialiased;
+    }
+    .site-logo-illit {
+      background: linear-gradient(115deg, #ff6aa8 0%, #ff4d6d 42%, #c084fc 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      color: transparent;
+      filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.4));
+    }
+    .site-logo-trade {
+      font-weight: 700 !important;
+      font-size: 0.88em;
+      letter-spacing: 0.04em;
+      background: linear-gradient(120deg, #a78bfa 0%, #f472b6 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      color: transparent;
+      opacity: 0.95;
+    }
+    .site-logo-heart {
+      font-size: 0.72em;
+      line-height: 1;
+      color: #ff6aa8;
+      -webkit-text-fill-color: #ff6aa8;
+      transform: translateY(-0.05em);
+      animation: siteLogoHeart 2.4s ease-in-out infinite;
+    }
+    @keyframes siteLogoHeart {
+      0%, 100% { transform: translateY(-0.05em) scale(1); opacity: 0.9; }
+      50% { transform: translateY(-0.12em) scale(1.12); opacity: 1; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .site-logo-heart { animation: none; }
+    }
+    @media (min-width: 768px) {
+      header h1.site-logo { font-size: 20px !important; }
     }
     #sell-fab {
       position: fixed;
