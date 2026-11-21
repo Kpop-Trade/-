@@ -178,6 +178,87 @@ async function recordAutoGoPenalty(uid, poolId) {
   });
 }
 
+function isAutoGoTestPool(pool) {
+  return !!(pool && pool.isTest === true);
+}
+
+function isAutoGoDummyUid(uid) {
+  return typeof uid === "string" && uid.startsWith("dummy_");
+}
+
+async function writeAutoGoAuditLog(poolId, entry) {
+  if (!poolId || !entry) return;
+  const payload = {
+    ...entry,
+    poolId,
+    createdAt: FV.serverTimestamp()
+  };
+  const poolLog = db.collection("auto_go_pools").doc(poolId).collection("auditLogs").doc();
+  const globalLog = db.collection("auditLogs").doc();
+  await Promise.all([
+    poolLog.set(payload),
+    globalLog.set(payload)
+  ]);
+}
+
+function poolMemberList(pool) {
+  if (Array.isArray(pool.members) && pool.members.length) return pool.members.slice();
+  if (Array.isArray(pool.memberNames) && pool.memberNames.length) return pool.memberNames.slice();
+  return [];
+}
+
+function shuffleArray(list) {
+  const arr = list.slice();
+  for (let i = arr.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = arr[i];
+    arr[i] = arr[j];
+    arr[j] = tmp;
+  }
+  return arr;
+}
+
+/**
+ * 先着枠の割り当て（希望順位どおりに空枠を探す）。
+ * preferenceOrder があれば第1〜第N希望を順に試し、なければ wantedMember 固定。
+ */
+function allocateAutoGoMember(pool, wantedMember, preferenceOrder) {
+  const members = poolMemberList(pool);
+  if (!members.length) throw new HttpsError("failed-precondition", "pool has no members");
+  const defaultCap = members.length === 5 ? 4 : members.length === 4 ? 5 : 0;
+  const caps = { ...(pool.memberCaps || {}) };
+  const counts = { ...(pool.memberCounts || {}) };
+  members.forEach((member) => {
+    caps[member] = Number(caps[member]) || defaultCap;
+    counts[member] = Number(counts[member]) || 0;
+  });
+  const order = Array.isArray(preferenceOrder) && preferenceOrder.length
+    ? preferenceOrder.filter((m) => members.includes(m))
+    : (wantedMember ? [wantedMember] : []);
+  if (!order.length) throw new HttpsError("invalid-argument", "unknown member");
+
+  let assigned = null;
+  let assignedRank = 0;
+  for (let i = 0; i < order.length; i += 1) {
+    const candidate = order[i];
+    if (caps[candidate] && counts[candidate] < caps[candidate]) {
+      assigned = candidate;
+      assignedRank = i + 1;
+      break;
+    }
+  }
+  if (!assigned) throw new HttpsError("resource-exhausted", "member slots are full");
+
+  counts[assigned] += 1;
+  const allFilled = members.every((member) => counts[member] >= caps[member]);
+  let targetParticipants = Number(pool.targetParticipants) || members.reduce((sum, member) => sum + caps[member], 0);
+  if (allFilled) {
+    members.forEach((member) => { caps[member] += 3; });
+    targetParticipants = members.reduce((sum, member) => sum + caps[member], 0);
+  }
+  return { assigned, assignedRank, preferenceOrder: order, caps, counts, targetParticipants, members };
+}
+
 async function confirmAutoGoEntry(poolId, uid, poolData, entryRef) {
   const now = Date.now();
   const deadlineAt = admin.firestore.Timestamp.fromMillis(now + 10 * 60 * 60 * 1000);
@@ -198,6 +279,16 @@ async function confirmAutoGoEntry(poolId, uid, poolData, entryRef) {
     return true;
   });
   if (!confirmed) return;
+  // テストプール／ダミーUIDには本番ユーザー向けプッシュを飛ばさない（管理者監査のみ）
+  if (isAutoGoTestPool(poolData) || isAutoGoDummyUid(uid)) {
+    await writeAutoGoAuditLog(poolId, {
+      action: "test_confirm_skipped_push",
+      uid,
+      title: poolData.title || "",
+      actorUid: "system"
+    }).catch(() => {});
+    return;
+  }
   await notify(uid, {
     id: `autogo_purchase_${poolId}`,
     text: `「${poolData.title || "Auto-GO"}」が成立しました。10時間以内にアルバムを購入し、購入日時とアルバムが確認できる画面を登録してください。購入URL: ${poolData.purchaseUrl || SITE}`,
@@ -750,6 +841,7 @@ exports.reserveAutoGoEntry = onCall(async (request) => {
     throw new HttpsError("invalid-argument", "pool, member and consent are required");
   }
   const uid = request.auth.uid;
+  const isAdminUser = ADMIN_UIDS.includes(uid);
   const initialUserSnap = await db.collection("users").doc(uid).get();
   if (initialUserSnap.exists && initialUserSnap.data().autoGoBanned === true) {
     throw new HttpsError("permission-denied", "this account is banned from Auto-GO");
@@ -773,6 +865,8 @@ exports.reserveAutoGoEntry = onCall(async (request) => {
   const poolRef = db.collection("auto_go_pools").doc(poolId);
   const entryRef = autoGoEntryRef(poolId, uid);
   const shippingRef = db.collection("users").doc(uid).collection("private").doc("shipping");
+  let assignedMember = wantedMember;
+  let assignedRank = 1;
   await db.runTransaction(async (tx) => {
     const [poolSnap, entrySnap, userSnap, privateShipSnap] = await Promise.all([
       tx.get(poolRef),
@@ -787,6 +881,12 @@ exports.reserveAutoGoEntry = onCall(async (request) => {
       throw new HttpsError("permission-denied", "this account is banned from Auto-GO");
     }
     const pool = poolSnap.data();
+    if (isAutoGoTestPool(pool) && !isAdminUser) {
+      throw new HttpsError("permission-denied", "test pool is admin-only");
+    }
+    if (pool.entryLocked === true) {
+      throw new HttpsError("failed-precondition", "new entries are temporarily locked by admin");
+    }
     if (!["recruiting", "activating", "active"].includes(pool.status) || pool.recruitmentClosedAt) {
       throw new HttpsError("failed-precondition", "recruitment is closed");
     }
@@ -794,10 +894,6 @@ exports.reserveAutoGoEntry = onCall(async (request) => {
     if (recruitEndAt && recruitEndAt <= Date.now()) {
       throw new HttpsError("deadline-exceeded", "recruitment period has ended");
     }
-    const members = Array.isArray(pool.members) && pool.members.length
-      ? pool.members
-      : (Array.isArray(pool.memberNames) ? pool.memberNames : []);
-    if (!members.includes(wantedMember)) throw new HttpsError("invalid-argument", "unknown member");
     const profile = user.profile || {};
     const privateShip = privateShipSnap.exists ? (privateShipSnap.data() || {}) : {};
     const shipName = String(privateShip.name || profile.name || "").trim();
@@ -818,32 +914,20 @@ exports.reserveAutoGoEntry = onCall(async (request) => {
       }
     }
 
-    const defaultCap = members.length === 5 ? 4 : members.length === 4 ? 5 : 0;
-    const caps = { ...(pool.memberCaps || {}) };
-    const counts = { ...(pool.memberCounts || {}) };
-    members.forEach((member) => {
-      caps[member] = Number(caps[member]) || defaultCap;
-      counts[member] = Number(counts[member]) || 0;
-    });
-    if (!caps[wantedMember] || counts[wantedMember] >= caps[wantedMember]) {
-      throw new HttpsError("resource-exhausted", "member slots are full");
-    }
-    counts[wantedMember] += 1;
-    const allFilled = members.every((member) => counts[member] >= caps[member]);
-    let targetParticipants = Number(pool.targetParticipants) || members.reduce((sum, member) => sum + caps[member], 0);
-    if (allFilled) {
-      members.forEach((member) => { caps[member] += 3; });
-      targetParticipants = members.reduce((sum, member) => sum + caps[member], 0);
-    }
+    const alloc = allocateAutoGoMember(pool, wantedMember, [wantedMember]);
+    assignedMember = alloc.assigned;
+    assignedRank = alloc.assignedRank;
     tx.update(poolRef, {
       totalCount: (Number(pool.totalCount) || 0) + 1,
-      memberCounts: counts,
-      memberCaps: caps,
-      targetParticipants
+      memberCounts: alloc.counts,
+      memberCaps: alloc.caps,
+      targetParticipants: alloc.targetParticipants
     });
     tx.create(entryRef, {
       uid,
-      wantedMember,
+      wantedMember: assignedMember,
+      preferenceOrder: [wantedMember],
+      assignedRank,
       pulledMember: null,
       status: "reserved",
       consentAt: FV.serverTimestamp(),
@@ -854,18 +938,28 @@ exports.reserveAutoGoEntry = onCall(async (request) => {
   });
   const poolSnap = await poolRef.get();
   const pool = poolSnap.exists ? poolSnap.data() : {};
+  if (isAutoGoTestPool(pool)) {
+    await writeAutoGoAuditLog(poolId, {
+      action: "reserve_test_pool",
+      uid,
+      wantedMember: assignedMember,
+      assignedRank,
+      actorUid: uid
+    }).catch(() => {});
+    return { ok: true, wantedMember: assignedMember, albumPrice: null, test: true };
+  }
   const priceYen = Number(pool.albumPrice || pool.purchasePrice || 0);
   const priceText = priceYen > 0
     ? `金額の目安: ¥${priceYen.toLocaleString("ja-JP")}（後で自身で購入）`
     : "金額はショップの掲載価格です（後で自身で購入）";
   await notify(uid, {
     id: `autogo_reserved_${poolId}_${uid}`,
-    text: `「${pool.title || "Auto-GO"}」に仮予約しました。希望メンバー: ${wantedMember}。${priceText}。最低人数に達すると企画成立し、購入URLが届きます。`,
+    text: `「${pool.title || "Auto-GO"}」に仮予約しました。希望メンバー: ${assignedMember}。${priceText}。最低人数に達すると企画成立し、購入URLが届きます。`,
     type: "success",
     link: { k: "autogo", id: poolId },
     title: "✅ Auto-GO予約完了"
   });
-  return { ok: true, wantedMember, albumPrice: priceYen || null };
+  return { ok: true, wantedMember: assignedMember, albumPrice: priceYen || null };
 });
 
 exports.cancelAutoGoEntry = onCall(async (request) => {
@@ -1199,6 +1293,323 @@ exports.adminRemoveAutoGoEntry = onCall(async (request) => {
     })));
   }
   return { ok: true };
+});
+
+/** テスト用：ダミー参加者を1人〜N人、本番と同じ枠カウント経路で投入 */
+exports.adminInjectAutoGoDummies = onCall({ timeoutSeconds: 120 }, async (request) => {
+  assertAdmin(request);
+  const data = request.data || {};
+  const poolId = String(data.poolId || "");
+  const count = Math.min(50, Math.max(1, Number(data.count) || 1));
+  const fillToMin = data.fillToMin === true;
+  if (!/^[\w-]{1,120}$/.test(poolId)) throw new HttpsError("invalid-argument", "invalid pool");
+
+  const poolRef = db.collection("auto_go_pools").doc(poolId);
+  const poolSnap0 = await poolRef.get();
+  if (!poolSnap0.exists) throw new HttpsError("not-found", "pool not found");
+  const pool0 = poolSnap0.data();
+  if (!isAutoGoTestPool(pool0)) {
+    throw new HttpsError("failed-precondition", "dummy inject is allowed only on [TEST] pools");
+  }
+  if (pool0.entryLocked === true) {
+    throw new HttpsError("failed-precondition", "new entries are locked");
+  }
+
+  const results = [];
+  let injected = 0;
+  const maxLoops = fillToMin ? 80 : count;
+
+  for (let i = 0; i < maxLoops; i += 1) {
+    if (!fillToMin && injected >= count) break;
+    const dummyUid = `dummy_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+    const entryRef = autoGoEntryRef(poolId, dummyUid);
+    let row = null;
+    try {
+      row = await db.runTransaction(async (tx) => {
+        const poolSnap = await tx.get(poolRef);
+        if (!poolSnap.exists) throw new HttpsError("not-found", "pool not found");
+        const pool = poolSnap.data();
+        if (!isAutoGoTestPool(pool)) {
+          throw new HttpsError("failed-precondition", "not a test pool");
+        }
+        if (pool.entryLocked === true || pool.recruitmentClosedAt) {
+          throw new HttpsError("failed-precondition", "recruitment locked/closed");
+        }
+        if (!["recruiting", "activating", "active"].includes(pool.status)) {
+          throw new HttpsError("failed-precondition", "pool status does not accept entries");
+        }
+        if (fillToMin) {
+          const minCount = Number(pool.minThreshold || pool.minParticipants || 20);
+          if (Number(pool.totalCount || 0) >= minCount) return null;
+        }
+        const members = poolMemberList(pool);
+        const preferenceOrder = shuffleArray(members);
+        const alloc = allocateAutoGoMember(pool, preferenceOrder[0], preferenceOrder);
+        const entrySeq = (Number(pool.totalCount) || 0) + 1;
+        tx.update(poolRef, {
+          totalCount: entrySeq,
+          memberCounts: alloc.counts,
+          memberCaps: alloc.caps,
+          targetParticipants: alloc.targetParticipants
+        });
+        tx.create(entryRef, {
+          uid: dummyUid,
+          isDummy: true,
+          wantedMember: alloc.assigned,
+          preferenceOrder: alloc.preferenceOrder,
+          assignedRank: alloc.assignedRank,
+          entrySeq,
+          pulledMember: null,
+          status: "reserved",
+          consentAt: FV.serverTimestamp(),
+          userName: `ダミー参加者#${entrySeq}`,
+          xId: `dummy_${entrySeq}`,
+          createdAt: FV.serverTimestamp(),
+          injectedBy: request.auth.uid
+        });
+        return {
+          uid: dummyUid,
+          entrySeq,
+          wantedMember: alloc.assigned,
+          assignedRank: alloc.assignedRank,
+          preferenceOrder: alloc.preferenceOrder
+        };
+      });
+    } catch (error) {
+      if (error instanceof HttpsError && error.code === "resource-exhausted") break;
+      if (error instanceof HttpsError && /locked|closed|status/i.test(error.message || "")) break;
+      throw error;
+    }
+    if (!row) break;
+    injected += 1;
+    results.push(row);
+    await writeAutoGoAuditLog(poolId, {
+      action: "dummy_inject",
+      actorUid: request.auth.uid,
+      ...row
+    }).catch(() => {});
+  }
+
+  await writeAutoGoAuditLog(poolId, {
+    action: "dummy_inject_batch",
+    actorUid: request.auth.uid,
+    injected,
+    fillToMin,
+    requested: count
+  }).catch(() => {});
+
+  return { ok: true, injected, results };
+});
+
+/** テスト用プールとダミー／監査ログを完全削除 */
+exports.adminResetAutoGoTestPool = onCall({ timeoutSeconds: 120 }, async (request) => {
+  assertAdmin(request);
+  const poolId = String((request.data || {}).poolId || "");
+  if (!/^[\w-]{1,120}$/.test(poolId)) throw new HttpsError("invalid-argument", "invalid pool");
+  const poolRef = db.collection("auto_go_pools").doc(poolId);
+  const poolSnap = await poolRef.get();
+  if (!poolSnap.exists) throw new HttpsError("not-found", "pool not found");
+  if (!isAutoGoTestPool(poolSnap.data())) {
+    throw new HttpsError("failed-precondition", "reset is allowed only on [TEST] pools");
+  }
+
+  const deleteCollection = async (colRef) => {
+    const snap = await colRef.limit(400).get();
+    if (snap.empty) return 0;
+    const bw = db.bulkWriter();
+    snap.docs.forEach((d) => bw.delete(d.ref));
+    await bw.close();
+    return snap.size + await deleteCollection(colRef);
+  };
+
+  const entriesDeleted = await deleteCollection(poolRef.collection("entries"));
+  const auditsDeleted = await deleteCollection(poolRef.collection("auditLogs"));
+  await poolRef.delete();
+  // プール削除後はグローバル監査のみ（サブコレ書き込みで親ドキュメントが復活しないように）
+  await db.collection("auditLogs").add({
+    action: "test_pool_reset_deleted",
+    poolId,
+    actorUid: request.auth.uid,
+    entriesDeleted,
+    auditsDeleted,
+    createdAt: FV.serverTimestamp()
+  }).catch(() => {});
+  return { ok: true, entriesDeleted, auditsDeleted };
+});
+
+/** 本番／テスト共通：新規エントリー緊急停止スイッチ */
+exports.adminSetAutoGoEntryLock = onCall(async (request) => {
+  assertAdmin(request);
+  const poolId = String((request.data || {}).poolId || "");
+  const locked = !!(request.data || {}).locked;
+  if (!/^[\w-]{1,120}$/.test(poolId)) throw new HttpsError("invalid-argument", "invalid pool");
+  const poolRef = db.collection("auto_go_pools").doc(poolId);
+  const snap = await poolRef.get();
+  if (!snap.exists) throw new HttpsError("not-found", "pool not found");
+  await poolRef.update({
+    entryLocked: locked,
+    entryLockedAt: locked ? FV.serverTimestamp() : null,
+    entryLockedBy: locked ? request.auth.uid : null
+  });
+  await writeAutoGoAuditLog(poolId, {
+    action: locked ? "entry_lock_on" : "entry_lock_off",
+    actorUid: request.auth.uid
+  });
+  return { ok: true, locked };
+});
+
+/** 本番緊急：プール強制キャンセル＋参加者を返金対応中に */
+exports.adminForceCancelAutoGoPool = onCall({ timeoutSeconds: 120 }, async (request) => {
+  assertAdmin(request);
+  const data = request.data || {};
+  const poolId = String(data.poolId || "");
+  const confirmText = String(data.confirmText || "");
+  const reason = String(data.reason || "admin_force_cancel").slice(0, 200);
+  if (!/^[\w-]{1,120}$/.test(poolId)) throw new HttpsError("invalid-argument", "invalid pool");
+  if (confirmText !== "FORCE_CANCEL") {
+    throw new HttpsError("failed-precondition", "confirmText must be FORCE_CANCEL");
+  }
+  const poolRef = db.collection("auto_go_pools").doc(poolId);
+  const poolSnap = await poolRef.get();
+  if (!poolSnap.exists) throw new HttpsError("not-found", "pool not found");
+  const pool = poolSnap.data();
+
+  await poolRef.update({
+    status: "cancelled",
+    recruitmentClosedAt: FV.serverTimestamp(),
+    entryLocked: true,
+    forceCancelledAt: FV.serverTimestamp(),
+    forceCancelledBy: request.auth.uid,
+    forceCancelReason: reason
+  });
+
+  const entries = await poolRef.collection("entries").get();
+  const bw = db.bulkWriter();
+  const notifyUids = [];
+  entries.docs.forEach((docSnap) => {
+    const entry = docSnap.data() || {};
+    if (["cancelled", "unshipped_penalty"].includes(entry.status) && entry.refundStatus === "refund_pending") return;
+    bw.update(docSnap.ref, {
+      status: "cancelled",
+      cancellationReason: "admin_force_cancel",
+      refundStatus: "refund_pending",
+      refundNote: "運営による緊急キャンセル。返金対応中",
+      adminForceCancelledBy: request.auth.uid,
+      adminForceCancelledAt: FV.serverTimestamp()
+    });
+    if (!isAutoGoDummyUid(docSnap.id) && !isAutoGoTestPool(pool)) notifyUids.push(docSnap.id);
+  });
+  await bw.close();
+
+  await Promise.all(notifyUids.map((uid) => notify(uid, {
+    id: `autogo_force_cancel_${poolId}`,
+    text: `「${pool.title || "Auto-GO"}」は運営により緊急キャンセルされました。返金対応中です。詳細はお問い合わせください。`,
+    type: "admin",
+    link: { k: "autogo", id: poolId },
+    title: "🚨 Auto-GO緊急キャンセル"
+  })));
+
+  await writeAutoGoAuditLog(poolId, {
+    action: "force_cancel_pool",
+    actorUid: request.auth.uid,
+    reason,
+    affected: entries.size
+  });
+  return { ok: true, affected: entries.size };
+});
+
+/** 確定済みメンバー枠の手動再割り当て（監査ログ付き） */
+exports.adminReassignAutoGoMember = onCall(async (request) => {
+  assertAdmin(request);
+  const data = request.data || {};
+  const poolId = String(data.poolId || "");
+  const uid = String(data.uid || "");
+  const newMember = String(data.newMember || "").trim();
+  const note = String(data.note || "").slice(0, 200);
+  if (!/^[\w-]{1,120}$/.test(poolId) || !uid || uid.length > 128 || !newMember) {
+    throw new HttpsError("invalid-argument", "pool, uid and newMember are required");
+  }
+  const poolRef = db.collection("auto_go_pools").doc(poolId);
+  const entryRef = autoGoEntryRef(poolId, uid);
+  let beforeMember = "";
+  await db.runTransaction(async (tx) => {
+    const [poolSnap, entrySnap] = await Promise.all([tx.get(poolRef), tx.get(entryRef)]);
+    if (!poolSnap.exists || !entrySnap.exists) throw new HttpsError("not-found", "not found");
+    const pool = poolSnap.data();
+    const entry = entrySnap.data();
+    const members = poolMemberList(pool);
+    if (!members.includes(newMember)) throw new HttpsError("invalid-argument", "unknown member");
+    beforeMember = String(entry.wantedMember || "");
+    if (beforeMember === newMember) return;
+    if (["cancelled", "unshipped_penalty"].includes(entry.status)) {
+      throw new HttpsError("failed-precondition", "cancelled entries cannot be reassigned");
+    }
+    const defaultCap = members.length === 5 ? 4 : members.length === 4 ? 5 : 0;
+    const caps = { ...(pool.memberCaps || {}) };
+    const counts = { ...(pool.memberCounts || {}) };
+    members.forEach((member) => {
+      caps[member] = Number(caps[member]) || defaultCap;
+      counts[member] = Number(counts[member]) || 0;
+    });
+    if (beforeMember && counts[beforeMember] > 0) counts[beforeMember] -= 1;
+    if (counts[newMember] >= caps[newMember]) {
+      // 手動調整では必要に応じて枠を1つ拡張
+      caps[newMember] = (Number(caps[newMember]) || 0) + 1;
+    }
+    counts[newMember] = (Number(counts[newMember]) || 0) + 1;
+    tx.update(poolRef, { memberCounts: counts, memberCaps: caps });
+    tx.update(entryRef, {
+      wantedMember: newMember,
+      previousWantedMember: beforeMember || null,
+      reassignedBy: request.auth.uid,
+      reassignedAt: FV.serverTimestamp(),
+      reassignNote: note || null,
+      assignedRank: 0
+    });
+  });
+  await writeAutoGoAuditLog(poolId, {
+    action: "reassign_member",
+    actorUid: request.auth.uid,
+    uid,
+    beforeMember,
+    newMember,
+    note
+  });
+  return { ok: true, beforeMember, newMember };
+});
+
+/** 割り当て監査ログ取得 */
+exports.adminGetAutoGoAuditLogs = onCall(async (request) => {
+  assertAdmin(request);
+  const poolId = String((request.data || {}).poolId || "");
+  const limitN = Math.min(200, Math.max(1, Number((request.data || {}).limit) || 100));
+  if (!/^[\w-]{1,120}$/.test(poolId)) throw new HttpsError("invalid-argument", "invalid pool");
+  const snap = await db.collection("auto_go_pools").doc(poolId)
+    .collection("auditLogs").orderBy("createdAt", "desc").limit(limitN).get();
+  const logs = snap.docs.map((d) => {
+    const row = d.data() || {};
+    return {
+      id: d.id,
+      ...row,
+      createdAtMs: timestampMillis(row.createdAt)
+    };
+  });
+  const entriesSnap = await db.collection("auto_go_pools").doc(poolId).collection("entries").get();
+  const assignments = entriesSnap.docs.map((d) => {
+    const e = d.data() || {};
+    return {
+      uid: d.id,
+      userName: e.userName || "",
+      entrySeq: e.entrySeq || null,
+      wantedMember: e.wantedMember || "",
+      assignedRank: e.assignedRank || null,
+      preferenceOrder: e.preferenceOrder || [],
+      status: e.status || "",
+      isDummy: !!e.isDummy,
+      createdAtMs: timestampMillis(e.createdAt)
+    };
+  }).sort((a, b) => (a.entrySeq || a.createdAtMs) - (b.entrySeq || b.createdAtMs));
+  return { ok: true, logs, assignments };
 });
 
 exports.adminSendWarning = onCall(async (req) => {

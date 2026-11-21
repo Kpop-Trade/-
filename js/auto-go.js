@@ -564,6 +564,8 @@
         targetParticipants,
         totalCount: 0,
         status: "recruiting",
+        isTest: false,
+        entryLocked: false,
         createdBy: user.uid,
         createdAt: serverTimestamp()
       });
@@ -677,8 +679,10 @@
           const user = refs.auth?.currentUser || window.currentUser;
           if (!user?.uid) throw new Error("ログイン状態を確認できません");
 
+          const isTestPool = !!(document.getElementById("adm-ag-is-test")?.checked);
+          const finalTitle = isTestPool && !/^\[TEST\]/i.test(title) ? `[TEST] ${title}` : title;
           await window.addDoc(refs.collection(refs.db, "auto_go_pools"), {
-            title,
+            title: finalTitle,
             description: desc,
             purchaseUrl,
             albumPrice: albumPrice > 0 ? albumPrice : null,
@@ -696,11 +700,14 @@
             slotPerMember: initialCapPerMember,
             totalCount: 0,
             status: "recruiting",
+            isTest: isTestPool,
+            testTag: isTestPool ? "[TEST]" : null,
+            entryLocked: false,
             createdBy: user.uid,
             createdAt: refs.serverTimestamp()
           });
 
-          showToast("Auto-GO プールを公開しました！", "success");
+          showToast(isTestPool ? "テスト用 Auto-GO プールを作成しました（一般非表示）" : "Auto-GO プールを公開しました！", "success");
           await window.renderAdminAutoGoPanel();
         } catch (error) {
           console.error("createAdminAutoGoPool error:", error);
@@ -782,17 +789,21 @@
               ${canRemove ? `<button type="button" data-pool="${escapeAutoGoHtml(p.id)}" data-uid="${escapeAutoGoHtml(entry.uid)}" onclick="window.adminRemoveAutoGoEntry(this.dataset.pool,this.dataset.uid)" class="shrink-0 text-red-600 underline">除外</button>` : ""}
             </div>`;
           }).join("");
+          const isTest = p.isTest === true;
+          const locked = p.entryLocked === true;
           return `
-            <div class="bg-white/85 rounded-2xl p-3.5 border border-white shadow-sm space-y-2">
+            <div class="bg-white/85 rounded-2xl p-3.5 border ${isTest ? "border-amber-300 ring-1 ring-amber-200" : "border-white"} shadow-sm space-y-2">
               <div class="flex items-start justify-between gap-2">
                 <div class="flex items-center gap-2.5 min-w-0">
                   ${p.imageUrl ? `<img src="${p.imageUrl}" class="w-12 h-12 rounded-xl object-cover shrink-0 border border-gray-100">` : '<div class="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center text-lg shrink-0">⚡</div>'}
                   <div class="min-w-0">
-                    <div class="flex items-center gap-1.5">
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                      ${isTest ? '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-200 text-amber-900">[TEST]</span>' : ""}
+                      ${locked ? '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-200 text-rose-900">ENTRY LOCK</span>' : ""}
                       <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${p.status === 'recruiting' ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'}">${p.status === 'recruiting' ? '募集中' : p.status}</span>
-                      <span class="text-[11px] font-bold text-gray-500">${p.totalCount || 0} / ${p.targetParticipants || 20}人</span>
+                      <span class="text-[11px] font-bold text-gray-500">${p.totalCount || 0} / ${p.targetParticipants || 20}人 · 成立${p.minThreshold || p.minParticipants || 20}</span>
                     </div>
-                    <p class="text-sm font-black text-gray-900 truncate mt-0.5">${p.title || "無題プール"}</p>
+                    <p class="text-sm font-black text-gray-900 truncate mt-0.5">${escapeAutoGoHtml(p.title || "無題プール")}</p>
                   </div>
                 </div>
                 ${p.status === "active" ? `<span class="shrink-0 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-xl border border-emerald-200">✅ 成立済</span>` : `<span class="shrink-0 text-[11px] font-bold text-amber-700 bg-amber-50 px-2.5 py-1.5 rounded-xl border border-amber-200">${p.status === "cancelled" || p.recruitmentClosedAt ? "募集終了" : "自動成立待ち"}</span>`}
@@ -801,13 +812,14 @@
                 ${(p.status === "cancelled" || p.recruitmentClosedAt) ? `<button type="button" disabled class="text-[11px] font-bold text-gray-500 bg-gray-100 px-3 py-2 rounded-xl border border-gray-200 min-h-[40px]">募集終了済み</button>` : `<button type="button" data-ag-act="close" data-pool-id="${escapeAutoGoHtml(p.id)}" onclick="window.closeAdminAutoGoRecruit(this.getAttribute('data-pool-id'))" class="text-[11px] font-bold text-amber-900 bg-amber-100 px-3 py-2 rounded-xl border border-amber-300 min-h-[40px]" style="position:relative;z-index:6;touch-action:manipulation;">募集終了</button>`}
                 <button type="button" data-ag-act="delete" data-pool-id="${escapeAutoGoHtml(p.id)}" onclick="window.deleteAdminAutoGoPool(this.getAttribute('data-pool-id'))" class="text-[11px] font-bold text-white bg-red-500 px-3 py-2 rounded-xl min-h-[40px]" style="position:relative;z-index:6;touch-action:manipulation;">削除</button>
               </div>
-              <p class="text-[11px] text-gray-600 line-clamp-2">${p.description || ""}</p>
+              <p class="text-[11px] text-gray-600 line-clamp-2">${escapeAutoGoHtml(p.description || "")}</p>
               <div class="text-[10px] font-bold text-purple-700 bg-purple-50/80 px-2.5 py-1.5 rounded-xl">${breakdown}</div>
               ${agMatchDiagram(p)}
               <div class="rounded-xl border border-gray-100 px-2.5 py-1.5">
                 <p class="text-[10px] font-bold text-gray-600">参加者 ${p.entries?.length || 0}人</p>
                 ${participants || '<p class="text-[10px] text-gray-400 py-1">参加者はいません</p>'}
               </div>
+              ${typeof window.__agAdminOpsHtml === "function" ? window.__agAdminOpsHtml(p) : ""}
             </div>
           `;
         }).join("");
@@ -815,12 +827,32 @@
     container.innerHTML = `
       <div class="space-y-4">
         ${permWarn}
-        <button onclick="openAgGuide()" class="w-full py-3 rounded-2xl bg-red-500 text-white font-black text-sm shadow-sm">📖 仕組み（必ずお読みください）</button>
+        <button onclick="openAgGuide()" class="w-full py-3 rounded-2xl bg-red-500 text-white font-black text-sm shadow-sm min-h-[48px]">📖 仕組み（必ずお読みください）</button>
+
+        <div class="bg-amber-50 rounded-2xl p-4 border-2 border-dashed border-amber-300 space-y-3">
+          <div class="flex items-center justify-between gap-2">
+            <h3 class="text-sm font-black text-amber-950">🧪 テストモード（ドライラン）</h3>
+            <span class="text-[10px] font-bold text-amber-800 bg-amber-200 px-2 py-0.5 rounded-full">一般非表示</span>
+          </div>
+          <p class="text-[11px] text-amber-900 leading-relaxed">ワンタップで [TEST] プールを作成し、ダミー投入で自動成立・割り当てを何度でも検証できます。本番データには影響しません。</p>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <button type="button" onclick="window.createAdminAutoGoTestPool(5)" class="min-h-[48px] rounded-xl bg-amber-600 text-white text-[11px] font-black active:scale-[0.99]">テスト作成 5人</button>
+            <button type="button" onclick="window.createAdminAutoGoTestPool(10)" class="min-h-[48px] rounded-xl bg-amber-600 text-white text-[11px] font-black">テスト作成 10人</button>
+            <button type="button" onclick="window.createAdminAutoGoTestPool(15)" class="min-h-[48px] rounded-xl bg-amber-600 text-white text-[11px] font-black">テスト作成 15人</button>
+            <button type="button" onclick="window.createAdminAutoGoTestPool(20)" class="min-h-[48px] rounded-xl bg-amber-700 text-white text-[11px] font-black">テスト作成 20人</button>
+          </div>
+        </div>
+
         <div class="bg-white/90 rounded-2xl p-4 border border-white shadow-sm space-y-3">
           <div class="flex items-center justify-between">
             <h3 class="text-sm font-black text-gray-900">⚡ 新規 Auto-GO プール作成</h3>
             <span class="text-[10px] font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">管理者専用</span>
           </div>
+
+          <label class="flex items-center gap-2 min-h-[44px] px-3 rounded-xl bg-amber-50 border border-amber-200 cursor-pointer">
+            <input id="adm-ag-is-test" type="checkbox" class="rounded accent-amber-600 w-5 h-5">
+            <span class="text-[12px] font-bold text-amber-950">[TEST] テスト用として作成（一般一覧・通知に出さない）</span>
+          </label>
 
           <div>
             <label class="block text-[11px] font-bold text-gray-700 mb-1">イベント・アルバムタイトル</label>
@@ -1020,7 +1052,8 @@
       poolsListenerReady = false;
     }
 
-    const poolsQuery = refs.query(refs.collection(refs.db, "auto_go_pools"), refs.orderBy("createdAt", "desc"), refs.limit(10));
+    // limit を多めに取り、[TEST] をクライアント除外しても本番プールが埋もれないようにする
+    const poolsQuery = refs.query(refs.collection(refs.db, "auto_go_pools"), refs.orderBy("createdAt", "desc"), refs.limit(50));
 
     // 先に getDocs で一発描画 → その後 onSnapshot で追従（初回待ちを短縮）
     try {
@@ -1029,6 +1062,12 @@
         const row = poolDoc.data();
         row.id = poolDoc.id;
         return row;
+      }).filter(function(row) {
+        // [TEST] プールは管理者以外の一覧に出さない
+        if (row.isTest === true) {
+          return typeof window.__isAutoGoAdmin === "function" && window.__isAutoGoAdmin() === true;
+        }
+        return true;
       });
       renderPoolTabs();
       const stillVisible = allPools.some(function(p) { return p.id === activePoolId; });
@@ -1051,10 +1090,15 @@
         const row = poolDoc.data();
         row.id = poolDoc.id;
         return row;
+      }).filter(function(row) {
+        if (row.isTest === true) {
+          return typeof window.__isAutoGoAdmin === "function" && window.__isAutoGoAdmin() === true;
+        }
+        return true;
       });
       poolsListenerReady = true;
       renderPoolTabs();
-      const stillVisible = snap.docs.some(function(poolDoc) { return poolDoc.id === activePoolId; });
+      const stillVisible = allPools.some(function(pool) { return pool.id === activePoolId; });
       if (!activePoolId || (!stillVisible && allPools.length > 0)) {
         if (allPools.length > 0) {
           // 未選択時だけ切替。毎回 select し直さない
@@ -1090,8 +1134,9 @@
     }
     tabsEl.innerHTML = allPools.map(p => {
       const isSelected = p.id === activePoolId;
-      return `<button onclick="selectAutoGoPool('${p.id}')" class="shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold border transition ${isSelected ? 'bg-purple-600 text-white border-purple-600 shadow-sm' : 'bg-white text-gray-700 border-gray-200 hover:bg-purple-50'}">
-        ${p.title} (${p.totalCount || 0}/${p.targetParticipants || 20})
+      const testBadge = p.isTest === true ? "[TEST] " : "";
+      return `<button onclick="selectAutoGoPool('${p.id}')" class="shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold border transition ${isSelected ? 'bg-purple-600 text-white border-purple-600 shadow-sm' : (p.isTest ? 'bg-amber-50 text-amber-900 border-amber-300' : 'bg-white text-gray-700 border-gray-200 hover:bg-purple-50')}">
+        ${testBadge}${escapeAutoGoHtml(p.title)} (${p.totalCount || 0}/${p.targetParticipants || 20})
       </button>`;
     }).join("");
   }
@@ -1221,9 +1266,18 @@
     renderAutoGoParticipants();
 
     const badge = document.getElementById("ag-status-badge");
+    const isTestPool = currentPoolData.isTest === true;
+    const entryLocked = currentPoolData.entryLocked === true;
+    const isAdminViewer = typeof window.__isAutoGoAdmin === "function" && window.__isAutoGoAdmin() === true;
     if (currentPoolData.status === "cancelled") {
       badge.textContent = "募集終了";
       badge.className = "font-medium text-gray-700 lg-badge";
+    } else if (entryLocked) {
+      badge.textContent = "エントリー停止中";
+      badge.className = "font-medium text-rose-700 lg-badge";
+    } else if (isTestPool) {
+      badge.textContent = "[TEST]";
+      badge.className = "font-medium text-amber-800 lg-badge";
     } else if (total >= targetP) {
       badge.textContent = "満員";
       badge.className = "font-medium text-gray-700 lg-badge";
@@ -1234,9 +1288,27 @@
       badge.textContent = "募集中";
       badge.className = "font-medium text-gray-700 lg-badge";
     }
+    if (isTestPool) {
+      const tEl = document.getElementById("ag-pool-title");
+      if (tEl && !/^\[TEST\]/i.test(tEl.textContent || "")) {
+        tEl.textContent = "[TEST] " + (tEl.textContent || "Auto-GO");
+      }
+    }
 
     const statusBox = document.getElementById("ag-my-status-box");
     const entrySec = document.getElementById("ag-entry-section");
+
+    // テストプールは管理者以外参加不可。緊急ロック中も新規エントリー不可。
+    if (!currentEntryData && ((isTestPool && !isAdminViewer) || entryLocked)) {
+      entrySec.classList.add("hidden");
+      statusBox.classList.remove("hidden");
+      statusBox.innerHTML = entryLocked
+        ? `<p class="text-sm text-rose-700 font-bold">運営により新規エントリーが一時停止されています。</p>`
+        : `<p class="text-sm text-amber-800 font-bold">このプールは管理者専用のテスト環境です。</p>`;
+      const gridLocked = document.getElementById("ag-member-grid");
+      if (gridLocked) gridLocked.innerHTML = "";
+      return;
+    }
 
     if (currentEntryData) {
       entrySec.classList.add("hidden");
@@ -1416,7 +1488,7 @@
       const cnt = counts[m] ?? 0;
       const rem = Math.max(0, cap - cnt);
       const isFull = rem === 0;
-      const unavailable = isFull || recruitmentClosed;
+      const unavailable = isFull || recruitmentClosed || entryLocked || (isTestPool && !isAdminViewer);
       // 同意未チェックでもボタンは押せる（クリック時に同意へ誘導）。満枠・受付終了のみ disabled。
       const pct = cap > 0 ? Math.min(100, Math.round((cnt / cap) * 100)) : 0;
       const safeName = String(m).replace(/\\/g, "\\\\").replace(/'/g, "\\'");
