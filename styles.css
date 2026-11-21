@@ -59,6 +59,21 @@
     button.liquid-glass::before,
     button.liquid-glass-heavy::before,
     button.liquid-glass-input::before { display: none; }
+
+    /* ホーム検索バー：虫眼鏡なし＋読みやすい日本語フォント */
+    #main-search-input {
+      font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic UI", "Yu Gothic", sans-serif;
+      font-weight: 500;
+      font-size: 15px !important;
+      letter-spacing: 0.02em;
+      line-height: 1.45;
+      color: #374151;
+    }
+    #main-search-input::placeholder {
+      font-weight: 400;
+      color: #9ca3af;
+      letter-spacing: 0.01em;
+    }
     .modal-backdrop {
       background: rgba(0, 0, 0, 0.25);
       backdrop-filter: blur(10px);

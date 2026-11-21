@@ -195,7 +195,7 @@
       <!-- 【追加】ここに常時表示の検索バー -->
       <div class="px-1">
         <div class="relative">
-          <input type="text" id="main-search-input" oninput="syncSearch(this.value)" placeholder="🔍 メンバー名・トレカ名・出品者名で検索" class="w-full liquid-glass-input rounded-2xl pl-4 pr-9 py-2.5 text-xs outline-none text-gray-700 placeholder-gray-500 bg-white/75 backdrop-blur-md border border-white/50">
+          <input type="text" id="main-search-input" oninput="syncSearch(this.value)" placeholder="メンバー名・トレカ名・出品者名で検索" class="w-full liquid-glass-input rounded-2xl pl-4 pr-9 py-2.5 text-sm outline-none text-gray-700 placeholder-gray-400 bg-white/75 backdrop-blur-md border border-white/50 font-medium tracking-wide">
           <button id="main-search-clear" onclick="syncSearch('')" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm font-bold">×</button>
         </div>
       </div>
@@ -495,7 +495,7 @@
       <div class="flex-1 overflow-y-auto space-y-4">
         <div>
           <label class="block text-xs font-medium text-gray-700 mb-2">検索</label>
-          <input type="text" id="search-input" oninput="setSearch(this.value)" placeholder="譲・求・出品者名で検索" class="w-full liquid-glass-input rounded-xl p-2.5 text-xs outline-none text-gray-700 placeholder-gray-500">
+          <input type="text" id="search-input" oninput="setSearch(this.value)" placeholder="譲・求・出品者名で検索" class="w-full liquid-glass-input rounded-xl p-2.5 text-sm outline-none text-gray-700 placeholder-gray-400 font-medium tracking-wide">
         </div>
         <div>
           <div class="text-xs font-medium text-gray-700 mb-2">種類</div>
