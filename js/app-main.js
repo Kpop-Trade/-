@@ -236,7 +236,10 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     let roomActionsKey = null, cancellingTrade = false;
     let pendingExchangePostIndex = -1, pendingExchangeSubmission = null, exchangeImageUrls = [], submittingExchangeApply = false;
     let myCardsAlbum = "srm", myCardsMember = "ALL", myCardsTab = "own";
+    let myCardsFilterMissingOnly = false;
+    let myCardsFilterListingOnly = false;
     let cardPhotoCache = {}; // cardId -> jpeg dataURL
+    let _binderShareDataUrl = "";
 
     let adminCardsAlbum = "srm";
     let adminCardsMember = "ALL"; // 管理画面のメンバー絞り込み
@@ -10900,7 +10903,20 @@ window.buildAndDownloadCardPackZip = async function() {
 
         function getCardStatus(cardId) {
       const s = (userData.myCards || {})[cardId];
+      if (typeof s === "number" && s > 0) return "owned";
       return s === "owned" || s === "want" ? s : "none";
+    }
+    function getCardCount(cardId) {
+      const s = (userData.myCards || {})[cardId];
+      if (typeof s === "number") return Math.max(0, Math.floor(s));
+      if (s === "owned") return 1;
+      return 0;
+    }
+    function encodeOwnedCount(n) {
+      const c = Math.max(0, Math.floor(Number(n) || 0));
+      if (c <= 0) return null;
+      if (c === 1) return "owned";
+      return c;
     }
     function getAlbumCards(albumId) {
       const album = ILLIT_CARD_ALBUMS.find(a => a.id === albumId);
@@ -10987,50 +11003,78 @@ window.buildAndDownloadCardPackZip = async function() {
     };
     function renderMyCardsOwnRate(owned, total) {
       const el = document.getElementById("mycards-own-rate");
+      if (el) {
+        const pct = total ? Math.round((owned / total) * 100) : 0;
+        el.textContent = pct + "%";
+      }
+      renderMyCardsProgress(owned, total);
+    }
+    function renderMyCardsProgress(owned, total) {
+      const el = document.getElementById("mycards-progress");
       if (!el) return;
+      const album = ILLIT_CARD_ALBUMS.find(a => a.id === myCardsAlbum);
       const pct = total ? Math.round((owned / total) * 100) : 0;
-      const r = 34;
-      const circ = 2 * Math.PI * r;
-      const dash = (pct / 100) * circ;
-      el.innerHTML = `<div class="flex flex-col items-center">
-        <svg width="96" height="96" viewBox="0 0 96 96" aria-label="所持率 ${pct}%">
-          <circle cx="48" cy="48" r="${r}" fill="none" stroke="#ececec" stroke-width="8"></circle>
-          <circle cx="48" cy="48" r="${r}" fill="none" stroke="#2f9e8f" stroke-width="8" stroke-linecap="round" stroke-dasharray="${dash} ${circ - dash}" transform="rotate(-90 48 48)"></circle>
-          <text x="48" y="52" text-anchor="middle" font-size="16" font-weight="700" fill="#222">${pct}%</text>
-        </svg>
-        <div class="text-[11px] text-gray-500 -mt-0.5">所持率</div>
-        <div class="text-[10px] text-gray-400">${owned}/${total}</div>
-      </div>`;
+      const title = (album ? album.name : "アルバム") + (myCardsMember !== "ALL" ? " / " + myCardsMember : "");
+      const complete = total > 0 && owned >= total;
+      el.innerHTML = `<div class="binder-progress-top">
+          <div>
+            <div class="binder-progress-title">${escapeHtml(title)}</div>
+            <div class="binder-progress-meta">所持 ${owned} / ${total}枚（コンプ率 ${pct}%）</div>
+          </div>
+          ${complete ? `<span class="binder-complete-badge">✨ COMPLETE</span>` : `<span class="text-[11px] font-bold text-violet-600">${pct}%</span>`}
+        </div>
+        <div class="binder-bar" aria-hidden="true"><span style="width:${pct}%"></span></div>`;
     }
     function renderMyCardsAlbumTabs() {
-      const el = document.getElementById("mycards-album-select");
-      if (!el) return;
-      el.innerHTML = ILLIT_CARD_ALBUMS.map(a =>
-        `<option value="${a.id}" ${a.id === myCardsAlbum ? "selected" : ""}>${escapeHtml(a.name)}</option>`
-      ).join("");
+      const chips = document.getElementById("mycards-album-tabs");
+      const sel = document.getElementById("mycards-album-select");
+      if (sel) {
+        sel.innerHTML = ILLIT_CARD_ALBUMS.map(a =>
+          `<option value="${a.id}" ${a.id === myCardsAlbum ? "selected" : ""}>${escapeHtml(a.name)}</option>`
+        ).join("");
+      }
+      if (chips) {
+        chips.innerHTML = ILLIT_CARD_ALBUMS.map(a =>
+          `<button type="button" class="binder-chip ${a.id === myCardsAlbum ? "is-on" : ""}" onclick="setMyCardsAlbum('${escapeHtml(a.id)}')">${escapeHtml(a.name)}</button>`
+        ).join("");
+      }
     }
     function renderMyCardsMemberTabs() {
-      const el = document.getElementById("mycards-member-select");
-      if (!el) return;
+      const chips = document.getElementById("mycards-member-tabs");
+      const sel = document.getElementById("mycards-member-select");
       const cards = getAlbumCards(myCardsAlbum);
       const order = ["ウォニ", "ミンジュ", "イロハ", "モカ", "ユナ", "OT5"];
-      const existing = new Set(cards.map(c => c.member).filter(Boolean));
+      const existing = new Set(cards.map(c => String(c.member || "").split(/[ (]/)[0]).filter(Boolean));
       const sorted = [...order];
       existing.forEach(m => { if (!sorted.includes(m)) sorted.push(m); });
-      const tabs = [{ key: "ALL", label: "全員" }, ...sorted.map(m => ({ key: m, label: m }))];
-      el.innerHTML = tabs.map(t =>
-        `<option value="${escapeHtml(t.key)}" ${t.key === myCardsMember ? "selected" : ""}>${escapeHtml(t.label)}</option>`
-      ).join("");
+      const tabsFinal = [{ key: "ALL", label: "全員" }, ...sorted.filter(m => existing.has(m)).map(m => ({ key: m, label: m }))];
+      if (sel) {
+        sel.innerHTML = tabsFinal.map(t =>
+          `<option value="${escapeHtml(t.key)}" ${t.key === myCardsMember ? "selected" : ""}>${escapeHtml(t.label)}</option>`
+        ).join("");
+      }
+      if (chips) {
+        chips.innerHTML = tabsFinal.map(t =>
+          `<button type="button" class="binder-chip ${t.key === myCardsMember ? "is-on" : ""}" onclick="setMyCardsMember('${escapeHtml(t.key)}')">${escapeHtml(t.label)}</button>`
+        ).join("");
+      }
     }
+    window.toggleMyCardsFilter = function( whic ) {
+      if (whic === "missingOnly") myCardsFilterMissingOnly = !myCardsFilterMissingOnly;
+      if (whic === "listingOnly") myCardsFilterListingOnly = !myCardsFilterListingOnly;
+      const miss = document.getElementById("mycards-filter-missing");
+      const list = document.getElementById("mycards-filter-listing");
+      if (miss) miss.classList.toggle("is-on", !!myCardsFilterMissingOnly);
+      if (list) list.classList.toggle("is-on", !!myCardsFilterListingOnly);
+      renderMyCardsList();
+    };
     window.setMyCardsAlbum = async function(id) {
       myCardsAlbum = id;
       myCardsMember = "ALL";
-      document.getElementById("mycards-album-tabs")?.classList.add("hidden");
-      document.getElementById("mycards-member-tabs")?.classList.add("hidden");
       renderMyCardsAlbumTabs();
       renderMyCardsMemberTabs();
       const el = document.getElementById("mycards-list");
-      if (el) el.innerHTML = `<p class="text-xs text-gray-500 text-center py-8">読み込み中...</p>`;
+      if (el) el.innerHTML = `<div class="binder-sheet"><p class="text-xs text-gray-500 text-center py-8">読み込み中...</p></div>`;
       await ensureCatalogCardsLoaded();
       await ensureCardPhotosLoaded(id);
       renderMyCardsMemberTabs();
@@ -11038,7 +11082,6 @@ window.buildAndDownloadCardPackZip = async function() {
     };
     window.setMyCardsMember = function(member) {
       myCardsMember = member;
-      document.getElementById("mycards-member-tabs")?.classList.add("hidden");
       renderMyCardsMemberTabs();
       renderMyCardsList();
     };
@@ -11047,87 +11090,63 @@ window.buildAndDownloadCardPackZip = async function() {
       
     function renderMyCardsList() {
       const el = document.getElementById("mycards-list");
+      if (!el) return;
       const allAlbumCards = getAlbumCards(myCardsAlbum);
-      const norm = s => String(s || "").split(" ")[0];
-      let cards = myCardsMember === "ALL"
-        ? allAlbumCards
-        : allAlbumCards.filter(c => norm(c.member) === myCardsMember);
-      if (myCardsImageFilterIds) {
-        cards = cards.filter(c => myCardsImageFilterIds.has(c.id));
-      }
-      const listingCardIds = getMyListingCardIds();
-
-      const album = ILLIT_CARD_ALBUMS.find(a => a.id === myCardsAlbum);
+      const norm = s => String(s || "").split(/[ (]/)[0];
       const rateCards = myCardsMember === "ALL"
         ? allAlbumCards
         : allAlbumCards.filter(c => norm(c.member) === myCardsMember);
       const rateOwned = rateCards.filter(c => getCardStatus(c.id) === "owned").length;
       renderMyCardsOwnRate(rateOwned, rateCards.length);
-      if (cards.length === 0) {
 
-        el.innerHTML = `<p class="text-xs text-gray-500 text-center py-6">該当するカードがありません。<br>下からカスタム追加できます。</p>`;
+      let cards = rateCards.slice();
+      if (myCardsImageFilterIds) cards = cards.filter(c => myCardsImageFilterIds.has(c.id));
+      const listingCardIds = getMyListingCardIds();
+      if (myCardsFilterMissingOnly) cards = cards.filter(c => getCardStatus(c.id) !== "owned");
+      if (myCardsFilterListingOnly) cards = cards.filter(c => listingCardIds.has(c.id));
+
+      const missBtn = document.getElementById("mycards-filter-missing");
+      const listBtn = document.getElementById("mycards-filter-listing");
+      if (missBtn) missBtn.classList.toggle("is-on", !!myCardsFilterMissingOnly);
+      if (listBtn) listBtn.classList.toggle("is-on", !!myCardsFilterListingOnly);
+
+      if (cards.length === 0) {
+        el.innerHTML = `<div class="binder-sheet"><p class="text-xs text-gray-500 text-center py-8">該当するカードがありません。<br>フィルタを外すか、下からカスタム追加できます。</p></div>`;
         return;
       }
-      const ownedCount = cards.filter(c => getCardStatus(c.id) === "owned").length;
-      const wantCount = cards.filter(c => getCardStatus(c.id) === "want").length;
-      const titleLabel = (album ? album.name : "") + (myCardsMember !== "ALL" ? ` / ${myCardsMember}` : "");
 
-      el.innerHTML = `
+      el.innerHTML = `<div class="binder-sheet">
         <div class="flex items-center justify-between text-[11px] font-bold text-gray-600 mb-2 px-0.5">
-          <span>${escapeHtml(titleLabel)}（所持 ${ownedCount}/${cards.length}枚${wantCount ? `・欲しい ${wantCount}` : ""}）</span>
-          <span class="text-[10px] font-normal text-gray-500">タップで拡大・切替</span>
+          <span>9ポケット風バインダー · ${cards.length}枠</span>
+          <span class="text-[10px] font-normal text-gray-500">タップで拡大</span>
         </div>
-        <div class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-1.5">
-
+        <div class="binder-grid">
           ${cards.map(c => {
             const st = getCardStatus(c.id);
+            const count = getCardCount(c.id);
             const isOwned = st === "owned";
             const isWant = st === "want";
             const photo = getCardPhoto(c.id);
             const watching = !!(userData.cardWatch || {})[c.id];
-
-            const imgHtml = photo
-              ? `<img src="${photo}" loading="lazy" alt="${escapeHtml(c.name)}" class="w-full h-full object-cover transition duration-200 ${isOwned ? "" : "opacity-55"}">`
-              : `<div class="w-full h-full bg-gradient-to-br from-purple-50 to-pink-50 flex flex-col items-center justify-center p-1 text-center ${isOwned ? "" : "opacity-65"}">
-                   <span class="text-lg leading-none mb-0.5">🃏</span>
-                   <span class="text-[9px] text-gray-500 line-clamp-2 leading-tight">${escapeHtml(c.member || c.name)}</span>
-                 </div>`;
-
-            const idChipHtml = "";
-                        let badgeHtml = `<span class="absolute top-1 right-1 px-1.5 py-0.5 rounded-full bg-black/55 text-white text-[9px] font-bold leading-none">未</span>`;
-            if (isOwned) {
-              badgeHtml = `<span class="absolute top-1 right-1 w-4 h-4 rounded-full bg-emerald-500 text-white text-[10px] flex items-center justify-center font-bold shadow">✓</span>`;
-            } else if (isWant) {
-              badgeHtml = `<span class="absolute top-1 right-1 px-1.5 py-0.5 rounded-full bg-pink-500 text-white text-[9px] font-bold leading-none shadow">欲</span>`;
-            }
-
             const isListing = listingCardIds.has(c.id);
-            const listingRibbon = isListing
-              ? `<span class="absolute top-0 right-0 z-10 bg-rose-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-bl-lg shadow">出品中</span>`
-              : "";
-            // 出品中帯があるときは右上バッジを少し下げる
-            if (isListing) {
-              badgeHtml = badgeHtml.replace("top-1 right-1", "top-5 right-1");
-            }
-
-            const borderClass = isOwned
-              ? "border-emerald-400 ring-1 ring-emerald-400/50"
-              : (isWant ? "border-pink-400 ring-1 ring-pink-400/50" : "border-white/70");
-
-            const nameLabel = String(c.member || "").split(/[ (]/)[0] || String(c.name || "");
-            const nameChip = nameLabel
-              ? `<span class="absolute top-1 left-1 z-10 max-w-[68%] truncate px-1 py-0.5 rounded bg-black/60 text-white text-[9px] font-medium leading-none">${escapeHtml(nameLabel)}</span>`
-              : "";
-
-            return `<div data-card-id="${escapeHtml(c.id)}" onclick="openCardDetailModal('${escapeHtml(c.id)}')" class="relative aspect-[3/4] rounded-xl overflow-hidden cursor-pointer border ${borderClass} shadow-sm bg-white/60">
+            const nameLabel = String(c.member || "").split(/[ (]/)[0] || "";
+            const pocketClass = isOwned ? "is-owned" : (isWant ? "is-want is-missing" : "is-missing");
+            const imgHtml = photo
+              ? `<img src="${escapeHtml(photo)}" loading="lazy" decoding="async" alt="${escapeHtml(c.name)}" width="110" height="170">`
+              : `<div class="binder-fallback"><span>🃏</span><span>${escapeHtml(nameLabel || c.name || "")}</span></div>`;
+            const countPill = isOwned && count >= 2
+              ? `<span class="binder-count-pill">×${count}</span>`
+              : (isOwned ? `<span class="binder-count-pill" style="background:rgba(16,185,129,.9)">✓</span>` : (isWant ? `<span class="binder-count-pill" style="background:rgba(236,72,153,.9)">欲</span>` : `<span class="binder-count-pill" style="background:rgba(0,0,0,.4)">未</span>`));
+            return `<button type="button" data-card-id="${escapeHtml(c.id)}" onclick="openCardDetailModal('${escapeHtml(c.id)}')" class="binder-pocket ${pocketClass}" aria-label="${escapeHtml(c.name)}">
+              ${isListing ? `<span class="binder-listing-tag">出品中</span>` : ""}
               ${imgHtml}
-              ${listingRibbon}
-              ${nameChip}
-              ${watching ? `<span class="absolute bottom-1 left-1 w-4 h-4 rounded-full bg-amber-400 text-white text-[9px] flex items-center justify-center shadow">🔔</span>` : ""}
-              ${badgeHtml}
-            </div>`;
+              ${countPill}
+              ${watching ? `<span class="binder-watch-dot">🔔</span>` : ""}
+              ${nameLabel ? `<span class="binder-member-chip">${escapeHtml(nameLabel)}</span>` : ""}
+            </button>`;
           }).join("")}
-        </div>`;
+        </div>
+      </div>`;
     }
 
     window.openCardDetailModal = function(cardId) {
@@ -11153,22 +11172,24 @@ window.buildAndDownloadCardPackZip = async function() {
 
       const { card, album } = found;
       const st = getCardStatus(card.id);
+      const count = getCardCount(card.id);
       const isCustom = !!card.custom;
       const photo = getCardPhoto(card.id);
       const watching = !!(userData.cardWatch || {})[card.id];
 
       const bigImg = photo
-        ? `<div class="w-48 mx-auto aspect-[3/4] rounded-2xl overflow-hidden shadow-lg border-2 border-white bg-white">
-             <img src="${photo}" alt="${escapeHtml(card.name)}" class="w-full h-full object-cover">
+        ? `<div class="binder-holo w-48 mx-auto aspect-[55/85] rounded-2xl overflow-hidden shadow-lg border-2 border-white bg-white" id="binder-holo-card">
+             <img src="${escapeHtml(photo)}" alt="${escapeHtml(card.name)}" loading="eager" decoding="async">
+             <span class="binder-holo-sheen" aria-hidden="true"></span>
            </div>`
-        : `<div class="w-48 mx-auto aspect-[3/4] rounded-2xl bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-white shadow-inner flex flex-col items-center justify-center text-purple-300">
+        : `<div class="w-48 mx-auto aspect-[55/85] rounded-2xl bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-white shadow-inner flex flex-col items-center justify-center text-purple-300">
              <span class="text-4xl mb-1">🃏</span>
              <span class="text-xs text-gray-400">画像未登録</span>
            </div>`;
 
       const statusBtn = (key, label, activeStyle) => {
         const active = st === key;
-        return `<button onclick="setCardStatusFromDetail('${escapeHtml(card.id)}', '${key}')" class="flex-1 py-2.5 rounded-xl font-bold text-xs transition border ${
+        return `<button type="button" onclick="setCardStatusFromDetail('${escapeHtml(card.id)}', '${key}')" class="flex-1 py-2.5 rounded-xl font-bold text-xs transition border ${
           active
             ? activeStyle + " shadow-sm"
             : "bg-white/70 text-gray-500 border-gray-200 hover:bg-white"
@@ -11179,9 +11200,9 @@ window.buildAndDownloadCardPackZip = async function() {
         <div class="pt-1 space-y-3">
           ${bigImg}
           <div class="text-center space-y-0.5">
-            <div class="text-[12px] text-gray-600">${escapeHtml(album.name || "")}${card.member ? "　" + escapeHtml(String(card.member).split(" ")[0]) : ""}</div>
+            <div class="text-[12px] text-gray-600">${escapeHtml(album.name || "")}${card.member ? "　" + escapeHtml(String(card.member).split(/[ (]/)[0]) : ""}</div>
             <h3 class="text-base font-bold text-gray-900">${escapeHtml(card.name)}</h3>
-                        <div class="pt-0.5"><button type="button" onclick="navigator.clipboard?.writeText('${escapeHtml(card.id)}');this.textContent='ID: ${escapeHtml(card.id)} (コピー済)'" class="inline-block text-[11px] font-mono text-gray-500 bg-gray-100 hover:bg-gray-200 px-2 py-0.5 rounded-md border border-gray-200">ID: ${escapeHtml(card.id)}</button></div>
+            <div class="pt-0.5"><button type="button" onclick="navigator.clipboard?.writeText('${escapeHtml(card.id)}');this.textContent='ID: ${escapeHtml(card.id)} (コピー済)'" class="inline-block text-[11px] font-mono text-gray-500 bg-gray-100 hover:bg-gray-200 px-2 py-0.5 rounded-md border border-gray-200">ID: ${escapeHtml(card.id)}</button></div>
           </div>
 
           <div class="space-y-1.5">
@@ -11193,24 +11214,59 @@ window.buildAndDownloadCardPackZip = async function() {
             </div>
           </div>
 
-          <button onclick="toggleCardWatch('${escapeHtml(card.id)}')" class="w-full py-2.5 rounded-xl font-bold text-xs transition flex items-center justify-center gap-1.5 border ${
+          <div class="space-y-1.5 ${st === "owned" ? "" : "opacity-50 pointer-events-none"}">
+            <div class="text-[11px] font-bold text-gray-600 px-0.5">所持枚数</div>
+            <div class="binder-qty">
+              <button type="button" onclick="adjustCardCount('${escapeHtml(card.id)}', -1)" aria-label="減らす">−</button>
+              <div class="binder-qty-val">${Math.max(st === "owned" ? count : 0, 0)}</div>
+              <button type="button" onclick="adjustCardCount('${escapeHtml(card.id)}', 1)" aria-label="増やす">＋</button>
+            </div>
+          </div>
+
+          <button type="button" onclick="toggleCardWatch('${escapeHtml(card.id)}')" class="w-full py-2.5 rounded-xl font-bold text-xs transition flex items-center justify-center gap-1.5 border ${
             watching
               ? "bg-amber-100 text-amber-800 border-amber-300"
               : "bg-white/80 text-gray-600 border-gray-200 hover:bg-white"
           }">
-            <span>${watching ? "🔔 出品通知 ON（出品されたら通知）" : "🔕 出品通知 OFF（タップで通知ON）"}</span>
+            <span>${watching ? "🔔 出品通知 ON（出品されたら通知）" : "🔕 出品されたら通知を受け取る"}</span>
           </button>
 
-          <button onclick="searchCardInListings('${escapeHtml(card.name)}')" class="w-full py-2.5 rounded-xl bg-teal-50 text-teal-700 border border-teal-200 font-bold text-xs hover:bg-teal-100 transition">
-            🔍 このトレカの出品を探す
+          <button type="button" onclick="searchCardInListings('${escapeHtml(card.name)}')" class="w-full py-2.5 rounded-xl bg-teal-50 text-teal-700 border border-teal-200 font-bold text-xs hover:bg-teal-100 transition">
+            🔍 このトレカの現在の出品を探す
           </button>
           <button type="button" onclick="sellThisCard('${escapeHtml(card.id)}')" class="w-full py-2.5 rounded-xl bg-[#ff4d4f] text-white font-bold text-xs">
             このトレカを出品する
           </button>
 
-          ${isCustom ? `<button onclick="removeCustomCardFromDetail('${escapeHtml(card.id)}')" class="w-full py-1.5 text-[11px] text-red-500 underline">このカスタムカードを削除</button>` : ""}
+          ${isCustom ? `<button type="button" onclick="removeCustomCardFromDetail('${escapeHtml(card.id)}')" class="w-full py-1.5 text-[11px] text-red-500 underline">このカスタムカードを削除</button>` : ""}
         </div>`;
+      if (typeof window.bindBinderHolo === "function") window.bindBinderHolo();
     }
+
+    window.adjustCardCount = async function(cardId, delta) {
+      if (!currentUser || !cardId) return;
+      const st = getCardStatus(cardId);
+      let next = getCardCount(cardId) + (Number(delta) || 0);
+      if (st !== "owned" && next > 0) {
+        /* promote to owned */
+      } else if (st === "want" && next <= 0) {
+        return;
+      }
+      next = Math.max(0, Math.min(99, next));
+      const map = { ...(userData.myCards || {}) };
+      const enc = encodeOwnedCount(next);
+      if (enc == null) {
+        if (st === "want") map[cardId] = "want";
+        else delete map[cardId];
+      } else {
+        map[cardId] = enc;
+      }
+      userData.myCards = map;
+      renderCardDetailModal();
+      renderMyCardsList();
+      renderMyCardsShareStats();
+      try { await saveUserData({ myCards: map }); } catch (e) { showToast("保存に失敗しました", "error"); }
+    };
 
     window.sellThisCard = async function(cardId) {
       if (typeof closeCardDetailModal === "function") closeCardDetailModal();
@@ -11222,13 +11278,148 @@ window.buildAndDownloadCardPackZip = async function() {
       if (!currentUser) return;
       const map = { ...(userData.myCards || {}) };
       if (nextStatus === "none") delete map[cardId];
-      else map[cardId] = nextStatus;
+      else if (nextStatus === "owned") {
+        const cur = getCardCount(cardId);
+        map[cardId] = encodeOwnedCount(Math.max(1, cur || 1));
+      } else map[cardId] = nextStatus;
       userData.myCards = map;
       renderCardDetailModal();
       renderMyCardsList();
       renderMyCardsShareStats();
       try { await saveUserData({ myCards: map }); } catch (e) { showToast("保存に失敗しました", "error"); }
     };
+
+    window.closeBinderShareModal = function() {
+      const m = document.getElementById("binder-share-modal");
+      if (m) m.classList.add("hidden");
+    };
+    window.generateTradeWantShareImage = async function() {
+      try {
+        const dataUrl = await buildTradeWantShareCanvas();
+        if (!dataUrl) { showToast("生成できるカードがありません", "info"); return; }
+        _binderShareDataUrl = dataUrl;
+        const img = document.getElementById("binder-share-preview");
+        const dl = document.getElementById("binder-share-download");
+        if (img) img.src = dataUrl;
+        if (dl) dl.href = dataUrl;
+        document.getElementById("binder-share-modal")?.classList.remove("hidden");
+      } catch (e) {
+        console.warn(e);
+        showToast("画像の生成に失敗しました", "error");
+      }
+    };
+    window.shareBinderTradeWantImage = async function() {
+      if (!_binderShareDataUrl) return;
+      try {
+        const blob = await (await fetch(_binderShareDataUrl)).blob();
+        const file = new File([blob], "illit-trade-want-give.png", { type: "image/png" });
+        const text = "ILLIT Trade 譲・求リスト #ILLIT #トレカ交換";
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], text, title: "ILLIT Trade 譲・求" });
+          return;
+        }
+      } catch (_) {}
+      const url = "https://twitter.com/intent/tweet?text=" + encodeURIComponent("ILLIT Trade 譲・求リスト #ILLIT #トレカ交換\nhttps://kpop-trade.jp/");
+      window.open(url, "_blank", "noopener");
+      showToast("画像を保存してからXに添付してください", "info");
+    };
+    async function buildTradeWantShareCanvas() {
+      const wants = [];
+      const gives = [];
+      const albums = ILLIT_CARD_ALBUMS || [];
+      albums.forEach(a => {
+        getAlbumCards(a.id).forEach(c => {
+          const st = getCardStatus(c.id);
+          const cnt = getCardCount(c.id);
+          const photo = getCardPhoto(c.id);
+          if (st !== "owned") wants.push({ card: c, album: a, photo });
+          else if (cnt >= 2) gives.push({ card: c, album: a, photo, count: cnt });
+        });
+      });
+      const maxRows = 12;
+      const wantSlice = wants.slice(0, maxRows);
+      const giveSlice = gives.slice(0, maxRows);
+      if (!wantSlice.length && !giveSlice.length) return null;
+
+      const W = 1080, H = 1350;
+      const canvas = document.createElement("canvas");
+      canvas.width = W; canvas.height = H;
+      const ctx = canvas.getContext("2d");
+      const grad = ctx.createLinearGradient(0, 0, W, H);
+      grad.addColorStop(0, "#fff7fb");
+      grad.addColorStop(1, "#f3e8ff");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = "#111827";
+      ctx.font = "800 54px Quicksand, sans-serif";
+      ctx.fillText("ILLIT Trade", 56, 90);
+      ctx.font = "700 28px sans-serif";
+      ctx.fillStyle = "#6b7280";
+      ctx.fillText("譲・求リスト", 56, 132);
+      ctx.font = "600 22px sans-serif";
+      ctx.fillText("求 = 未所持　／　譲 = 2枚以上", 56, 168);
+
+      async function drawCol(title, items, x0, color) {
+        ctx.fillStyle = color;
+        ctx.font = "800 32px sans-serif";
+        ctx.fillText(title + "（" + items.length + "）", x0, 230);
+        let y = 260;
+        for (const it of items) {
+          const boxW = 440, boxH = 78;
+          ctx.fillStyle = "rgba(255,255,255,0.88)";
+          roundRect(ctx, x0, y, boxW, boxH, 16);
+          ctx.fill();
+          if (it.photo) {
+            try {
+              const im = await loadImg(it.photo);
+              ctx.save();
+              roundRect(ctx, x0 + 10, y + 8, 46, 62, 8);
+              ctx.clip();
+              ctx.drawImage(im, x0 + 10, y + 8, 46, 62);
+              ctx.restore();
+            } catch (_) {}
+          }
+          ctx.fillStyle = "#111";
+          ctx.font = "700 22px sans-serif";
+          const label = (it.card.member ? String(it.card.member).split(/[ (]/)[0] + " " : "") + (it.card.name || "");
+          ctx.fillText(truncate(ctx, label, 320), x0 + 68, y + 34);
+          ctx.fillStyle = "#6b7280";
+          ctx.font = "600 18px sans-serif";
+          ctx.fillText((it.album && it.album.name ? it.album.name : "") + (it.count ? "  ×" + it.count : ""), x0 + 68, y + 58);
+          y += 88;
+        }
+      }
+      function truncate(c, text, maxW) {
+        if (c.measureText(text).width <= maxW) return text;
+        let t = text;
+        while (t.length > 1 && c.measureText(t + "…").width > maxW) t = t.slice(0, -1);
+        return t + "…";
+      }
+      function roundRect(c, x, y, w, h, r) {
+        c.beginPath();
+        c.moveTo(x + r, y);
+        c.arcTo(x + w, y, x + w, y + h, r);
+        c.arcTo(x + w, y + h, x, y + h, r);
+        c.arcTo(x, y + h, x, y, r);
+        c.arcTo(x, y, x + w, y, r);
+        c.closePath();
+      }
+      function loadImg(src) {
+        return new Promise((resolve, reject) => {
+          const im = new Image();
+          im.crossOrigin = "anonymous";
+          im.onload = () => resolve(im);
+          im.onerror = reject;
+          im.src = src;
+        });
+      }
+      await drawCol("求", wantSlice, 56, "#db2777");
+      await drawCol("譲", giveSlice, 560, "#059669");
+      ctx.fillStyle = "rgba(17,24,39,0.45)";
+      ctx.font = "600 20px sans-serif";
+      ctx.fillText("kpop-trade.jp  ·  非公式ファンサービス", 56, H - 40);
+      return canvas.toDataURL("image/png");
+    }
 
     window.removeCustomCardFromDetail = async function(cardId) {
       closeCardDetailModal();
