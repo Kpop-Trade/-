@@ -25,7 +25,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js?v=20261121"></script>
 
   <script src="./js/tailwind-config.js?v=20261121"></script>
-  <link rel="stylesheet" href="./styles.css?v=20261121p">
+  <link rel="stylesheet" href="./styles.css?v=20261121q">
   <link rel="stylesheet" href="./liquid-glass.css?v=20261121">
   <link rel="stylesheet" href="./mycards-binder.css?v=20261121c">
 
@@ -798,12 +798,12 @@
 
   <!-- 出品モーダル -->
   <div id="post-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
-    <div id="post-modal-sheet" class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
-      <div id="post-modal-header" class="flex justify-between items-center border-b border-purple-200/50 pb-3">
+    <div id="post-modal-sheet" class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-hidden flex flex-col">
+      <div id="post-modal-header" class="flex justify-between items-center border-b border-purple-200/50 pb-3 shrink-0">
         <h3 id="post-modal-title" class="font-bold text-base text-gray-800">🃏 トレカの出品</h3>
         <button type="button" onclick="closePostModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none" aria-label="閉じる">&times;</button>
       </div>
-      <div class="space-y-3 text-xs md:text-sm">
+      <div id="post-modal-body" class="space-y-3 text-xs md:text-sm overflow-y-auto overscroll-contain flex-1 min-h-0">
         <div id="exchange-style-box" class="hidden space-y-2">
           <div class="grid grid-cols-2 gap-1 p-1 bg-[#f2f2f2] rounded-full">
             <button type="button" id="exchange-style-single" onclick="setExchangeStyle('single')" class="py-2 rounded-full text-[13px] font-medium bg-white text-gray-900 shadow-sm">1枚</button>
@@ -819,13 +819,14 @@
                       <img src="./guide-pictogram.svg?v=12" alt="机に置いて、明るくして、真上から撮る" class="w-full h-auto object-contain">
                       <figcaption class="px-2.5 py-1.5 text-[11px] text-gray-600">机に置いて、明るくして、真上から撮る</figcaption>
                     </figure>
-                    <div class="grid grid-cols-2 gap-2">
+                    <div id="post-photo-btns" class="grid grid-cols-2 gap-2">
                         <button type="button" onclick="document.getElementById('post-camera-input').click()" class="bg-gradient-to-r from-illit-purple to-illit-accent text-white font-bold py-2.5 px-3 rounded-xl shadow-sm active:scale-95 transition flex items-center justify-center gap-1.5 text-xs">
                             <span>📸</span><span>カメラで撮る</span>
-                        </button><button type="button" onclick="openSingleGuideCam('post')" class="col-span-2 bg-zinc-900 border border-purple-400/60 text-white font-bold py-2 px-3 rounded-xl shadow-sm active:scale-95 transition flex items-center justify-center gap-1.5 text-xs"><span>📷</span><span>ガイド枠（1枚）で撮影してAI検索</span></button>
+                        </button>
                         <button type="button" onclick="document.getElementById('post-photo-input').click()" class="bg-white text-gray-700 border border-purple-200 font-bold py-2.5 px-3 rounded-xl shadow-sm active:scale-95 transition flex items-center justify-center gap-1.5 text-xs">
                             <span>🖼️</span><span>アルバムから選択</span>
                         </button>
+                        <button type="button" onclick="openSingleGuideCam('post')" class="col-span-2 bg-zinc-900 border border-purple-400/60 text-white font-bold py-2 px-3 rounded-xl shadow-sm active:scale-95 transition flex items-center justify-center gap-1.5 text-xs"><span>📷</span><span>ガイド枠（1枚）で撮影してAI検索</span></button>
                     </div>
                     <input id="post-camera-input" type="file" accept="image/*" capture="environment" class="hidden" onchange="addPostPhotos(this)">
                     <input id="post-photo-input" type="file" accept="image/*" multiple class="hidden" onchange="addPostPhotos(this)">
@@ -865,14 +866,25 @@
             <option value="指定なし">指定なし</option>
           </select>
         </div>
-        <div id="shipping-row" class="hidden sell-only-row">
-          <div class="sell-row">
+        <div id="shipping-row" class="hidden">
+          <div id="shipping-sell-fixed" class="hidden sell-row">
             <span class="sell-row-label">配送方法</span>
             <div class="sell-row-value text-right">
-              <span class="sell-ship-pill">送料込み（出品者負担）</span>
-              <div class="font-bold text-[13px] text-gray-900 mt-0.5">クリックポスト等・追跡あり</div>
-              <div class="text-[11px] text-gray-500">発送元は登録住所・2〜3日で発送</div>
+              <span class="sell-ship-pill">アズカリ匿名配送のみ</span>
+              <div class="font-bold text-[13px] text-gray-900 mt-0.5">ヤマト連携・住所非公開</div>
+              <div class="text-[11px] text-gray-500">売却はアズカリの匿名配送固定です</div>
             </div>
+          </div>
+          <div id="shipping-exchange-select" class="hidden space-y-1.5">
+            <label class="block font-medium text-gray-700" id="label-shipping">配送方法</label>
+            <select id="input-shipping" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800">
+              <option value="consult">相手と相談</option>
+              <option value="seller">出品者負担（送料込み）</option>
+              <option value="buyer">相手負担</option>
+              <option value="cod">着払い</option>
+              <option value="split">折半</option>
+            </select>
+            <p class="text-[11px] text-gray-500 leading-snug">交換は追跡の有無を問いません。普通郵便・クリックポストなど自由です。</p>
           </div>
         </div>
         <div id="condition-container">
@@ -923,7 +935,7 @@
           </div>
         </div>
       </div>
-      <div id="post-modal-actions" class="flex space-x-2 pt-2">
+      <div id="post-modal-actions" class="flex space-x-2 pt-2 shrink-0">
         <button type="button" id="post-secondary-btn" onclick="closePostModal()" class="flex-1 bg-white/60 text-gray-700 border border-white font-medium py-3 rounded-full hover:bg-white transition shadow-sm">キャンセル</button>
         <button type="button" id="post-submit-btn" onclick="submitPost()" class="flex-1 bg-gradient-to-r from-illit-purple to-illit-accent text-white font-medium py-3 rounded-full hover:opacity-90 transition shadow-md border border-white/30">出品する</button>
       </div>
@@ -1271,7 +1283,7 @@
   </div>
 
   <script src="./js/mycards-binder.js?v=20261121"></script>
-  <script type="module" src="./js/app-main.js?v=20261121i"></script>
+  <script type="module" src="./js/app-main.js?v=20261121j"></script>
 
   <!-- 👇 案内用のポップアップモーダル（サイトのデザインに合わせた綺麗な見た目） 👇 -->
   <div id="inAppBrowserPrompt" class="hidden fixed inset-0 z-[9999] modal-backdrop flex items-center justify-center p-4">

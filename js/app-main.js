@@ -2741,46 +2741,48 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       const isDearlit = mode.startsWith("dearlit");
       const isSell = mode.endsWith("_sell") || mode === "buy";
       const isActualSell = mode.endsWith("_sell");
-      let title = "🔄 トレカ交換の出品";
-      if (mode === "buy") title = "🤝 トレカの買取（購入希望）";
+      const isExchange = mode === "exchange";
+      let title = "商品の情報を入力";
+      if (mode === "buy") title = "商品の情報を入力";
+      else if (isExchange) title = "商品の情報を入力";
       else if (isActualSell) title = "商品の情報を入力";
 
       const _byId = (id) => document.getElementById(id);
       if (_byId("post-modal-title")) _byId("post-modal-title").innerText = title;
       if (_byId("label-give")) {
         _byId("label-give").innerText = isBuy
-          ? "【求】（買いたいもの）"
-          : (isActualSell ? "商品名" : "【譲】（出すもの）");
+          ? "商品名（求）"
+          : (isActualSell ? "商品名" : "商品名（譲）");
       }
       if (_byId("input-give")) {
-        _byId("input-give").placeholder = isActualSell
-          ? "40字以内、例）ILLIT ミンジュ 封入トレカ"
-          : "";
-        _byId("input-give").maxLength = isActualSell ? 40 : 160;
+        _byId("input-give").placeholder = "40字以内、例）ILLIT ミンジュ 封入トレカ";
+        _byId("input-give").maxLength = 40;
       }
-      if (_byId("label-member")) _byId("label-member").innerText = isActualSell ? "カテゴリー（メンバー）" : "対象メンバー";
+      if (_byId("label-want")) {
+        _byId("label-want").innerText = "希望するもの（求）";
+      }
+      if (_byId("input-want")) {
+        _byId("input-want").placeholder = "例）同じメンバーの別衣装トレカ";
+      }
+      if (_byId("label-member")) _byId("label-member").innerText = "カテゴリー（メンバー）";
       if (_byId("label-desc")) {
-        _byId("label-desc").innerHTML = isActualSell
-          ? '商品の説明 <span class="text-[10px] font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-full ml-1">任意</span>'
-          : "説明文・備考（任意）";
+        _byId("label-desc").innerHTML = '商品の説明 <span class="text-[10px] font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-full ml-1">任意</span>';
       }
       if (_byId("input-desc")) {
-        _byId("input-desc").placeholder = isActualSell
-          ? "1,000字以内、例）スリーブ保管・折れなし。写真の状態です。"
-          : "";
-        _byId("input-desc").maxLength = isActualSell ? 1000 : 200;
-        _byId("input-desc").rows = isActualSell ? 5 : 2;
+        _byId("input-desc").placeholder = "1,000字以内、例）スリーブ保管・折れなし。写真の状態です。";
+        _byId("input-desc").maxLength = 1000;
+        _byId("input-desc").rows = 5;
       }
       if (_byId("label-price")) _byId("label-price").innerText = isBuy ? "希望価格（円）" : "販売価格";
       if (_byId("want-container")) _byId("want-container").classList.toggle("hidden", isBuy || isSell);
       if (_byId("price-container")) _byId("price-container").classList.toggle("hidden", !(isBuy || isSell));
-      if (_byId("shipping-row")) _byId("shipping-row").classList.toggle("hidden", !isActualSell);
       if (_byId("photo-req-label")) _byId("photo-req-label").innerText = (isBuy) ? "（任意・最大3枚）" : "（必須・最大3枚）";
       if (_byId("condition-container")) _byId("condition-container").classList.remove("hidden");
 
       ["input-give", "input-want", "input-price", "input-desc", "input-condition"].forEach(id => {
         if (_byId(id)) _byId(id).value = "";
       });
+      if (_byId("input-shipping")) _byId("input-shipping").value = "consult";
       postPhotos = [];
       if (typeof renderPostPhotoPreview === "function") renderPostPhotoPreview();
       selectedPostCard = null;
@@ -2813,7 +2815,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       const detectEl = document.getElementById("bundle-detect");
       if (detectEl) detectEl.textContent = "";
       renderBundleList();
-      if (typeof applySellListingLayout === "function") applySellListingLayout(isActualSell, isBuy);
+      if (typeof applyListingLayout === "function") applyListingLayout({ isActualSell, isBuy, isExchange });
       if (_pm) {
         _pm.classList.remove("hidden");
         _pm.style.display = "";
@@ -2823,7 +2825,14 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     };
 
     const SELL_FEE_RATE = 0.044;
-    const POST_DRAFT_KEY = "illit_sell_listing_draft_v1";
+    const POST_DRAFT_KEY = "illit_listing_draft_v2";
+    const EXCHANGE_SHIPPING_LABEL = {
+      consult: "相手と相談",
+      seller: "出品者負担（送料込み）",
+      buyer: "相手負担",
+      cod: "着払い",
+      split: "折半"
+    };
     function placePriceInput(isActualSell) {
       const input = document.getElementById("input-price");
       const buyHost = document.getElementById("price-input-host-buy");
@@ -2841,47 +2850,67 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         buyHost.classList.remove("hidden");
       }
     }
-    function applySellListingLayout(isActualSell, isBuy) {
+    function syncShippingRow(isActualSell, isExchange) {
+      const row = document.getElementById("shipping-row");
+      const sellFixed = document.getElementById("shipping-sell-fixed");
+      const exSelect = document.getElementById("shipping-exchange-select");
+      const show = !!(isActualSell || isExchange);
+      if (row) row.classList.toggle("hidden", !show);
+      if (sellFixed) sellFixed.classList.toggle("hidden", !isActualSell);
+      if (exSelect) exSelect.classList.toggle("hidden", !isExchange);
+    }
+    function applyListingLayout(opts) {
+      const isActualSell = !!(opts && opts.isActualSell);
+      const isBuy = !!(opts && opts.isBuy);
+      const isExchange = !!(opts && opts.isExchange);
       const modal = document.getElementById("post-modal");
       const sellCard = document.getElementById("sell-price-card");
       const labelPrice = document.getElementById("label-price");
       const secondary = document.getElementById("post-secondary-btn");
       const submit = document.getElementById("post-submit-btn");
-      if (modal) modal.classList.toggle("post-modal--sell", !!isActualSell);
+      if (modal) {
+        modal.classList.add("post-modal--listing");
+        modal.classList.remove("post-modal--sell");
+      }
       if (sellCard) sellCard.classList.toggle("hidden", !isActualSell);
       if (labelPrice) labelPrice.classList.toggle("hidden", !!isActualSell);
       placePriceInput(!!isActualSell);
+      syncShippingRow(isActualSell, isExchange);
       if (secondary) {
-        if (isActualSell) {
-          secondary.textContent = "下書きに保存";
-          secondary.onclick = function() { if (typeof saveSellListingDraft === "function") saveSellListingDraft(); };
-        } else {
-          secondary.textContent = "キャンセル";
-          secondary.onclick = function() { closePostModal(); };
-        }
+        secondary.textContent = "下書きに保存";
+        secondary.onclick = function() { if (typeof saveListingDraft === "function") saveListingDraft(); };
       }
       if (submit) {
         submit.textContent = "出品する";
-        if (isActualSell) submit.className = "flex-1 text-white font-medium py-3 transition";
-        else submit.className = "flex-1 bg-gradient-to-r from-illit-purple to-illit-accent text-white font-medium py-3 rounded-full hover:opacity-90 transition shadow-md border border-white/30";
+        submit.className = "flex-1 text-white font-medium py-3 transition";
       }
       updateSellFeePreview();
-      if (isActualSell) {
-        try {
-          const raw = localStorage.getItem(POST_DRAFT_KEY);
-          if (raw) {
-            const d = JSON.parse(raw);
-            if (d && d.postMode === postMode) {
-              const map = { "input-give": d.give, "input-desc": d.desc, "input-price": d.price, "input-condition": d.condition, "input-member": d.member };
-              Object.keys(map).forEach((id) => {
-                const el = document.getElementById(id);
-                if (el && map[id] != null && map[id] !== "") el.value = map[id];
-              });
-              updateSellFeePreview();
-            }
+      try {
+        const raw = localStorage.getItem(POST_DRAFT_KEY);
+        if (raw) {
+          const d = JSON.parse(raw);
+          if (d && d.postMode === postMode) {
+            const map = {
+              "input-give": d.give,
+              "input-want": d.want,
+              "input-desc": d.desc,
+              "input-price": d.price,
+              "input-condition": d.condition,
+              "input-member": d.member,
+              "input-shipping": d.shipping
+            };
+            Object.keys(map).forEach((id) => {
+              const el = document.getElementById(id);
+              if (el && map[id] != null && map[id] !== "") el.value = map[id];
+            });
+            updateSellFeePreview();
           }
-        } catch (_) {}
-      }
+        }
+      } catch (_) {}
+    }
+    // 旧名互換
+    function applySellListingLayout(isActualSell, isBuy) {
+      applyListingLayout({ isActualSell, isBuy, isExchange: postMode === "exchange" });
     }
     window.updateSellFeePreview = function() {
       const input = document.getElementById("input-price");
@@ -2903,15 +2932,17 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       profitEl.textContent = "¥" + profit.toLocaleString();
       profitEl.className = "text-gray-900 font-bold";
     };
-    window.saveSellListingDraft = function() {
+    window.saveListingDraft = function() {
       try {
         const draft = {
           postMode,
           give: (document.getElementById("input-give") || {}).value || "",
+          want: (document.getElementById("input-want") || {}).value || "",
           desc: (document.getElementById("input-desc") || {}).value || "",
           price: (document.getElementById("input-price") || {}).value || "",
           condition: (document.getElementById("input-condition") || {}).value || "",
           member: (document.getElementById("input-member") || {}).value || "",
+          shipping: (document.getElementById("input-shipping") || {}).value || "",
           savedAt: Date.now()
         };
         localStorage.setItem(POST_DRAFT_KEY, JSON.stringify(draft));
@@ -2921,9 +2952,11 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         if (typeof showToast === "function") showToast("下書きの保存に失敗しました", "error");
       }
     };
+    window.saveSellListingDraft = window.saveListingDraft;
     window.clearSellListingDraft = function() {
       try { localStorage.removeItem(POST_DRAFT_KEY); } catch (_) {}
     };
+    window.clearListingDraft = window.clearSellListingDraft;
     window.setExchangeStyle = function(style) {
       window.exchangeStyle = style === "bundle" ? "bundle" : "single";
       const bundle = window.exchangeStyle === "bundle";
@@ -2973,6 +3006,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       if (pm) {
         pm.classList.add("hidden");
         pm.classList.remove("post-modal--sell");
+        pm.classList.remove("post-modal--listing");
       }
       selectedPostCard = null;
     };
@@ -3128,6 +3162,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       const memberInput = document.getElementById("input-member");
       const giveInput = document.getElementById("input-give");
       const wantInput = document.getElementById("input-want");
+      const shippingInput = document.getElementById("input-shipping");
       const priceInput = document.getElementById("input-price");
       const descInput = document.getElementById("input-desc");
       const conditionInput = document.getElementById("input-condition");
@@ -3144,8 +3179,16 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         if (!want) want = "複数希望（枠指定）";
       }
       const price = (isBuy || isSell) ? Number(priceInput ? priceInput.value : 0) : 0;
-      const desc = descInput.value.trim().slice(0, 200);
+      const desc = descInput.value.trim().slice(0, 1000);
       const condition = conditionInput.value;
+      const isActualSellPost = postMode.endsWith("_sell");
+      const isExchangePost = postMode === "exchange";
+      const shippingMethod = isActualSellPost
+        ? "azukari_anonymous"
+        : (isExchangePost ? String((shippingInput && shippingInput.value) || "consult") : "");
+      const shippingLabel = isActualSellPost
+        ? "アズカリ匿名配送"
+        : (isExchangePost ? (EXCHANGE_SHIPPING_LABEL[shippingMethod] || shippingMethod) : "");
       if (!give) {
         showToast("出すものを入力してください", "info");
         return;
@@ -3258,6 +3301,9 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
             sellFeeRate: (isSell && !isBuy) ? SELL_FEE_RATE : null,
             description: desc,
             condition: condition,
+            shippingMethod: shippingMethod || null,
+            shippingLabel: shippingLabel || null,
+            shippingTrackingRequired: isActualSellPost ? true : false,
             status: "active",
             photoCount: item.photos.length,
             thumb: item.photos.length > 0 ? item.photos[0].thumb : "",
@@ -3973,6 +4019,9 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       const joins = isGroup ? joinsOf(p.id) : []; const target = Number(p.target || 0); const joinCount = isGroup ? Math.max(0, typeof p.joinsCount === "number" ? p.joinsCount : joins.length) : 0; const full = isGroup && target > 0 && joinCount >= target; const closed = isGroup && p.status === "closed"; const isSold = p.status === "traded"; const joined = !!(isGroup && currentUser && joins.some(j => j.id === currentUser.uid));
       let extra = "";
       if (p.kind === "serial" && p.deadline) extra += `<div>有効期限: <b>${escapeHtml(p.deadline)}</b></div>`;
+      if (p.shippingLabel) {
+        extra += `<div>配送: <b>${escapeHtml(p.shippingLabel)}</b>${p.shippingTrackingRequired ? "（追跡あり）" : "（追跡の指定なし）"}</div>`;
+      }
       if (listingBoxes(p).length > 1) extra += `<div>欲しいカードの枠をタップすると、赤くバツが付きます。残り <b>${Number(p.bundleLeft ?? listingBoxes(p).filter(b => !b.state || b.state === "open").length)}</b> / ${listingBoxes(p).length}枚</div>`;
       if (isGroup) {
         if (p.deadline) extra += `<div>締切: <b>${escapeHtml(p.deadline)}</b></div>`;
