@@ -187,6 +187,42 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     let currentUser = null, allPosts = [], unsubPosts = null, selectedMember = "すべて", kindFilter = "all", sortFilter = "random", bundleFilter = "all", searchText = "", activeOnly = false, currentDetailIndex = -1; window.currentUser = currentUser; window.currentUser = currentUser; window.currentUser = currentUser;
     let pendingPostId = new URLSearchParams(location.search).get("post");
     let postMode = "exchange", postPhotos = [], processingPhotos = false, submittingPost = false, submittingGroup = false, detailPhotos = [], roomPhotos = [], roomPhotosFor = null;
+    let sendingChatMessage = false, tradeActing = false, applyingToPost = false, submittingReview = false, submittingPriceOffer = false, submittingComment = false;
+
+    /** 二重送信防止：ボタンをロックしてラベルを一時変更 */
+    function setBusyButton(el, busy, busyLabel) {
+      if (!el) return;
+      if (busy) {
+        if (el.dataset.idleLabel == null) el.dataset.idleLabel = (el.innerText || el.textContent || "").trim();
+        el.disabled = true;
+        el.setAttribute("aria-busy", "true");
+        el.classList.add("is-busy");
+        if (busyLabel) el.innerText = busyLabel;
+      } else {
+        el.disabled = false;
+        el.removeAttribute("aria-busy");
+        el.classList.remove("is-busy");
+        if (el.dataset.idleLabel != null) {
+          el.innerText = el.dataset.idleLabel;
+          delete el.dataset.idleLabel;
+        }
+      }
+    }
+    function postsSkeletonHtml() {
+      return `<div class="posts-status col-span-full w-full" aria-busy="true" aria-label="読み込み中">
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
+          ${Array.from({ length: 6 }).map(() => `<div class="kp-skel-card"><div class="kp-skel aspect-square"></div><div class="p-2 space-y-2"><div class="kp-skel h-3" style="width:78%"></div><div class="kp-skel h-2.5" style="width:55%"></div></div></div>`).join("")}
+        </div>
+        <p class="text-center text-[12px] text-gray-500 font-medium mt-3">募集一覧を読み込み中...</p>
+      </div>`;
+    }
+    function postsEmptyHtml(msg, hint) {
+      return `<div class="posts-status kp-empty">
+        <div class="text-2xl mb-2" aria-hidden="true">📭</div>
+        <p class="text-sm font-bold text-gray-700">${msg || "まだ募集がありません"}</p>
+        <p class="text-[12px] text-gray-500 mt-1.5 leading-relaxed">${hint || "条件を変えるか、右下の出品から投稿してみましょう"}</p>
+      </div>`;
+    }
     let myTrades = [], unsubTrades = null, groupJoins = {}, unsubJoins = null, currentTrade = null, roomMessages = [], unsubRoom = null, unsubMsgs = null, unsubTradeShipping = null, roomTradeShipping = {};
     let reviewState = { tradeId: null, done: null }, selectedRating = 0, sendingImage = false, roomBoxKey = null, userData = { profile: {}, blocked: [], likes: [], reads: {}, notifications: [], cancelHistory: [], myCards: {}, collectionPublic: false, customCards: [], cardWatch: {} };
     let unsubUser = null, unsubNotifs = null, editingPostId = null, migratingLocal = false, photoCache = {};
@@ -3010,10 +3046,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       }
       const submitButton = document.getElementById("post-submit-btn");
       submittingPost = true;
-      if (submitButton) {
-        submitButton.disabled = true;
-        submitButton.innerText = "投稿中…";
-      }
+      setBusyButton(submitButton, true, "出品中…");
       try {
         const catalogCardId = selectedPostCard ? selectedPostCard.id : "";
         const catalogCardName = selectedPostCard ? selectedPostCard.name : "";
@@ -3135,10 +3168,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         showToast("出品できませんでした: " + errorText, "error");
       } finally {
         submittingPost = false;
-        if (submitButton) {
-          submitButton.disabled = false;
-          submitButton.innerText = "出品する";
-        }
+        setBusyButton(submitButton, false);
       }
     };
 
@@ -3444,12 +3474,8 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       });
       container.innerHTML = cards.length === 0
           ? (loadingPosts && allPosts.length === 0
-            ? `<div class="posts-status col-span-full text-center py-10 px-4 bg-white/50 rounded-xl">
-                <p class="text-sm text-indigo-600 font-bold animate-pulse mb-2">募集を読み込み中...</p>
-                <p class="text-[11px] text-gray-400 mb-3">しばらく待っても表示されない場合は下のボタンを押してください</p>
-                <button type="button" onclick="window._retriedInitialPosts=false; if(window.loadPosts) window.loadPosts(true);" class="text-[12px] text-indigo-600 underline font-bold">再試行する</button>
-              </div>`
-            : `<div class="posts-status col-span-full text-center py-10 px-4 bg-white/50 rounded-xl"><p class="text-xs text-gray-500 font-medium">条件に合う募集はありません。</p></div>`)
+            ? postsSkeletonHtml() + `<div class="posts-status col-span-full text-center pt-1 pb-4"><button type="button" onclick="window._retriedInitialPosts=false; if(window.loadPosts) window.loadPosts(true);" class="text-[12px] text-indigo-600 underline font-bold">再試行する</button></div>`
+            : postsEmptyHtml("条件に合う募集はありません", "フィルターを外すか、キーワードを変えてみてください"))
         : cards.join("");
       renderSellTab();
     }
@@ -3463,6 +3489,10 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       console.log("loadPosts called, reset=", reset);
       if (loadingPosts) { console.log("loadPosts skipped (already loading)"); return; }
       loadingPosts = true;
+      if (reset) {
+        const container = document.getElementById("posts-container");
+        if (container && allPosts.length === 0) container.innerHTML = postsSkeletonHtml();
+      }
       try {
         const base = [collection(db, "posts"), orderBy("createdAt", "desc")];
         const q = (!reset && postsCursor)
@@ -3968,12 +3998,16 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     };
     window.submitPostComment = async function(ev) {
       if (ev) ev.preventDefault();
+      if (submittingComment) return;
       if (!currentUser) return /* alert hidden */ console.log("ログインが必要です。");
       const input = document.getElementById("detail-comment-input");
+      const submitBtn = document.getElementById("detail-comment-submit");
       const text = (input && input.value || "").trim();
       const postId = currentDetailId;
       const image = pendingCommentImage;
       if ((!text && !image) || !postId) return;
+      submittingComment = true;
+      setBusyButton(submitBtn, true, "送信中…");
       if (input) input.value = "";
       pendingCommentImage = "";
       if (typeof clearCommentPhoto === "function") clearCommentPhoto();
@@ -3987,7 +4021,11 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         });
         loadPostComments(postId);
       } catch (e) {
+        if (input) input.value = text;
         /* alert hidden */ console.log("コメントを送れませんでした。");
+      } finally {
+        submittingComment = false;
+        setBusyButton(submitBtn, false);
       }
     };
 
@@ -4038,13 +4076,17 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       if (modal) modal.classList.add("hidden");
     };
     window.submitPriceOffer = async function() {
+      if (submittingPriceOffer) return;
       const p = allPosts.find(x => x.id === window._priceOfferPostId);
       const input = document.getElementById("price-offer-input");
+      const submitBtn = document.getElementById("price-offer-submit");
       if (!currentUser || !p || !p.isSell) return;
       const now = Number(p.price || 0);
       const normalized = String(input && input.value || "").replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)).replace(/[,，円\s]/g, "");
       const price = Math.floor(Number(normalized));
       if (!price || price <= 0 || price >= now) { showToast("今の価格より低い金額にしてください", "info"); return; }
+      submittingPriceOffer = true;
+      setBusyButton(submitBtn, true, "送信中…");
       try {
         const snap = await getDocs(collection(db, "posts", p.id, "offers"));
         const mine = snap.docs.find(d => d.data().userId === currentUser.uid && d.data().status === "pending");
@@ -4056,6 +4098,10 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         showToast("値下げを提案しました", "success");
         loadSellOffers(p);
       } catch (e) { showToast("提案を送れませんでした", "error"); }
+      finally {
+        submittingPriceOffer = false;
+        setBusyButton(submitBtn, false);
+      }
     };
     window.acceptPriceOffer = async function(postId, offerId, price) {
       try {
@@ -4775,7 +4821,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       if (!files.length && input.files && input.files.length) showToast("画像ファイルを選択してください", "error");
     };
     window.confirmExchangeApply = async function() {
-      if (submittingExchangeApply) return;
+      if (submittingExchangeApply || applyingToPost) return;
       const index = pendingExchangePostIndex;
       const post = allPosts[index];
       const input = document.getElementById("exchange-apply-images");
@@ -4786,22 +4832,25 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       }
       submittingExchangeApply = true;
       const submit = document.getElementById("exchange-apply-submit");
-      if (submit) { submit.disabled = true; submit.textContent = "画像を準備中..."; }
+      setBusyButton(submit, true, "画像を準備中…");
       try {
         const images = [];
         for (const file of files) images.push(await compressImage(file, CHAT_PHOTO));
         pendingExchangeSubmission = { index, images };
+        setBusyButton(submit, true, "申込中…");
         await applyToPost(index);
       } catch (e) {
         console.error("exchange application image error:", e);
         showToast("画像を準備できませんでした。別の画像をお試しください。", "error");
       } finally {
         submittingExchangeApply = false;
-        if (submit) { submit.textContent = "画像を添えて申し込む"; submit.disabled = !input?.files?.length; }
+        setBusyButton(submit, false);
+        if (submit) submit.disabled = !input?.files?.length;
       }
     };
 
     window.applyToPost = async function(index) {
+      if (applyingToPost) return;
       const exchangeSubmission = pendingExchangeSubmission && pendingExchangeSubmission.index === index ? pendingExchangeSubmission : null;
       pendingExchangeSubmission = null;
       if (typeof checkCancelAccountLock === "function" && checkCancelAccountLock()) return;
@@ -4835,6 +4884,10 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         return;
       }
 
+      applyingToPost = true;
+      const detailApplyBtn = document.querySelector('#detail-actions button[onclick*="applyToPost"], #detail-actions button[onclick*="confirmPurchase"], #detail-actions button[onclick*="joinGroup"], #detail-actions button[onclick*="applyBundlePost"]');
+      setBusyButton(detailApplyBtn, true, "処理中…");
+      try {
       const deviceId = getOrCreateDeviceId();
       // 先着：出品が active のときだけ traded にして確保（同時申込の二重取引を防ぐ）
       let claimed = false;
@@ -4927,6 +4980,10 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         } else {
           /* alert hidden */ console.log("処理に失敗しました。\n" + msg);
         }
+      }
+      } finally {
+        applyingToPost = false;
+        setBusyButton(detailApplyBtn, false);
       }
     };
     window.joinGroup = async function(index) {
@@ -5145,7 +5202,11 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         scheduleHealSoldPosts();
         if (!document.getElementById("trades-modal").classList.contains("hidden")) renderTradesList();
         if (!document.getElementById("wallet-modal").classList.contains("hidden")) renderWallet();
-      }, (err) => console.warn("trades snapshot error:", err?.code || err));
+      }, (err) => {
+        console.warn("trades snapshot error:", err?.code || err);
+        tradesLoaded = true;
+        if (!document.getElementById("trades-modal").classList.contains("hidden")) renderTradesList();
+      });
     }
     function updateBadge() {
       const unread = myTrades.filter(t => isUnread(t)).length, active = myTrades.filter(t => t.status === "negotiating" || t.status === "shipping").length;
@@ -5174,8 +5235,15 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     }
     window.renderTradesList = function() {
       const el = document.getElementById("trades-list");
+      if (!tradesLoaded) {
+        el.innerHTML = `<div class="space-y-3" aria-busy="true" aria-label="取引一覧を読み込み中">
+          ${Array.from({ length: 4 }).map(() => `<div class="kp-skel-card p-3.5 space-y-2"><div class="flex gap-3"><div class="kp-skel w-11 h-11 rounded-full shrink-0"></div><div class="flex-1 space-y-2"><div class="kp-skel h-3" style="width:55%"></div><div class="kp-skel h-2.5" style="width:80%"></div><div class="kp-skel h-2.5" style="width:40%"></div></div></div></div>`).join("")}
+          <p class="text-center text-[12px] text-gray-500 font-medium pt-1">取引一覧を読み込み中...</p>
+        </div>`;
+        return;
+      }
       if (myTrades.length === 0) {
-        el.innerHTML = '<div class="text-center py-10 px-4 bg-white rounded-2xl border border-gray-100"><p class="text-sm font-bold text-gray-700">まだ取引はありません</p><p class="text-xs text-gray-400 mt-1">出品や購入が始まるとここに表示されます</p></div>';
+        el.innerHTML = '<div class="kp-empty" style="display:block"><div class="text-2xl mb-2" aria-hidden="true">💬</div><p class="text-sm font-bold text-gray-700">まだ取引はありません</p><p class="text-[12px] text-gray-500 mt-1.5 leading-relaxed">出品や購入が始まるとここに表示されます</p></div>';
         return;
       }
       const kindLabel = (t) => {
@@ -5475,8 +5543,8 @@ window.openAzukariApp = function() {
           <button type="button" data-star="4" onclick="setRating(4)" class="text-3xl text-gray-300">★</button>
           <button type="button" data-star="5" onclick="setRating(5)" class="text-3xl text-gray-300">★</button>
         </div>
-        <textarea id="review-comment" rows="2" maxlength="200" placeholder="任意：取引の感想コメント（相手のプロフィールに表示されます）" class="w-full liquid-glass-input rounded-xl p-2.5 text-xs text-gray-800"></textarea>
-        <button type="button" onclick="submitReview()" class="${buttonClass}">評価を送信して取引を終える</button>
+        <textarea id="review-comment" rows="2" maxlength="200" placeholder="任意：取引の感想コメント（相手のプロフィールに表示されます）" class="w-full liquid-glass-input rounded-xl p-2.5 text-base text-gray-800" style="font-size:16px"></textarea>
+        <button type="button" id="review-submit-btn" onclick="submitReview()" class="${buttonClass}">評価を送信して取引を終える</button>
       </div>`;
     }
     function shouldShowReviewForm(trade, userId) {
@@ -5774,8 +5842,25 @@ window.openAzukariApp = function() {
     };
 
     window.sendMessage = async function() {
-      const input = document.getElementById("room-input"), text = input.value.trim(); if (!text || !currentTrade || currentTrade.status === "cancelled") return;
-      input.value = ""; try { await postMessage({ senderId: currentUser.uid, senderName: getMyDisplayName(), text: text.slice(0, 1000), createdAt: serverTimestamp(), deviceId: getOrCreateDeviceId() }); } catch(e) { input.value = text; }
+      if (sendingChatMessage) return;
+      const input = document.getElementById("room-input");
+      const sendBtn = document.getElementById("room-send");
+      const text = input && input.value.trim();
+      if (!text || !currentTrade || currentTrade.status === "cancelled") return;
+      sendingChatMessage = true;
+      setBusyButton(sendBtn, true, "送信中…");
+      if (input) input.disabled = true;
+      input.value = "";
+      try {
+        await postMessage({ senderId: currentUser.uid, senderName: getMyDisplayName(), text: text.slice(0, 1000), createdAt: serverTimestamp(), deviceId: getOrCreateDeviceId() });
+      } catch (e) {
+        input.value = text;
+      } finally {
+        sendingChatMessage = false;
+        if (input) input.disabled = currentTrade && currentTrade.status === "cancelled";
+        setBusyButton(sendBtn, false);
+        if (sendBtn && currentTrade && currentTrade.status === "cancelled") sendBtn.disabled = true;
+      }
     };
     window.sendQuickMsg = async function(text) { if (!currentTrade || currentTrade.status === "cancelled") return; try { await postMessage({ senderId: currentUser.uid, senderName: getMyDisplayName(), text: text, createdAt: serverTimestamp(), deviceId: getOrCreateDeviceId() }); } catch(e){} };
     window.sendImage = async function(inputEl) {
@@ -5786,6 +5871,7 @@ window.openAzukariApp = function() {
     window.closeImageViewer = function() { document.getElementById("image-viewer").classList.add("hidden"); };
 
     window.tradeAction = async function(field) {
+      if (tradeActing) return;
       if (!currentTrade || !currentUser) {
         showToast("取引情報を読み込めませんでした", "error");
         return;
@@ -5795,51 +5881,59 @@ window.openAzukariApp = function() {
       const updateData = {};
       updateData[field + "." + userId] = true;
       updateData.updatedAt = serverTimestamp();
+      tradeActing = true;
+      const actionBtns = Array.from(document.querySelectorAll("#room-actions button")).filter(b => (b.getAttribute("onclick") || "").includes("tradeAction"));
+      actionBtns.forEach(b => setBusyButton(b, true, field === "received" ? "確認中…" : "処理中…"));
       try {
         await updateDoc(doc(db, "trades", tradeId), updateData);
+        if (!currentTrade[field] || typeof currentTrade[field] !== "object") {
+          currentTrade[field] = {};
+        }
+        currentTrade[field][userId] = true;
+        if (field === "received") {
+          window.__localReceivedTrades = window.__localReceivedTrades || {};
+          window.__localReceivedTrades[tradeId + "_" + userId] = true;
+          if (!currentTrade[field] || typeof currentTrade[field] !== "object") { currentTrade[field] = {}; }
+          currentTrade[field][userId] = true;
+          const ownerReceived = flag(currentTrade, "received", currentTrade.ownerId);
+          const applicantReceived = flag(currentTrade, "received", currentTrade.applicantId);
+          if (ownerReceived && applicantReceived && currentTrade.status !== "completed") {
+            try {
+              await updateDoc(doc(db, "trades", tradeId), { status: "completed", updatedAt: serverTimestamp() });
+              currentTrade.status = "completed";
+              await clearTradeShippingDocs(tradeId);
+            } catch (error) {
+              console.error(error);
+              showToast("取引完了の保存に失敗しました", "error");
+            }
+          }
+          if (!(reviewState.tradeId === tradeId && reviewState.done === true)) {
+            reviewState = { tradeId: tradeId, done: false };
+          }
+          const reviewHost = document.getElementById("room-review-slot");
+          if (reviewHost) {
+            reviewHost.removeAttribute("data-review-key");
+          }
+          window.__scrollReviewSlot = true;
+          roomActionsKey = "";
+          renderRoom();
+          checkReview();
+          if (currentTrade.status === "completed") {
+            showToast("取引を完了しました。下に出た星を選んで評価してください", "success");
+          } else {
+            showToast("完了確認を送りました。下の評価を送信できます", "success");
+          }
+          return;
+        }
+        roomActionsKey = "";
+        renderRoom();
       } catch (error) {
         console.error(error);
         showToast("操作を保存できませんでした", "error");
-        return;
+        actionBtns.forEach(b => setBusyButton(b, false));
+      } finally {
+        tradeActing = false;
       }
-      if (!currentTrade[field] || typeof currentTrade[field] !== "object") {
-        currentTrade[field] = {};
-      }
-      currentTrade[field][userId] = true;
-      if (field === "received") {
-if(field==="received"){window.__localReceivedTrades=window.__localReceivedTrades||{};window.__localReceivedTrades[tradeId+"_"+userId]=true;} if(!currentTrade[field]||typeof currentTrade[field]!=="object"){currentTrade[field]={};} currentTrade[field][userId]=true;
-        const ownerReceived = flag(currentTrade, "received", currentTrade.ownerId);
-        const applicantReceived = flag(currentTrade, "received", currentTrade.applicantId);
-        if (ownerReceived && applicantReceived && currentTrade.status !== "completed") {
-          try {
-            await updateDoc(doc(db, "trades", tradeId), { status: "completed", updatedAt: serverTimestamp() });
-            currentTrade.status = "completed";
-            await clearTradeShippingDocs(tradeId);
-          } catch (error) {
-            console.error(error);
-            showToast("取引完了の保存に失敗しました", "error");
-          }
-        }
-        if (!(reviewState.tradeId === tradeId && reviewState.done === true)) {
-          reviewState = { tradeId: tradeId, done: false };
-        }
-        const reviewHost = document.getElementById("room-review-slot");
-        if (reviewHost) {
-          reviewHost.removeAttribute("data-review-key");
-        }
-        window.__scrollReviewSlot = true;
-        roomActionsKey = "";
-        renderRoom();
-        checkReview();
-        if (currentTrade.status === "completed") {
-          showToast("取引を完了しました。下に出た星を選んで評価してください", "success");
-        } else {
-          showToast("完了確認を送りました。下の評価を送信できます", "success");
-        }
-        return;
-      }
-      roomActionsKey = "";
-      renderRoom();
     };
     window.checkCancelAccountLock = function() {
       if (!currentUser || !userData) return false;
@@ -5922,6 +6016,7 @@ if(field==="received"){window.__localReceivedTrades=window.__localReceivedTrades
 
     window.setRating = function(n) { selectedRating = n; document.querySelectorAll("[data-star]").forEach(b => b.className = "text-3xl transition drop-shadow-sm hover:scale-110 " + (Number(b.dataset.star) <= n ? "text-yellow-400" : "text-gray-300")); };
     window.submitReview = async function() {
+      if (submittingReview) return;
       const trade = currentTrade;
       if (!trade || !currentUser) {
         showToast("取引情報を読み込めませんでした", "error");
@@ -5934,11 +6029,9 @@ if(field==="received"){window.__localReceivedTrades=window.__localReceivedTrades
       const toId = currentUser.uid === trade.ownerId ? trade.applicantId : trade.ownerId;
       const commentEl = document.getElementById("review-comment");
       const comment = commentEl && commentEl.value ? commentEl.value.trim().slice(0, 200) : "";
-      const submitButton = document.querySelector("#room-review-slot button[onclick='submitReview()']");
-      if (submitButton) {
-        submitButton.disabled = true;
-        submitButton.innerText = "送信中…";
-      }
+      const submitButton = document.getElementById("review-submit-btn") || document.querySelector("#room-review-slot button[onclick='submitReview()']");
+      submittingReview = true;
+      setBusyButton(submitButton, true, "送信中…");
       try {
         await setDoc(doc(db, "reviews", trade.id + "_" + currentUser.uid), {
           tradeId: trade.id,
@@ -5969,10 +6062,9 @@ if(field==="received"){window.__localReceivedTrades=window.__localReceivedTrades
         console.error(error);
         const message = error && error.message ? error.message : "失敗しました";
         showToast("評価を送れませんでした: " + message, "error");
-        if (submitButton) {
-          submitButton.disabled = false;
-          submitButton.innerText = "評価を送信して取引を終える";
-        }
+        setBusyButton(submitButton, false);
+      } finally {
+        submittingReview = false;
       }
     };
 

@@ -1,5 +1,15 @@
 window.markReceived = async function(poolId) {
+  if (window.__markingReceived) return;
   if (!confirm("商品の受取を完了しますか？")) return;
+  window.__markingReceived = true;
+  const btn = (typeof event !== "undefined" && event && event.target) ? event.target.closest("button") : null;
+  if (btn) {
+    btn.disabled = true;
+    btn.setAttribute("aria-busy", "true");
+    btn.classList.add("is-busy");
+    if (btn.dataset.idleLabel == null) btn.dataset.idleLabel = (btn.innerText || "").trim();
+    btn.innerText = "処理中…";
+  }
   try {
     const db = window.firebase.firestore();
     const uid = window.firebase.auth().currentUser.uid;
@@ -21,6 +31,14 @@ window.markReceived = async function(poolId) {
   } catch(e) {
     console.error(e);
     alert("エラー: " + e.message);
+    if (btn) {
+      btn.disabled = false;
+      btn.removeAttribute("aria-busy");
+      btn.classList.remove("is-busy");
+      if (btn.dataset.idleLabel != null) { btn.innerText = btn.dataset.idleLabel; delete btn.dataset.idleLabel; }
+    }
+  } finally {
+    window.__markingReceived = false;
   }
 };
 
