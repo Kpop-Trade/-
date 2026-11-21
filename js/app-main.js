@@ -2707,7 +2707,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         document.getElementById("user-name").innerText = getMyDisplayName();
         updateUserAvatar();
         subscribeUserData(); subscribeTrades(); subscribeSuspension();
-        if (typeof loadPosts === "function") { loadingPosts = false; loadPosts(true); }
+        if (typeof loadPosts === "function") loadPosts(true);
         setTimeout(() => { if (typeof updateUserAvatar === "function") updateUserAvatar(); }, 800);
         if ("Notification" in window && Notification.permission === "granted" && localStorage.getItem(pushStorageKey())) saveToken().catch(()=>{});
         // ログイン済み・規約同意済みなら初回のみ通知オン確認
@@ -2723,7 +2723,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         loginBtn.classList.remove("hidden"); userProfile.classList.add("hidden");
         if (unsubTrades) unsubTrades(); if (unsubUser) unsubUser(); if (unsubNotifs) unsubNotifs(); unsubTrades=null; unsubUser=null; unsubNotifs=null; serverNotifs = [];
         tradesLoaded = false;
-        if (typeof loadPosts === "function" && allPosts.length === 0) { loadingPosts = false; loadPosts(true); }
+        if (typeof loadPosts === "function" && allPosts.length === 0) loadPosts(true);
         if (unsubSusp) { unsubSusp(); unsubSusp = null; }
         document.getElementById("suspended-modal").classList.add("hidden");
         userData = { profile: {}, blocked: [], likes: [], reads: {}, notifications: [], cancelHistory: [], myCards: {}, collectionPublic: false, customCards: [], cardWatch: {} }; myTrades = []; updateBadge(); updateNotifBadge();
@@ -3672,42 +3672,79 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
 
     // 投稿はリアルタイム監視せず、50件ずつ取得（読み取り回数の節約）
     const POSTS_PAGE = 50;
-    let postsCursor = null, postsHasMore = false, loadingPosts = false;
+    let postsCursor = null, postsHasMore = false, loadingPosts = false, loadPostsGen = 0;
+    function postsErrorHtml(title, detail) {
+      return `<div class="posts-status p-4 m-4 bg-red-100 text-red-700 text-sm rounded-xl border border-red-300 text-center font-bold">⚠️ ${title}<br><span class="text-xs font-normal">${detail || ""}</span><br><button type="button" onclick="window.loadPosts && window.loadPosts(true)" class="mt-2 text-xs underline text-red-600">再試行</button></div>`;
+    }
+    async function fetchPostsSnap(reset, useOrderBy) {
+      const timeoutMs = 12000;
+      const withTimeout = (p) => Promise.race([
+        p,
+        new Promise((_, rej) => setTimeout(() => rej(new Error("通信がタイムアウトしました")), timeoutMs))
+      ]);
+      if (useOrderBy) {
+        const base = [collection(db, "posts"), orderBy("createdAt", "desc")];
+        const q = (!reset && postsCursor)
+          ? query(...base, startAfter(postsCursor), limit(POSTS_PAGE))
+          : query(...base, limit(POSTS_PAGE));
+        return withTimeout(getDocs(q));
+      }
+      // インデックス未整備・一時障害時のフォールバック（作成日ソートなし）
+      return withTimeout(getDocs(query(collection(db, "posts"), limit(POSTS_PAGE))));
+    }
     async function loadPosts(reset = true) {
-      console.log("loadPosts called, reset=", reset);
-      if (loadingPosts) { console.log("loadPosts skipped (already loading)"); return; }
+      console.log("loadPosts called, reset=", reset, "loading=", loadingPosts);
+      // 追加読み込み中に「もっと見る」が重なったときだけスキップ。
+      // reset=true（初回・再試行・更新）は進行中でも世代を上げてやり直す。
+      if (loadingPosts && !reset) {
+        console.log("loadPosts skipped (already loading more)");
+        return;
+      }
+      const gen = ++loadPostsGen;
       loadingPosts = true;
       if (reset) {
         const container = document.getElementById("posts-container");
         if (container && allPosts.length === 0) container.innerHTML = postsSkeletonHtml();
       }
       try {
-        const base = [collection(db, "posts"), orderBy("createdAt", "desc")];
-        const q = (!reset && postsCursor)
-          ? query(...base, startAfter(postsCursor), limit(POSTS_PAGE))
-          : query(...base, limit(POSTS_PAGE));
-        let snap;
-        try {
-          const fetchWithTimeout = () => Promise.race([
-            getDocs(q),
-            new Promise((_, rej) => setTimeout(() => rej(new Error("通信がタイムアウトしました")), 20000))
-          ]);
-          snap = await fetchWithTimeout();
-          if (reset && snap.empty && !window._retriedInitialPosts) {
-            window._retriedInitialPosts = true;
-            await new Promise(r => setTimeout(r, 1000));
-            snap = await fetchWithTimeout();
+        let snap = null;
+        let lastErr = null;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          if (gen !== loadPostsGen) return;
+          try {
+            // 1回目・2回目は orderBy、3回目はフォールバック
+            snap = await fetchPostsSnap(reset, attempt < 2);
+            lastErr = null;
+            break;
+          } catch (e) {
+            lastErr = e;
+            console.warn("loadPosts attempt", attempt + 1, e?.message || e);
+            await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
           }
-        } catch (loadErr) {
-          console.error("loadPosts query error:", loadErr);
+        }
+        if (gen !== loadPostsGen) return;
+        if (!snap) {
+          loadingPosts = false;
           const container = document.getElementById("posts-container");
           if (container) {
-            container.innerHTML = `<div class="posts-status p-4 m-4 bg-red-100 text-red-700 text-sm rounded-xl border border-red-300 text-center font-bold">⚠️ データの読み込みに失敗しました<br><span class="text-xs font-normal">${loadErr.message}</span><br><button onclick="window.loadPosts && window.loadPosts(true)" class="mt-2 text-xs underline text-red-600">再試行</button></div>`;
+            container.innerHTML = postsErrorHtml(
+              "データの読み込みに失敗しました",
+              escapeHtml((lastErr && lastErr.message) || "通信エラー") + " · 再試行してください"
+            );
           }
-          loadingPosts = false;
           return;
         }
+        if (reset && snap.empty && !window._retriedInitialPosts) {
+          window._retriedInitialPosts = true;
+          await new Promise((r) => setTimeout(r, 800));
+          if (gen !== loadPostsGen) return;
+          try { snap = await fetchPostsSnap(true, true); } catch (_) {}
+        }
         const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        // フォールバック取得時はクライアント側で新しい順に寄せる
+        if (list.length && list.every(x => x.createdAt)) {
+          list.sort((a, b) => tsMillis(b.createdAt) - tsMillis(a.createdAt));
+        }
         if (reset) {
           allPosts = list;
           Object.keys(joinsFresh).forEach(k => delete joinsFresh[k]);
@@ -3720,7 +3757,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         postsHasMore = snap.docs.length === POSTS_PAGE;
         const wrap = document.getElementById("load-more-wrap");
         if (wrap) wrap.classList.toggle("hidden", !postsHasMore);
-        loadingPosts = false;
+        if (gen === loadPostsGen) loadingPosts = false;
         renderPosts();
         notifyWatchedListings();
         scheduleHealSoldPosts();
@@ -3738,17 +3775,32 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         }
       } catch (err) {
         console.error("posts load error:", err);
-        showToast("投稿の読み込みに失敗しました。🔄で再読み込みしてください。", "error");
-      } finally {
-        if (loadingPosts) {
+        if (gen === loadPostsGen) {
           loadingPosts = false;
-          renderPosts();
+          const container = document.getElementById("posts-container");
+          if (container && allPosts.length === 0) {
+            container.innerHTML = postsErrorHtml(
+              "投稿の読み込みに失敗しました",
+              escapeHtml(err?.message || "error") + " · 🔄 または下の再試行を押してください"
+            );
+          } else {
+            showToast("投稿の読み込みに失敗しました。🔄で再読み込みしてください。", "error");
+          }
         }
+      } finally {
+        // 失敗時のエラー文言を renderPosts で上書きしない（成功時は上で loadingPosts=false → render済み）
+        if (gen === loadPostsGen && loadingPosts) loadingPosts = false;
         if (typeof renderGllitHub === "function") renderGllitHub();
       }
     }
     window.loadPosts = loadPosts;
     window.renderPosts = renderPosts;
+    // 認証待ちでも早めに一覧取得を開始（ゲスト閲覧含む）
+    setTimeout(function() {
+      if (typeof loadPosts === "function" && allPosts.length === 0 && !loadingPosts) {
+        loadPosts(true);
+      }
+    }, 80);
 
     let _gllitRoutine = null;
     let _gllitEvents = null;
