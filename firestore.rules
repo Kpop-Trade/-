@@ -370,18 +370,26 @@ service cloud.firestore {
     // ===== 日次アクティブユーザー（DAU） =====
     match /dailyActive/{dayId} {
       allow read: if isAdmin();
-      // 初回のみ count=1 で作成 / 以降は +1 のみ
-      allow create: if isSignedIn()
+
+      allow create: if isAdmin() || (
+        isSignedIn()
         && request.resource.data.keys().hasOnly(["count", "updatedAt"])
-        && request.resource.data.count == 1;
-      allow update: if isSignedIn()
+        && request.resource.data.count == 1
+      );
+
+      allow update: if isAdmin() || (
+        isSignedIn()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["count", "updatedAt"])
-        && request.resource.data.count == resource.data.get("count", 0) + 1;
+        && request.resource.data.count == resource.data.get("count", 0) + 1
+      );
+
       allow delete: if isAdmin();
 
       match /visitors/{uid} {
-        allow read: if isAdmin();
-        allow create: if isSignedIn() && request.auth.uid == uid;
+        allow read: if isAdmin() || (isSignedIn() && request.auth.uid == uid);
+        allow create: if isSignedIn() && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(["at", "uid"])
+          && request.resource.data.uid == request.auth.uid;
         allow update, delete: if isAdmin();
       }
     }
@@ -457,12 +465,19 @@ service cloud.firestore {
     }
 
     match /auto_go_pools/{poolId} {
+      // 一覧クエリ互換のため読取は公開。isTest プールはクライアント非表示＋Functions で一般参加拒否。
       allow read: if true;
       allow create, update, delete: if isAdmin();
 
       match /entries/{userId} {
         allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
         allow create, update, delete: if isAdmin();
+      }
+
+      // シミュレーション／緊急操作の監査ログ（管理者のみ）
+      match /auditLogs/{logId} {
+        allow read, create, delete: if isAdmin();
+        allow update: if false;
       }
     }
 
