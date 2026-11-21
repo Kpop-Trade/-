@@ -1,4 +1,4 @@
-name: Deploy Firebase (Hosting + Firestore Rules)
+name: Deploy Firebase (Hosting + Firestore Rules + Functions)
 
 on:
   push:
@@ -23,9 +23,13 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
 
-      - name: Deploy Hosting and Firestore Rules
+      - name: Install Functions dependencies
+        working-directory: functions
+        run: npm ci
+
+      - name: Deploy Hosting, Firestore Rules, and Functions
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
@@ -36,6 +40,6 @@ jobs:
           printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-sa.json"
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-sa.json"
           npx --yes firebase-tools@13 deploy \
-            --only hosting,firestore:rules \
+            --only hosting,firestore:rules,functions \
             --project illit-7ecd4 \
             --non-interactive

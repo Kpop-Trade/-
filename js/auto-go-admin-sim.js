@@ -81,23 +81,196 @@
     }
   };
 
+  function callableErrorText(error) {
+    const code = String(error?.code || error?.customData?.status || "");
+    const msg = String(error?.message || error || "");
+    return (code ? code + ": " : "") + msg;
+  }
+
+  function isTestPoolData(pool) {
+    if (!pool) return false;
+    if (pool.isTest === true || pool.testTag === "[TEST]") return true;
+    return /^\[TEST\]/i.test(String(pool.title || ""));
+  }
+
+  function shuffleMembers(list) {
+    const arr = (list || []).slice();
+    for (let i = arr.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+    }
+    return arr;
+  }
+
+  function allocateMemberClient(pool, preferenceOrder) {
+    const members = (Array.isArray(pool.members) && pool.members.length)
+      ? pool.members.slice()
+      : (Array.isArray(pool.memberNames) ? pool.memberNames.slice() : []);
+    if (!members.length) throw new Error("メンバー一覧がありません");
+    const defaultCap = members.length === 5 ? 4 : members.length === 4 ? 5 : 2;
+    const caps = { ...(pool.memberCaps || {}) };
+    const counts = { ...(pool.memberCounts || {}) };
+    members.forEach((m) => {
+      caps[m] = Number(caps[m]) || defaultCap;
+      counts[m] = Number(counts[m]) || 0;
+    });
+    const order = (preferenceOrder || []).filter((m) => members.includes(m));
+    let assigned = null;
+    let assignedRank = 0;
+    for (let i = 0; i < order.length; i += 1) {
+      if (counts[order[i]] < caps[order[i]]) {
+        assigned = order[i];
+        assignedRank = i + 1;
+        break;
+      }
+    }
+    if (!assigned) throw new Error("member slots are full");
+    counts[assigned] += 1;
+    const allFilled = members.every((m) => counts[m] >= caps[m]);
+    let targetParticipants = Number(pool.targetParticipants) || members.reduce((s, m) => s + caps[m], 0);
+    if (allFilled) {
+      members.forEach((m) => { caps[m] += 3; });
+      targetParticipants = members.reduce((s, m) => s + caps[m], 0);
+    }
+    return { assigned, assignedRank, preferenceOrder: order, caps, counts, targetParticipants };
+  }
+
+  /** Functions未デプロイ時でも動く：管理者権限で Firestore に直接ダミー投入 */
+  async function injectDummiesViaFirestore(poolId, count, fillToMin) {
+    const refs = agRefs();
+    if (!refs.db || typeof refs.doc !== "function" || typeof refs.runTransaction !== "function") {
+      throw new Error("Firestoreの準備ができていません");
+    }
+    const poolRef = refs.doc(refs.db, "auto_go_pools", poolId);
+    const results = [];
+    let injected = 0;
+    const maxLoops = fillToMin ? 80 : Math.min(50, Math.max(1, Number(count) || 1));
+    const actorUid = (refs.auth && refs.auth.currentUser && refs.auth.currentUser.uid)
+      || (window.currentUser && window.currentUser.uid)
+      || "admin";
+
+    for (let i = 0; i < maxLoops; i += 1) {
+      if (!fillToMin && injected >= (Number(count) || 1)) break;
+      const dummyUid = "dummy_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8);
+      const entryRef = refs.doc(refs.db, "auto_go_pools", poolId, "entries", dummyUid);
+      let row = null;
+      try {
+        row = await refs.runTransaction(refs.db, async (tx) => {
+          const poolSnap = await tx.get(poolRef);
+          if (!poolSnap.exists()) throw new Error("プールが見つかりません");
+          const pool = poolSnap.data() || {};
+          if (!isTestPoolData(pool)) throw new Error("テストプール（isTest / [TEST]）だけ投入できます");
+          if (pool.entryLocked === true || pool.recruitmentClosedAt) {
+            throw new Error("エントリー停止中／募集終了です");
+          }
+          if (!["recruiting", "activating", "active"].includes(String(pool.status || ""))) {
+            throw new Error("このステータスでは投入できません: " + pool.status);
+          }
+          // 古いテストプールで isTest 欠落している場合は補完
+          const patch = {};
+          if (pool.isTest !== true) patch.isTest = true;
+          if (fillToMin) {
+            const minCount = Number(pool.minThreshold || pool.minParticipants || 20);
+            if (Number(pool.totalCount || 0) >= minCount) return null;
+          }
+          const members = (pool.members && pool.members.length) ? pool.members : (pool.memberNames || []);
+          const preferenceOrder = shuffleMembers(members);
+          const alloc = allocateMemberClient(pool, preferenceOrder);
+          const entrySeq = (Number(pool.totalCount) || 0) + 1;
+          const stamp = refs.serverTimestamp ? refs.serverTimestamp() : new Date();
+          tx.update(poolRef, {
+            ...patch,
+            totalCount: entrySeq,
+            memberCounts: alloc.counts,
+            memberCaps: alloc.caps,
+            targetParticipants: alloc.targetParticipants
+          });
+          tx.set(entryRef, {
+            uid: dummyUid,
+            isDummy: true,
+            wantedMember: alloc.assigned,
+            preferenceOrder: alloc.preferenceOrder,
+            assignedRank: alloc.assignedRank,
+            entrySeq,
+            pulledMember: null,
+            status: "reserved",
+            consentAt: stamp,
+            userName: "ダミー参加者#" + entrySeq,
+            xId: "dummy_" + entrySeq,
+            createdAt: stamp,
+            injectedBy: actorUid
+          });
+          return {
+            uid: dummyUid,
+            entrySeq,
+            wantedMember: alloc.assigned,
+            assignedRank: alloc.assignedRank,
+            preferenceOrder: alloc.preferenceOrder
+          };
+        });
+      } catch (e) {
+        const msg = String(e && e.message || e);
+        if (/slots are full|停止中|募集終了|ステータス/i.test(msg)) break;
+        throw e;
+      }
+      if (!row) break;
+      injected += 1;
+      results.push(row);
+      // 監査ログ（失敗しても投入自体は成功扱い）
+      try {
+        if (typeof refs.collection === "function" && typeof window.addDoc === "function") {
+          await window.addDoc(refs.collection(refs.db, "auto_go_pools", poolId, "auditLogs"), {
+            action: "dummy_inject",
+            actorUid,
+            poolId,
+            ...row,
+            createdAt: refs.serverTimestamp ? refs.serverTimestamp() : new Date()
+          });
+        }
+      } catch (_) {}
+    }
+    return { ok: true, injected, results, via: "firestore" };
+  }
+
+  function shouldFallbackToFirestore(error) {
+    const blob = (String(error?.code || "") + " " + String(error?.message || "")).toLowerCase();
+    return /not-found|not_found|unimplemented|unavailable|internal|cors|failed to fetch|deadline|timeout|404|does not exist|not been deployed/.test(blob);
+  }
+
   window.adminInjectAutoGoDummies = async function (poolId, count, fillToMin) {
     if (!isAgAdmin()) { toast("管理者権限が必要です", "error"); return; }
+    if (!poolId) { toast("プールIDがありません", "error"); return; }
+    toast(fillToMin ? "定員までダミー投入中…" : `ダミー ${count || 1}人 投入中…`, "info");
     const fn = agRefs().adminInjectAutoGoDummies;
-    if (typeof fn !== "function") {
-      toast("シミュレーションAPIの準備中です（Functionsデプロイ後に利用可）", "error");
-      return;
-    }
     try {
-      toast(fillToMin ? "定員までダミー投入中…" : `ダミー ${count}人 投入中…`, "info");
-      const res = await fn({ poolId, count: count || 1, fillToMin: !!fillToMin });
-      const data = res?.data || res || {};
-      toast(`ダミー投入完了: ${data.injected || 0}人`, "success");
+      let data = null;
+      // まず Callable（デプロイ済みなら）。失敗時は管理者の直接書き込みにフォールバック
+      if (typeof fn === "function") {
+        try {
+          const res = await fn({ poolId, count: count || 1, fillToMin: !!fillToMin });
+          data = res?.data || res || {};
+          data.via = data.via || "functions";
+        } catch (callErr) {
+          console.warn("adminInjectAutoGoDummies callable failed, trying Firestore:", callErr);
+          if (!shouldFallbackToFirestore(callErr)) {
+            // テストプール以外などは直接メッセージ表示
+            throw callErr;
+          }
+          data = await injectDummiesViaFirestore(poolId, count, fillToMin);
+        }
+      } else {
+        data = await injectDummiesViaFirestore(poolId, count, fillToMin);
+      }
+      if (!data || !data.injected) {
+        toast("ダミーを投入できませんでした（枠満員・ロック・テストプール以外の可能性）", "error");
+      } else {
+        toast(`ダミー投入完了: ${data.injected}人` + (data.via === "firestore" ? "（直接書込）" : ""), "success");
+      }
       if (typeof window.renderAdminAutoGoPanel === "function") await window.renderAdminAutoGoPanel();
       return data;
     } catch (error) {
       console.error(error);
-      toast("ダミー投入失敗: " + (error?.message || error), "error");
+      toast("ダミー投入失敗: " + callableErrorText(error), "error");
     }
   };
 

@@ -179,7 +179,9 @@ async function recordAutoGoPenalty(uid, poolId) {
 }
 
 function isAutoGoTestPool(pool) {
-  return !!(pool && pool.isTest === true);
+  if (!pool) return false;
+  if (pool.isTest === true || pool.testTag === "[TEST]") return true;
+  return /^\[TEST\]/i.test(String(pool.title || ""));
 }
 
 function isAutoGoDummyUid(uid) {
