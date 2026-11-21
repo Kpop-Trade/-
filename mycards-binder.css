@@ -166,8 +166,9 @@
 }
 .binder-pocket.is-missing img,
 .binder-pocket.is-missing .binder-fallback {
-  filter: grayscale(1);
-  opacity: 0.42;
+  /* 未所持もカラーのまま（白黒にしない） */
+  filter: none;
+  opacity: 0.88;
 }
 .binder-pocket.is-owned {
   box-shadow:
