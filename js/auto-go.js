@@ -1620,22 +1620,26 @@
         const image = new Image();
         image.onerror = () => reject(new Error("この画像形式を開けませんでした。JPG/PNGのスクリーンショットで再試行してください"));
         image.onload = () => {
-          // 大きすぎると Functions 呼び出しが失敗しやすいので長辺1280・品質0.72に抑える
-          const maxSide = 1280;
-          const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
-          const canvas = document.createElement("canvas");
-          canvas.width = Math.max(1, Math.round(image.width * scale));
-          canvas.height = Math.max(1, Math.round(image.height * scale));
-          const ctx = canvas.getContext("2d");
-          ctx.fillStyle = "#ffffff";
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-          let quality = 0.72;
-          let dataUrl = canvas.toDataURL("image/jpeg", quality);
-          // おおよそ 1.5MB 未満になるまで品質を下げる
-          while (dataUrl.length > 2_000_000 && quality > 0.45) {
-            quality -= 0.08;
-            dataUrl = canvas.toDataURL("image/jpeg", quality);
+          // Callable/Storage障害時のFirestoreStoreフォールバック用に、長辺1024・概ね650KB未満へ圧縮
+          let maxSide = 1024;
+          let quality = 0.68;
+          let dataUrl = "";
+          const encode = (side, q) => {
+            const scale = Math.min(1, side / Math.max(image.width, image.height));
+            const canvas = document.createElement("canvas");
+            canvas.width = Math.max(1, Math.round(image.width * scale));
+            canvas.height = Math.max(1, Math.round(image.height * scale));
+            const ctx = canvas.getContext("2d");
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+            return canvas.toDataURL("image/jpeg", q);
+          };
+          dataUrl = encode(maxSide, quality);
+          while (dataUrl.length > 900_000 && (quality > 0.42 || maxSide > 720)) {
+            if (quality > 0.42) quality -= 0.08;
+            else maxSide = Math.max(720, Math.round(maxSide * 0.85));
+            dataUrl = encode(maxSide, quality);
           }
           if (!/^data:image\/jpeg;base64,/.test(dataUrl)) {
             reject(new Error("画像の変換に失敗しました"));
@@ -1658,8 +1662,17 @@
     if (/purchase evidence is not expected|failed-precondition.*purchase/.test(blob)) return "いまのステータスでは購入報告できません（専用URL発行後のみ）";
     if (/upload the purchase screenshot first/.test(blob)) return "購入証明画像のアップロードが完了していません。もう一度お試しください";
     if (/unsupported image/.test(blob)) return "対応していない画像形式です。JPG/PNGのスクリーンショットを選んでください";
+    if (/resource-exhausted|too large for fallback/.test(blob)) return "画像が大きすぎて保存できません。画面の一部だけ写した小さめのスクショでもう一度お願いします";
     if (/4 mb or smaller|too large|413|payload/.test(blob)) return "画像が大きすぎます。別のスクリーンショットで再試行してください";
-    if (/failed to save purchase image|storage|internal/.test(blob)) return "画像の保存に失敗しました。通信環境を確認して再試行してください";
+    if (/failed to save purchase image/.test(blob)) {
+      const detail = msg.replace(/^.*failed to save purchase image[:\s]*/i, "").trim();
+      return detail
+        ? `画像の保存に失敗しました（${detail}）。小さめのスクショで再試行してください`
+        : "画像の保存に失敗しました。小さめのスクショで再試行してください";
+    }
+    if (/storage|internal/.test(blob) && /image|upload|evidence|purchase/.test(blob)) {
+      return "画像の保存に失敗しました。通信環境を確認し、小さめのスクショで再試行してください";
+    }
     if (/not-found|entry not found/.test(blob)) return "予約データが見つかりません。画面を閉じて開き直してください";
     if (/prepar|準備中/.test(blob)) return msg;
     return msg || "不明なエラーです";
