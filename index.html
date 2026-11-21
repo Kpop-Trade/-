@@ -1924,7 +1924,7 @@ html, body {
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { getFirestore, collection, collectionGroup, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, where, orderBy, limit, startAfter, onSnapshot, serverTimestamp, increment, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, collectionGroup, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, where, orderBy, limit, startAfter, onSnapshot, serverTimestamp, increment, runTransaction, getCountFromServer } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js";
 
 
@@ -3014,11 +3014,44 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     if (adminTab === "stats") {
           const d = new Date(); d.setDate(1); d.setHours(0,0,0,0);
           const dayKeys = tokyoDateKeysLastN(30);
-          const [tradesSnap, usersSnap, postsSnap, dauSnaps] = await Promise.all([
-            _safeAdminGetDocs(query(collection(db, "trades"), limit(200))),
-            _safeAdminGetDocs(query(collection(db, "users"), limit(200))),
-            _safeAdminGetDocs(query(collection(db, "posts"), limit(200))),
-            Promise.all(dayKeys.map((key) => getDoc(doc(db, "dailyActive", key)).catch(() => null)))
+          const safeCount = async (colRef) => {
+            try {
+              const agg = await getCountFromServer(colRef);
+              return Number(agg.data().count) || 0;
+            } catch (err) {
+              console.warn("Admin count fallback:", err && err.message ? err.message : err);
+              try {
+                const snap = await getDocs(query(colRef, limit(5000)));
+                return snap.size;
+              } catch (_) {
+                return 0;
+              }
+            }
+          };
+          const loadDauDay = async (key) => {
+            try {
+              const [daySnap, visitorCount] = await Promise.all([
+                getDoc(doc(db, "dailyActive", key)),
+                safeCount(collection(db, "dailyActive", key, "visitors"))
+              ]);
+              const docCount = daySnap && daySnap.exists() ? (Number(daySnap.data().count) || 0) : 0;
+              // visitors 実数を正とし、ドキュメント count が遅れ/欠損していても反映する
+              const count = Math.max(docCount, visitorCount);
+              // count が visitors より少ない場合は管理者向けに補正書き込み（ベストエフォート）
+              if (visitorCount > docCount && isAdmin()) {
+                setDoc(doc(db, "dailyActive", key), { count: visitorCount, updatedAt: serverTimestamp(), repairedAt: serverTimestamp() }, { merge: true }).catch(() => {});
+              }
+              return { key, count, label: key.slice(5).replace("-", "/") };
+            } catch (err) {
+              console.warn("DAU day load:", key, err && err.message ? err.message : err);
+              return { key, count: 0, label: key.slice(5).replace("-", "/") };
+            }
+          };
+          const [tradesSnap, usersCount, postsCount, dauSeries] = await Promise.all([
+            _safeAdminGetDocs(query(collection(db, "trades"), limit(2000))),
+            safeCount(collection(db, "users")),
+            safeCount(collection(db, "posts")),
+            Promise.all(dayKeys.map(loadDauDay))
           ]);
 
           let platformTotal = 0; let thisMonthTotal = 0; let completedCount = 0;
@@ -3033,11 +3066,6 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
             }
           });
 
-          const dauSeries = dayKeys.map((key, i) => {
-            const snap = dauSnaps[i];
-            const count = snap && snap.exists && snap.exists() ? (Number(snap.data().count) || 0) : 0;
-            return { key, count, label: key.slice(5).replace("-", "/") }; // MM/DD
-          });
           const todayDau = dauSeries.length ? dauSeries[dauSeries.length - 1].count : 0;
           const last7 = dauSeries.slice(-7);
           const avg7 = last7.length ? Math.round(last7.reduce((s, x) => s + x.count, 0) / last7.length) : 0;
@@ -3065,11 +3093,11 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
               </div>
               <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-4 text-white shadow-md">
                 <div class="text-[10px] opacity-80 font-medium">総ユーザー数</div>
-                <div class="text-2xl font-bold">${usersSnap.size} 人</div>
+                <div class="text-2xl font-bold">${Number(usersCount || 0).toLocaleString()} 人</div>
               </div>
               <div class="bg-gradient-to-br from-pink-400 to-pink-500 rounded-xl p-4 text-white shadow-md">
                 <div class="text-[10px] opacity-80 font-medium">総出品数</div>
-                <div class="text-2xl font-bold">${postsSnap.size} 件</div>
+                <div class="text-2xl font-bold">${Number(postsCount || 0).toLocaleString()} 件</div>
               </div>
               <div class="bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl p-4 text-white shadow-md">
                 <div class="text-[10px] opacity-80 font-medium">成立取引</div>
@@ -3130,7 +3158,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
                   </div>`;
                 }).join("")}
               </div>
-              <p class="text-[10px] text-gray-400 mt-2 leading-relaxed">※ 導入前の日は0になります。ユーザーがアプリを開いてログインした日に1回カウントされます。</p>
+              <p class="text-[10px] text-gray-400 mt-2 leading-relaxed">※ Asia/Tokyo の日付で、ログイン済みユーザーがアプリを開いた日に1回カウントします。表示は訪問者サブコレクション実数を優先します。</p>
             </div>`;
           return;
         }
@@ -4506,31 +4534,50 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       }
       return keys;
     }
-    async function recordDailyActiveUser() {
+    async function recordDailyActiveUser(force) {
       if (!currentUser) return;
       const day = tokyoDateKey();
       const localKey = "illit_dau_" + currentUser.uid + "_" + day;
-      if (localStorage.getItem(localKey) === "1") {
-        // 当日すでに記録済みでも lastLoginAt は軽く更新（1日1回）
-        return;
-      }
+      if (!force && localStorage.getItem(localKey) === "1") return;
       try {
         const visitorRef = doc(db, "dailyActive", day, "visitors", currentUser.uid);
         const dayRef = doc(db, "dailyActive", day);
+        // Firestore トランザクションは「全読み取り → 全書き込み」の順が必須。
+        // 以前は visitor 書き込み後に day を読んで失敗し、DAU がほぼ記録されていなかった。
+        let recorded = false;
         await runTransaction(db, async (tx) => {
           const visitorSnap = await tx.get(visitorRef);
-          if (visitorSnap.exists()) return;
-          tx.set(visitorRef, { at: serverTimestamp(), uid: currentUser.uid });
           const daySnap = await tx.get(dayRef);
+          if (visitorSnap.exists()) {
+            recorded = false;
+            return;
+          }
           const prev = daySnap.exists() ? (Number(daySnap.data().count) || 0) : 0;
+          tx.set(visitorRef, { at: serverTimestamp(), uid: currentUser.uid });
           tx.set(dayRef, { count: prev + 1, updatedAt: serverTimestamp() }, { merge: true });
+          recorded = true;
         });
         localStorage.setItem(localKey, "1");
-        saveUserData({ lastLoginAt: serverTimestamp() }).catch(() => {});
+        if (recorded || force) {
+          saveUserData({ lastLoginAt: serverTimestamp() }).catch(() => {});
+        }
       } catch (e) {
-        console.warn("DAU record:", e?.code || e);
+        console.warn("DAU record:", e?.code || e?.message || e);
+        // 失敗時はローカル済みフラグを立てない（次回リトライ）
+        try { localStorage.removeItem(localKey); } catch (_) {}
       }
     }
+    window.recordDailyActiveUser = recordDailyActiveUser;
+
+    // 日付跨ぎ・タブ復帰でも DAU を拾う
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible" && currentUser) {
+        recordDailyActiveUser().catch(() => {});
+      }
+    });
+    window.addEventListener("focus", () => {
+      if (currentUser) recordDailyActiveUser().catch(() => {});
+    });
 
     onAuthStateChanged(auth, (user) => {
       currentUser = user; window.currentUser = currentUser; window.currentUser = currentUser; window.currentUser = currentUser;

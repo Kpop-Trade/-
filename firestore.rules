@@ -370,18 +370,25 @@ service cloud.firestore {
     // ===== 日次アクティブユーザー（DAU） =====
     match /dailyActive/{dayId} {
       allow read: if isAdmin();
-      // 初回のみ count=1 で作成 / 以降は +1 のみ
-      allow create: if isSignedIn()
+      // 初回のみ count=1 で作成 / 以降は +1 のみ（管理者は補正可）
+      allow create: if isAdmin() || (
+        isSignedIn()
         && request.resource.data.keys().hasOnly(["count", "updatedAt"])
-        && request.resource.data.count == 1;
-      allow update: if isSignedIn()
+        && request.resource.data.count == 1
+      );
+      allow update: if isAdmin() || (
+        isSignedIn()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["count", "updatedAt"])
-        && request.resource.data.count == resource.data.get("count", 0) + 1;
+        && request.resource.data.count == resource.data.get("count", 0) + 1
+      );
       allow delete: if isAdmin();
 
       match /visitors/{uid} {
-        allow read: if isAdmin();
-        allow create: if isSignedIn() && request.auth.uid == uid;
+        // 本人は自分の訪問記録を読める（当日済み判定用）
+        allow read: if isAdmin() || (isSignedIn() && request.auth.uid == uid);
+        allow create: if isSignedIn() && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(["at", "uid"])
+          && request.resource.data.uid == request.auth.uid;
         allow update, delete: if isAdmin();
       }
     }
