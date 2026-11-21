@@ -3879,21 +3879,11 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
             : `<button type="button" onclick="applyBundlePost(${index})" class="w-full bg-gradient-to-r from-illit-purple to-illit-accent text-white font-medium py-3 rounded-full shadow-md border border-white/30">バツを付けたカードを申し込む</button>`;
         } else {
           const pillWrap = document.getElementById("detail-pricecut-pill-wrap");
-      if (pillWrap) {
-        if (p.isSell && (!currentUser || p.userId !== currentUser.uid)) {
-          pillWrap.innerHTML = `<button type="button" onclick="proposePriceCutById('${escapeHtml(p.id)}')" class="inline-flex items-center gap-1.5 rounded-full bg-[#f5f5f5] hover:bg-[#ebebeb] active:scale-95 transition px-3.5 py-2 text-[12px] font-bold text-[#333333]"><span class="w-4 h-4 rounded-full border border-[#555555] inline-flex items-center justify-center text-[10px] leading-none">¥</span><span>値下げ依頼</span></button>`;
-        } else {
-          pillWrap.innerHTML = "";
-        }
-      }
+      if (pillWrap) pillWrap.innerHTML = "";
       const btnLabel = isGroup ? "応募する" : (p.isSell ? "購入へ" : "申し込む");
       const onclick = isGroup ? `joinGroup(${index})` : (p.isSell ? `confirmPurchase(${index})` : `applyToPost(${index})`);
-      if (p.isSell && (!currentUser || p.userId !== currentUser.uid)) {
-        actions.innerHTML = `<div class="bg-white border-t border-gray-200 px-3 py-2.5 flex items-center gap-2.5"><button type="button" onclick="proposePriceCutById('${escapeHtml(p.id)}')" class="flex-1 h-11 rounded-[6px] border border-[#ff333f] bg-white text-[#ff333f] text-[14px] font-bold active:opacity-80 transition">値下げ依頼</button><button type="button" onclick="${onclick}" class="flex-1 h-11 rounded-[6px] bg-[#ff333f] text-white text-[14px] font-bold shadow-sm active:opacity-90 transition">${btnLabel}</button></div>`;
-      } else {
-        const btnGrad = isGroup ? "from-teal-400 to-teal-500" : "from-illit-purple to-illit-accent";
-        actions.innerHTML = `<div class="px-3 py-2.5"><button type="button" onclick="${onclick}" class="w-full bg-gradient-to-r ${btnGrad} text-white font-bold py-3 rounded-full shadow-md border border-white/30">${btnLabel}</button></div>`;
-      }
+      const btnGrad = isGroup ? "from-teal-400 to-teal-500" : "from-illit-purple to-illit-accent";
+      actions.innerHTML = `<div class="px-3 py-2.5"><button type="button" onclick="${onclick}" class="w-full bg-gradient-to-r ${btnGrad} text-white font-bold py-3 rounded-full shadow-md border border-white/30">${btnLabel}</button></div>`;
         }
       }
       const more = document.getElementById("detail-more");
