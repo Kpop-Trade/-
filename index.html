@@ -25,7 +25,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js?v=20261121"></script>
 
   <script src="./js/tailwind-config.js?v=20261121"></script>
-  <link rel="stylesheet" href="./styles.css?v=20261121">
+  <link rel="stylesheet" href="./styles.css?v=20261121c">
 
 
 
@@ -222,9 +222,16 @@
       <!-- Auto-GO ホーム上部バナーボタン -->
 
 <div id="posts-container" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
-        <div class="posts-status col-span-full text-center py-10 px-4">
-          <p class="text-sm text-indigo-600 font-bold animate-pulse">読み込み中...</p>
-          <p class="text-[11px] text-gray-400 mt-2">募集一覧を取得しています</p>
+        <div class="posts-status col-span-full w-full" id="posts-skeleton" aria-busy="true" aria-label="読み込み中">
+          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
+            <div class="kp-skel-card"><div class="kp-skel aspect-square"></div><div class="p-2 space-y-2"><div class="kp-skel h-3 w-4/5"></div><div class="kp-skel h-2.5 w-2/3"></div></div></div>
+            <div class="kp-skel-card"><div class="kp-skel aspect-square"></div><div class="p-2 space-y-2"><div class="kp-skel h-3 w-3/4"></div><div class="kp-skel h-2.5 w-1/2"></div></div></div>
+            <div class="kp-skel-card"><div class="kp-skel aspect-square"></div><div class="p-2 space-y-2"><div class="kp-skel h-3 w-4/5"></div><div class="kp-skel h-2.5 w-2/3"></div></div></div>
+            <div class="kp-skel-card"><div class="kp-skel aspect-square"></div><div class="p-2 space-y-2"><div class="kp-skel h-3 w-3/5"></div><div class="kp-skel h-2.5 w-1/2"></div></div></div>
+            <div class="kp-skel-card"><div class="kp-skel aspect-square"></div><div class="p-2 space-y-2"><div class="kp-skel h-3 w-4/5"></div><div class="kp-skel h-2.5 w-2/3"></div></div></div>
+            <div class="kp-skel-card"><div class="kp-skel aspect-square"></div><div class="p-2 space-y-2"><div class="kp-skel h-3 w-3/4"></div><div class="kp-skel h-2.5 w-1/2"></div></div></div>
+          </div>
+          <p class="text-center text-[12px] text-gray-500 font-medium mt-3">募集一覧を読み込み中...</p>
         </div>
       </div>
       <div id="load-more-wrap" class="hidden text-center pt-2">
@@ -972,7 +979,7 @@
       <div class="text-[16px] font-bold text-gray-900">値下げを提案</div>
       <p id="price-offer-now" class="text-[13px] text-gray-500"></p>
       <input id="price-offer-input" type="number" inputmode="numeric" min="1" class="w-full border border-gray-200 rounded-2xl px-4 py-3 text-[16px] outline-none" placeholder="希望価格（円）">
-      <button type="button" onclick="submitPriceOffer()" class="w-full h-12 rounded-full bg-[#ff4d4f] text-white font-bold">この値段で提案</button>
+      <button id="price-offer-submit" type="button" onclick="submitPriceOffer()" class="w-full h-12 rounded-full bg-[#ff4d4f] text-white font-bold">この値段で提案</button>
     </div>
   </div>
 
@@ -1050,8 +1057,8 @@
                   画像
                   <input id="detail-comment-photo" type="file" accept="image/*" class="hidden" onchange="setCommentPhoto(this)">
                 </label>
-                <input id="detail-comment-input" maxlength="200" placeholder="コメントを入力" class="flex-1 bg-[#f6f6f7] border border-[#eee] rounded-full px-4 py-2.5 text-sm outline-none">
-                <button type="submit" class="h-10 px-4 rounded-full bg-[#fff1f0] text-[#e5484d] text-sm font-medium">送信</button>
+                <input id="detail-comment-input" maxlength="200" placeholder="コメントを入力" class="flex-1 bg-[#f6f6f7] border border-[#eee] rounded-full px-4 py-2.5 text-base outline-none" style="font-size:16px">
+                <button id="detail-comment-submit" type="submit" class="h-10 px-4 rounded-full bg-[#fff1f0] text-[#e5484d] text-sm font-medium">送信</button>
               </form>
               <div id="detail-comment-preview" class="hidden mt-2"></div>
             </div>
@@ -1117,10 +1124,10 @@
       <div id="room-task-banner" class="mx-3 mt-2 mb-1"></div>
         <div id="room-messages" class="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 space-y-3 bg-white/40" style="-webkit-overflow-scrolling: touch;"></div>
       <div id="room-review-slot" class="hidden shrink-0 px-3 pt-2 bg-white/80 border-t border-white/60"></div>
-      <div class="p-3 border-t border-white/50 flex items-center space-x-2 shrink-0 bg-white/60 backdrop-blur-md">
+      <div id="room-composer" class="p-3 border-t border-white/50 flex items-center space-x-2 shrink-0 bg-white/60 backdrop-blur-md">
         <input id="image-input" type="file" accept="image/*" class="hidden" onchange="sendImage(this)">
         <button id="room-photo" onclick="document.getElementById('image-input').click()" class="text-xl px-2.5 py-2 rounded-2xl bg-white/80 border border-white hover:bg-white text-purple-600 transition shadow-sm" title="写真を送る">📷</button>
-        <input id="room-input" type="text" maxlength="1000" placeholder="メッセージを入力" onkeydown="if(event.key==='Enter'&&!event.isComposing){sendMessage();}" class="flex-1 min-w-0 border border-white/70 rounded-2xl p-3 bg-white/70 focus:bg-white focus:ring-2 focus:ring-illit-purple focus:outline-none text-sm shadow-inner transition">
+        <input id="room-input" type="text" maxlength="1000" placeholder="メッセージを入力" onkeydown="if(event.key==='Enter'&&!event.isComposing){sendMessage();}" class="flex-1 min-w-0 border border-white/70 rounded-2xl p-3 bg-white/70 focus:bg-white focus:ring-2 focus:ring-illit-purple focus:outline-none text-base shadow-inner transition" style="font-size:16px">
         <button id="room-send" onclick="sendMessage()" class="bg-gradient-to-r from-illit-purple to-illit-accent text-white font-medium text-sm px-5 py-3 rounded-2xl hover:opacity-90 transition shadow-md border border-white/40">送信</button>
       </div>
     </div>
@@ -1199,7 +1206,7 @@
     </div>
   </div>
 
-  <script type="module" src="./js/app-main.js?v=20261121"></script>
+  <script type="module" src="./js/app-main.js?v=20261121c"></script>
 
   <!-- 👇 案内用のポップアップモーダル（サイトのデザインに合わせた綺麗な見た目） 👇 -->
   <div id="inAppBrowserPrompt" class="hidden fixed inset-0 z-[9999] modal-backdrop flex items-center justify-center p-4">
@@ -1681,6 +1688,6 @@
 
 <script src="./js/gllit-ticker.js?v=20261121"></script>
 
-<script src="./js/auto-go-received.js?v=20261121"></script>
+<script src="./js/auto-go-received.js?v=20261121c"></script>
 </body>
 
