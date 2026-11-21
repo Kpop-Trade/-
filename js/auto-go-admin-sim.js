@@ -155,7 +155,7 @@
   window.adminForceCancelAutoGoPool = async function (poolId) {
     if (!isAgAdmin()) { toast("管理者権限が必要です", "error"); return; }
     const ok = await confirmTwice(
-      "【危険】このプールを強制キャンセルし、全参加者を「返金対応中」にします。続けますか？",
+      "【危険】このプールを強制キャンセルし、全参加者をキャンセル状態にします。\n※Auto-GOは各自購入のため、サイト側の返金はありません。続けますか？",
       "強制キャンセルへ進む",
       "最終確認：FORCE_CANCEL を実行します。本当によろしいですか？",
       "実行する"
@@ -173,7 +173,7 @@
         reason: "admin_emergency_failsafe"
       });
       const data = res?.data || res || {};
-      toast(`強制キャンセル完了（${data.affected || 0}人を返金対応中）`, "success");
+      toast(`強制キャンセル完了（${data.affected || 0}人をキャンセル）`, "success");
       if (typeof window.renderAdminAutoGoPanel === "function") await window.renderAdminAutoGoPanel();
     } catch (error) {
       console.error(error);
@@ -318,9 +318,9 @@
           <button type="button" onclick="window.adminSetAutoGoEntryLock('${id}', ${locked ? "false" : "true"})" class="min-h-[44px] px-3 py-2 rounded-xl text-[11px] font-bold ${locked ? "bg-emerald-600 text-white" : "bg-rose-700 text-white"}">
             ${locked ? "エントリーロック解除" : "新規エントリー緊急停止"}
           </button>
-          <button type="button" onclick="window.adminForceCancelAutoGoPool('${id}')" class="min-h-[44px] px-3 py-2 rounded-xl bg-black text-white text-[11px] font-bold">強制キャンセル＆返金対応中</button>
+          <button type="button" onclick="window.adminForceCancelAutoGoPool('${id}')" class="min-h-[44px] px-3 py-2 rounded-xl bg-black text-white text-[11px] font-bold">プール強制キャンセル</button>
         </div>
-        <p class="text-[9px] text-rose-800 leading-relaxed">強制キャンセルは2段階確認あり。参加者ステータスを返金対応中に一括更新し、監査ログを残します。</p>
+        <p class="text-[9px] text-rose-800 leading-relaxed">2段階確認あり。参加者を一括キャンセルし監査ログを残します。各自購入のためサイト側の返金はありません（購入済みの方はショップ側のキャンセル・返品案内を通知）。</p>
       </div>`;
 
     const reassignHint = (pool.entries || []).filter((e) => e && e.uid && !["cancelled", "unshipped_penalty"].includes(e.status)).slice(0, 8).map((e) => {

@@ -1458,7 +1458,7 @@ exports.adminSetAutoGoEntryLock = onCall(async (request) => {
   return { ok: true, locked };
 });
 
-/** 本番緊急：プール強制キャンセル＋参加者を返金対応中に */
+/** 本番緊急：プール強制キャンセル（各自購入のためサイト側返金はなし） */
 exports.adminForceCancelAutoGoPool = onCall({ timeoutSeconds: 120 }, async (request) => {
   assertAdmin(request);
   const data = request.data || {};
@@ -1488,12 +1488,14 @@ exports.adminForceCancelAutoGoPool = onCall({ timeoutSeconds: 120 }, async (requ
   const notifyUids = [];
   entries.docs.forEach((docSnap) => {
     const entry = docSnap.data() || {};
-    if (["cancelled", "unshipped_penalty"].includes(entry.status) && entry.refundStatus === "refund_pending") return;
+    if (["cancelled", "unshipped_penalty"].includes(entry.status) &&
+        entry.cancellationReason === "admin_force_cancel") return;
     bw.update(docSnap.ref, {
       status: "cancelled",
       cancellationReason: "admin_force_cancel",
-      refundStatus: "refund_pending",
-      refundNote: "運営による緊急キャンセル。返金対応中",
+      // Auto-GOは各自購入のためサイト側の返金処理は発生しない
+      followupStatus: "ops_closed",
+      followupNote: "運営による緊急キャンセル。代金は各自購入のためサイトからの返金はありません。購入済みの場合はショップ側のキャンセル・返品をご確認ください。",
       adminForceCancelledBy: request.auth.uid,
       adminForceCancelledAt: FV.serverTimestamp()
     });
@@ -1503,7 +1505,7 @@ exports.adminForceCancelAutoGoPool = onCall({ timeoutSeconds: 120 }, async (requ
 
   await Promise.all(notifyUids.map((uid) => notify(uid, {
     id: `autogo_force_cancel_${poolId}`,
-    text: `「${pool.title || "Auto-GO"}」は運営により緊急キャンセルされました。返金対応中です。詳細はお問い合わせください。`,
+    text: `「${pool.title || "Auto-GO"}」は運営により緊急キャンセルされました。代金は各自購入のためサイトからの返金はありません。購入済みの方はショップ側のキャンセル・返品をご確認ください。`,
     type: "admin",
     link: { k: "autogo", id: poolId },
     title: "🚨 Auto-GO緊急キャンセル"
