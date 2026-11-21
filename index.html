@@ -25,8 +25,9 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js?v=20261121"></script>
 
   <script src="./js/tailwind-config.js?v=20261121"></script>
-  <link rel="stylesheet" href="./styles.css?v=20261121k">
+  <link rel="stylesheet" href="./styles.css?v=20261121m">
   <link rel="stylesheet" href="./liquid-glass.css?v=20261121">
+  <link rel="stylesheet" href="./mycards-binder.css?v=20261121">
 
 
 
@@ -247,38 +248,48 @@
       </div>
     </section>
 
-    <!-- Myトレカ ページ -->
-    <section id="mycards-section" class="hidden space-y-3 pb-8">
-      <div class="flex items-center justify-between px-1">
+    <!-- Myトレカ ページ（バインダーUI） -->
+    <section id="mycards-section" class="hidden space-y-3 pb-8 binder-page">
+      <div class="flex items-center justify-between px-1 gap-2">
         <h2 class="font-bold text-lg text-gray-900">Myトレカ</h2>
+        <button type="button" onclick="generateTradeWantShareImage()" class="shrink-0 text-[11px] font-bold px-3 py-1.5 rounded-full bg-gray-900 text-white shadow-sm active:scale-95">譲・求画像</button>
       </div>
       <div class="grid grid-cols-2 gap-1 p-1 bg-[#f2f2f2] rounded-full lg-pill-track lg-segment">
         <button id="mycards-tab-own" onclick="setMyCardsTab('own')" class="py-2 rounded-full text-[13px] font-medium bg-white text-gray-900 shadow-sm">所持</button>
         <button id="mycards-tab-share" onclick="setMyCardsTab('share')" class="py-2 rounded-full text-[13px] font-medium text-gray-500">共有</button>
       </div>
       <div id="mycards-own-panel" class="space-y-3">
-        <div class="flex gap-2 items-center">
+        <div class="flex gap-2 items-center flex-wrap">
           <label class="shrink-0 bg-white border border-gray-200 rounded-full px-4 py-2.5 text-[13px] font-medium text-gray-800 text-center cursor-pointer">
             画像で探す
             <input type="file" accept="image/*" class="hidden" onchange="runMyCardsImageSearch(this)">
-          </label><button type="button" onclick="openSingleGuideCam('mycards')" class="shrink-0 bg-purple-600 text-white font-bold py-2.5 px-3 rounded-full text-[13px] shadow-sm active:scale-95 transition">📷 ガイド枠</button>
+          </label>
+          <button type="button" onclick="openSingleGuideCam('mycards')" class="shrink-0 bg-purple-600 text-white font-bold py-2.5 px-3 rounded-full text-[13px] shadow-sm active:scale-95 transition">📷 ガイド枠</button>
           <button type="button" id="mycards-image-search-clear" onclick="clearMyCardsImageSearch()" class="hidden shrink-0 px-2 py-2 text-[12px] text-gray-500">クリア</button>
         </div>
-          <img src="./guide-pictogram.svg?v=12" alt="机に置いて、明るくして、真上から撮る" class="w-full h-auto object-contain rounded-xl border border-gray-200 bg-white">
+        <img src="./guide-pictogram.svg?v=12" alt="机に置いて、明るくして、真上から撮る" class="w-full h-auto object-contain rounded-xl border border-gray-200 bg-white">
         <div id="mycards-image-search-result" class="hidden"></div>
-        <div class="flex items-start gap-3">
-          <div class="flex-1 min-w-0 space-y-2">
-            <label class="block">
-              <span class="sr-only">アルバム</span>
-              <select id="mycards-album-select" onchange="setMyCardsAlbum(this.value)" class="w-full bg-white border border-gray-200 rounded-2xl px-3 py-3.5 text-[16px] text-gray-900"></select>
-            </label>
-            <label class="block">
-              <span class="sr-only">メンバー</span>
-              <select id="mycards-member-select" onchange="setMyCardsMember(this.value)" class="w-full bg-white border border-gray-200 rounded-2xl px-3 py-3.5 text-[16px] text-gray-900"></select>
-            </label>
-          </div>
-          <div id="mycards-own-rate" class="w-[108px] shrink-0 pt-1"></div>
+
+        <div class="space-y-1.5">
+          <div class="text-[11px] font-bold text-gray-500 px-1">アルバム</div>
+          <div id="mycards-album-tabs" class="binder-chip-row" role="tablist" aria-label="アルバム別"></div>
         </div>
+        <div class="space-y-1.5">
+          <div class="text-[11px] font-bold text-gray-500 px-1">メンバー</div>
+          <div id="mycards-member-tabs" class="binder-chip-row" role="tablist" aria-label="メンバー別"></div>
+        </div>
+
+        <div class="binder-toolbar px-0.5">
+          <button type="button" id="mycards-filter-missing" class="binder-switch" onclick="toggleMyCardsFilter('missingOnly')">未所持のみ</button>
+          <button type="button" id="mycards-filter-listing" class="binder-switch" onclick="toggleMyCardsFilter('listingOnly')">出品ありのみ</button>
+        </div>
+
+        <!-- 互換用（非表示） -->
+        <select id="mycards-album-select" class="hidden" onchange="setMyCardsAlbum(this.value)" aria-hidden="true"></select>
+        <select id="mycards-member-select" class="hidden" onchange="setMyCardsMember(this.value)" aria-hidden="true"></select>
+        <div id="mycards-own-rate" class="hidden" aria-hidden="true"></div>
+
+        <div id="mycards-progress" class="binder-progress-card"></div>
         <div id="mycards-list" class="space-y-2"></div>
         <button onclick="openAddCustomCard()" class="w-full text-[13px] text-gray-500 py-2">＋ カスタムカードを追加</button>
       </div>
@@ -1214,7 +1225,8 @@
     </div>
   </div>
 
-  <script type="module" src="./js/app-main.js?v=20261121e"></script>
+  <script src="./js/mycards-binder.js?v=20261121"></script>
+  <script type="module" src="./js/app-main.js?v=20261121f"></script>
 
   <!-- 👇 案内用のポップアップモーダル（サイトのデザインに合わせた綺麗な見た目） 👇 -->
   <div id="inAppBrowserPrompt" class="hidden fixed inset-0 z-[9999] modal-backdrop flex items-center justify-center p-4">
@@ -1232,9 +1244,27 @@
 
   <!-- トレカ拡大・所持/通知設定モーダル -->
   <div id="card-detail-modal" class="hidden fixed inset-0 z-[75] modal-backdrop flex items-center justify-center p-4" onclick="if(event.target===this) closeCardDetailModal()">
-    <div class="liquid-glass-heavy rounded-[2rem] max-w-sm w-full p-5 space-y-4 shadow-2xl border border-white relative">
-      <button onclick="closeCardDetailModal()" class="absolute top-3.5 right-3.5 w-8 h-8 rounded-full bg-white/80 text-gray-600 flex items-center justify-center font-bold shadow-sm hover:bg-white">✕</button>
+    <div class="liquid-glass-heavy rounded-[2rem] max-w-sm w-full p-5 space-y-4 shadow-2xl border border-white relative max-h-[92vh] overflow-y-auto">
+      <button onclick="closeCardDetailModal()" class="absolute top-3.5 right-3.5 w-8 h-8 rounded-full bg-white/80 text-gray-600 flex items-center justify-center font-bold shadow-sm hover:bg-white z-10">✕</button>
       <div id="card-detail-body"></div>
+    </div>
+  </div>
+
+  <!-- 譲・求リスト画像プレビュー -->
+  <div id="binder-share-modal" class="hidden fixed inset-0 z-[80] modal-backdrop flex items-end sm:items-center justify-center p-0 sm:p-4" onclick="if(event.target===this) closeBinderShareModal()">
+    <div class="liquid-glass-heavy w-full max-w-md rounded-t-[2rem] sm:rounded-[2rem] p-5 space-y-3 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <h3 class="font-bold text-base text-gray-900">譲・求リスト画像</h3>
+        <button type="button" onclick="closeBinderShareModal()" class="w-8 h-8 rounded-full bg-white/80 text-gray-600 font-bold">✕</button>
+      </div>
+      <p class="text-[11px] text-gray-500">未所持＝求、2枚以上＝譲 で自動生成します（透かし付き公開画像を使用）。</p>
+      <div class="rounded-2xl overflow-hidden border border-white bg-black/5">
+        <img id="binder-share-preview" alt="譲・求リスト" class="w-full h-auto block">
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <a id="binder-share-download" download="illit-trade-want-give.png" class="text-center py-3 rounded-full bg-white border border-gray-200 text-sm font-bold text-gray-800">保存</a>
+        <button type="button" onclick="shareBinderTradeWantImage()" class="py-3 rounded-full bg-black text-white text-sm font-bold">𝕏 でシェア</button>
+      </div>
     </div>
   </div>
 
