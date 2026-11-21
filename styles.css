@@ -820,6 +820,10 @@ html, body {
   padding: 14px 0;
   border-bottom: 1px solid #efefef;
 }
+/* .sell-row の display:flex が Tailwind .hidden を潰さないようにする（交換時にアズカリ行が二重表示される不具合） */
+#post-modal.post-modal--listing .sell-row.hidden {
+  display: none !important;
+}
 #post-modal.post-modal--listing .sell-row-label {
   font-size: 14px;
   font-weight: 600;
