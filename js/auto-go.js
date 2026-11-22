@@ -1555,6 +1555,13 @@
       return;
     }
     if (!activePoolId) return;
+    // サイト利用規約の「同意して利用する」ボタン必須（その後アプリ登録案内）
+    if (typeof window.requireTermsAgreement === "function" &&
+        !window.requireTermsAgreement({
+          resume: function() { window.reserveAutoGoMember(memberName); }
+        })) {
+      return;
+    }
     const refs = window.__autoGoRefs;
     const user = refs.auth.currentUser;
     if (!user) {

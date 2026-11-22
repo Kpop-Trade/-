@@ -438,7 +438,7 @@
   </footer>
 
   <!-- アプリ登録案内モーダル -->
-  <div id="pwa-modal" class="fixed inset-0 modal-backdrop hidden z-[75] flex items-center justify-center p-4">
+  <div id="pwa-modal" class="fixed inset-0 modal-backdrop hidden z-[11060] flex items-center justify-center p-4">
     <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[92vh] flex flex-col">
       <div class="flex justify-between items-center border-b border-purple-200/50 pb-3 shrink-0">
         <h3 class="font-bold text-base text-gray-800 flex items-center gap-2">📱 アプリとして追加</h3>
@@ -1234,7 +1234,7 @@
   </div>
 
   <!-- 利用規約 -->
-  <div id="terms-modal" class="fixed inset-0 modal-backdrop hidden z-[70] flex items-center justify-center p-4">
+  <div id="terms-modal" class="fixed inset-0 modal-backdrop hidden z-[11050] flex items-center justify-center p-4">
     <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-5 space-y-3 shadow-xl max-h-[92vh] flex flex-col">
       <div class="flex justify-between items-center border-b border-purple-200/50 pb-2 shrink-0">
         <h3 class="font-bold text-base text-gray-800">📜 ご利用規約</h3>
@@ -1274,14 +1274,14 @@
         </label>
         <div class="flex space-x-2">
           <button onclick="declineTerms()" class="flex-1 bg-white/60 text-gray-700 border border-white font-medium py-2.5 rounded-full hover:bg-white transition text-sm">同意しない</button>
-          <button id="terms-agree-btn" onclick="agreeTerms()" disabled class="flex-1 bg-gradient-to-r from-illit-purple to-illit-accent text-white font-medium py-2.5 rounded-full hover:opacity-90 transition text-sm disabled:opacity-40 disabled:cursor-not-allowed shadow-sm border border-white/30">同意して利用する</button>
+          <button id="terms-agree-btn" onclick="agreeTerms()" disabled class="flex-1 bg-gradient-to-r from-illit-purple to-illit-accent text-white font-medium py-2.5 rounded-full hover:opacity-90 transition text-sm disabled:opacity-40 disabled:cursor-not-allowed shadow-sm border border-white/30">同意して利用する（必須）</button>
         </div>
       </div>
     </div>
   </div>
 
   <script src="./js/mycards-binder.js?v=20261121"></script>
-  <script type="module" src="./js/app-main.js?v=20261122hero1"></script>
+  <script type="module" src="./js/app-main.js?v=20261122terms1"></script>
 
   <!-- 👇 案内用のポップアップモーダル（サイトのデザインに合わせた綺麗な見た目） 👇 -->
   <div id="inAppBrowserPrompt" class="hidden fixed inset-0 z-[9999] modal-backdrop flex items-center justify-center p-4">
@@ -1657,7 +1657,7 @@
 </div>
 
 <script src="./js/auto-go-home-hero.js?v=20261122hero1"></script>
-<script src="./js/auto-go.js?v=20261122hero1"></script>
+<script src="./js/auto-go.js?v=20261122terms1"></script>
 <script src="./js/auto-go-admin-sim.js?v=20261122tradephase1"></script>
 
 

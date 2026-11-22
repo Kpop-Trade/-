@@ -542,7 +542,13 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     }
 
     window.openPwaGuideModal = function() { document.getElementById("pwa-modal").classList.remove("hidden"); };
-    window.closePwaGuideModal = function() { document.getElementById("pwa-modal").classList.add("hidden"); };
+    window.closePwaGuideModal = function() {
+      document.getElementById("pwa-modal").classList.add("hidden");
+      try { localStorage.setItem("illit_pwa_guide_seen", "1"); } catch (_) {}
+      if (typeof window.__runAfterTermsOnboarding === "function") {
+        window.__runAfterTermsOnboarding();
+      }
+    };
 
     window.openNotificationsModal = function(tab) {
       if (!currentUser) return /* alert hidden */ console.log("ログインが必要です。");
@@ -2631,6 +2637,11 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           window.__agRememberPoolForLogin(poolId);
         }
       } catch (_) {}
+      // 未同意なら先に利用規約同意ボタン → アプリ登録案内
+      if (typeof window.requireTermsAgreement === "function" &&
+          !window.requireTermsAgreement({ resume: function() { window.loginWithGoogle(); } })) {
+        return;
+      }
       signInWithPopup(auth, provider).catch(e => {
         /* alert hidden */ console.log("ログインエラー: " + (e.message || e));
       });
@@ -2719,8 +2730,21 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         if (typeof loadPosts === "function") loadPosts(true);
         setTimeout(() => { if (typeof updateUserAvatar === "function") updateUserAvatar(); }, 800);
         if ("Notification" in window && Notification.permission === "granted" && localStorage.getItem(pushStorageKey())) saveToken().catch(()=>{});
-        // ログイン済み・規約同意済みなら初回のみ通知オン確認
-        if (typeof maybeShowPushPrompt === "function") maybeShowPushPrompt();
+        // ログイン済みでも未同意なら同意ボタン必須（X経由でもログイン後は必須）
+        setTimeout(function() {
+          if (typeof window.hasAgreedTerms === "function" && !window.hasAgreedTerms() &&
+              typeof window.requireTermsAgreement === "function") {
+            window.requireTermsAgreement({
+              resume: function() {
+                if (typeof window.__agConsumePendingPoolAfterLogin === "function") {
+                  window.__agConsumePendingPoolAfterLogin();
+                }
+              }
+            });
+          } else if (typeof maybeShowPushPrompt === "function") {
+            maybeShowPushPrompt();
+          }
+        }, 350);
         recordDailyActiveUser().catch(() => {});
         // Auto-GO プールを先読み（開いたときの待ちを減らす）
         setTimeout(function() {
@@ -2728,9 +2752,10 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
             Promise.resolve(window.__loadAutoGoPools({ prefetch: true })).catch(function() {});
           }
         }, 300);
-        // X流入など：ログイン完了後に元の Auto-GO プール詳細へ戻す
+        // 規約済みならログイン後に Auto-GO へ復帰
         setTimeout(function() {
-          if (typeof window.__agConsumePendingPoolAfterLogin === "function") {
+          if (typeof window.hasAgreedTerms === "function" && window.hasAgreedTerms() &&
+              typeof window.__agConsumePendingPoolAfterLogin === "function") {
             window.__agConsumePendingPoolAfterLogin();
           }
         }, 500);
@@ -2746,6 +2771,10 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         window._tradeWatchReady = false;
         window._tradeWatch = {};
         updateUserAvatar();
+        // X経由の未ログインは投稿をそのまま表示。それ以外は規約ゲート
+        setTimeout(function() {
+          if (typeof window.maybeGateTermsOnBoot === "function") window.maybeGateTermsOnBoot();
+        }, 200);
       }
     });
 
@@ -6364,31 +6393,124 @@ window.openAzukariApp = function() {
       return usesAzukariPayment(entity) ? "アズカリ" : "PayPay";
     }
     const TERMS_VERSION = "2026-11-09", TERMS_KEY = "illit_terms_version"; let termsSaving = false;
+    let pendingAfterTerms = null;
+    let termsOnboardingRunning = false;
     function hasAgreedLocally() { try { return localStorage.getItem(TERMS_KEY) === TERMS_VERSION; } catch(e){ return false; } }
+    window.hasAgreedTerms = hasAgreedLocally;
+
+    /** X（旧Twitter）経由の流入判定：未ログイン閲覧をブロックしないため */
+    function isXInboundVisit() {
+      try {
+        if (sessionStorage.getItem("illit_x_inbound") === "1") return true;
+        const params = new URLSearchParams(location.search);
+        if (params.get("pool") || params.get("tab") === "autogo") {
+          sessionStorage.setItem("illit_x_inbound", "1");
+          return true;
+        }
+        const from = String(params.get("from") || params.get("utm_source") || "").toLowerCase();
+        if (from === "x" || from === "twitter" || from.includes("twitter")) {
+          sessionStorage.setItem("illit_x_inbound", "1");
+          return true;
+        }
+        const ref = String(document.referrer || "");
+        if (/twitter\.com|x\.com|t\.co/i.test(ref)) {
+          sessionStorage.setItem("illit_x_inbound", "1");
+          return true;
+        }
+        const ua = String(navigator.userAgent || "");
+        if (/Twitter|TwitterAndroid|\bX\/\d/i.test(ua)) {
+          sessionStorage.setItem("illit_x_inbound", "1");
+          return true;
+        }
+      } catch (_) {}
+      return false;
+    }
+    window.isXInboundVisit = isXInboundVisit;
+
+    /**
+     * 利用規約未同意ならモーダルを出し、同意＋アプリ登録案内の後に resume を実行。
+     * @returns {boolean} すでに同意済みなら true
+     */
+    window.requireTermsAgreement = function(opts) {
+      if (hasAgreedLocally()) return true;
+      const options = opts || {};
+      if (typeof options.resume === "function") {
+        pendingAfterTerms = options.resume;
+      }
+      openTerms(false);
+      if (typeof showToast === "function") {
+        showToast("利用には規約への同意が必要です。チェックを入れて「同意して利用する」を押してください", "info");
+      }
+      return false;
+    };
+
+    window.__runAfterTermsOnboarding = function() {
+      if (termsOnboardingRunning) return;
+      const resume = pendingAfterTerms;
+      pendingAfterTerms = null;
+      if (typeof resume === "function") {
+        termsOnboardingRunning = true;
+        try { resume(); } catch (e) { console.warn("after terms resume", e); }
+        termsOnboardingRunning = false;
+      }
+      setTimeout(() => {
+        if (typeof maybeShowPushPrompt === "function") maybeShowPushPrompt();
+      }, 400);
+    };
+
     window.openTerms = function(readOnly) {
       const view = !!readOnly && hasAgreedLocally();
-      document.getElementById("terms-agree-area").classList.toggle("hidden", view); document.getElementById("terms-close-btn").classList.toggle("hidden", !view); document.getElementById("terms-lead").classList.toggle("hidden", view);
-      document.getElementById("terms-check").checked = false; document.getElementById("terms-agree-btn").disabled = true; document.getElementById("terms-modal").classList.remove("hidden");
+      document.getElementById("terms-agree-area").classList.toggle("hidden", view);
+      document.getElementById("terms-close-btn").classList.toggle("hidden", !view);
+      document.getElementById("terms-lead").classList.toggle("hidden", view);
+      document.getElementById("terms-check").checked = false;
+      document.getElementById("terms-agree-btn").disabled = true;
+      document.getElementById("terms-modal").classList.remove("hidden");
     };
-    window.closeTerms = function() { if (hasAgreedLocally()) document.getElementById("terms-modal").classList.add("hidden"); };
-    window.onTermsCheck = function() { document.getElementById("terms-agree-btn").disabled = !document.getElementById("terms-check").checked; };
-    window.declineTerms = function() { /* alert hidden */ console.log("利用規約に同意いただけない場合は、本サービスをご利用いただけません。"); };
+    window.closeTerms = function() {
+      if (hasAgreedLocally()) document.getElementById("terms-modal").classList.add("hidden");
+    };
+    window.onTermsCheck = function() {
+      document.getElementById("terms-agree-btn").disabled = !document.getElementById("terms-check").checked;
+    };
+    window.declineTerms = function() {
+      if (typeof showToast === "function") {
+        showToast("利用規約に同意いただけない場合は、本サービスをご利用いただけません", "error");
+      }
+      pendingAfterTerms = null;
+    };
     
     window.agreeTerms = async function() {
-      if (!document.getElementById("terms-check").checked) return;
+      const check = document.getElementById("terms-check");
+      const btn = document.getElementById("terms-agree-btn");
+      if (!check || !check.checked) {
+        if (typeof showToast === "function") showToast("「利用規約をすべて読み、同意します」にチェックを入れてください", "error");
+        return;
+      }
+      if (btn) btn.disabled = true;
       try { localStorage.setItem(TERMS_KEY, TERMS_VERSION); } catch(e){}
       document.getElementById("terms-modal").classList.add("hidden");
-      if (currentUser) try { await saveUserData({ terms: { version: TERMS_VERSION, agreedAt: serverTimestamp() } }); } catch(e){}
-      
+      if (currentUser) {
+        try { await saveUserData({ terms: { version: TERMS_VERSION, agreedAt: serverTimestamp() } }); } catch(e){}
+      }
+      // 必ずアプリ登録案内を出す（未表示時は毎回、表示済みでも同意直後は出す）
       openPwaGuideModal();
-      // 規約同意後に、未確認なら通知オン案内（PWA案内のあと）
-      setTimeout(() => { if (typeof maybeShowPushPrompt === "function") maybeShowPushPrompt(); }, 1200);
+    };
+
+    /** 初回ゲート：X経由の未ログイン閲覧は投稿を見せ、それ以外は規約を必須表示 */
+    window.maybeGateTermsOnBoot = function() {
+      if (hasAgreedLocally()) return;
+      const loggedIn = !!(window.currentUser || (typeof auth !== "undefined" && auth.currentUser));
+      // Xから来た未ログインは投稿・Auto-GO閲覧を妨げない
+      if (!loggedIn && isXInboundVisit()) return;
+      openTerms(false);
     };
 
     function syncTermsRecord(d) {
       if (!currentUser) return; const recorded = d && d.terms && d.terms.version === TERMS_VERSION;
       if (recorded && !hasAgreedLocally()) { try { localStorage.setItem(TERMS_KEY, TERMS_VERSION); } catch(e){} document.getElementById("terms-modal").classList.add("hidden"); }
       else if (!recorded && hasAgreedLocally() && !termsSaving) { termsSaving = true; saveUserData({ terms: { version: TERMS_VERSION, agreedAt: serverTimestamp() } }).finally(() => { termsSaving = false; }); }
+      // 未同意の強制表示は onAuthStateChanged / requireTermsAgreement 側で行う
     }
 
            // ===== IndexedDB キャッシュヘルパー（スマホ・PC本体に永久保存） =====
