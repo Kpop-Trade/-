@@ -77,9 +77,7 @@
     if (pool.recruitmentClosedAt) return false;
     if (endMs > 0 && endMs <= Date.now()) return false;
     const target = Number(pool.targetParticipants) || Number(pool.minThreshold || pool.minParticipants) || 20;
-    const storedTotal = Number(pool.totalCount) || 0;
-    const dummy = Number(pool.dummyCount) || 0;
-    const total = Math.max(0, storedTotal - dummy);
+    const total = Number(pool.totalCount) || 0;
     if (total >= target) return false;
     return true;
   }
@@ -115,9 +113,7 @@
   }
 
   function capacityInfo(pool) {
-    const storedTotal = Number(pool.totalCount) || 0;
-    const dummy = Number(pool.dummyCount) || 0;
-    const total = Math.max(0, storedTotal - dummy);
+    const total = Number(pool.totalCount) || 0;
     const minP = Number(pool.minThreshold || pool.minParticipants) || 20;
     const targetP = Number(pool.targetParticipants) || minP;
     const gaugeMax = Math.max(minP, targetP);
