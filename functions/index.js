@@ -2075,6 +2075,156 @@ exports.adminSimAutoGoDummyPurchases = onCall({
   };
 });
 
+function dummyShipProofUrl(uid, index) {
+  const color = ((index * 47) + (String(uid).length * 13)) % 16777215;
+  let hex = color.toString(16);
+  while (hex.length < 6) {
+    hex = "0" + hex;
+  }
+  const svg = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"8\" height=\"8\"><rect width=\"8\" height=\"8\" fill=\"#" + hex + "\"/></svg><!--" + uid + "-" + index + "-->";
+  return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+}
+
+function nextDummyTrackingNumber(used, index) {
+  const base = String(Date.now() % 100000000).padStart(8, "0");
+  let n = 0;
+  while (n < 500) {
+    const tail = String((index * 17 + n) % 100).padStart(2, "0");
+    const tracking = "89" + base + tail;
+    if (!used.has(tracking)) {
+      used.add(tracking);
+      return tracking;
+    }
+    n += 1;
+  }
+  return "";
+}
+
+/**
+ * テスト用：マッチ済みダミーの発送報告を一括で付ける
+ * 本番と同じ項目（伝票画像・追跡番号・相手への追跡コピー）を書く
+ */
+exports.adminSimAutoGoDummyShipments = onCall({
+  timeoutSeconds: 180
+}, async (request) => {
+  assertAdmin(request);
+  const poolId = String((request.data || {}).poolId || "");
+  if (!/^[\w-]{1,120}$/.test(poolId)) throw new HttpsError("invalid-argument", "invalid pool");
+
+  const poolRef = db.collection("auto_go_pools").doc(poolId);
+  const poolSnap = await poolRef.get();
+  if (!poolSnap.exists) throw new HttpsError("not-found", "pool not found");
+  if (!isAutoGoTestPool(poolSnap.data())) {
+    throw new HttpsError("failed-precondition", "dummy shipment sim is allowed only on [TEST] pools");
+  }
+
+  const entriesSnap = await poolRef.collection("entries").get();
+  const usedTracking = new Set();
+  entriesSnap.docs.forEach((docSnap) => {
+    const row = docSnap.data() || {};
+    const own = String(row.trackingNumber || "").replace(/\D/g, "");
+    const incoming = String(row.incomingTrackingNumber || "").replace(/\D/g, "");
+    if (own) usedTracking.add(own);
+    if (incoming) usedTracking.add(incoming);
+  });
+
+  const candidates = entriesSnap.docs
+    .map((docSnap) => ({ uid: docSnap.id, ...(docSnap.data() || {}) }))
+    .filter((entry) => {
+      const dummy = entry.isDummy === true || isAutoGoDummyUid(entry.uid);
+      const already = entry.shippedDone === true || !!entry.shippedAt;
+      return dummy && entry.status === "matched" && !already;
+    })
+    .sort((a, b) => (Number(a.entrySeq) || 0) - (Number(b.entrySeq) || 0));
+
+  const results = [];
+  let skippedNoAddress = 0;
+  for (let i = 0; i < candidates.length; i += 1) {
+    const entry = candidates[i];
+    if (!entry.shipToAddress) {
+      skippedNoAddress += 1;
+      continue;
+    }
+    const trackingNumber = nextDummyTrackingNumber(usedTracking, i + 1);
+    if (!trackingNumber || trackingNumber.length < 10) {
+      throw new HttpsError("internal", "追跡番号を作れませんでした");
+    }
+    const proofUrl = entry.shippingProofUrl || dummyShipProofUrl(entry.uid, i + 1);
+    const hash = createHash("sha256").update(String(proofUrl) + "|" + entry.uid).digest("hex");
+    const entryRef = autoGoEntryRef(poolId, entry.uid);
+    const receiverRef = entry.sendToUid ? autoGoEntryRef(poolId, entry.sendToUid) : null;
+    const hashRef = db.collection("auto_go_shipping_hashes").doc(hash);
+    let notifyUid = "";
+    let wrote = false;
+    await db.runTransaction(async (tx) => {
+      const reads = [tx.get(entryRef), tx.get(hashRef)];
+      if (receiverRef) reads.push(tx.get(receiverRef));
+      const snaps = await Promise.all(reads);
+      const current = snaps[0];
+      const hashSnap = snaps[1];
+      const receiverSnap = receiverRef ? snaps[2] : null;
+      if (!current.exists) return;
+      const data = current.data() || {};
+      const already = data.shippedDone === true || !!data.shippedAt;
+      if (data.status !== "matched" || already || !data.shipToAddress) return;
+      if (hashSnap.exists && !data.shippingProofUrl) return;
+      if (!hashSnap.exists) {
+        tx.create(hashRef, {
+          poolId,
+          uid: entry.uid,
+          kind: "shipping",
+          sha256: hash,
+          storagePath: "inline-dummy",
+          createdAt: FV.serverTimestamp()
+        });
+      }
+      tx.update(entryRef, {
+        shippingProofUrl: data.shippingProofUrl || proofUrl,
+        shippingProofHash: data.shippingProofHash || hash,
+        shippingProofSavedAt: data.shippingProofSavedAt || FV.serverTimestamp(),
+        shippingProofStorage: data.shippingProofStorage || "firestore",
+        shippedDone: true,
+        shippedAt: FV.serverTimestamp(),
+        trackingNumber
+      });
+      if (receiverRef && receiverSnap && receiverSnap.exists) {
+        notifyUid = entry.sendToUid;
+        tx.update(receiverRef, {
+          incomingTrackingNumber: trackingNumber,
+          incomingShippedAt: FV.serverTimestamp(),
+          incomingShipperName: data.userName || "ダミー参加者"
+        });
+      }
+      wrote = true;
+    });
+    if (!wrote) continue;
+    if (notifyUid && !isAutoGoDummyUid(notifyUid)) {
+      await notify(notifyUid, {
+        id: "autogo_incoming_" + poolId + "_" + entry.uid,
+        text: "Auto-GOのトレカが発送されました。追跡番号: " + trackingNumber,
+        type: "info",
+        link: { k: "autogo", id: poolId },
+        title: "📦 Auto-GO発送通知"
+      }).catch((e) => console.warn("dummy ship notify", e));
+    }
+    results.push({ uid: entry.uid, trackingNumber });
+  }
+
+  await writeAutoGoAuditLog(poolId, {
+    action: "dummy_shipment_sim",
+    actorUid: request.auth.uid,
+    shipped: results.length,
+    skippedNoAddress
+  }).catch(() => {});
+
+  return {
+    ok: true,
+    shipped: results.length,
+    skippedNoAddress,
+    results
+  };
+});
+
 /**
  * テスト用：発送後のダミー受取完了一括シミュレーション
  * 本番と同じ applyAutoGoReceiptRegistration 経路

@@ -607,6 +607,142 @@
     }
   };
 
+  function dummyShipProofUrl(uid, index) {
+    const color = ((index * 47) + (String(uid).length * 13)) % 16777215;
+    let hex = color.toString(16);
+    while (hex.length < 6) {
+      hex = "0" + hex;
+    }
+    const svg = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"8\" height=\"8\"><rect width=\"8\" height=\"8\" fill=\"#" + hex + "\"/></svg><!--" + uid + "-" + index + "-->";
+    return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+  }
+
+  function nextDummyTrackingNumber(used, index) {
+    const base = String(Date.now() % 100000000).padStart(8, "0");
+    let n = 0;
+    while (n < 500) {
+      const tail = String((index * 17 + n) % 100).padStart(2, "0");
+      const tracking = "89" + base + tail;
+      if (!used.has(tracking)) {
+        used.add(tracking);
+        return tracking;
+      }
+      n += 1;
+    }
+    return "";
+  }
+
+  /** Functions未デプロイ時：マッチ済みダミーの発送報告を直接書き込み */
+  async function simDummyShipmentsViaFirestore(poolId) {
+    const refs = agRefs();
+    if (!refs.db || typeof refs.doc !== "function" || typeof refs.getDocs !== "function") {
+      throw new Error("Firestoreの準備ができていません");
+    }
+    const poolRef = refs.doc(refs.db, "auto_go_pools", poolId);
+    const poolSnap = await refs.getDoc(poolRef);
+    if (!poolSnap.exists()) throw new Error("プールが見つかりません");
+    if (!isTestPoolData(poolSnap.data() || {})) throw new Error("テストプールだけ実行できます");
+
+    const entriesSnap = await refs.getDocs(refs.collection(refs.db, "auto_go_pools", poolId, "entries"));
+    const usedTracking = new Set();
+    const rows = entriesSnap.docs.map((d) => ({ uid: d.id, ...(d.data() || {}) }));
+    rows.forEach((row) => {
+      const own = String(row.trackingNumber || "").replace(/\D/g, "");
+      const incoming = String(row.incomingTrackingNumber || "").replace(/\D/g, "");
+      if (own) usedTracking.add(own);
+      if (incoming) usedTracking.add(incoming);
+    });
+    const candidates = rows
+      .filter((entry) => {
+        const already = entry.shippedDone === true || !!entry.shippedAt;
+        return isDummyEntry(entry, entry.uid) && entry.status === "matched" && !already;
+      })
+      .sort((a, b) => (Number(a.entrySeq) || 0) - (Number(b.entrySeq) || 0));
+
+    const stamp = refs.serverTimestamp ? refs.serverTimestamp() : new Date();
+    const results = [];
+    let skippedNoAddress = 0;
+    for (let i = 0; i < candidates.length; i += 1) {
+      const entry = candidates[i];
+      if (!entry.shipToAddress) {
+        skippedNoAddress += 1;
+        continue;
+      }
+      const trackingNumber = nextDummyTrackingNumber(usedTracking, i + 1);
+      if (!trackingNumber) throw new Error("追跡番号を作れませんでした");
+      const proofUrl = entry.shippingProofUrl || dummyShipProofUrl(entry.uid, i + 1);
+      const entryRef = refs.doc(refs.db, "auto_go_pools", poolId, "entries", entry.uid);
+      await refs.updateDoc(entryRef, {
+        shippingProofUrl: entry.shippingProofUrl || proofUrl,
+        shippingProofSavedAt: entry.shippingProofSavedAt || stamp,
+        shippingProofStorage: entry.shippingProofStorage || "firestore",
+        shippedDone: true,
+        shippedAt: stamp,
+        trackingNumber
+      });
+      if (entry.sendToUid) {
+        const receiverRef = refs.doc(refs.db, "auto_go_pools", poolId, "entries", entry.sendToUid);
+        try {
+          await refs.updateDoc(receiverRef, {
+            incomingTrackingNumber: trackingNumber,
+            incomingShippedAt: stamp,
+            incomingShipperName: entry.userName || "ダミー参加者"
+          });
+        } catch (receiverError) {
+          console.warn("dummy incoming tracking skipped", receiverError);
+        }
+      }
+      results.push({ uid: entry.uid, trackingNumber });
+    }
+    return {
+      ok: true,
+      shipped: results.length,
+      skippedNoAddress,
+      results,
+      via: "firestore"
+    };
+  }
+
+  window.adminSimAutoGoDummyShipments = async function (poolId) {
+    if (!isAgAdmin()) { toast("管理者権限が必要です", "error"); return; }
+    if (!poolId) { toast("プールIDがありません", "error"); return; }
+    toast("ダミー一括発送報告を実行中…", "info");
+    const fn = agRefs().adminSimAutoGoDummyShipments;
+    try {
+      let data = null;
+      if (typeof fn === "function") {
+        try {
+          const res = await fn({ poolId });
+          data = res?.data || res || {};
+          data.via = data.via || "functions";
+        } catch (callErr) {
+          console.warn("adminSimAutoGoDummyShipments callable failed, trying Firestore:", callErr);
+          if (!shouldFallbackToFirestore(callErr)) throw callErr;
+          data = await simDummyShipmentsViaFirestore(poolId);
+        }
+      } else {
+        data = await simDummyShipmentsViaFirestore(poolId);
+      }
+      const shipped = Number(data?.shipped || 0);
+      const skipped = Number(data?.skippedNoAddress || 0);
+      if (!shipped) {
+        toast("発送対象のダミー（マッチ済み・未発送）がいません。マッチングのあとに実行してください", "error");
+      } else {
+        toast(
+          "発送報告シミュ完了: " + shipped + "人" +
+          (skipped ? " / 宛先なし " + skipped + "人は見送り" : "") +
+          (data.via === "firestore" ? "（直接書込）" : ""),
+          "success"
+        );
+      }
+      if (typeof window.renderAdminAutoGoPanel === "function") await window.renderAdminAutoGoPanel();
+      return data;
+    } catch (error) {
+      console.error(error);
+      toast("発送報告シミュ失敗: " + callableErrorText(error), "error");
+    }
+  };
+
   window.adminSimAutoGoDummyReceipts = async function (poolId) {
     if (!isAgAdmin()) { toast("管理者権限が必要です", "error"); return; }
     if (!poolId) { toast("プールIDがありません", "error"); return; }
@@ -864,6 +1000,7 @@
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <button type="button" onclick="window.adminSimAutoGoDummyPurchases('${id}','all')" class="min-h-[44px] px-3 py-2 rounded-xl bg-emerald-600 text-white text-[11px] font-black sm:col-span-2">ダミー一括購入報告（アズカリ決済完了シミュレーション）</button>
             <button type="button" onclick="window.adminSimAutoGoDummyPurchases('${id}','leave_one')" class="min-h-[44px] px-3 py-2 rounded-xl bg-white border border-emerald-400 text-[11px] font-bold text-emerald-950">ダミー購入報告（1人分・1人未報告を残す）</button>
+            <button type="button" onclick="window.adminSimAutoGoDummyShipments('${id}')" class="min-h-[44px] px-3 py-2 rounded-xl bg-orange-600 text-white text-[11px] font-black sm:col-span-2">ダミー一括発送報告</button>
             <button type="button" onclick="window.adminSimAutoGoDummyReceipts('${id}')" class="min-h-[44px] px-3 py-2 rounded-xl bg-teal-700 text-white text-[11px] font-black">ダミー一括受取確認（取引完了シミュレーション）</button>
           </div>
         </div>
