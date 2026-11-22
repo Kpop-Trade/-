@@ -411,60 +411,165 @@ exports.onAutoGoArrivalOrRevealRegistered = onDocumentUpdated(
   }
 );
 
+function isAutoGoDummyEntry(entry, uid) {
+  if (entry && entry.isDummy === true) return true;
+  return isAutoGoDummyUid(uid);
+}
+
+/**
+ * マッチング用の宛先。
+ * ダミーは users/{uid} を作らないので、住所が無ければテスト用の宛先を使う。
+ * 実ユーザーは住所が欠けていても捏造しない。
+ */
+async function resolveAutoGoMatchAddress(entry) {
+  const loaded = await loadUserShippingAddress(entry.id);
+  if (loaded.name && loaded.zip && loaded.address1) {
+    return loaded;
+  }
+  if (isAutoGoDummyEntry(entry, entry.id)) {
+    const dummyName = entry.userName || entry.displayName || "ダミー参加者";
+    return {
+      user: loaded.user,
+      profile: loaded.profile,
+      name: dummyName,
+      zip: "000-0000",
+      address1: "テスト用ダミー（実発送なし）",
+      address2: "",
+      phone: loaded.phone || "",
+      xId: loaded.xId || ""
+    };
+  }
+  return loaded;
+}
+
 function findAutoGoCycle(start, candidates, used) {
-  const path = [start];
-  const visited = new Set([start.id]);
-  function search(current) {
-    for (const next of candidates) {
-      if (next.wantedMember !== current.pulledMember) continue;
+  const idToEntry = new Map();
+  const byWanted = new Map();
+  for (let i = 0; i < candidates.length; i += 1) {
+    const entry = candidates[i];
+    idToEntry.set(entry.id, entry);
+    if (used.has(entry.id) && entry.id !== start.id) {
+      continue;
+    }
+    const wantedKey = entry.wantedMember;
+    if (!byWanted.has(wantedKey)) {
+      byWanted.set(wantedKey, []);
+    }
+    byWanted.get(wantedKey).push(entry);
+  }
+
+  const queue = [start];
+  const parentId = new Map();
+  parentId.set(start.id, "");
+  const seen = new Set([start.id]);
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+    const nexts = byWanted.get(current.pulledMember) || [];
+    for (let i = 0; i < nexts.length; i += 1) {
+      const next = nexts[i];
       if (next.id === start.id) {
-        if (path.length >= 2) return path.slice();
+        if (current.id === start.id) {
+          continue;
+        }
+        const path = [];
+        let cursorId = current.id;
+        let guard = 0;
+        while (cursorId && guard < candidates.length + 2) {
+          const cursor = idToEntry.get(cursorId);
+          if (!cursor) {
+            break;
+          }
+          path.push(cursor);
+          if (cursorId === start.id) {
+            break;
+          }
+          cursorId = parentId.get(cursorId) || "";
+          guard += 1;
+        }
+        path.reverse();
+        if (path.length >= 2 && path[0] && path[0].id === start.id) {
+          return path;
+        }
         continue;
       }
-      if (used.has(next.id) || visited.has(next.id) || path.length >= 5) continue;
-      visited.add(next.id);
-      path.push(next);
-      const result = search(next);
-      if (result) return result;
-      path.pop();
-      visited.delete(next.id);
+      if (seen.has(next.id) || used.has(next.id)) {
+        continue;
+      }
+      seen.add(next.id);
+      parentId.set(next.id, current.id);
+      queue.push(next);
     }
-    return null;
   }
-  return search(start);
+  return null;
 }
 
 async function closeAutoGoRevealWindow(poolId, poolRef, poolData) {
   const entriesRef = poolRef.collection("entries");
-  const waiting = await entriesRef.where("status", "==", "waiting_match").get();
-  const candidates = waiting.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-    .sort((a, b) => timestampMillis(a.revealedAt) - timestampMillis(b.revealedAt));
+  const waitingSnap = await entriesRef.where("status", "==", "waiting_match").get();
+  const matchedSnap = await entriesRef.where("status", "==", "matched").get();
+  const rawCandidates = [];
+  waitingSnap.docs.forEach((doc) => {
+    rawCandidates.push({ id: doc.id, ...doc.data() });
+  });
+  matchedSnap.docs.forEach((doc) => {
+    const data = doc.data() || {};
+    if (data.noMatchResult === true && !data.sendToUid) {
+      rawCandidates.push({ id: doc.id, ...data });
+    }
+  });
+  rawCandidates.sort((a, b) => timestampMillis(a.revealedAt) - timestampMillis(b.revealedAt));
+
+  const addressById = new Map();
+  const candidates = [];
+  const blocked = [];
+  for (let i = 0; i < rawCandidates.length; i += 1) {
+    const entry = rawCandidates[i];
+    const address = await resolveAutoGoMatchAddress(entry);
+    if (address.name && address.zip && address.address1) {
+      addressById.set(entry.id, address);
+      candidates.push(entry);
+    } else {
+      blocked.push(entry);
+    }
+  }
+
   const used = new Set();
   const updates = [];
 
-  for (const start of candidates) {
+  for (let s = 0; s < candidates.length; s += 1) {
+    const start = candidates[s];
     if (used.has(start.id)) continue;
     const cycle = findAutoGoCycle(start, candidates, used);
     if (!cycle) continue;
-    const shippingProfiles = await Promise.all(cycle.map((entry) => loadUserShippingAddress(entry.id)));
-    if (shippingProfiles.some((address) => !address.name || !address.zip || !address.address1)) continue;
+    let cycleReady = true;
+    for (let i = 0; i < cycle.length; i += 1) {
+      const address = addressById.get(cycle[i].id);
+      if (!address || !address.name || !address.zip || !address.address1) {
+        cycleReady = false;
+        break;
+      }
+    }
+    if (!cycleReady) continue;
     cycle.forEach((entry) => used.add(entry.id));
     const cycleId = `ag_${poolId}_${start.id}`;
     cycle.forEach((sender, index) => {
       const receiver = cycle[(index + 1) % cycle.length];
       const provider = cycle[(index + cycle.length - 1) % cycle.length];
-      const receiverAddress = shippingProfiles[(index + 1) % cycle.length];
+      const receiverAddress = addressById.get(receiver.id);
+      const shipToAddress = [receiverAddress.address1, receiverAddress.address2].filter(Boolean).join(" ");
       updates.push({
         ref: autoGoEntryRef(poolId, sender.id),
         data: {
           status: "matched",
+          noMatchResult: FV.delete(),
           matchRoomId: cycleId,
           cycleSize: cycle.length,
           sendToUid: receiver.id,
           sendToName: receiver.userName || receiver.displayName || "参加者",
           shipToName: receiverAddress.name,
           shipToZip: receiverAddress.zip,
-          shipToAddress: [receiverAddress.address1, receiverAddress.address2].filter(Boolean).join(" "),
+          shipToAddress,
           receiveFromUid: provider.id,
           receiveFromName: provider.userName || provider.displayName || "参加者",
           receivingCard: provider.pulledMember,
@@ -474,13 +579,21 @@ async function closeAutoGoRevealWindow(poolId, poolRef, poolData) {
     });
   }
 
-  for (const candidate of candidates) {
+  for (let i = 0; i < candidates.length; i += 1) {
+    const candidate = candidates[i];
     if (!used.has(candidate.id)) {
       updates.push({
         ref: autoGoEntryRef(poolId, candidate.id),
         data: { status: "matched", noMatchResult: true, matchedAt: FV.serverTimestamp() }
       });
     }
+  }
+  for (let i = 0; i < blocked.length; i += 1) {
+    const entry = blocked[i];
+    updates.push({
+      ref: autoGoEntryRef(poolId, entry.id),
+      data: { status: "matched", noMatchResult: true, matchedAt: FV.serverTimestamp() }
+    });
   }
 
   for (const status of ["purchased", "arrived"]) {
@@ -496,16 +609,23 @@ async function closeAutoGoRevealWindow(poolId, poolRef, poolData) {
   const writer = db.bulkWriter();
   updates.forEach(({ ref, data }) => writer.update(ref, data));
   await writer.close();
-  await poolRef.update({ matchingClosedAt: FV.serverTimestamp() });
+  const poolUpdate = { matchingClosedAt: FV.serverTimestamp() };
+  if (isAutoGoTestPool(poolData)) {
+    poolUpdate.dummyMatchFixedAt = FV.serverTimestamp();
+  }
+  await poolRef.update(poolUpdate);
 
   await Promise.all(updates
-    .filter(({ data }) => data.penalty)
+    .filter(({ data, ref }) => data.penalty && !isAutoGoDummyUid(ref.id))
     .map(({ ref }) => recordAutoGoPenalty(ref.id, poolId)));
   await Promise.all(updates.map(({ ref, data }) => {
+    if (isAutoGoDummyUid(ref.id)) {
+      return Promise.resolve();
+    }
     if (data.status === "matched") {
       return notify(ref.id, {
         id: `autogo_match_${poolId}`,
-        text: data.noMatchResult
+        text: data.noMatchResult === true
           ? `「${poolData.title || "Auto-GO"}」の自動マッチングが完了しました。今回は交換対象外となりました。`
           : `「${poolData.title || "Auto-GO"}」の発送先が決まりました。アプリで宛先をご確認ください。`,
         type: "success",
@@ -565,6 +685,7 @@ exports.processAutoGoDeadlines = onSchedule({
       const matchedEntries = await poolDoc.ref.collection("entries").where("status", "==", "matched").get();
       for (const entryDoc of matchedEntries.docs) {
         const entry = entryDoc.data();
+        if (isAutoGoDummyUid(entryDoc.id) || entry.isDummy === true) continue;
         if (entry.noMatchResult || !entry.shipToAddress || entry.shippedAt ||
             !entry.matchedAt || timestampMillis(entry.matchedAt) > now - 72 * 60 * 60 * 1000) continue;
         const userRef = db.collection("users").doc(entryDoc.id);
@@ -617,7 +738,9 @@ exports.processAutoGoDeadlines = onSchedule({
       }
       const entries = await poolDoc.ref.collection("entries").where("status", "==", "confirmed").get();
       for (const entry of entries.docs) {
-        if (!entry.data().purchaseDeadlineAt || timestampMillis(entry.data().purchaseDeadlineAt) > now) continue;
+        const entryData = entry.data() || {};
+        if (isAutoGoDummyUid(entry.id) || entryData.isDummy === true) continue;
+        if (!entryData.purchaseDeadlineAt || timestampMillis(entryData.purchaseDeadlineAt) > now) continue;
         const expired = await db.runTransaction(async (tx) => {
           const current = await tx.get(entry.ref);
           if (!current.exists || current.data().status !== "confirmed") return false;
@@ -643,7 +766,10 @@ exports.processAutoGoDeadlines = onSchedule({
       }
     }
 
-    if (pool.revealDeadlineAt && timestampMillis(pool.revealDeadlineAt) <= now && !pool.matchingClosedAt) {
+    const revealDue = pool.revealDeadlineAt && timestampMillis(pool.revealDeadlineAt) <= now;
+    const needsFirstMatch = revealDue && !pool.matchingClosedAt;
+    const needsDummyRematch = revealDue && isAutoGoTestPool(pool) && !pool.dummyMatchFixedAt;
+    if (needsFirstMatch || needsDummyRematch) {
       await closeAutoGoRevealWindow(poolId, poolDoc.ref, pool);
     }
   }
