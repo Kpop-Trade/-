@@ -809,6 +809,33 @@
     }
   };
 
+  window.adminRunAutoGoMatch = async function (poolId) {
+    if (!isAgAdmin()) { toast("管理者権限が必要です", "error"); return; }
+    if (!poolId) { toast("プールIDがありません", "error"); return; }
+    toast("ダミーを含むマッチングを実行中…", "info");
+    const fn = agRefs().adminRunAutoGoMatch;
+    if (typeof fn !== "function") {
+      toast("マッチング関数がまだ読み込まれていません。ページを再読み込みしてください", "error");
+      return;
+    }
+    try {
+      const res = await fn({ poolId });
+      const data = res && res.data ? res.data : (res || {});
+      const matched = Number(data.matched) || 0;
+      const unmatched = Number(data.unmatched) || 0;
+      if (matched === 0 && unmatched === 0) {
+        toast("マッチできる開封済み参加者がいません。開封報告のあとでもう一度押してください", "error");
+      } else {
+        toast(`マッチ ${matched}人 / 対象外 ${unmatched}人`, "success");
+      }
+      if (typeof window.renderAdminAutoGoPanel === "function") await window.renderAdminAutoGoPanel();
+      return data;
+    } catch (error) {
+      console.error(error);
+      toast("マッチング失敗: " + callableErrorText(error), "error");
+    }
+  };
+
   /** 管理パネル用：プールカード下部のシミュレーション／フェイルセーフ HTML */
   window.__agAdminOpsHtml = function (pool) {
     if (!pool || !pool.id) return "";
@@ -848,6 +875,7 @@
             <button type="button" onclick="window.adminSimAutoGoDummyRevealPhase('${id}','reveal_all',false)" class="min-h-[44px] px-3 py-2 rounded-xl bg-white border border-sky-300 text-[11px] font-bold text-sky-950">ダミー一括開封報告（トレカ）</button>
             <button type="button" onclick="window.adminSimAutoGoDummyRevealPhase('${id}','five_plus',false)" class="min-h-[44px] px-3 py-2 rounded-xl bg-sky-600 text-white text-[11px] font-black sm:col-span-2">ダミー5人以上で開封期間カウント開始（本番相当・約4日）</button>
             <button type="button" onclick="window.adminSimAutoGoDummyRevealPhase('${id}','five_plus',true)" class="min-h-[44px] px-3 py-2 rounded-xl bg-indigo-700 text-white text-[11px] font-black sm:col-span-2">同上（短縮カウント3分・動作確認用）</button>
+            <button type="button" onclick="window.adminRunAutoGoMatch('${id}')" class="min-h-[44px] px-3 py-2 rounded-xl bg-fuchsia-700 text-white text-[11px] font-black sm:col-span-2">開封済みダミーを今すぐマッチング</button>
           </div>
         </div>
         <div id="adm-ag-audit-${id}" class="hidden"></div>

@@ -40,7 +40,8 @@ window.__autoGoRefs = {
   adminGetAutoGoAuditLogs: httpsCallable(getFunctions(app, "asia-northeast1"), "adminGetAutoGoAuditLogs"),
   adminSimAutoGoDummyPurchases: httpsCallable(getFunctions(app, "asia-northeast1"), "adminSimAutoGoDummyPurchases", { timeout: 300000 }),
   adminSimAutoGoDummyReceipts: httpsCallable(getFunctions(app, "asia-northeast1"), "adminSimAutoGoDummyReceipts", { timeout: 180000 }),
-  adminSimAutoGoDummyRevealPhase: httpsCallable(getFunctions(app, "asia-northeast1"), "adminSimAutoGoDummyRevealPhase", { timeout: 300000 })
+  adminSimAutoGoDummyRevealPhase: httpsCallable(getFunctions(app, "asia-northeast1"), "adminSimAutoGoDummyRevealPhase", { timeout: 300000 }),
+  adminRunAutoGoMatch: httpsCallable(getFunctions(app, "asia-northeast1"), "adminRunAutoGoMatch", { timeout: 300000 })
 };
 
   

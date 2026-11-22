@@ -504,7 +504,10 @@ function findAutoGoCycle(start, candidates, used) {
   return null;
 }
 
-async function closeAutoGoRevealWindow(poolId, poolRef, poolData) {
+async function closeAutoGoRevealWindow(poolId, poolRef, poolData, options) {
+  const opts = options || {};
+  const deadlinePassed = !!(poolData.revealDeadlineAt && timestampMillis(poolData.revealDeadlineAt) <= Date.now());
+  const finalize = opts.finalize === false ? false : true;
   const entriesRef = poolRef.collection("entries");
   const waitingSnap = await entriesRef.where("status", "==", "waiting_match").get();
   const matchedSnap = await entriesRef.where("status", "==", "matched").get();
@@ -596,24 +599,30 @@ async function closeAutoGoRevealWindow(poolId, poolRef, poolData) {
     });
   }
 
-  for (const status of ["purchased", "arrived"]) {
-    const unregistered = await entriesRef.where("status", "==", status).get();
-    for (const entry of unregistered.docs) {
-      updates.push({
-        ref: entry.ref,
-        data: { status: "cancelled", penalty: true, penaltyReason: "reveal_not_registered", cancelledAt: FV.serverTimestamp() }
-      });
+  if (finalize) {
+    for (const status of ["purchased", "arrived"]) {
+      const unregistered = await entriesRef.where("status", "==", status).get();
+      for (const entry of unregistered.docs) {
+        updates.push({
+          ref: entry.ref,
+          data: { status: "cancelled", penalty: true, penaltyReason: "reveal_not_registered", cancelledAt: FV.serverTimestamp() }
+        });
+      }
     }
   }
 
-  const writer = db.bulkWriter();
-  updates.forEach(({ ref, data }) => writer.update(ref, data));
-  await writer.close();
-  const poolUpdate = { matchingClosedAt: FV.serverTimestamp() };
-  if (isAutoGoTestPool(poolData)) {
-    poolUpdate.dummyMatchFixedAt = FV.serverTimestamp();
+  if (updates.length > 0) {
+    const writer = db.bulkWriter();
+    updates.forEach(({ ref, data }) => writer.update(ref, data));
+    await writer.close();
   }
-  await poolRef.update(poolUpdate);
+  if (finalize) {
+    const poolUpdate = { matchingClosedAt: FV.serverTimestamp() };
+    if (isAutoGoTestPool(poolData)) {
+      poolUpdate.dummyMatchFixedAt = FV.serverTimestamp();
+    }
+    await poolRef.update(poolUpdate);
+  }
 
   await Promise.all(updates
     .filter(({ data, ref }) => data.penalty && !isAutoGoDummyUid(ref.id))
@@ -641,6 +650,17 @@ async function closeAutoGoRevealWindow(poolId, poolRef, poolData) {
       title: "⚠️ Auto-GO登録期限切れ"
     });
   }));
+
+  let matched = 0;
+  let unmatched = 0;
+  updates.forEach(({ data }) => {
+    if (data.status === "matched" && data.sendToUid) {
+      matched += 1;
+    } else if (data.status === "matched" && data.noMatchResult === true) {
+      unmatched += 1;
+    }
+  });
+  return { matched, unmatched, finalized: finalize, deadlinePassed };
 }
 
 exports.processAutoGoDeadlines = onSchedule({
@@ -2153,6 +2173,45 @@ exports.adminSimAutoGoDummyRevealPhase = onCall({
     shortCountdown,
     countdown,
     results
+  };
+});
+
+exports.adminRunAutoGoMatch = onCall({
+  timeoutSeconds: 300,
+  memory: "512MiB"
+}, async (request) => {
+  assertAdmin(request);
+  const poolId = String((request.data || {}).poolId || "");
+  if (!/^[\w-]{1,120}$/.test(poolId)) {
+    throw new HttpsError("invalid-argument", "invalid pool");
+  }
+  const poolRef = db.collection("auto_go_pools").doc(poolId);
+  const poolSnap = await poolRef.get();
+  if (!poolSnap.exists) throw new HttpsError("not-found", "pool not found");
+  const pool = poolSnap.data() || {};
+  if (!isAutoGoTestPool(pool)) {
+    throw new HttpsError("failed-precondition", "manual match is allowed only on [TEST] pools");
+  }
+  const deadlinePassed = !!(pool.revealDeadlineAt && timestampMillis(pool.revealDeadlineAt) <= Date.now());
+  const result = await closeAutoGoRevealWindow(poolId, poolRef, pool, {
+    finalize: deadlinePassed
+  });
+  await writeAutoGoAuditLog(poolId, {
+    action: "admin_run_match",
+    actorUid: request.auth.uid,
+    matched: result.matched,
+    unmatched: result.unmatched,
+    finalized: result.finalized,
+    deadlinePassed
+  }).catch((error) => {
+    console.error("admin_run_match audit failed", error);
+  });
+  return {
+    ok: true,
+    matched: result.matched,
+    unmatched: result.unmatched,
+    finalized: result.finalized,
+    deadlinePassed
   };
 });
 
