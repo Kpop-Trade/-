@@ -1104,3 +1104,24 @@ html, body {
   font-weight: 800;
   box-shadow: none !important;
 }
+#xlogin-help-modal:not(.hidden) {
+  display: flex;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+#xlogin-help-sheet {
+  max-height: min(88dvh, 680px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  box-sizing: border-box;
+  width: 100%;
+}
+#xlogin-help-modal input {
+  font-size: 16px;
+  max-width: 100%;
+}
+#first-visit-welcome {
+  max-width: 100%;
+  overflow: hidden;
+  word-break: break-word;
+}

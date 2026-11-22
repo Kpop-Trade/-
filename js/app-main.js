@@ -1,5 +1,5 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { getFirestore, collection, collectionGroup, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, where, orderBy, limit, startAfter, onSnapshot, serverTimestamp, increment, runTransaction, getCountFromServer, documentId } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js";
 
@@ -78,9 +78,13 @@ getRedirectResult(auth)
   .catch((error) => {
     console.error("Redirect result error:", error);
     if (error.code === 'auth/account-exists-with-different-credential') {
-      /* alert hidden */ console.log("このメールアドレスは既に別の方法で登録されています。");
+      if (typeof window.openGoogleLoginHelp === "function") {
+        window.openGoogleLoginHelp(error);
+      }
     } else if (error.code && error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
-      /* alert hidden */ console.log("ログイン処理でエラーが発生しました: " + (error.message || error.code));
+      if (typeof window.openGoogleLoginHelp === "function") {
+        window.openGoogleLoginHelp(error);
+      }
     }
   });
     const ADMIN_UIDS = ["Ay6VCS8HTgM3RqjDYZ0wKdHrSKz1", "GvVhAmT56GZjsWrl1YRaStB81im1"];
@@ -2646,6 +2650,199 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       renderSellTab(); showToast("通知をオフにしました。", "info");
     };
 
+    function isInAppBrowser() {
+      const ua = String(navigator.userAgent || "");
+      if (/Instagram/i.test(ua)) return true;
+      if (/Twitter/i.test(ua)) return true;
+      if (/TwitterAndroid/i.test(ua)) return true;
+      if (/\bX\//i.test(ua)) return true;
+      if (/\bLine\//i.test(ua)) return true;
+      if (/musical_ly|BytedanceWebview|TikTok|trill_|aweme/i.test(ua)) return true;
+      if (/FBAN|FBAV|FB_IAB|Threads\//i.test(ua)) return true;
+      if (/Snapchat|Pinterest/i.test(ua)) return true;
+      const isIOS = /iPhone|iPad|iPod/i.test(ua);
+      const isStandaloneBrowser = /Safari|CriOS|FxiOS|EdgiOS|OPiOS/i.test(ua);
+      if (isIOS && /AppleWebKit/i.test(ua) && !isStandaloneBrowser) return true;
+      return false;
+    }
+    window.isInAppBrowser = isInAppBrowser;
+
+    function googleLoginHelpCopy(error) {
+      const code = error && error.code ? String(error.code) : "";
+      const message = error && error.message ? String(error.message) : "";
+      const joined = code + " " + message;
+      if (code === "auth/account-exists-with-different-credential") {
+        return {
+          title: "ログイン方法が違います",
+          lead: "このメールアドレスは別の方法ですでに登録されています。以前使った方法で入るか、下のメールアドレスでログインしてください。"
+        };
+      }
+      if (code === "auth/popup-blocked") {
+        return {
+          title: "Googleログインを完了できませんでした",
+          lead: "ポップアップがブロックされたため、Googleの画面を開けませんでした。Safariで開き直すか、下のメールアドレスで登録・ログインしてください。"
+        };
+      }
+      if (isInAppBrowser() || /disallowed_useragent/i.test(joined)) {
+        return {
+          title: "Safariで開くとGoogleログインできます",
+          lead: "Xの画面右下にあるコンパスマーク（または『⋯』メニュー）から『ブラウザで開く（Safari）』を選択してください"
+        };
+      }
+      return {
+        title: "Googleログインを完了できませんでした",
+        lead: "このブラウザではGoogleログインが正常に動作しませんでした。Safariで開き直すか、下のメールアドレスで登録・ログインしてください。"
+      };
+    }
+
+    function syncFirstVisitWelcome() {
+      const card = document.getElementById("first-visit-welcome");
+      if (!card) return;
+      let dismissed = false;
+      try {
+        dismissed = localStorage.getItem("illit_welcome_card_dismissed") === "1";
+      } catch (e) {
+        dismissed = false;
+      }
+      if (dismissed || currentUser) {
+        card.classList.add("hidden");
+        return;
+      }
+      card.classList.remove("hidden");
+    }
+    window.dismissFirstVisitWelcome = function() {
+      try {
+        localStorage.setItem("illit_welcome_card_dismissed", "1");
+      } catch (e) {}
+      const card = document.getElementById("first-visit-welcome");
+      if (card) card.classList.add("hidden");
+    };
+    window.syncFirstVisitWelcome = syncFirstVisitWelcome;
+
+    window.closeGoogleLoginHelp = function() {
+      const modal = document.getElementById("xlogin-help-modal");
+      if (modal) modal.classList.add("hidden");
+    };
+
+    window.openGoogleLoginHelp = function(error) {
+      const modal = document.getElementById("xlogin-help-modal");
+      if (!modal) return;
+      const copy = googleLoginHelpCopy(error || null);
+      const title = document.getElementById("xlogin-help-title");
+      const lead = document.getElementById("xlogin-help-lead");
+      const status = document.getElementById("xlogin-copy-status");
+      const emailError = document.getElementById("xlogin-email-error");
+      if (title) title.textContent = copy.title;
+      if (lead) lead.textContent = copy.lead;
+      if (status) status.textContent = "";
+      if (emailError) emailError.textContent = "";
+      modal.classList.remove("hidden");
+    };
+
+    window.copyLoginPageUrl = async function() {
+      const status = document.getElementById("xlogin-copy-status");
+      const url = String(location.href || "");
+      let copied = false;
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(url);
+          copied = true;
+        }
+      } catch (e) {
+        copied = false;
+      }
+      if (!copied) {
+        try {
+          const area = document.createElement("textarea");
+          area.value = url;
+          area.setAttribute("readonly", "readonly");
+          area.style.position = "fixed";
+          area.style.top = "0";
+          area.style.left = "0";
+          area.style.width = "1px";
+          area.style.height = "1px";
+          area.style.opacity = "0";
+          document.body.appendChild(area);
+          area.focus();
+          area.select();
+          copied = document.execCommand("copy");
+          document.body.removeChild(area);
+        } catch (e) {
+          copied = false;
+        }
+      }
+      if (status) {
+        if (copied) {
+          status.textContent = "コピーしました！Safariのアドレスバーに貼り付けて開いてください";
+        } else {
+          status.textContent = "コピーできませんでした。アドレスバーのURLを長押ししてコピーしてください。";
+        }
+      }
+    };
+
+    window.focusEmailAuthForm = function() {
+      const box = document.getElementById("xlogin-email-box");
+      const email = document.getElementById("xlogin-email");
+      if (box && box.scrollIntoView) {
+        box.scrollIntoView({ block: "center", behavior: "smooth" });
+      }
+      if (email) email.focus();
+    };
+
+    function emailAuthErrorText(error) {
+      const code = error && error.code ? String(error.code) : "";
+      if (code === "auth/email-already-in-use") return "このメールアドレスは登録済みです。下の「ログイン」を押してください。";
+      if (code === "auth/invalid-email") return "メールアドレスの形式を確認してください。";
+      if (code === "auth/weak-password") return "パスワードは6文字以上にしてください。";
+      if (code === "auth/user-not-found") return "このメールアドレスは未登録です。上の「新規登録」を押してください。";
+      if (code === "auth/wrong-password" || code === "auth/invalid-credential") return "メールアドレスかパスワードが違います。";
+      if (code === "auth/too-many-requests") return "試行が多すぎます。しばらくしてからお試しください。";
+      if (code === "auth/operation-not-allowed") return "メールでの登録は現在使えません。SafariからGoogleログインをお試しください。";
+      if (code === "auth/network-request-failed") return "通信できませんでした。電波のよい場所でもう一度お試しください。";
+      return "登録・ログインできませんでした。入力内容を確認してもう一度お試しください。";
+    }
+
+    window.submitEmailAuth = function(mode) {
+      const emailInput = document.getElementById("xlogin-email");
+      const passwordInput = document.getElementById("xlogin-password");
+      const errorBox = document.getElementById("xlogin-email-error");
+      const email = emailInput ? String(emailInput.value || "").trim() : "";
+      const password = passwordInput ? String(passwordInput.value || "") : "";
+      if (errorBox) errorBox.textContent = "";
+      if (!email || email.indexOf("@") < 1) {
+        if (errorBox) errorBox.textContent = "メールアドレスを入力してください。";
+        if (emailInput) emailInput.focus();
+        return;
+      }
+      if (!password || password.length < 6) {
+        if (errorBox) errorBox.textContent = "パスワードは6文字以上にしてください。";
+        if (passwordInput) passwordInput.focus();
+        return;
+      }
+      const run = async function() {
+        if (window.__emailAuthBusy) return;
+        window.__emailAuthBusy = true;
+        try {
+          if (mode === "register") {
+            await createUserWithEmailAndPassword(auth, email, password);
+          } else {
+            await signInWithEmailAndPassword(auth, email, password);
+          }
+          window.closeGoogleLoginHelp();
+          if (typeof showToast === "function") showToast("ログインしました", "success");
+        } catch (error) {
+          if (errorBox) errorBox.textContent = emailAuthErrorText(error);
+        } finally {
+          window.__emailAuthBusy = false;
+        }
+      };
+      if (typeof window.requireTermsAgreement === "function" &&
+          !window.requireTermsAgreement({ resume: function() { run(); } })) {
+        return;
+      }
+      run();
+    };
+
          window.loginWithGoogle = function() { 
       // iPhoneのホーム画面アプリでもSafariでも、小窓（ポップアップ）方式に統一
       // Auto-GO 参加途中なら、今開いているプールを復帰先に覚えておく
@@ -2656,13 +2853,21 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           window.__agRememberPoolForLogin(poolId);
         }
       } catch (_) {}
+      if (isInAppBrowser()) {
+        window.openGoogleLoginHelp(null);
+        return;
+      }
       // 未同意なら先に利用規約同意ボタン → アプリ登録案内
       if (typeof window.requireTermsAgreement === "function" &&
           !window.requireTermsAgreement({ resume: function() { window.loginWithGoogle(); } })) {
         return;
       }
       signInWithPopup(auth, provider).catch(e => {
-        /* alert hidden */ console.log("ログインエラー: " + (e.message || e));
+        const code = e && e.code ? String(e.code) : "";
+        if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
+          return;
+        }
+        window.openGoogleLoginHelp(e);
       });
     };
    
@@ -2778,6 +2983,8 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
             window.__agConsumePendingPoolAfterLogin();
           }
         }, 500);
+        if (typeof window.closeGoogleLoginHelp === "function") window.closeGoogleLoginHelp();
+        syncFirstVisitWelcome();
       } else {
         loginBtn.classList.remove("hidden"); userProfile.classList.add("hidden");
         if (unsubTrades) unsubTrades(); if (unsubUser) unsubUser(); if (unsubNotifs) unsubNotifs(); unsubTrades=null; unsubUser=null; unsubNotifs=null; serverNotifs = [];
@@ -2794,6 +3001,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         setTimeout(function() {
           if (typeof window.maybeGateTermsOnBoot === "function") window.maybeGateTermsOnBoot();
         }, 200);
+        syncFirstVisitWelcome();
       }
     });
 
