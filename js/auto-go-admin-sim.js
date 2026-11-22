@@ -641,6 +641,174 @@
     }
   };
 
+  function poolMemberNames(pool) {
+    if (Array.isArray(pool.members) && pool.members.length) return pool.members.slice();
+    if (Array.isArray(pool.memberNames) && pool.memberNames.length) return pool.memberNames.slice();
+    return [];
+  }
+
+  function pickDummyPulled(entry, members, index) {
+    const wanted = entry.wantedMember;
+    const others = members.filter((m) => m !== wanted);
+    if (others.length) return others[index % others.length];
+    return members[index % members.length] || wanted || "ユナ";
+  }
+
+  /** Functions未デプロイ時：到着・開封・カウントダウン開始を直接書込 */
+  async function simDummyRevealPhaseViaFirestore(poolId, mode, shortCountdown) {
+    const refs = agRefs();
+    if (!refs.db || typeof refs.doc !== "function" || typeof refs.getDocs !== "function") {
+      throw new Error("Firestoreの準備ができていません");
+    }
+    const poolRef = refs.doc(refs.db, "auto_go_pools", poolId);
+    const poolSnap = await refs.getDoc(poolRef);
+    if (!poolSnap.exists()) throw new Error("プールが見つかりません");
+    const pool = poolSnap.data() || {};
+    if (!isTestPoolData(pool)) throw new Error("テストプールだけ実行できます");
+    const members = poolMemberNames(pool);
+    if (!members.length) throw new Error("メンバー一覧がありません");
+
+    const stamp = refs.serverTimestamp ? refs.serverTimestamp() : new Date();
+    let arrived = 0;
+    let revealed = 0;
+    const results = [];
+
+    if (mode === "arrive_all" || mode === "five_plus") {
+      const entriesSnap = await refs.getDocs(refs.collection(refs.db, "auto_go_pools", poolId, "entries"));
+      const targets = entriesSnap.docs
+        .map((d) => ({ uid: d.id, ...(d.data() || {}) }))
+        .filter((e) => isDummyEntry(e, e.uid) && e.status === "purchased");
+      for (const entry of targets) {
+        await refs.updateDoc(refs.doc(refs.db, "auto_go_pools", poolId, "entries", entry.uid), {
+          status: "arrived",
+          albumReceivedAt: stamp
+        });
+        arrived += 1;
+        results.push({ uid: entry.uid, step: "arrived" });
+      }
+    }
+
+    if (mode === "reveal_all" || mode === "five_plus") {
+      const fresh = await refs.getDocs(refs.collection(refs.db, "auto_go_pools", poolId, "entries"));
+      const arrivedDummies = fresh.docs
+        .map((d) => ({ uid: d.id, ...(d.data() || {}) }))
+        .filter((e) => isDummyEntry(e, e.uid) && e.status === "arrived")
+        .sort((a, b) => (Number(a.entrySeq) || 0) - (Number(b.entrySeq) || 0));
+      for (let i = 0; i < arrivedDummies.length; i += 1) {
+        const entry = arrivedDummies[i];
+        const pulled = pickDummyPulled(entry, members, i);
+        await refs.updateDoc(refs.doc(refs.db, "auto_go_pools", poolId, "entries", entry.uid), {
+          pulledMember: pulled,
+          openedCard: pulled,
+          status: pulled === entry.wantedMember ? "self_pulled" : "waiting_match",
+          revealedAt: stamp
+        });
+        revealed += 1;
+        results.push({ uid: entry.uid, step: "revealed", pulledMember: pulled });
+      }
+    }
+
+    const after = await refs.getDocs(refs.collection(refs.db, "auto_go_pools", poolId, "entries"));
+    const arrivalCount = after.docs.filter((d) => {
+      const e = d.data() || {};
+      return !!(e.albumReceivedAt || e.revealedAt);
+    }).length;
+
+    let countdown = { started: false, arrivalCount };
+    const poolNowSnap = await refs.getDoc(poolRef);
+    const poolNow = poolNowSnap.exists() ? (poolNowSnap.data() || {}) : {};
+    if (arrivalCount < 5) {
+      countdown = { started: false, reason: "need_five", arrivalCount, need: 5 - arrivalCount };
+      if (mode === "five_plus") {
+        throw new Error(`開封/到着が${arrivalCount}人です。あと${5 - arrivalCount}人必要です`);
+      }
+    } else if (!poolNow.revealDeadlineAt || shortCountdown) {
+      const durationMs = shortCountdown ? 3 * 60 * 1000 : 4 * 24 * 60 * 60 * 1000;
+      const deadlineDate = new Date(Date.now() + durationMs);
+      await refs.updateDoc(poolRef, {
+        revealOpenedAt: poolNow.revealOpenedAt || stamp,
+        revealDeadlineAt: deadlineDate,
+        recruitmentClosedAt: poolNow.recruitmentClosedAt || stamp,
+        revealDeadlineTestShort: !!shortCountdown
+      });
+      countdown = {
+        started: true,
+        arrivalCount,
+        revealDeadlineAtMs: deadlineDate.getTime(),
+        durationMs,
+        shortTest: !!shortCountdown
+      };
+    } else {
+      const ms = poolNow.revealDeadlineAt && typeof poolNow.revealDeadlineAt.toMillis === "function"
+        ? poolNow.revealDeadlineAt.toMillis()
+        : Number(poolNow.revealDeadlineAt) || 0;
+      countdown = { started: false, already: true, arrivalCount, revealDeadlineAtMs: ms };
+    }
+
+    return {
+      ok: true,
+      mode,
+      arrived,
+      revealed,
+      shortCountdown: !!shortCountdown,
+      countdown,
+      results,
+      via: "firestore"
+    };
+  }
+
+  window.adminSimAutoGoDummyRevealPhase = async function (poolId, mode, shortCountdown) {
+    if (!isAgAdmin()) { toast("管理者権限が必要です", "error"); return; }
+    if (!poolId) { toast("プールIDがありません", "error"); return; }
+    const m = ["arrive_all", "reveal_all", "five_plus"].includes(mode) ? mode : "five_plus";
+    const short = shortCountdown === true;
+    const label = m === "arrive_all"
+      ? "ダミー一括到着報告"
+      : m === "reveal_all"
+        ? "ダミー一括開封報告"
+        : (short ? "ダミー5人以上で開封カウント開始（短縮3分）" : "ダミー5人以上で開封カウント開始");
+    toast(label + "を実行中…", "info");
+    const fn = agRefs().adminSimAutoGoDummyRevealPhase;
+    try {
+      let data = null;
+      if (typeof fn === "function") {
+        try {
+          const res = await fn({ poolId, mode: m, shortCountdown: short });
+          data = res?.data || res || {};
+          data.via = data.via || "functions";
+        } catch (callErr) {
+          console.warn("adminSimAutoGoDummyRevealPhase callable failed, trying Firestore:", callErr);
+          if (!shouldFallbackToFirestore(callErr)) throw callErr;
+          data = await simDummyRevealPhaseViaFirestore(poolId, m, short);
+        }
+      } else {
+        data = await simDummyRevealPhaseViaFirestore(poolId, m, short);
+      }
+      const cd = data.countdown || {};
+      const parts = [];
+      if (data.arrived) parts.push(`到着${data.arrived}`);
+      if (data.revealed) parts.push(`開封${data.revealed}`);
+      if (cd.started) {
+        const when = cd.revealDeadlineAtMs
+          ? new Date(cd.revealDeadlineAtMs).toLocaleString("ja-JP")
+          : "";
+        parts.push(cd.shortTest ? `カウント開始（短縮・期限 ${when}）` : `カウント開始（期限 ${when}）`);
+      } else if (cd.already) {
+        parts.push("カウントは既に開始済み");
+      }
+      if (!parts.length) {
+        toast("対象ダミーがありません（購入済み→到着→開封の順で進めてください）", "error");
+      } else {
+        toast(parts.join(" / ") + (data.via === "firestore" ? "（直接書込）" : ""), "success");
+      }
+      if (typeof window.renderAdminAutoGoPanel === "function") await window.renderAdminAutoGoPanel();
+      return data;
+    } catch (error) {
+      console.error(error);
+      toast("開封フェーズシミュ失敗: " + callableErrorText(error), "error");
+    }
+  };
+
   /** 管理パネル用：プールカード下部のシミュレーション／フェイルセーフ HTML */
   window.__agAdminOpsHtml = function (pool) {
     if (!pool || !pool.id) return "";
@@ -670,6 +838,16 @@
             <button type="button" onclick="window.adminSimAutoGoDummyPurchases('${id}','all')" class="min-h-[44px] px-3 py-2 rounded-xl bg-emerald-600 text-white text-[11px] font-black sm:col-span-2">ダミー一括購入報告（アズカリ決済完了シミュレーション）</button>
             <button type="button" onclick="window.adminSimAutoGoDummyPurchases('${id}','leave_one')" class="min-h-[44px] px-3 py-2 rounded-xl bg-white border border-emerald-400 text-[11px] font-bold text-emerald-950">ダミー購入報告（1人分・1人未報告を残す）</button>
             <button type="button" onclick="window.adminSimAutoGoDummyReceipts('${id}')" class="min-h-[44px] px-3 py-2 rounded-xl bg-teal-700 text-white text-[11px] font-black">ダミー一括受取確認（取引完了シミュレーション）</button>
+          </div>
+        </div>
+        <div class="rounded-xl border border-sky-200 bg-sky-50/90 p-2.5 space-y-2">
+          <p class="text-[10px] font-black text-sky-900">開封報告 → カウントダウン（5人以上）</p>
+          <p class="text-[9px] text-sky-800 leading-relaxed">本番は到着/開封が5人以上で開封登録期間（約4日）が始まります。短縮3分はTEST用の動作確認用です。</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <button type="button" onclick="window.adminSimAutoGoDummyRevealPhase('${id}','arrive_all',false)" class="min-h-[44px] px-3 py-2 rounded-xl bg-white border border-sky-300 text-[11px] font-bold text-sky-950">ダミー一括到着報告</button>
+            <button type="button" onclick="window.adminSimAutoGoDummyRevealPhase('${id}','reveal_all',false)" class="min-h-[44px] px-3 py-2 rounded-xl bg-white border border-sky-300 text-[11px] font-bold text-sky-950">ダミー一括開封報告（トレカ）</button>
+            <button type="button" onclick="window.adminSimAutoGoDummyRevealPhase('${id}','five_plus',false)" class="min-h-[44px] px-3 py-2 rounded-xl bg-sky-600 text-white text-[11px] font-black sm:col-span-2">ダミー5人以上で開封期間カウント開始（本番相当・約4日）</button>
+            <button type="button" onclick="window.adminSimAutoGoDummyRevealPhase('${id}','five_plus',true)" class="min-h-[44px] px-3 py-2 rounded-xl bg-indigo-700 text-white text-[11px] font-black sm:col-span-2">同上（短縮カウント3分・動作確認用）</button>
           </div>
         </div>
         <div id="adm-ag-audit-${id}" class="hidden"></div>
