@@ -551,15 +551,20 @@
 
   function hookMyPage() {
     var orig = window.switchTab;
-    if (typeof orig !== "function" || orig.__prHooked) return;
-    window.switchTab = function (tab) {
-      orig.apply(this, arguments);
-      if (tab === "mypage") {
-        ensureMyPagePoints();
-        loadMyPoints();
-      }
-    };
-    window.switchTab.__prHooked = true;
+    if (typeof orig === "function" && !orig.__prHooked) {
+      window.switchTab = function (tab) {
+        orig.apply(this, arguments);
+        if (tab === "mypage") {
+          ensureMyPagePoints();
+          loadMyPoints();
+        }
+        if (tab === "admin") {
+          ensureAdminTab();
+          hookAdminTab();
+        }
+      };
+      window.switchTab.__prHooked = true;
+    }
 
     var origOpen = window.openMyPage;
     if (typeof origOpen === "function" && !origOpen.__prHooked) {
@@ -571,6 +576,23 @@
         }, 100);
       };
       window.openMyPage.__prHooked = true;
+    }
+
+    var origAdmin = window.openAdminModal;
+    if (typeof origAdmin === "function" && !origAdmin.__prHooked) {
+      window.openAdminModal = function () {
+        ensureAdminTab();
+        hookAdminTab();
+        origAdmin.apply(this, arguments);
+        setTimeout(function () {
+          ensureAdminTab();
+          hookAdminTab();
+        }, 50);
+        setTimeout(function () {
+          ensureAdminTab();
+        }, 300);
+      };
+      window.openAdminModal.__prHooked = true;
     }
   }
 
