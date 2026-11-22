@@ -37,7 +37,9 @@ window.__autoGoRefs = {
   adminSetAutoGoEntryLock: httpsCallable(getFunctions(app, "asia-northeast1"), "adminSetAutoGoEntryLock"),
   adminForceCancelAutoGoPool: httpsCallable(getFunctions(app, "asia-northeast1"), "adminForceCancelAutoGoPool", { timeout: 120000 }),
   adminReassignAutoGoMember: httpsCallable(getFunctions(app, "asia-northeast1"), "adminReassignAutoGoMember"),
-  adminGetAutoGoAuditLogs: httpsCallable(getFunctions(app, "asia-northeast1"), "adminGetAutoGoAuditLogs")
+  adminGetAutoGoAuditLogs: httpsCallable(getFunctions(app, "asia-northeast1"), "adminGetAutoGoAuditLogs"),
+  adminSimAutoGoDummyPurchases: httpsCallable(getFunctions(app, "asia-northeast1"), "adminSimAutoGoDummyPurchases", { timeout: 300000 }),
+  adminSimAutoGoDummyReceipts: httpsCallable(getFunctions(app, "asia-northeast1"), "adminSimAutoGoDummyReceipts", { timeout: 180000 })
 };
 
   
