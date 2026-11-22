@@ -115,11 +115,4 @@
     modal.style.setProperty("display", "none", "important");
     document.body.style.overflow = "";
   };
-  document.addEventListener("DOMContentLoaded", function() {
-    var banner = document.getElementById("autogo-home-banner");
-    if (!banner) return;
-    banner.addEventListener("click", function(event) {
-      if (event) event.preventDefault();
-      window.openAutoGoModal();
-    });
-  });
+  // ホームヒーローの CTA は auto-go-home-hero.js がプール単位でバインドする

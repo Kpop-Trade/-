@@ -1070,6 +1070,9 @@
         return true;
       });
       renderPoolTabs();
+      if (typeof window.__renderAutoGoHomeHero === "function") {
+        try { window.__renderAutoGoHomeHero(allPools); } catch (heroErr) { console.warn(heroErr); }
+      }
       const stillVisible = allPools.some(function(p) { return p.id === activePoolId; });
       if (!activePoolId || !stillVisible) {
         if (allPools.length > 0) await selectAutoGoPool(allPools[0].id);
@@ -1098,6 +1101,9 @@
       });
       poolsListenerReady = true;
       renderPoolTabs();
+      if (typeof window.__renderAutoGoHomeHero === "function") {
+        try { window.__renderAutoGoHomeHero(allPools); } catch (heroErr) { console.warn(heroErr); }
+      }
       const stillVisible = allPools.some(function(pool) { return pool.id === activePoolId; });
       if (!activePoolId || (!stillVisible && allPools.length > 0)) {
         if (allPools.length > 0) {
@@ -1551,7 +1557,21 @@
     if (!activePoolId) return;
     const refs = window.__autoGoRefs;
     const user = refs.auth.currentUser;
-    if (!user) { alert("先にログインしてください"); return; }
+    if (!user) {
+      // 未ログイン：参加意思を保存してログインへ。完了後に同じプール詳細へ戻す
+      if (typeof window.__agRememberPoolForLogin === "function") {
+        window.__agRememberPoolForLogin(activePoolId);
+      }
+      if (typeof showToast === "function") {
+        showToast("参加にはログインが必要です。ログイン後、このプールに戻ります", "info");
+      }
+      if (typeof window.loginWithGoogle === "function") {
+        window.loginWithGoogle();
+      } else {
+        alert("先にログインしてください");
+      }
+      return;
+    }
     try {
       const userSnap = await refs.getDoc(refs.doc(refs.db, "users", user.uid));
       const userData = userSnap.exists() ? userSnap.data() : {};
@@ -1976,10 +1996,6 @@ ${currentPoolData.title}
     window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, "_blank");
   };
 
-  window.addEventListener("DOMContentLoaded", () => {
-    if (new URLSearchParams(location.search).has("pool")) {
-      setTimeout(() => window.openAutoGoModal(), 600);
-    }
-  });
+  // ディープリンク（?pool= / ?tab=autogo）は auto-go-home-hero.js 側で処理
   drawFirstChoiceChart(0, 5, 20, 20);
 })();

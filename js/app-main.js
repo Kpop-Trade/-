@@ -2623,6 +2623,14 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
 
          window.loginWithGoogle = function() { 
       // iPhoneのホーム画面アプリでもSafariでも、小窓（ポップアップ）方式に統一
+      // Auto-GO 参加途中なら、今開いているプールを復帰先に覚えておく
+      try {
+        const poolId = window.__agActivePoolId || window.__pendingAutoGoPoolId ||
+          (new URLSearchParams(location.search).get("pool") || "");
+        if (poolId && typeof window.__agRememberPoolForLogin === "function") {
+          window.__agRememberPoolForLogin(poolId);
+        }
+      } catch (_) {}
       signInWithPopup(auth, provider).catch(e => {
         /* alert hidden */ console.log("ログインエラー: " + (e.message || e));
       });
@@ -2720,6 +2728,12 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
             Promise.resolve(window.__loadAutoGoPools({ prefetch: true })).catch(function() {});
           }
         }, 300);
+        // X流入など：ログイン完了後に元の Auto-GO プール詳細へ戻す
+        setTimeout(function() {
+          if (typeof window.__agConsumePendingPoolAfterLogin === "function") {
+            window.__agConsumePendingPoolAfterLogin();
+          }
+        }, 500);
       } else {
         loginBtn.classList.remove("hidden"); userProfile.classList.add("hidden");
         if (unsubTrades) unsubTrades(); if (unsubUser) unsubUser(); if (unsubNotifs) unsubNotifs(); unsubTrades=null; unsubUser=null; unsubNotifs=null; serverNotifs = [];
