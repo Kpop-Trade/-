@@ -395,29 +395,11 @@ exports.onAutoGoArrivalOrRevealRegistered = onDocumentUpdated(
     const arrivalJustReported = before.status !== "arrived" && after.status === "arrived";
     const revealJustRegistered = !before.revealedAt && !!after.revealedAt;
     if (!arrivalJustReported && !revealJustRegistered) return;
+    const result = await tryStartAutoGoRevealWindow(event.params.poolId, {});
+    if (!result.started) return;
     const poolRef = db.collection("auto_go_pools").doc(event.params.poolId);
     const poolSnap = await poolRef.get();
-    if (!poolSnap.exists) return;
-    const pool = poolSnap.data();
-    if (pool.revealDeadlineAt) return;
-    const arrivals = await poolRef.collection("entries").get();
-    const arrivalCount = arrivals.docs.filter((entry) => {
-      const data = entry.data();
-      return !!(data.albumReceivedAt || data.revealedAt);
-    }).length;
-    if (arrivalCount < 5) return;
-    const deadlineAt = admin.firestore.Timestamp.fromMillis(Date.now() + 4 * 24 * 60 * 60 * 1000);
-    const started = await db.runTransaction(async (tx) => {
-      const current = await tx.get(poolRef);
-      if (!current.exists || current.data().revealDeadlineAt) return false;
-      tx.update(poolRef, {
-        revealOpenedAt: FV.serverTimestamp(),
-        revealDeadlineAt: deadlineAt,
-        recruitmentClosedAt: FV.serverTimestamp()
-      });
-      return true;
-    });
-    if (!started) return;
+    const pool = poolSnap.exists ? poolSnap.data() : {};
     const members = await poolRef.collection("entries").get();
     await Promise.all(members.docs.filter((entry) => entry.data().status !== "cancelled").map((entry) => notify(entry.id, {
       id: `autogo_reveal_${event.params.poolId}`,
@@ -777,6 +759,107 @@ async function applyAutoGoReceiptRegistration(poolId, uid) {
   });
 }
 
+/** registerAutoGoArrival と同じ到着報告（任意 UID） */
+async function applyAutoGoArrivalRegistration(poolId, uid) {
+  const entryRef = autoGoEntryRef(poolId, uid);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(entryRef);
+    if (!snap.exists || snap.data().status !== "purchased") {
+      throw new HttpsError("failed-precondition", "purchase must be registered before arrival");
+    }
+    tx.update(entryRef, { status: "arrived", albumReceivedAt: FV.serverTimestamp() });
+  });
+}
+
+/** registerAutoGoReveal と同じ開封（トレカ）報告（任意 UID） */
+async function applyAutoGoRevealRegistration(poolId, uid, pulledMember) {
+  const poolRef = db.collection("auto_go_pools").doc(poolId);
+  const entryRef = autoGoEntryRef(poolId, uid);
+  await db.runTransaction(async (tx) => {
+    const [poolSnap, entrySnap] = await Promise.all([tx.get(poolRef), tx.get(entryRef)]);
+    if (!poolSnap.exists || !entrySnap.exists || entrySnap.data().status !== "arrived") {
+      throw new HttpsError("failed-precondition", "entry is not ready for reveal registration");
+    }
+    const pool = poolSnap.data();
+    if (!(pool.members || pool.memberNames || []).includes(pulledMember)) {
+      throw new HttpsError("invalid-argument", "unknown member");
+    }
+    if (pool.revealDeadlineAt && timestampMillis(pool.revealDeadlineAt) <= Date.now()) {
+      throw new HttpsError("deadline-exceeded", "reveal registration period has ended");
+    }
+    tx.update(entryRef, {
+      pulledMember,
+      openedCard: pulledMember,
+      status: pulledMember === entrySnap.data().wantedMember ? "self_pulled" : "waiting_match",
+      revealedAt: FV.serverTimestamp()
+    });
+  });
+}
+
+/**
+ * 到着/開封が5人以上になったら開封登録期間（本番は約4日）を開始。
+ * shortTestMs を渡すと TEST 用の短縮締切（例: 3分）にできる。
+ */
+async function tryStartAutoGoRevealWindow(poolId, opts) {
+  const options = opts || {};
+  const poolRef = db.collection("auto_go_pools").doc(poolId);
+  const poolSnap = await poolRef.get();
+  if (!poolSnap.exists) return { started: false, reason: "not_found" };
+  const pool = poolSnap.data() || {};
+  const wantShort = Number(options.shortTestMs) > 0 && isAutoGoTestPool(pool);
+  // 通常は一度きり。TEST＋短縮指定時のみ、トリガーで先に4日が入っても上書き可
+  if (pool.revealDeadlineAt && !wantShort) {
+    return {
+      started: false,
+      already: true,
+      revealDeadlineAtMs: timestampMillis(pool.revealDeadlineAt),
+      revealOpenedAtMs: timestampMillis(pool.revealOpenedAt)
+    };
+  }
+  const arrivals = await poolRef.collection("entries").get();
+  const arrivalCount = arrivals.docs.filter((entry) => {
+    const data = entry.data() || {};
+    return !!(data.albumReceivedAt || data.revealedAt);
+  }).length;
+  if (arrivalCount < 5) {
+    return { started: false, reason: "need_five", arrivalCount, need: 5 - arrivalCount };
+  }
+  const durationMs = wantShort
+    ? Number(options.shortTestMs)
+    : 4 * 24 * 60 * 60 * 1000;
+  const deadlineAt = admin.firestore.Timestamp.fromMillis(Date.now() + durationMs);
+  const started = await db.runTransaction(async (tx) => {
+    const current = await tx.get(poolRef);
+    if (!current.exists) return false;
+    const cur = current.data() || {};
+    if (cur.revealDeadlineAt && !wantShort) return false;
+    tx.update(poolRef, {
+      revealOpenedAt: cur.revealOpenedAt || FV.serverTimestamp(),
+      revealDeadlineAt: deadlineAt,
+      recruitmentClosedAt: cur.recruitmentClosedAt || FV.serverTimestamp(),
+      revealDeadlineTestShort: wantShort
+    });
+    return true;
+  });
+  if (!started) {
+    const again = await poolRef.get();
+    const row = again.exists ? again.data() : {};
+    return {
+      started: false,
+      already: !!row.revealDeadlineAt,
+      revealDeadlineAtMs: timestampMillis(row.revealDeadlineAt)
+    };
+  }
+  return {
+    started: true,
+    arrivalCount,
+    revealDeadlineAtMs: deadlineAt.toMillis(),
+    durationMs,
+    shortTest: wantShort,
+    resetShort: wantShort && !!pool.revealDeadlineAt
+  };
+}
+
 exports.uploadAutoGoEvidence = onCall({
   maxInstances: 10,
   timeoutSeconds: 120,
@@ -1086,27 +1169,7 @@ exports.registerAutoGoReveal = onCall(async (request) => {
   if (typeof poolId !== "string" || typeof pulledMember !== "string") {
     throw new HttpsError("invalid-argument", "pool and member are required");
   }
-  const poolRef = db.collection("auto_go_pools").doc(poolId);
-  const entryRef = autoGoEntryRef(poolId, request.auth.uid);
-  await db.runTransaction(async (tx) => {
-    const [poolSnap, entrySnap] = await Promise.all([tx.get(poolRef), tx.get(entryRef)]);
-    if (!poolSnap.exists || !entrySnap.exists || entrySnap.data().status !== "arrived") {
-      throw new HttpsError("failed-precondition", "entry is not ready for reveal registration");
-    }
-    const pool = poolSnap.data();
-    if (!(pool.members || pool.memberNames || []).includes(pulledMember)) {
-      throw new HttpsError("invalid-argument", "unknown member");
-    }
-    if (pool.revealDeadlineAt && timestampMillis(pool.revealDeadlineAt) <= Date.now()) {
-      throw new HttpsError("deadline-exceeded", "reveal registration period has ended");
-    }
-    tx.update(entryRef, {
-      pulledMember,
-      openedCard: pulledMember,
-      status: pulledMember === entrySnap.data().wantedMember ? "self_pulled" : "waiting_match",
-      revealedAt: FV.serverTimestamp()
-    });
-  });
+  await applyAutoGoRevealRegistration(poolId, request.auth.uid, pulledMember);
   return { ok: true };
 });
 
@@ -1114,14 +1177,7 @@ exports.registerAutoGoArrival = onCall(async (request) => {
   if (!request.auth) throw new HttpsError("unauthenticated", "login required");
   const poolId = String((request.data || {}).poolId || "");
   if (!/^[\w-]{1,120}$/.test(poolId)) throw new HttpsError("invalid-argument", "invalid pool");
-  const entryRef = autoGoEntryRef(poolId, request.auth.uid);
-  await db.runTransaction(async (tx) => {
-    const snap = await tx.get(entryRef);
-    if (!snap.exists || snap.data().status !== "purchased") {
-      throw new HttpsError("failed-precondition", "purchase must be registered before arrival");
-    }
-    tx.update(entryRef, { status: "arrived", albumReceivedAt: FV.serverTimestamp() });
-  });
+  await applyAutoGoArrivalRegistration(poolId, request.auth.uid);
   return { ok: true };
 });
 
@@ -1836,6 +1892,140 @@ exports.adminSimAutoGoDummyReceipts = onCall({
     ok: true,
     received: results.length,
     preferredIncoming: withIncoming.length > 0,
+    results
+  };
+});
+
+/**
+ * テスト用：ダミー到着・開封（トレカ報告）→ 5人以上で開封期間カウントダウン開始
+ * mode:
+ *  - arrive_all: purchased → arrived
+ *  - reveal_all: arrived → 開封報告
+ *  - five_plus: 購入済みダミーを到着+開封し、5人以上でカウントダウン開始（本番ロジック）
+ * shortCountdown: true なら TEST 用に締切を約3分に短縮（動作確認用）
+ */
+exports.adminSimAutoGoDummyRevealPhase = onCall({
+  timeoutSeconds: 300,
+  memory: "512MiB"
+}, async (request) => {
+  assertAdmin(request);
+  const data = request.data || {};
+  const poolId = String(data.poolId || "");
+  const mode = String(data.mode || "five_plus");
+  const shortCountdown = data.shortCountdown === true;
+  if (!/^[\w-]{1,120}$/.test(poolId)) throw new HttpsError("invalid-argument", "invalid pool");
+  if (!["arrive_all", "reveal_all", "five_plus"].includes(mode)) {
+    throw new HttpsError("invalid-argument", "mode must be arrive_all, reveal_all, or five_plus");
+  }
+
+  const poolRef = db.collection("auto_go_pools").doc(poolId);
+  const poolSnap = await poolRef.get();
+  if (!poolSnap.exists) throw new HttpsError("not-found", "pool not found");
+  const pool = poolSnap.data() || {};
+  if (!isAutoGoTestPool(pool)) {
+    throw new HttpsError("failed-precondition", "dummy reveal sim is allowed only on [TEST] pools");
+  }
+  const members = poolMemberList(pool);
+  if (!members.length) throw new HttpsError("failed-precondition", "pool has no members");
+
+  const entriesSnap = await poolRef.collection("entries").get();
+  const dummies = entriesSnap.docs
+    .map((d) => ({ uid: d.id, ...(d.data() || {}) }))
+    .filter((e) => e.isDummy === true || isAutoGoDummyUid(e.uid))
+    .sort((a, b) => (Number(a.entrySeq) || 0) - (Number(b.entrySeq) || 0));
+
+  const pickPulled = (entry, index) => {
+    const wanted = entry.wantedMember;
+    const others = members.filter((m) => m !== wanted);
+    if (others.length) return others[index % others.length];
+    return members[index % members.length];
+  };
+
+  let arrived = 0;
+  let revealed = 0;
+  const results = [];
+
+  if (mode === "arrive_all" || mode === "five_plus") {
+    const targets = dummies.filter((e) => e.status === "purchased");
+    for (const entry of targets) {
+      await applyAutoGoArrivalRegistration(poolId, entry.uid);
+      arrived += 1;
+      results.push({ uid: entry.uid, step: "arrived" });
+      entry.status = "arrived";
+      entry.albumReceivedAt = true;
+    }
+  }
+
+  if (mode === "reveal_all" || mode === "five_plus") {
+    // 最新を再読込
+    const fresh = await poolRef.collection("entries").get();
+    const arrivedDummies = fresh.docs
+      .map((d) => ({ uid: d.id, ...(d.data() || {}) }))
+      .filter((e) => (e.isDummy === true || isAutoGoDummyUid(e.uid)) && e.status === "arrived")
+      .sort((a, b) => (Number(a.entrySeq) || 0) - (Number(b.entrySeq) || 0));
+
+    let revealTargets = arrivedDummies;
+    if (mode === "five_plus") {
+      // すでに開封済みを含めて5人以上になるよう足りない分だけ開封
+      const already = fresh.docs.filter((d) => {
+        const e = d.data() || {};
+        return (e.isDummy === true || isAutoGoDummyUid(d.id)) && !!(e.albumReceivedAt || e.revealedAt);
+      }).length;
+      const need = Math.max(0, 5 - already);
+      // 到着済みをできるだけ開封（最低 need 人、余裕があれば全員）
+      revealTargets = arrivedDummies;
+      if (need === 0 && arrivedDummies.length === 0) {
+        // nothing
+      }
+    }
+
+    for (let i = 0; i < revealTargets.length; i += 1) {
+      const entry = revealTargets[i];
+      const pulled = pickPulled(entry, i);
+      await applyAutoGoRevealRegistration(poolId, entry.uid, pulled);
+      revealed += 1;
+      results.push({ uid: entry.uid, step: "revealed", pulledMember: pulled });
+    }
+  }
+
+  let countdown = { started: false };
+  if (mode === "five_plus") {
+    countdown = await tryStartAutoGoRevealWindow(poolId, {
+      shortTestMs: shortCountdown ? 3 * 60 * 1000 : 0
+    });
+    // まだ足りない場合は明示
+    if (!countdown.started && !countdown.already && countdown.reason === "need_five") {
+      throw new HttpsError(
+        "failed-precondition",
+        `開封/到着が${countdown.arrivalCount || 0}人です。あと${countdown.need || 5}人必要です（購入→到着→開封の順でダミーを進めてください）`
+      );
+    }
+  } else {
+    // 到着/開封のみでも、条件を満たしていれば本番トリガーと同様に開始を試みる
+    countdown = await tryStartAutoGoRevealWindow(poolId, {
+      shortTestMs: shortCountdown ? 3 * 60 * 1000 : 0
+    });
+  }
+
+  await writeAutoGoAuditLog(poolId, {
+    action: "dummy_reveal_phase_sim",
+    actorUid: request.auth.uid,
+    mode,
+    shortCountdown,
+    arrived,
+    revealed,
+    countdownStarted: !!countdown.started,
+    countdownAlready: !!countdown.already,
+    revealDeadlineAtMs: countdown.revealDeadlineAtMs || null
+  }).catch(() => {});
+
+  return {
+    ok: true,
+    mode,
+    arrived,
+    revealed,
+    shortCountdown,
+    countdown,
     results
   };
 });
