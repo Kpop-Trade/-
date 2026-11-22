@@ -219,24 +219,19 @@
       var listTitle = document.getElementById("list-section-title");
       var titleRow = listTitle ? listTitle.parentElement : null;
       try {
-        if (postList && titleRow && postList.contains(titleRow)) {
-          postList.insertBefore(section, titleRow);
+        if (titleRow && titleRow.parentNode) {
+          titleRow.parentNode.insertBefore(section, titleRow);
         } else if (postList) {
-          var ag = document.getElementById("autogo-home-wrap");
-          if (ag && postList.contains(ag) && ag.nextSibling) {
-            postList.insertBefore(section, ag.nextSibling);
-          } else if (ag && postList.contains(ag)) {
-            ag.after(section);
-          } else {
-            postList.appendChild(section);
-          }
+          postList.appendChild(section);
         } else {
           var main = document.querySelector("main");
           if (main) main.appendChild(section);
         }
       } catch (err) {
         console.warn("raffle insert", err);
-        if (postList) postList.appendChild(section);
+        try {
+          if (postList) postList.appendChild(section);
+        } catch (_) {}
       }
     }
 
