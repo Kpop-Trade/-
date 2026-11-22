@@ -442,72 +442,154 @@ async function resolveAutoGoMatchAddress(entry) {
   return loaded;
 }
 
-function findAutoGoCycle(start, candidates, used) {
-  const idToEntry = new Map();
-  const byWanted = new Map();
-  for (let i = 0; i < candidates.length; i += 1) {
-    const entry = candidates[i];
-    idToEntry.set(entry.id, entry);
-    if (used.has(entry.id) && entry.id !== start.id) {
-      continue;
-    }
-    const wantedKey = entry.wantedMember;
-    if (!byWanted.has(wantedKey)) {
-      byWanted.set(wantedKey, []);
-    }
-    byWanted.get(wantedKey).push(entry);
+function hungarianMinCostAssign(cost) {
+  const n = cost.length;
+  const u = [];
+  const v = [];
+  const p = [];
+  const way = [];
+  for (let i = 0; i <= n; i += 1) {
+    u.push(0);
+    v.push(0);
+    p.push(0);
+    way.push(0);
   }
-
-  const queue = [start];
-  const parentId = new Map();
-  parentId.set(start.id, "");
-  const seen = new Set([start.id]);
-
-  while (queue.length > 0) {
-    const current = queue.shift();
-    const nexts = byWanted.get(current.pulledMember) || [];
-    for (let i = 0; i < nexts.length; i += 1) {
-      const next = nexts[i];
-      if (next.id === start.id) {
-        if (current.id === start.id) {
-          continue;
+  for (let i = 1; i <= n; i += 1) {
+    p[0] = i;
+    let j0 = 0;
+    const minv = [];
+    const used = [];
+    for (let j = 0; j <= n; j += 1) {
+      minv.push(Infinity);
+      used.push(false);
+    }
+    do {
+      used[j0] = true;
+      const i0 = p[j0];
+      let delta = Infinity;
+      let j1 = 0;
+      for (let j = 1; j <= n; j += 1) {
+        if (used[j]) continue;
+        const cur = cost[i0 - 1][j - 1] - u[i0] - v[j];
+        if (cur < minv[j]) {
+          minv[j] = cur;
+          way[j] = j0;
         }
-        const path = [];
-        let cursorId = current.id;
-        let guard = 0;
-        while (cursorId && guard < candidates.length + 2) {
-          const cursor = idToEntry.get(cursorId);
-          if (!cursor) {
-            break;
-          }
-          path.push(cursor);
-          if (cursorId === start.id) {
-            break;
-          }
-          cursorId = parentId.get(cursorId) || "";
-          guard += 1;
+        if (minv[j] < delta) {
+          delta = minv[j];
+          j1 = j;
         }
-        path.reverse();
-        if (path.length >= 2 && path[0] && path[0].id === start.id) {
-          return path;
-        }
-        continue;
       }
-      if (seen.has(next.id) || used.has(next.id)) {
-        continue;
+      for (let j = 0; j <= n; j += 1) {
+        if (used[j]) {
+          u[p[j]] += delta;
+          v[j] -= delta;
+        } else {
+          minv[j] -= delta;
+        }
       }
-      seen.add(next.id);
-      parentId.set(next.id, current.id);
-      queue.push(next);
+      j0 = j1;
+    } while (p[j0] !== 0);
+    do {
+      const j1 = way[j0];
+      p[j0] = p[j1];
+      j0 = j1;
+    } while (j0 !== 0);
+  }
+  const assign = [];
+  for (let i = 0; i < n; i += 1) assign.push(-1);
+  for (let j = 1; j <= n; j += 1) {
+    if (p[j] > 0) assign[p[j] - 1] = j - 1;
+  }
+  return assign;
+}
+
+/**
+ * 発送できる人数が最大になる循環だけを返す。
+ * 短い輪を先に確定すると、表示している第1希望確率より対象外が増える。
+ */
+function findAutoGoCycleCover(candidates) {
+  const n = candidates.length;
+  if (n < 2) return [];
+  const skipCost = 1;
+  const impossibleCost = 1000000;
+  const cost = [];
+  for (let i = 0; i < n; i += 1) {
+    const row = [];
+    for (let j = 0; j < n; j += 1) {
+      if (i === j) {
+        row.push(skipCost);
+      } else if (candidates[j].wantedMember === candidates[i].pulledMember) {
+        row.push(0);
+      } else {
+        row.push(impossibleCost);
+      }
+    }
+    cost.push(row);
+  }
+  const assign = hungarianMinCostAssign(cost);
+  const next = [];
+  for (let i = 0; i < n; i += 1) {
+    const dest = assign[i];
+    if (dest !== i && dest >= 0 && cost[i][dest] === 0) {
+      next.push(dest);
+    } else {
+      next.push(-1);
     }
   }
-  return null;
+  const state = [];
+  for (let i = 0; i < n; i += 1) state.push(0);
+  const cycles = [];
+  for (let i = 0; i < n; i += 1) {
+    if (state[i] !== 0 || next[i] < 0) continue;
+    let cursor = i;
+    while (cursor >= 0 && state[cursor] === 0) {
+      state[cursor] = 1;
+      cursor = next[cursor];
+    }
+    if (cursor >= 0 && state[cursor] === 1) {
+      const cycle = [];
+      let y = cursor;
+      const guard = new Set();
+      while (!guard.has(y)) {
+        guard.add(y);
+        cycle.push(candidates[y]);
+        state[y] = 2;
+        y = next[y];
+        if (cycle.length > n) break;
+      }
+      if (cycle.length >= 2) cycles.push(cycle);
+    }
+    for (let k = 0; k < n; k += 1) {
+      if (state[k] === 1) state[k] = 2;
+    }
+  }
+  return cycles;
+}
+
+function autoGoNoMatchData() {
+  return {
+    status: "matched",
+    noMatchResult: true,
+    matchRoomId: FV.delete(),
+    cycleSize: FV.delete(),
+    sendToUid: FV.delete(),
+    sendToName: FV.delete(),
+    shipToName: FV.delete(),
+    shipToZip: FV.delete(),
+    shipToAddress: FV.delete(),
+    receiveFromUid: FV.delete(),
+    receiveFromName: FV.delete(),
+    receivingCard: FV.delete(),
+    matchedAt: FV.serverTimestamp()
+  };
 }
 
 async function closeAutoGoRevealWindow(poolId, poolRef, poolData, options) {
   const opts = options || {};
   const deadlinePassed = !!(poolData.revealDeadlineAt && timestampMillis(poolData.revealDeadlineAt) <= Date.now());
   const finalize = opts.finalize === false ? false : true;
+  const reshuffleUnshipped = opts.reshuffleUnshipped === true;
   const entriesRef = poolRef.collection("entries");
   const waitingSnap = await entriesRef.where("status", "==", "waiting_match").get();
   const matchedSnap = await entriesRef.where("status", "==", "matched").get();
@@ -517,6 +599,11 @@ async function closeAutoGoRevealWindow(poolId, poolRef, poolData, options) {
   });
   matchedSnap.docs.forEach((doc) => {
     const data = doc.data() || {};
+    const alreadyShipped = !!(data.shippedAt || data.shippedDone || data.receivedDone);
+    if (reshuffleUnshipped) {
+      if (!alreadyShipped) rawCandidates.push({ id: doc.id, ...data });
+      return;
+    }
     if (data.noMatchResult === true && !data.sendToUid) {
       rawCandidates.push({ id: doc.id, ...data });
     }
@@ -539,12 +626,10 @@ async function closeAutoGoRevealWindow(poolId, poolRef, poolData, options) {
 
   const used = new Set();
   const updates = [];
+  const cycles = findAutoGoCycleCover(candidates);
 
-  for (let s = 0; s < candidates.length; s += 1) {
-    const start = candidates[s];
-    if (used.has(start.id)) continue;
-    const cycle = findAutoGoCycle(start, candidates, used);
-    if (!cycle) continue;
+  for (let c = 0; c < cycles.length; c += 1) {
+    const cycle = cycles[c];
     let cycleReady = true;
     for (let i = 0; i < cycle.length; i += 1) {
       const address = addressById.get(cycle[i].id);
@@ -555,7 +640,7 @@ async function closeAutoGoRevealWindow(poolId, poolRef, poolData, options) {
     }
     if (!cycleReady) continue;
     cycle.forEach((entry) => used.add(entry.id));
-    const cycleId = `ag_${poolId}_${start.id}`;
+    const cycleId = `ag_${poolId}_${cycle[0].id}`;
     cycle.forEach((sender, index) => {
       const receiver = cycle[(index + 1) % cycle.length];
       const provider = cycle[(index + cycle.length - 1) % cycle.length];
@@ -587,7 +672,7 @@ async function closeAutoGoRevealWindow(poolId, poolRef, poolData, options) {
     if (!used.has(candidate.id)) {
       updates.push({
         ref: autoGoEntryRef(poolId, candidate.id),
-        data: { status: "matched", noMatchResult: true, matchedAt: FV.serverTimestamp() }
+        data: autoGoNoMatchData()
       });
     }
   }
@@ -595,7 +680,7 @@ async function closeAutoGoRevealWindow(poolId, poolRef, poolData, options) {
     const entry = blocked[i];
     updates.push({
       ref: autoGoEntryRef(poolId, entry.id),
-      data: { status: "matched", noMatchResult: true, matchedAt: FV.serverTimestamp() }
+      data: autoGoNoMatchData()
     });
   }
 
@@ -2194,7 +2279,8 @@ exports.adminRunAutoGoMatch = onCall({
   }
   const deadlinePassed = !!(pool.revealDeadlineAt && timestampMillis(pool.revealDeadlineAt) <= Date.now());
   const result = await closeAutoGoRevealWindow(poolId, poolRef, pool, {
-    finalize: deadlinePassed
+    finalize: deadlinePassed,
+    reshuffleUnshipped: true
   });
   await writeAutoGoAuditLog(poolId, {
     action: "admin_run_match",
