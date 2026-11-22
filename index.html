@@ -5,22 +5,34 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>ILLIT Trade</title>
 <script>
-(async function () {
-  try {
-    var parts = await Promise.all([
-      fetch('./index.part0.html?v=1', { cache: 'no-store' }).then(function (r) { return r.text(); }),
-      fetch('./index.part1.html?v=1', { cache: 'no-store' }).then(function (r) { return r.text(); }),
-      fetch('./index.part2.html?v=1', { cache: 'no-store' }).then(function (r) { return r.text(); })
-    ]);
-    var html = parts.join('');
-    document.open();
-    document.write(html);
-    document.close();
-  } catch (e) {
-    document.body.innerHTML = '<p style="padding:2rem">読み込み失敗: ' + e + '</p>';
-  }
+(function () {
+  var url = "https://cdn.jsdelivr.net/gh/Kpop-Trade/-@41d7cbe66be5e9e92c490aff6782facf79a0adf1/index.html";
+  fetch(url, { cache: "no-store" })
+    .then(function (r) {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.text();
+    })
+    .then(function (html) {
+      document.open();
+      document.write(html);
+      document.close();
+      setTimeout(function () {
+        if (!document.querySelector('script[src*="points-raffle"]')) {
+          var s = document.createElement("script");
+          s.src = "./js/points-raffle.js?v=20261122pt13";
+          s.defer = true;
+          document.head.appendChild(s);
+        }
+      }, 1500);
+    })
+    .catch(function (e) {
+      document.body.innerHTML =
+        '<p style="padding:2rem;font-family:sans-serif;text-align:center">読み込みに失敗しました。<br>' +
+        String(e) +
+        '<br><a href="https://cdn.jsdelivr.net/gh/Kpop-Trade/-@41d7cbe66be5e9e92c490aff6782facf79a0adf1/index.html">こちらを開く</a></p>';
+    });
 })();
 </script>
 </head>
-<body style="font-family:sans-serif;padding:2rem;text-align:center">ILLIT Trade を復元中…</body>
+<body style="font-family:sans-serif;padding:2rem;text-align:center;color:#666">ILLIT Trade を読み込み中…</body>
 </html>
