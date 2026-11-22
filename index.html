@@ -995,7 +995,7 @@ html, body {
 
     <div class="liquid-glass rounded-2xl px-2 py-1 flex overflow-x-auto hide-scrollbar gap-1 text-[11px] md:text-xs font-bold">
       <button onclick="switchAdminTab('autogo')" id="admin-tab-autogo" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">⚡ Auto-GO</button>
-        <button onclick="switchAdminTab('stats')" id="admin-tab-stats" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">📊 統計</button>
+      <button onclick="switchAdminTab('stats')" id="admin-tab-stats" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">📊 統計</button>
       <button onclick="switchAdminTab('reports')" id="admin-tab-reports" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">🚨 通報</button>
       <button onclick="switchAdminTab('inquiries')" id="admin-tab-inquiries" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">📩 問合せ</button>
       <button onclick="switchAdminTab('users')" id="admin-tab-users" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">👥 ユーザー</button>
@@ -1005,9 +1005,10 @@ html, body {
       <button onclick="switchAdminTab('broadcast')" id="admin-tab-broadcast" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">📢 一斉通知</button>
       <button onclick="switchAdminTab('cards')" id="admin-tab-cards" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">🃏 トレカ写真</button>
       <button onclick="switchAdminTab('logs')" id="admin-tab-logs" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">📝 操作ログ</button>
+      <button onclick="switchAdminTab('rewards')" id="admin-tab-rewards" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">✨ ポイント・抽選</button>
     </div>
 
-    <div class="liquid-glass rounded-2xl p-4 space-y-4">
+    <div id="admin-rewards-panel" class="hidden liquid-glass rounded-2xl p-4 space-y-4">
       <div class="space-y-2">
         <h3 class="font-bold text-sm">✨ ポイント2倍デー設定</h3>
         <div class="flex gap-2 min-w-0">
@@ -1020,6 +1021,11 @@ html, body {
         <h3 class="font-bold text-sm">🃏 トレカ抽選を作成</h3>
         <input id="raffle-title-input" type="text" maxlength="120" required placeholder="抽選タイトル" class="liquid-glass-input w-full min-w-0 rounded-xl p-2.5 text-sm">
         <input id="raffle-image-input" type="url" required placeholder="景品画像URL（https://）" class="liquid-glass-input w-full min-w-0 rounded-xl p-2.5 text-sm">
+        <label class="block text-xs text-gray-600">画像をアップロード
+          <input id="raffle-image-file-input" type="file" accept="image/*" onchange="uploadRaffleImage(this)" class="mt-1 block w-full text-xs text-gray-600 file:mr-2 file:rounded-full file:border-0 file:bg-purple-50 file:px-3 file:py-1.5 file:font-bold file:text-purple-700">
+        </label>
+        <div id="raffle-image-preview" class="hidden"><img alt="抽選画像プレビュー" class="max-h-48 w-full rounded-xl bg-white object-contain"></div>
+        <p id="raffle-image-upload-status" class="text-xs text-gray-500" aria-live="polite"></p>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <label class="text-xs text-gray-600">当選人数<input id="raffle-winner-count-input" type="number" min="1" max="100" required value="1" class="liquid-glass-input mt-1 w-full min-w-0 rounded-xl p-2.5 text-sm text-gray-800"></label>
           <label class="text-xs text-gray-600">締切<input id="raffle-ends-at-input" type="datetime-local" required class="liquid-glass-input mt-1 w-full min-w-0 rounded-xl p-2.5 text-sm text-gray-800"></label>
@@ -1886,6 +1892,7 @@ html, body {
     import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { getFirestore, collection, collectionGroup, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, where, orderBy, limit, startAfter, onSnapshot, serverTimestamp, increment, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js";
+    import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
 
 
@@ -1901,6 +1908,7 @@ html, body {
     };
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
+    const storage = getStorage(app);
     const rewardCalls = {
       claimDailyLoginBonus: httpsCallable(getFunctions(app, "asia-northeast1"), "claimDailyLoginBonus"),
       grantProfileAndInviteBonus: httpsCallable(getFunctions(app, "asia-northeast1"), "grantProfileAndInviteBonus"),
@@ -2502,6 +2510,10 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     window.closeLoginCalendar = function() {
       document.getElementById("login-calendar-modal").classList.add("hidden");
     };
+    function raffleDateMillis(value) {
+      const millis = value?.toMillis ? value.toMillis() : new Date(value || 0).getTime();
+      return Number.isFinite(millis) ? millis : 0;
+    }
     window.renderRewards = async function() {
       const pointsCard = document.getElementById("points-card");
       pointsCard.classList.toggle("hidden", !currentUser);
@@ -2523,8 +2535,8 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         const snapshot = await getDocs(collection(db, "raffles"));
         const active = snapshot.docs
           .map((raffle) => ({ id: raffle.id, ...raffle.data() }))
-          .filter((raffle) => raffle.status === "active" &&
-            (raffle.endsAt?.toMillis ? raffle.endsAt.toMillis() : new Date(raffle.endsAt).getTime()) > Date.now());
+          .filter((raffle) => raffle.status === "active" && raffleDateMillis(raffle.endsAt) > Date.now())
+          .sort((a, b) => raffleDateMillis(a.endsAt) - raffleDateMillis(b.endsAt));
         if (!active.length) {
           list.innerHTML = '<p class="text-xs text-gray-500">現在開催中の抽選はありません。</p>';
           return;
@@ -2578,7 +2590,8 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         document.getElementById("double-point-date-list").innerHTML = dates.length
           ? dates.map((date) => `<span class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-1 text-amber-900">${escapeHtml(date)}<button type="button" aria-label="削除" onclick="removeDoublePointDate('${escapeHtml(date)}')" class="font-bold">×</button></span>`).join("")
           : '<span class="text-gray-500">設定なし</span>';
-        const records = raffles.docs.map((raffle) => ({ id: raffle.id, ...raffle.data() }));
+        const records = raffles.docs.map((raffle) => ({ id: raffle.id, ...raffle.data() }))
+          .sort((a, b) => raffleDateMillis(b.createdAt) - raffleDateMillis(a.createdAt));
         document.getElementById("admin-raffle-list").innerHTML = records.length
           ? records.map((raffle) => `<div class="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white/70 p-2"><span class="min-w-0 flex-1 break-words">${escapeHtml(raffle.title || "トレカ抽選")}・${escapeHtml(raffle.status || "")}（${Number(raffle.entriesCount) || 0}口）</span>${raffle.status === "active" ? `<button type="button" onclick="drawRaffle('${escapeHtml(raffle.id)}')" class="shrink-0 rounded-full bg-pink-600 px-3 py-1.5 font-bold text-white">抽選実行</button>` : ""}</div>`).join("")
           : '<p class="text-gray-500">抽選はありません。</p>';
@@ -2609,11 +2622,55 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         showToast("ポイント2倍デーを更新できませんでした", "error");
       }
     }
+    let raffleImagePreviewUrl = "";
+    let raffleImageUploadPromise = null;
+    window.uploadRaffleImage = async function(input) {
+      const file = input.files?.[0];
+      input.value = "";
+      if (!file) return;
+      if (!file.type.startsWith("image/")) {
+        showToast("画像ファイルを選択してください", "error");
+        return;
+      }
+      input.disabled = true;
+      if (raffleImagePreviewUrl) URL.revokeObjectURL(raffleImagePreviewUrl);
+      raffleImagePreviewUrl = URL.createObjectURL(file);
+      const preview = document.getElementById("raffle-image-preview");
+      preview.querySelector("img").src = raffleImagePreviewUrl;
+      preview.classList.remove("hidden");
+      const status = document.getElementById("raffle-image-upload-status");
+      const submit = document.querySelector("#admin-rewards-panel form button[type='submit']");
+      status.textContent = "画像をアップロードしています...";
+      submit.disabled = true;
+      raffleImageUploadPromise = (async () => {
+        try {
+          if (!currentUser?.uid) throw new Error("ログイン状態を確認できません");
+          const path = `raffles/${currentUser.uid}/${Date.now()}-${Math.random().toString(36).slice(2)}`;
+          const uploaded = await uploadBytes(storageRef(storage, path), file, { contentType: file.type });
+          document.getElementById("raffle-image-input").value = await getDownloadURL(uploaded.ref);
+          status.textContent = "画像をアップロードしました";
+        } catch (e) {
+          console.error("Raffle image upload failed:", e);
+          status.textContent = "画像をアップロードできませんでした";
+          showToast("画像をアップロードできませんでした", "error");
+          throw e;
+        } finally {
+          submit.disabled = false;
+          input.disabled = false;
+        }
+      })();
+      try {
+        await raffleImageUploadPromise;
+      } catch (e) {
+        raffleImageUploadPromise = null;
+      }
+    };
     window.createRaffleFromAdmin = async function(event) {
       event.preventDefault();
       const button = event.currentTarget.querySelector('button[type="submit"]');
       button.disabled = true;
       try {
+        if (raffleImageUploadPromise) await raffleImageUploadPromise;
         const endsAtJst = document.getElementById("raffle-ends-at-input").value;
         await rewardCalls.createRaffle({
           title: document.getElementById("raffle-title-input").value.trim(),
@@ -2622,6 +2679,12 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           endsAt: new Date(`${endsAtJst}:00+09:00`).toISOString()
         });
         event.currentTarget.reset();
+        if (raffleImagePreviewUrl) URL.revokeObjectURL(raffleImagePreviewUrl);
+        raffleImagePreviewUrl = "";
+        document.getElementById("raffle-image-preview").classList.add("hidden");
+        document.getElementById("raffle-image-preview").querySelector("img").removeAttribute("src");
+        document.getElementById("raffle-image-upload-status").textContent = "";
+        raffleImageUploadPromise = null;
         await Promise.all([window.renderAdminRewards(), window.renderRewards()]);
         showToast("トレカ抽選を作成しました", "success");
       } catch (e) {
@@ -2853,7 +2916,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     window.switchAdminTab = function(tab) {
       adminTab = tab;
       adminSearchQuery = "";
-      const tabs = ["reports", "inquiries", "users", "posts", "trades", "stats", "likes", "broadcast", "cards", "logs", "autogo"];
+      const tabs = ["reports", "inquiries", "users", "posts", "trades", "stats", "likes", "broadcast", "cards", "logs", "autogo", "rewards"];
       tabs.forEach((k) => {
         const el = document.getElementById("admin-tab-" + k);
         if (el) {
@@ -2866,6 +2929,18 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           }
         }
       });
+
+      const rewardsPanel = document.getElementById("admin-rewards-panel");
+      const adminContent = document.getElementById("admin-content");
+      rewardsPanel.classList.toggle("hidden", tab !== "rewards");
+      adminContent.classList.toggle("hidden", tab === "rewards");
+      if (tab === "rewards") {
+        const controls = document.getElementById("admin-controls");
+        controls.classList.add("hidden");
+        controls.innerHTML = "";
+        window.renderAdminRewards();
+        return;
+      }
 
       const controls = document.getElementById("admin-controls");
       if (tab === "users" || tab === "posts" || tab === "trades") {
