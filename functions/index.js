@@ -45,7 +45,7 @@ function notifMillis(value) {
 }
 
 async function mirrorInbox(uid, item) {
-  if (!uid || !item) return;
+  if (!uid || !item || isAutoGoDummyUid(uid)) return;
   const ref = db.collection("users").doc(uid);
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
@@ -112,7 +112,7 @@ async function push(uid, title, body, link) {
 
 // アプリ内通知（サブコレクション）＋必要なら通知欄へコピー＋プッシュ
 async function notify(uid, { id, text, type = "info", link = null, title = "ILLIT Trade" }) {
-  if (!uid) return;
+  if (!uid || isAutoGoDummyUid(uid)) return;
   const category = inboxCategory({ type, link, text, title });
   const col = db.collection("users").doc(uid).collection("notifications");
   const ref = id ? col.doc(id) : col.doc();
@@ -362,13 +362,18 @@ exports.onAutoGoEntryCreated = onDocumentCreated(
         const [currentPool, currentEntry] = await Promise.all([tx.get(poolRef), tx.get(entryRef)]);
         if (!currentPool.exists || !currentEntry.exists || currentEntry.data().status !== "reserved") return false;
         const data = currentPool.data();
-        const member = currentEntry.data().wantedMember;
+        const entryData = currentEntry.data() || {};
+        const member = entryData.wantedMember;
         const counts = { ...(data.memberCounts || {}) };
         counts[member] = Math.max(0, (Number(counts[member]) || 0) - 1);
-        tx.update(poolRef, {
+        const poolUpdate = {
           totalCount: Math.max(0, (Number(data.totalCount) || 0) - 1),
           memberCounts: counts
-        });
+        };
+        if (entryData.isDummy === true || isAutoGoDummyUid(event.params.uid)) {
+          poolUpdate.dummyCount = Math.max(0, (Number(data.dummyCount) || 0) - 1);
+        }
+        tx.update(poolRef, poolUpdate);
         tx.update(entryRef, { status: "cancelled", cancellationReason: "recruitment_closed" });
         return true;
       });
@@ -1637,13 +1642,19 @@ exports.adminRemoveAutoGoEntry = onCall(async (request) => {
     }
     const pool = poolSnap.data();
     const counts = { ...(pool.memberCounts || {}) };
-    for (const { data } of entriesToRemove) {
+    let dummyRemoved = 0;
+    for (let i = 0; i < entriesToRemove.length; i += 1) {
+      const data = entriesToRemove[i].data || {};
       if (data.wantedMember) {
         counts[data.wantedMember] = Math.max(0, (Number(counts[data.wantedMember]) || 0) - 1);
+      }
+      if (data.isDummy === true || isAutoGoDummyUid(entriesToRemove[i].ref.id)) {
+        dummyRemoved += 1;
       }
     }
     tx.update(poolRef, {
       totalCount: Math.max(0, (Number(pool.totalCount) || 0) - entriesToRemove.length),
+      dummyCount: Math.max(0, (Number(pool.dummyCount) || 0) - dummyRemoved),
       memberCounts: counts
     });
     entriesToRemove.forEach(({ ref }) => tx.update(ref, {
@@ -1717,8 +1728,10 @@ exports.adminInjectAutoGoDummies = onCall({ timeoutSeconds: 120 }, async (reques
         const preferenceOrder = shuffleArray(members);
         const alloc = allocateAutoGoMember(pool, preferenceOrder[0], preferenceOrder);
         const entrySeq = (Number(pool.totalCount) || 0) + 1;
+        const nextDummyCount = (Number(pool.dummyCount) || 0) + 1;
         tx.update(poolRef, {
           totalCount: entrySeq,
+          dummyCount: nextDummyCount,
           memberCounts: alloc.counts,
           memberCaps: alloc.caps,
           targetParticipants: alloc.targetParticipants

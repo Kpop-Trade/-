@@ -770,6 +770,16 @@
       }
       if (!window.__agAdminCache) window.__agAdminCache = {};
       window.__agAdminCache[pool.id] = { entries: pool.entries, users: pool.userDocs, pool: pool };
+      const syncedHead = agParticipantCounts(pool, pool.entries);
+      if (pool.isTest === true && Number(pool.dummyCount) !== syncedHead.dummy) {
+        pool.dummyCount = syncedHead.dummy;
+        const refs = window.__autoGoRefs;
+        if (refs && typeof refs.updateDoc === "function") {
+          refs.updateDoc(refs.doc(refs.db, "auto_go_pools", pool.id), { dummyCount: syncedHead.dummy }).catch(function(error) {
+            console.error("dummyCount update failed", error);
+          });
+        }
+      }
     }));
 
     const poolRows = pools.length === 0
@@ -791,6 +801,13 @@
           }).join("");
           const isTest = p.isTest === true;
           const locked = p.entryLocked === true;
+          const head = agParticipantCounts(p, p.entries);
+          const countLabel = head.dummy > 0
+            ? (head.real + "人（ダミー" + head.dummy + "人は含めない） / " + (p.targetParticipants || 20) + "人")
+            : ((head.real) + " / " + (p.targetParticipants || 20) + "人");
+          const peopleLabel = head.dummy > 0
+            ? ("ユーザー数 " + head.real + "人 · ダミー" + head.dummy + "人は人数外")
+            : ("参加者 " + head.real + "人");
           return `
             <div class="bg-white/85 rounded-2xl p-3.5 border ${isTest ? "border-amber-300 ring-1 ring-amber-200" : "border-white"} shadow-sm space-y-2">
               <div class="flex items-start justify-between gap-2">
@@ -801,7 +818,7 @@
                       ${isTest ? '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-200 text-amber-900">[TEST]</span>' : ""}
                       ${locked ? '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-200 text-rose-900">ENTRY LOCK</span>' : ""}
                       <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${p.status === 'recruiting' ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'}">${p.status === 'recruiting' ? '募集中' : p.status}</span>
-                      <span class="text-[11px] font-bold text-gray-500">${p.totalCount || 0} / ${p.targetParticipants || 20}人 · 成立${p.minThreshold || p.minParticipants || 20}</span>
+                      <span class="text-[11px] font-bold text-gray-500">${countLabel} · 成立${p.minThreshold || p.minParticipants || 20}</span>
                     </div>
                     <p class="text-sm font-black text-gray-900 truncate mt-0.5">${escapeAutoGoHtml(p.title || "無題プール")}</p>
                   </div>
@@ -816,7 +833,7 @@
               <div class="text-[10px] font-bold text-purple-700 bg-purple-50/80 px-2.5 py-1.5 rounded-xl">${breakdown}</div>
               ${agMatchDiagram(p)}
               <div class="rounded-xl border border-gray-100 px-2.5 py-1.5">
-                <p class="text-[10px] font-bold text-gray-600">参加者 ${p.entries?.length || 0}人</p>
+                <p class="text-[10px] font-bold text-gray-600">${peopleLabel}</p>
                 ${participants || '<p class="text-[10px] text-gray-400 py-1">参加者はいません</p>'}
               </div>
               ${typeof window.__agAdminOpsHtml === "function" ? window.__agAdminOpsHtml(p) : ""}
@@ -1131,6 +1148,54 @@
     });
   }
 
+  function agIsDummyEntry(entry) {
+    if (!entry) return false;
+    if (entry.isDummy === true) return true;
+    const uid = entry.uid || entry.id || "";
+    return String(uid).indexOf("dummy_") === 0;
+  }
+  function agParticipantCounts(pool, entries) {
+    if (Array.isArray(entries)) {
+      let real = 0;
+      let dummy = 0;
+      for (let i = 0; i < entries.length; i += 1) {
+        const entry = entries[i];
+        if (!entry || entry.status === "cancelled") continue;
+        if (agIsDummyEntry(entry)) dummy += 1;
+        else real += 1;
+      }
+      return { real: real, dummy: dummy };
+    }
+    const storedTotal = Number(pool && pool.totalCount) || 0;
+    const dummy = Number(pool && pool.dummyCount) || 0;
+    return { real: Math.max(0, storedTotal - dummy), dummy: dummy };
+  }
+  async function syncAutoGoDummyCount(poolId, poolData) {
+    if (!poolId || !poolData || poolData.isTest !== true) return;
+    if (typeof window.__isAutoGoAdmin !== "function" || window.__isAutoGoAdmin() !== true) return;
+    const refs = window.__autoGoRefs;
+    if (!refs || typeof refs.getDocs !== "function" || typeof refs.updateDoc !== "function") return;
+    if (!window.__agDummySyncing) window.__agDummySyncing = {};
+    if (window.__agDummySyncing[poolId]) return;
+    window.__agDummySyncing[poolId] = true;
+    try {
+      const snap = await refs.getDocs(refs.collection(refs.db, "auto_go_pools", poolId, "entries"));
+      let dummy = 0;
+      snap.forEach(function(docSnap) {
+        const data = docSnap.data() || {};
+        if (data.status === "cancelled") return;
+        if (data.isDummy === true || String(docSnap.id).indexOf("dummy_") === 0) dummy += 1;
+      });
+      if (Number(poolData.dummyCount) !== dummy) {
+        await refs.updateDoc(refs.doc(refs.db, "auto_go_pools", poolId), { dummyCount: dummy });
+      }
+    } catch (error) {
+      console.error("dummy count sync failed", error);
+    } finally {
+      window.__agDummySyncing[poolId] = false;
+    }
+  }
+
   function renderPoolTabs() {
     const tabsEl = document.getElementById("ag-pool-tabs");
     if (!tabsEl) return;
@@ -1141,8 +1206,9 @@
     tabsEl.innerHTML = allPools.map(p => {
       const isSelected = p.id === activePoolId;
       const testBadge = p.isTest === true ? "[TEST] " : "";
+      const head = agParticipantCounts(p, null);
       return `<button onclick="selectAutoGoPool('${p.id}')" class="shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold border transition ${isSelected ? 'bg-purple-600 text-white border-purple-600 shadow-sm' : (p.isTest ? 'bg-amber-50 text-amber-900 border-amber-300' : 'bg-white text-gray-700 border-gray-200 hover:bg-purple-50')}">
-        ${testBadge}${escapeAutoGoHtml(p.title)} (${p.totalCount || 0}/${p.targetParticipants || 20})
+        ${testBadge}${escapeAutoGoHtml(p.title)} (${head.real}/${p.targetParticipants || 20})
       </button>`;
     }).join("");
   }
@@ -1190,7 +1256,10 @@
         currentEntryData = snaps[1].exists() ? snaps[1].data() : null;
         window.__agCurrentEntryData = currentEntryData;
       }
-      if (currentPoolData) renderAutoGoUI();
+      if (currentPoolData) {
+        renderAutoGoUI();
+        syncAutoGoDummyCount(poolId, currentPoolData);
+      }
     } catch (e) {
       console.warn("Auto-GO select getDoc:", e);
     }
@@ -1200,6 +1269,7 @@
       if (!snap.exists()) return;
       currentPoolData = snap.data();
       renderAutoGoUI();
+      syncAutoGoDummyCount(poolId, currentPoolData);
     });
 
     if (user) {
@@ -1228,7 +1298,8 @@
     if (!currentPoolData) return;
     window.__agActivePoolId = activePoolId;
     window.__agCurrentEntryData = currentEntryData;
-    const total = currentPoolData.totalCount || 0;
+    const headCount = agParticipantCounts(currentPoolData, null);
+    const total = headCount.real;
     const minP = currentPoolData.minThreshold || currentPoolData.minParticipants || 20;
     const targetP = currentPoolData.targetParticipants || 20;
     const pct = Math.min(100, Math.round((total / targetP) * 100));
@@ -1989,7 +2060,8 @@ window.copyAutoGoInviteUrl = function() {
 
   window.shareAutoGoToX = function() {
     if (!activePoolId || !currentPoolData) return;
-    const total = currentPoolData.totalCount || 0;
+    const headCount = agParticipantCounts(currentPoolData, null);
+    const total = headCount.real;
     const minP = currentPoolData.minParticipants || 20;
     const rem = Math.max(0, minP - total);
     const text = encodeURIComponent(

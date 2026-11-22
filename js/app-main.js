@@ -1,6 +1,6 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { getFirestore, collection, collectionGroup, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, where, orderBy, limit, startAfter, onSnapshot, serverTimestamp, increment, runTransaction, getCountFromServer } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, collectionGroup, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, where, orderBy, limit, startAfter, onSnapshot, serverTimestamp, increment, runTransaction, getCountFromServer, documentId } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js";
 
 
@@ -1176,12 +1176,23 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
               return { key, count: 0, label: key.slice(5).replace("-", "/") };
             }
           };
-          const [tradesSnap, usersCount, postsCount, dauSeries] = await Promise.all([
+          const [tradesSnap, usersCountRaw, postsCount, dauSeries, dummyUserSnap] = await Promise.all([
             _safeAdminGetDocs(query(collection(db, "trades"), limit(2000))),
             safeCount(collection(db, "users")),
             safeCount(collection(db, "posts")),
-            Promise.all(dayKeys.map(loadDauDay))
+            Promise.all(dayKeys.map(loadDauDay)),
+            getDocs(query(collection(db, "users"), where(documentId(), ">=", "dummy_"), where(documentId(), "<", "dummy_\uf8ff"))).catch((error) => {
+              console.error("dummy user count failed", error);
+              return { docs: [] };
+            })
           ]);
+          const dummyUserDocs = (dummyUserSnap.docs || []).filter((userDoc) => String(userDoc.id).indexOf("dummy_") === 0);
+          const usersCount = Math.max(0, Number(usersCountRaw || 0) - dummyUserDocs.length);
+          if (dummyUserDocs.length > 0 && isAdmin()) {
+            Promise.all(dummyUserDocs.map((userDoc) => deleteDoc(userDoc.ref))).catch((error) => {
+              console.error("dummy user delete failed", error);
+            });
+          }
 
           let platformTotal = 0; let thisMonthTotal = 0; let completedCount = 0;
           tradesSnap.docs.forEach(docSnap => {
@@ -1324,8 +1335,14 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           const snap = await _safeAdminGetDocs(collection(db, "users")); 
           const suspSnap = await _safeAdminGetDocs(collection(db, "suspensions"));
           const suspSet = new Set(suspSnap.docs.map(x => x.id));
+          const dummyDocs = snap.docs.filter((userDoc) => String(userDoc.id).indexOf("dummy_") === 0);
+          if (dummyDocs.length > 0) {
+            Promise.all(dummyDocs.map((userDoc) => deleteDoc(userDoc.ref))).catch((error) => {
+              console.error("dummy user delete failed", error);
+            });
+          }
           
-          let users = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          let users = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter((user) => String(user.id).indexOf("dummy_") !== 0);
           if (adminSearchQuery) {
             users = users.filter(u => 
               (u.profile?.nickname || '').toLowerCase().includes(adminSearchQuery) || 

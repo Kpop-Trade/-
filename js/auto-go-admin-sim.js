@@ -177,10 +177,12 @@
           const preferenceOrder = shuffleMembers(members);
           const alloc = allocateMemberClient(pool, preferenceOrder);
           const entrySeq = (Number(pool.totalCount) || 0) + 1;
+          const nextDummyCount = (Number(pool.dummyCount) || 0) + 1;
           const stamp = refs.serverTimestamp ? refs.serverTimestamp() : new Date();
           tx.update(poolRef, {
             ...patch,
             totalCount: entrySeq,
+            dummyCount: nextDummyCount,
             memberCounts: alloc.counts,
             memberCaps: alloc.caps,
             targetParticipants: alloc.targetParticipants
