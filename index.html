@@ -25,7 +25,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js?v=20261121"></script>
 
   <script src="./js/tailwind-config.js?v=20261121"></script>
-  <link rel="stylesheet" href="./styles.css?v=20261122hero1">
+  <link rel="stylesheet" href="./styles.css?v=20261122herofix1">
   <link rel="stylesheet" href="./liquid-glass.css?v=20261121">
   <link rel="stylesheet" href="./mycards-binder.css?v=20261121c">
 
@@ -170,10 +170,18 @@
 
         <section id="post-list-section" class="space-y-4">
 
-      <!-- 募集中 Auto-GO ヒーロー（新着投稿一覧より上・未ログイン閲覧可） -->
-      <div class="w-full mb-1 hidden" id="autogo-home-wrap" aria-live="polite">
+      <!-- 募集中 Auto-GO ヒーロー（新着投稿一覧より上・未ログイン閲覧可）。プール取得前もフォールバックCTAを表示 -->
+      <div class="w-full mb-1" id="autogo-home-wrap" aria-live="polite">
         <span class="autogo-new-tag" aria-hidden="true">NEW!!</span>
-        <div id="autogo-home-banner" class="w-full"></div>
+        <div id="autogo-home-banner" class="w-full">
+          <button type="button" class="ag-hero-fallback" data-ag-hero-open="1">
+            <div class="ag-hero-fallback-text">
+              <div class="ag-hero-fallback-title">⚡ Auto-GO</div>
+              <p class="ag-hero-fallback-sub">抱き合わせゼロ・定価共同購入 · 希望メンバー枠で参加</p>
+            </div>
+            <span class="ag-hero-fallback-cta">開く ›</span>
+          </button>
+        </div>
       </div>
       
       <div class="flex justify-between items-center px-2">
@@ -1656,7 +1664,7 @@
   </div>
 </div>
 
-<script src="./js/auto-go-home-hero.js?v=20261122hero1"></script>
+<script src="./js/auto-go-home-hero.js?v=20261122herofix1"></script>
 <script src="./js/auto-go.js?v=20261122terms1"></script>
 <script src="./js/auto-go-admin-sim.js?v=20261122reveal1"></script>
 

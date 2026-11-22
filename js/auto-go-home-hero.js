@@ -59,19 +59,53 @@
     if (isTestPool(pool) && !isAdmin()) return false;
     const status = String(pool.status || "");
     // コードベースは recruiting / activating（仕様書の open 相当）
-    if (!["recruiting", "activating"].includes(status) && status !== "active") return false;
     if (status === "cancelled") return false;
+    if (!["recruiting", "activating", "active"].includes(status)) return false;
     if (pool.entryLocked === true) return false;
-    if (pool.recruitmentClosedAt) return false;
+    // 募集終了フラグがあっても recruiting 中はバナーに残す（締切カウントで催促）
     const endMs = timeMs(pool.recruitEndAt);
-    if (endMs > 0 && endMs <= Date.now()) return false;
-    // active でも枠が残っていれば表示（開催確定後の追加募集）
-    if (status === "active") {
-      const target = Number(pool.targetParticipants) || Number(pool.minThreshold || pool.minParticipants) || 20;
-      const total = Number(pool.totalCount) || 0;
-      if (total >= target) return false;
+    if (status === "recruiting" || status === "activating") {
+      // 締切超過でも「受付終了」カードとして出したい場合は残す → 超過は非表示
+      if (endMs > 0 && endMs <= Date.now()) return false;
+      if (pool.recruitmentClosedAt && status === "recruiting") {
+        // 手動クローズ済みは一覧に出さない
+        return false;
+      }
+      return true;
     }
+    // active: 追加募集がまだ開いている場合のみ
+    if (pool.recruitmentClosedAt) return false;
+    if (endMs > 0 && endMs <= Date.now()) return false;
+    const target = Number(pool.targetParticipants) || Number(pool.minThreshold || pool.minParticipants) || 20;
+    const total = Number(pool.totalCount) || 0;
+    if (total >= target) return false;
     return true;
+  }
+
+  function renderFallbackBanner(opts) {
+    const options = opts || {};
+    const note = options.note
+      ? `<p class="ag-hero-fallback-note">${esc(options.note)}</p>`
+      : "";
+    return `<button type="button" class="ag-hero-fallback" data-ag-hero-open="1">
+      <div class="ag-hero-fallback-text">
+        <div class="ag-hero-fallback-title">⚡ Auto-GO</div>
+        <p class="ag-hero-fallback-sub">${esc(options.sub || "抱き合わせゼロ・定価共同購入 · 希望メンバー枠で参加")}</p>
+      </div>
+      <span class="ag-hero-fallback-cta">開く ›</span>
+    </button>${note}`;
+  }
+
+  function bindFallbackOpen(root) {
+    const scope = root || document;
+    scope.querySelectorAll("[data-ag-hero-open]").forEach((btn) => {
+      if (btn.dataset.agBound === "1") return;
+      btn.dataset.agBound = "1";
+      btn.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        if (typeof window.openAutoGoModal === "function") window.openAutoGoModal();
+      });
+    });
   }
 
   function recruitingPools(allPools) {
@@ -244,16 +278,23 @@
     const pools = recruitingPools(allPools);
     const ids = pools.map((p) => p.id).join("|");
 
+    wrap.classList.remove("hidden");
+
     if (!pools.length) {
       stopCountdown();
       wrap.classList.add("is-empty");
-      wrap.classList.add("hidden");
-      banner.innerHTML = "";
-      lastPoolIds = "";
+      // 募集0件でもバナー自体は残す（旧UIと同じ常時CTA）
+      if (lastPoolIds !== "__fallback__") {
+        banner.innerHTML = renderFallbackBanner({
+          sub: "抱き合わせゼロ・定価共同購入 · 希望メンバー枠で参加",
+          note: "いま受付中の募集はありません。詳細・次回案内はここから確認できます"
+        });
+        bindFallbackOpen(banner);
+        lastPoolIds = "__fallback__";
+      }
       return;
     }
 
-    wrap.classList.remove("hidden");
     wrap.classList.remove("is-empty");
 
     // 同一セットなら人数・カウントダウンだけ更新してチラつきを防ぐ
@@ -342,6 +383,8 @@
 
   // ディープリンク：?pool= / ?tab=autogo
   window.addEventListener("DOMContentLoaded", function () {
+    // プール取得前でもフォールバックCTAを確実に有効化
+    bindFallbackOpen(document.getElementById("autogo-home-banner"));
     let params;
     try { params = new URLSearchParams(location.search); } catch (_) { return; }
     const poolId = params.get("pool");
