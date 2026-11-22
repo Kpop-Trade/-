@@ -81,3 +81,12 @@
   modal.addEventListener("touchend", end);
   modal.addEventListener("touchcancel", end);
 })();
+
+// ポイント・抽選UI
+(function () {
+  if (document.querySelector('script[src*="points-raffle.js"]')) return;
+  var s = document.createElement("script");
+  s.src = "./js/points-raffle.js?v=20261122pt3";
+  s.defer = true;
+  document.head.appendChild(s);
+})();
