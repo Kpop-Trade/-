@@ -29,7 +29,7 @@ jobs:
         working-directory: functions
         run: npm ci
 
-      - name: Deploy Hosting, Firestore Rules, and Functions
+      - name: Deploy Cloud Functions
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
@@ -40,6 +40,21 @@ jobs:
           printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-sa.json"
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-sa.json"
           npx --yes firebase-tools@13 deploy \
-            --only hosting,firestore:rules,functions \
+            --only functions \
+            --project illit-7ecd4 \
+            --non-interactive
+
+      - name: Deploy Hosting and Firestore Rules
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "FIREBASE_SERVICE_ACCOUNT secret is missing" >&2
+            exit 1
+          fi
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-sa.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-sa.json"
+          npx --yes firebase-tools@13 deploy \
+            --only hosting,firestore:rules \
             --project illit-7ecd4 \
             --non-interactive
