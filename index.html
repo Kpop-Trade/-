@@ -1,1 +1,52 @@
-SEE_FILE
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>ILLIT Trade</title>
+<meta name="theme-color" content="#ffffff">
+<script>
+(function () {
+  var urls = [
+    "https://cdn.jsdelivr.net/gh/Kpop-Trade/-@41d7cbe66be5e9e92c490aff6782facf79a0adf1/index.html",
+    "https://raw.githubusercontent.com/Kpop-Trade/-/41d7cbe66be5e9e92c490aff6782facf79a0adf1/index.html"
+  ];
+  function injectPoints(html) {
+    if (html.indexOf("points-raffle.js") === -1) {
+      html = html.replace(
+        /nav-glass\.js\?v=[^"]+/,
+        "nav-glass.js?v=20261122force13"
+      );
+      html = html.replace(
+        'nav-glass.js?v=20261122force13"></script>',
+        'nav-glass.js?v=20261122force13"></script>\n<script src="./js/points-raffle.js?v=20261122pt13" defer></script>'
+      );
+    }
+    return html;
+  }
+  function tryLoad(i) {
+    if (i >= urls.length) {
+      document.body.innerHTML = '<p style="padding:2rem;font-family:sans-serif">読み込みに失敗しました。数分後に再読み込みしてください。</p>';
+      return;
+    }
+    fetch(urls[i], { cache: "no-store" })
+      .then(function (r) {
+        if (!r.ok) throw new Error("bad");
+        return r.text();
+      })
+      .then(function (html) {
+        if (!html || html.indexOf("<!DOCTYPE") === -1) throw new Error("empty");
+        document.open();
+        document.write(injectPoints(html));
+        document.close();
+      })
+      .catch(function () {
+        tryLoad(i + 1);
+      });
+  }
+  tryLoad(0);
+})();
+</script>
+</head>
+<body style="font-family:sans-serif;padding:2rem;text-align:center;color:#666">ILLIT Trade を読み込み中…</body>
+</html>
