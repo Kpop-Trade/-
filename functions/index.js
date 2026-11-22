@@ -17,6 +17,12 @@ const STORAGE_BUCKET_CANDIDATES = [
   "illit-7ecd4.firebasestorage.app"
 ];
 
+/** テスト用ダミー購入証明（1x1 PNG）。uploadAutoGoEvidence と同じ保存経路を通す */
+const DUMMY_PURCHASE_PROOF_PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+  "base64"
+);
+
 // ★ 要変更：実際のサイトURL（https・末尾 / まで）
 const SITE = "https://kpop-trade.jp/";
 const ADMIN_UIDS = ["Ay6VCS8HTgM3RqjDYZ0wKdHrSKz1", "GvVhAmT56GZjsWrl1YRaStB81im1"];
@@ -661,6 +667,116 @@ exports.processAutoGoDeadlines = onSchedule({
   }
 });
 
+/**
+ * 購入証明画像の保存（GCS → 失敗時 Firestore inline）。
+ * 本番 uploadAutoGoEvidence(kind=purchase) と同一ロジック。
+ */
+async function saveAutoGoPurchaseProofImage(poolId, uid, buffer, imageType, logLabel) {
+  const entryRef = autoGoEntryRef(poolId, uid);
+  const extension = imageType === "jpeg" ? "jpg" : imageType;
+  const path = `auto-go/${poolId}/${uid}/purchase-${Date.now()}.${extension}`;
+  const token = randomUUID();
+
+  async function saveToStorageBucket(bucketName) {
+    const bucket = admin.storage().bucket(bucketName);
+    await bucket.file(path).save(buffer, {
+      resumable: false,
+      validation: false,
+      metadata: {
+        contentType: `image/${imageType}`,
+        cacheControl: "private, max-age=0",
+        metadata: { firebaseStorageDownloadTokens: token }
+      }
+    });
+    return bucket;
+  }
+
+  let bucket = null;
+  let lastStorageError = null;
+  for (const bucketName of STORAGE_BUCKET_CANDIDATES) {
+    try {
+      bucket = await saveToStorageBucket(bucketName);
+      lastStorageError = null;
+      break;
+    } catch (storageError) {
+      lastStorageError = storageError;
+      console.error(
+        (logLabel || "saveAutoGoPurchaseProofImage") + " storage save failed:",
+        bucketName,
+        storageError && storageError.message ? storageError.message : storageError
+      );
+    }
+  }
+
+  let url = "";
+  if (bucket) {
+    url = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(path)}?alt=media&token=${token}`;
+  } else {
+    const MAX_INLINE = 700 * 1024;
+    if (buffer.length > MAX_INLINE) {
+      throw new HttpsError(
+        "resource-exhausted",
+        "failed to save purchase image (storage unavailable, image too large for fallback). please retry with a smaller screenshot"
+      );
+    }
+    url = `data:image/${imageType};base64,${buffer.toString("base64")}`;
+    console.warn((logLabel || "saveAutoGoPurchaseProofImage") + " falling back to Firestore inline image", {
+      kind: "purchase",
+      bytes: buffer.length,
+      storageError: lastStorageError && lastStorageError.message ? lastStorageError.message : String(lastStorageError || "")
+    });
+  }
+
+  const patch = {
+    purchaseProofUrl: url,
+    purchaseProofSavedAt: FV.serverTimestamp()
+  };
+  if (url.startsWith("data:")) {
+    patch.purchaseProofStorage = "firestore";
+  } else {
+    patch.purchaseProofStorage = "gcs";
+    patch.purchaseProofPath = path;
+  }
+  await entryRef.update(patch);
+  return {
+    url: url.startsWith("data:") ? "inline" : url,
+    storage: url.startsWith("data:") ? "firestore" : "gcs",
+    path: url.startsWith("data:") ? null : path
+  };
+}
+
+/** registerAutoGoPurchase と同じ決済完了ステータス更新（任意 UID） */
+async function applyAutoGoPurchaseRegistration(poolId, uid, orderNote) {
+  const entryRef = autoGoEntryRef(poolId, uid);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(entryRef);
+    if (!snap.exists || snap.data().status !== "confirmed" || !snap.data().purchaseProofUrl) {
+      throw new HttpsError("failed-precondition", "upload the purchase screenshot first");
+    }
+    const purchaseDeadlineMs = timestampMillis(snap.data().purchaseDeadlineAt);
+    if (purchaseDeadlineMs > 0 && purchaseDeadlineMs <= Date.now()) {
+      throw new HttpsError("deadline-exceeded", "purchase registration deadline has passed");
+    }
+    tx.update(entryRef, {
+      status: "purchased",
+      orderNote: String(orderNote || "").trim().slice(0, 120),
+      purchasedAt: FV.serverTimestamp()
+    });
+  });
+}
+
+/** registerAutoGoReceipt と同じ受取完了更新（任意 UID） */
+async function applyAutoGoReceiptRegistration(poolId, uid) {
+  const entryRef = autoGoEntryRef(poolId, uid);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(entryRef);
+    if (!snap.exists || snap.data().status !== "matched") {
+      throw new HttpsError("failed-precondition", "entry is not matched");
+    }
+    tx.update(entryRef, { receivedDone: true, receivedAt: FV.serverTimestamp() });
+  });
+}
+
 exports.uploadAutoGoEvidence = onCall({
   maxInstances: 10,
   timeoutSeconds: 120,
@@ -699,6 +815,10 @@ exports.uploadAutoGoEvidence = onCall({
     throw new HttpsError("deadline-exceeded", "purchase registration deadline has passed");
   }
 
+  if (kind === "purchase") {
+    return await saveAutoGoPurchaseProofImage(poolId, uid, buffer, imageType, "uploadAutoGoEvidence");
+  }
+
   const extension = imageType === "jpeg" ? "jpg" : imageType;
   const path = `auto-go/${poolId}/${uid}/${kind}-${Date.now()}.${extension}`;
   const token = randomUUID();
@@ -734,16 +854,14 @@ exports.uploadAutoGoEvidence = onCall({
   if (bucket) {
     url = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(path)}?alt=media&token=${token}`;
   } else {
-    // Storage 権限/バケット不調時のフォールバック: Firestore に縮小JPEGを保存
-    const MAX_INLINE = 700 * 1024; // Firestore 1MiB制限に余裕を残す
+    const MAX_INLINE = 700 * 1024;
     if (buffer.length > MAX_INLINE) {
       throw new HttpsError(
         "resource-exhausted",
         "failed to save purchase image (storage unavailable, image too large for fallback). please retry with a smaller screenshot"
       );
     }
-    const inlineUrl = `data:image/${imageType};base64,${buffer.toString("base64")}`;
-    url = inlineUrl;
+    url = `data:image/${imageType};base64,${buffer.toString("base64")}`;
     console.warn("uploadAutoGoEvidence falling back to Firestore inline image", {
       kind,
       bytes: buffer.length,
@@ -751,60 +869,46 @@ exports.uploadAutoGoEvidence = onCall({
     });
   }
 
-  if (kind === "purchase") {
-    const patch = {
-      purchaseProofUrl: url,
-      purchaseProofSavedAt: FV.serverTimestamp()
-    };
-    if (url.startsWith("data:")) {
-      patch.purchaseProofStorage = "firestore";
-    } else {
-      patch.purchaseProofStorage = "gcs";
-      patch.purchaseProofPath = path;
-    }
-    await entryRef.update(patch);
-  } else {
-    const hash = createHash("sha256").update(buffer).digest("hex");
-    const hashRef = db.collection("auto_go_shipping_hashes").doc(hash);
-    try {
-      await db.runTransaction(async (tx) => {
-        const [hashSnap, currentEntry] = await Promise.all([
-          tx.get(hashRef),
-          tx.get(entryRef)
-        ]);
-        if (hashSnap.exists) {
-          throw new HttpsError("already-exists", "shipping image has already been used");
-        }
-        if (!currentEntry.exists || currentEntry.data().status !== "matched" ||
-            !currentEntry.data().shipToAddress) {
-          throw new HttpsError("failed-precondition", "shipping evidence is no longer expected");
-        }
-        tx.create(hashRef, {
-          poolId,
-          uid,
-          kind: "shipping",
-          sha256: hash,
-          storagePath: url.startsWith("data:") ? "inline" : path,
-          createdAt: FV.serverTimestamp()
-        });
-        const shipPatch = {
-          shippingProofUrl: url,
-          shippingProofHash: hash,
-          shippingProofSavedAt: FV.serverTimestamp(),
-          shippingProofStorage: url.startsWith("data:") ? "firestore" : "gcs"
-        };
-        tx.update(entryRef, shipPatch);
-      });
-    } catch (error) {
-      if (bucket) {
-        try {
-          await bucket.file(path).delete({ ignoreNotFound: true });
-        } catch (cleanupError) {
-          console.error("Duplicate shipping evidence cleanup failed:", cleanupError);
-        }
+  const hash = createHash("sha256").update(buffer).digest("hex");
+  const hashRef = db.collection("auto_go_shipping_hashes").doc(hash);
+  try {
+    await db.runTransaction(async (tx) => {
+      const [hashSnap, currentEntry] = await Promise.all([
+        tx.get(hashRef),
+        tx.get(entryRef)
+      ]);
+      if (hashSnap.exists) {
+        throw new HttpsError("already-exists", "shipping image has already been used");
       }
-      throw error;
+      if (!currentEntry.exists || currentEntry.data().status !== "matched" ||
+          !currentEntry.data().shipToAddress) {
+        throw new HttpsError("failed-precondition", "shipping evidence is no longer expected");
+      }
+      tx.create(hashRef, {
+        poolId,
+        uid,
+        kind: "shipping",
+        sha256: hash,
+        storagePath: url.startsWith("data:") ? "inline" : path,
+        createdAt: FV.serverTimestamp()
+      });
+      const shipPatch = {
+        shippingProofUrl: url,
+        shippingProofHash: hash,
+        shippingProofSavedAt: FV.serverTimestamp(),
+        shippingProofStorage: url.startsWith("data:") ? "firestore" : "gcs"
+      };
+      tx.update(entryRef, shipPatch);
+    });
+  } catch (error) {
+    if (bucket) {
+      try {
+        await bucket.file(path).delete({ ignoreNotFound: true });
+      } catch (cleanupError) {
+        console.error("Duplicate shipping evidence cleanup failed:", cleanupError);
+      }
     }
+    throw error;
   }
   return { url: url.startsWith("data:") ? "inline" : url, storage: url.startsWith("data:") ? "firestore" : "gcs" };
 });
@@ -816,22 +920,7 @@ exports.registerAutoGoPurchase = onCall(async (request) => {
   if (!/^[\w-]{1,120}$/.test(poolId) || orderNote.length > 120) {
     throw new HttpsError("invalid-argument", "invalid purchase registration");
   }
-  const entryRef = autoGoEntryRef(poolId, request.auth.uid);
-  await db.runTransaction(async (tx) => {
-    const snap = await tx.get(entryRef);
-    if (!snap.exists || snap.data().status !== "confirmed" || !snap.data().purchaseProofUrl) {
-      throw new HttpsError("failed-precondition", "upload the purchase screenshot first");
-    }
-    const purchaseDeadlineMs = timestampMillis(snap.data().purchaseDeadlineAt);
-    if (purchaseDeadlineMs > 0 && purchaseDeadlineMs <= Date.now()) {
-      throw new HttpsError("deadline-exceeded", "purchase registration deadline has passed");
-    }
-    tx.update(entryRef, {
-      status: "purchased",
-      orderNote,
-      purchasedAt: FV.serverTimestamp()
-    });
-  });
+  await applyAutoGoPurchaseRegistration(poolId, request.auth.uid, orderNote);
   return { ok: true };
 });
 
@@ -1125,14 +1214,7 @@ exports.registerAutoGoReceipt = onCall(async (request) => {
   if (!request.auth) throw new HttpsError("unauthenticated", "login required");
   const poolId = String((request.data || {}).poolId || "");
   if (!/^[\w-]{1,120}$/.test(poolId)) throw new HttpsError("invalid-argument", "invalid pool");
-  const entryRef = autoGoEntryRef(poolId, request.auth.uid);
-  await db.runTransaction(async (tx) => {
-    const snap = await tx.get(entryRef);
-    if (!snap.exists || snap.data().status !== "matched") {
-      throw new HttpsError("failed-precondition", "entry is not matched");
-    }
-    tx.update(entryRef, { receivedDone: true, receivedAt: FV.serverTimestamp() });
-  });
+  await applyAutoGoReceiptRegistration(poolId, request.auth.uid);
   return { ok: true };
 });
 
@@ -1614,6 +1696,148 @@ exports.adminGetAutoGoAuditLogs = onCall(async (request) => {
     };
   }).sort((a, b) => (a.entrySeq || a.createdAtMs) - (b.entrySeq || b.createdAtMs));
   return { ok: true, logs, assignments };
+});
+
+/**
+ * テスト用：枠確定後のダミー購入報告シミュレーション
+ * mode=all → 未報告ダミー全員 / mode=leave_one → 1人だけ未報告を残す / mode=one → 1人分だけ報告
+ * 本番と同じ saveAutoGoPurchaseProofImage → applyAutoGoPurchaseRegistration 経路
+ */
+exports.adminSimAutoGoDummyPurchases = onCall({
+  timeoutSeconds: 300,
+  memory: "512MiB"
+}, async (request) => {
+  assertAdmin(request);
+  const data = request.data || {};
+  const poolId = String(data.poolId || "");
+  const mode = String(data.mode || "all");
+  if (!/^[\w-]{1,120}$/.test(poolId)) throw new HttpsError("invalid-argument", "invalid pool");
+  if (!["all", "leave_one", "one"].includes(mode)) {
+    throw new HttpsError("invalid-argument", "mode must be all, leave_one, or one");
+  }
+
+  const poolRef = db.collection("auto_go_pools").doc(poolId);
+  const poolSnap = await poolRef.get();
+  if (!poolSnap.exists) throw new HttpsError("not-found", "pool not found");
+  if (!isAutoGoTestPool(poolSnap.data())) {
+    throw new HttpsError("failed-precondition", "dummy purchase sim is allowed only on [TEST] pools");
+  }
+
+  const entriesSnap = await poolRef.collection("entries").get();
+  const candidates = entriesSnap.docs
+    .map((d) => ({ uid: d.id, ...(d.data() || {}) }))
+    .filter((e) => {
+      const dummy = e.isDummy === true || isAutoGoDummyUid(e.uid);
+      return dummy && e.status === "confirmed";
+    })
+    .sort((a, b) => (Number(a.entrySeq) || 0) - (Number(b.entrySeq) || 0));
+
+  let targets = candidates;
+  let leftUnreported = [];
+  if (mode === "one") {
+    targets = candidates.slice(0, 1);
+    leftUnreported = candidates.slice(1).map((e) => e.uid);
+  } else if (mode === "leave_one") {
+    if (candidates.length <= 1) {
+      targets = [];
+      leftUnreported = candidates.map((e) => e.uid);
+    } else {
+      leftUnreported = [candidates[candidates.length - 1].uid];
+      targets = candidates.slice(0, -1);
+    }
+  }
+
+  const results = [];
+  for (const entry of targets) {
+    const orderNote = `TEST-DUMMY-${entry.entrySeq || entry.uid.slice(-6)}`;
+    let storage = entry.purchaseProofStorage || null;
+    if (!entry.purchaseProofUrl) {
+      const saved = await saveAutoGoPurchaseProofImage(
+        poolId,
+        entry.uid,
+        DUMMY_PURCHASE_PROOF_PNG,
+        "png",
+        "adminSimAutoGoDummyPurchases"
+      );
+      storage = saved.storage;
+    }
+    await applyAutoGoPurchaseRegistration(poolId, entry.uid, orderNote);
+    results.push({
+      uid: entry.uid,
+      orderNote,
+      storage
+    });
+  }
+
+  await writeAutoGoAuditLog(poolId, {
+    action: "dummy_purchase_sim",
+    actorUid: request.auth.uid,
+    mode,
+    reported: results.length,
+    leftUnreported: leftUnreported.length,
+    leftUnreportedUids: leftUnreported.slice(0, 40)
+  }).catch(() => {});
+
+  return {
+    ok: true,
+    mode,
+    reported: results.length,
+    leftUnreported: leftUnreported.length,
+    leftUnreportedUids: leftUnreported,
+    results
+  };
+});
+
+/**
+ * テスト用：発送後のダミー受取完了一括シミュレーション
+ * 本番と同じ applyAutoGoReceiptRegistration 経路
+ */
+exports.adminSimAutoGoDummyReceipts = onCall({
+  timeoutSeconds: 180
+}, async (request) => {
+  assertAdmin(request);
+  const poolId = String((request.data || {}).poolId || "");
+  if (!/^[\w-]{1,120}$/.test(poolId)) throw new HttpsError("invalid-argument", "invalid pool");
+
+  const poolRef = db.collection("auto_go_pools").doc(poolId);
+  const poolSnap = await poolRef.get();
+  if (!poolSnap.exists) throw new HttpsError("not-found", "pool not found");
+  if (!isAutoGoTestPool(poolSnap.data())) {
+    throw new HttpsError("failed-precondition", "dummy receipt sim is allowed only on [TEST] pools");
+  }
+
+  const entriesSnap = await poolRef.collection("entries").get();
+  const candidates = entriesSnap.docs
+    .map((d) => ({ uid: d.id, ...(d.data() || {}) }))
+    .filter((e) => {
+      const dummy = e.isDummy === true || isAutoGoDummyUid(e.uid);
+      return dummy && e.status === "matched" && e.receivedDone !== true;
+    })
+    .sort((a, b) => (Number(a.entrySeq) || 0) - (Number(b.entrySeq) || 0));
+
+  // 発送完了が確認できる相手を優先。誰も発送済みでない場合は matched ダミー全員を対象（テスト進行用）
+  const withIncoming = candidates.filter((e) => e.incomingShippedAt || e.incomingTrackingNumber);
+  const targets = withIncoming.length ? withIncoming : candidates;
+
+  const results = [];
+  for (const entry of targets) {
+    await applyAutoGoReceiptRegistration(poolId, entry.uid);
+    results.push({ uid: entry.uid });
+  }
+
+  await writeAutoGoAuditLog(poolId, {
+    action: "dummy_receipt_sim",
+    actorUid: request.auth.uid,
+    received: results.length,
+    preferredIncoming: withIncoming.length > 0
+  }).catch(() => {});
+
+  return {
+    ok: true,
+    received: results.length,
+    preferredIncoming: withIncoming.length > 0,
+    results
+  };
 });
 
 exports.adminSendWarning = onCall(async (req) => {

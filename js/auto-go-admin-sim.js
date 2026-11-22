@@ -459,11 +459,193 @@
     await window.adminReassignAutoGoMember(poolId, uid, pick.trim());
   };
 
+  /** 1x1 PNG（本番と同じ購入証明保存経路用のダミー画像） */
+  const DUMMY_PURCHASE_PROOF_DATA_URL =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+
+  function isDummyEntry(entry, uid) {
+    return !!(entry && (entry.isDummy === true || String(uid || entry.uid || "").startsWith("dummy_")));
+  }
+
+  /** Functions未デプロイ時：管理者権限で購入報告を直接書き込み（フィールドは本番と同名） */
+  async function simDummyPurchasesViaFirestore(poolId, mode) {
+    const refs = agRefs();
+    if (!refs.db || typeof refs.doc !== "function" || typeof refs.getDocs !== "function") {
+      throw new Error("Firestoreの準備ができていません");
+    }
+    const poolRef = refs.doc(refs.db, "auto_go_pools", poolId);
+    const poolSnap = await refs.getDoc(poolRef);
+    if (!poolSnap.exists()) throw new Error("プールが見つかりません");
+    const pool = poolSnap.data() || {};
+    if (!isTestPoolData(pool)) throw new Error("テストプール（isTest / [TEST]）だけ実行できます");
+
+    const entriesSnap = await refs.getDocs(refs.collection(refs.db, "auto_go_pools", poolId, "entries"));
+    const candidates = entriesSnap.docs
+      .map((d) => ({ uid: d.id, ...(d.data() || {}) }))
+      .filter((e) => isDummyEntry(e, e.uid) && e.status === "confirmed")
+      .sort((a, b) => (Number(a.entrySeq) || 0) - (Number(b.entrySeq) || 0));
+
+    let targets = candidates;
+    let leftUnreported = [];
+    if (mode === "one") {
+      targets = candidates.slice(0, 1);
+      leftUnreported = candidates.slice(1).map((e) => e.uid);
+    } else if (mode === "leave_one") {
+      if (candidates.length <= 1) {
+        targets = [];
+        leftUnreported = candidates.map((e) => e.uid);
+      } else {
+        leftUnreported = [candidates[candidates.length - 1].uid];
+        targets = candidates.slice(0, -1);
+      }
+    }
+
+    const stamp = refs.serverTimestamp ? refs.serverTimestamp() : new Date();
+    const results = [];
+    for (const entry of targets) {
+      const entryRef = refs.doc(refs.db, "auto_go_pools", poolId, "entries", entry.uid);
+      const orderNote = "TEST-DUMMY-" + (entry.entrySeq || String(entry.uid).slice(-6));
+      const patch = {
+        status: "purchased",
+        orderNote,
+        purchasedAt: stamp,
+        purchaseProofUrl: entry.purchaseProofUrl || DUMMY_PURCHASE_PROOF_DATA_URL,
+        purchaseProofSavedAt: stamp,
+        purchaseProofStorage: entry.purchaseProofStorage || "firestore"
+      };
+      await refs.updateDoc(entryRef, patch);
+      results.push({ uid: entry.uid, orderNote, storage: patch.purchaseProofStorage });
+    }
+    return {
+      ok: true,
+      mode,
+      reported: results.length,
+      leftUnreported: leftUnreported.length,
+      leftUnreportedUids: leftUnreported,
+      results,
+      via: "firestore"
+    };
+  }
+
+  /** Functions未デプロイ時：ダミー受取完了を直接書き込み */
+  async function simDummyReceiptsViaFirestore(poolId) {
+    const refs = agRefs();
+    if (!refs.db || typeof refs.doc !== "function" || typeof refs.getDocs !== "function") {
+      throw new Error("Firestoreの準備ができていません");
+    }
+    const poolRef = refs.doc(refs.db, "auto_go_pools", poolId);
+    const poolSnap = await refs.getDoc(poolRef);
+    if (!poolSnap.exists()) throw new Error("プールが見つかりません");
+    if (!isTestPoolData(poolSnap.data() || {})) throw new Error("テストプールだけ実行できます");
+
+    const entriesSnap = await refs.getDocs(refs.collection(refs.db, "auto_go_pools", poolId, "entries"));
+    const candidates = entriesSnap.docs
+      .map((d) => ({ uid: d.id, ...(d.data() || {}) }))
+      .filter((e) => isDummyEntry(e, e.uid) && e.status === "matched" && e.receivedDone !== true)
+      .sort((a, b) => (Number(a.entrySeq) || 0) - (Number(b.entrySeq) || 0));
+    const withIncoming = candidates.filter((e) => e.incomingShippedAt || e.incomingTrackingNumber);
+    const targets = withIncoming.length ? withIncoming : candidates;
+    const stamp = refs.serverTimestamp ? refs.serverTimestamp() : new Date();
+    const results = [];
+    for (const entry of targets) {
+      const entryRef = refs.doc(refs.db, "auto_go_pools", poolId, "entries", entry.uid);
+      await refs.updateDoc(entryRef, { receivedDone: true, receivedAt: stamp });
+      results.push({ uid: entry.uid });
+    }
+    return {
+      ok: true,
+      received: results.length,
+      preferredIncoming: withIncoming.length > 0,
+      results,
+      via: "firestore"
+    };
+  }
+
+  window.adminSimAutoGoDummyPurchases = async function (poolId, mode) {
+    if (!isAgAdmin()) { toast("管理者権限が必要です", "error"); return; }
+    if (!poolId) { toast("プールIDがありません", "error"); return; }
+    const m = ["all", "leave_one", "one"].includes(mode) ? mode : "all";
+    const label = m === "leave_one"
+      ? "ダミー購入報告（1人未報告を残す）"
+      : m === "one"
+        ? "ダミー購入報告（1人分）"
+        : "ダミー一括購入報告";
+    toast(label + "を実行中…", "info");
+    const fn = agRefs().adminSimAutoGoDummyPurchases;
+    try {
+      let data = null;
+      if (typeof fn === "function") {
+        try {
+          const res = await fn({ poolId, mode: m });
+          data = res?.data || res || {};
+          data.via = data.via || "functions";
+        } catch (callErr) {
+          console.warn("adminSimAutoGoDummyPurchases callable failed, trying Firestore:", callErr);
+          if (!shouldFallbackToFirestore(callErr)) throw callErr;
+          data = await simDummyPurchasesViaFirestore(poolId, m);
+        }
+      } else {
+        data = await simDummyPurchasesViaFirestore(poolId, m);
+      }
+      const reported = Number(data?.reported || 0);
+      const left = Number(data?.leftUnreported || 0);
+      if (!reported && !left) {
+        toast("対象の未報告ダミー（status=confirmed）がいません。枠確定後に実行してください", "error");
+      } else {
+        toast(
+          `購入報告シミュ完了: ${reported}人報告` +
+          (left ? ` / ${left}人未報告のまま` : "") +
+          (data.via === "firestore" ? "（直接書込）" : ""),
+          "success"
+        );
+      }
+      if (typeof window.renderAdminAutoGoPanel === "function") await window.renderAdminAutoGoPanel();
+      return data;
+    } catch (error) {
+      console.error(error);
+      toast("購入報告シミュ失敗: " + callableErrorText(error), "error");
+    }
+  };
+
+  window.adminSimAutoGoDummyReceipts = async function (poolId) {
+    if (!isAgAdmin()) { toast("管理者権限が必要です", "error"); return; }
+    if (!poolId) { toast("プールIDがありません", "error"); return; }
+    toast("ダミー一括受取確認を実行中…", "info");
+    const fn = agRefs().adminSimAutoGoDummyReceipts;
+    try {
+      let data = null;
+      if (typeof fn === "function") {
+        try {
+          const res = await fn({ poolId });
+          data = res?.data || res || {};
+          data.via = data.via || "functions";
+        } catch (callErr) {
+          console.warn("adminSimAutoGoDummyReceipts callable failed, trying Firestore:", callErr);
+          if (!shouldFallbackToFirestore(callErr)) throw callErr;
+          data = await simDummyReceiptsViaFirestore(poolId);
+        }
+      } else {
+        data = await simDummyReceiptsViaFirestore(poolId);
+      }
+      const n = Number(data?.received || 0);
+      if (!n) {
+        toast("受取対象のダミー（matched・未受取）がいません。発送完了後に実行してください", "error");
+      } else {
+        toast(`受取確認シミュ完了: ${n}人` + (data.via === "firestore" ? "（直接書込）" : ""), "success");
+      }
+      if (typeof window.renderAdminAutoGoPanel === "function") await window.renderAdminAutoGoPanel();
+      return data;
+    } catch (error) {
+      console.error(error);
+      toast("受取確認シミュ失敗: " + callableErrorText(error), "error");
+    }
+  };
+
   /** 管理パネル用：プールカード下部のシミュレーション／フェイルセーフ HTML */
   window.__agAdminOpsHtml = function (pool) {
     if (!pool || !pool.id) return "";
     const id = esc(pool.id);
-    const isTest = pool.isTest === true;
+    const isTest = isTestPoolData(pool);
     const locked = pool.entryLocked === true;
     const members = (pool.memberNames || pool.members || []).join("|");
     const testBlock = isTest ? `
@@ -480,6 +662,15 @@
           <button type="button" onclick="window.adminInjectAutoGoDummies('${id}',1,true)" class="min-h-[44px] px-3 py-2 rounded-xl bg-amber-600 text-white text-[11px] font-black sm:col-span-2">定員まで一括ダミー投入（自動成立テスト）</button>
           <button type="button" onclick="window.adminShowAutoGoAudit('${id}')" class="min-h-[44px] px-3 py-2 rounded-xl bg-indigo-600 text-white text-[11px] font-bold">割り当て結果の監査ログ表示</button>
           <button type="button" onclick="window.adminResetAutoGoTestPool('${id}')" class="min-h-[44px] px-3 py-2 rounded-xl bg-red-600 text-white text-[11px] font-bold">テストデータ完全リセット</button>
+        </div>
+        <div class="rounded-xl border border-emerald-200 bg-emerald-50/90 p-2.5 space-y-2">
+          <p class="text-[10px] font-black text-emerald-900">取引進行フェーズ（枠確定後）</p>
+          <p class="text-[9px] text-emerald-800 leading-relaxed">本番と同じ購入証明保存→決済完了／受取完了の経路でダミーを進めます。本番プールには表示されません。</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <button type="button" onclick="window.adminSimAutoGoDummyPurchases('${id}','all')" class="min-h-[44px] px-3 py-2 rounded-xl bg-emerald-600 text-white text-[11px] font-black sm:col-span-2">ダミー一括購入報告（アズカリ決済完了シミュレーション）</button>
+            <button type="button" onclick="window.adminSimAutoGoDummyPurchases('${id}','leave_one')" class="min-h-[44px] px-3 py-2 rounded-xl bg-white border border-emerald-400 text-[11px] font-bold text-emerald-950">ダミー購入報告（1人分・1人未報告を残す）</button>
+            <button type="button" onclick="window.adminSimAutoGoDummyReceipts('${id}')" class="min-h-[44px] px-3 py-2 rounded-xl bg-teal-700 text-white text-[11px] font-black">ダミー一括受取確認（取引完了シミュレーション）</button>
+          </div>
         </div>
         <div id="adm-ag-audit-${id}" class="hidden"></div>
       </div>` : "";
