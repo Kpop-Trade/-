@@ -192,10 +192,20 @@
   }
 
   function ensurePointsRaffleDom() {
+    var bad = document.getElementById("raffle-section");
+    if (bad) {
+      var p = bad.parentElement;
+      if (p && p.classList && p.classList.contains("flex") && p.querySelector("#list-section-title")) {
+        bad.remove();
+        bad = null;
+      }
+    }
+
     if (!document.getElementById("raffle-section")) {
       var section = document.createElement("section");
       section.id = "raffle-section";
-      section.className = "mt-4 mb-3 w-full";
+      section.className = "mt-4 mb-3 w-full clear-both";
+      section.style.cssText = "display:block;width:100%;";
       section.innerHTML =
         '<div class="flex items-center justify-between mb-2 px-1">' +
         '<h3 class="font-bold text-base text-gray-800 flex items-center gap-1.5">' +
@@ -203,23 +213,30 @@
         '<span class="text-[10px] font-bold text-pink-600 bg-pink-50 px-2 py-0.5 rounded-full" data-points-balance>—</span></div>' +
         '<p class="text-[11px] text-gray-500 px-1 mb-2">取引完了・友だち招待でポイントを貯めて応募しよう。口数が多いほど当選確率UP！</p>' +
         '<div id="raffle-cards-container" class="grid grid-cols-1 sm:grid-cols-2 gap-3">' +
-        '<div class="text-center text-sm text-gray-400 py-6">読み込み中...</div></div>';
+        '<div class="text-center text-sm text-gray-500 py-6">現在開催中の抽選はありません</div></div>';
 
       var postList = document.getElementById("post-list-section");
       var listTitle = document.getElementById("list-section-title");
-      if (postList) {
-        var titleRow = listTitle ? (listTitle.closest(".flex") || listTitle.parentElement) : null;
-        if (titleRow && titleRow.parentElement === postList) {
+      var titleRow = listTitle ? listTitle.parentElement : null;
+      try {
+        if (postList && titleRow && postList.contains(titleRow)) {
           postList.insertBefore(section, titleRow);
+        } else if (postList) {
+          var ag = document.getElementById("autogo-home-wrap");
+          if (ag && postList.contains(ag) && ag.nextSibling) {
+            postList.insertBefore(section, ag.nextSibling);
+          } else if (ag && postList.contains(ag)) {
+            ag.after(section);
+          } else {
+            postList.appendChild(section);
+          }
         } else {
-          postList.insertBefore(section, postList.firstChild);
+          var main = document.querySelector("main");
+          if (main) main.appendChild(section);
         }
-      } else if (listTitle && listTitle.parentElement && listTitle.parentElement.parentElement) {
-        listTitle.parentElement.parentElement.insertBefore(section, listTitle.parentElement);
-      } else {
-        var main = document.querySelector("main");
-        if (main) main.appendChild(section);
-        else document.body.prepend(section);
+      } catch (err) {
+        console.warn("raffle insert", err);
+        if (postList) postList.appendChild(section);
       }
     }
 
