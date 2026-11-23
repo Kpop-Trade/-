@@ -58,7 +58,7 @@
           <circle cx="10.8" cy="10.8" r="6.8" stroke="currentColor" stroke-width="1.6"/>
           <path d="m16 16 4.2 4.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
         </svg>
-        <input type="text" id="main-search-input" oninput="syncSearch(this.value)" placeholder="トレカをさがす" aria-label="トレカをさがす">
+        <input type="text" id="main-search-input" oninput="syncSearch(this.value)" placeholder="トレカ名・右のカメラで写真検索" aria-label="トレカをさがす" style="font-size:13px;text-overflow:ellipsis">
         <button type="button" id="main-search-clear" onclick="syncSearch('')" aria-label="検索をクリア" class="hidden">×</button>
         <span id="image-search-badge" class="hidden" title="画像検索結果（一致度順）" aria-label="画像検索結果（一致度順）">画像検索結果（一致度順）</span>
         <button type="button" id="image-search-reset" class="hidden" onclick="clearListingImageSearch()" aria-label="画像検索をリセット">×</button>
@@ -99,6 +99,10 @@
     </div>
   </header>
 
+  <button id="home-present-banner" type="button" onclick="openPresentCampaignPopup(false)" class="hidden mx-3 mt-2 mb-2 h-10 w-[calc(100%_-_24px)] items-center rounded-[10px] border border-amber-300 bg-amber-50 px-3 text-left shadow-sm">
+    <span class="min-w-0 flex-1 truncate text-xs font-black text-amber-900">🎁 トレカプレゼント企画 開催中！（100pt＝1口）＞</span>
+  </button>
+
   <main class="max-w-5xl mx-auto px-4 pb-6 space-y-6">
     <div id="pull-gap" aria-hidden="true"><div class="pull-spin-wrap"><div class="pull-spin"></div></div></div>
     <section id="intro-section" class="space-y-3">
@@ -115,9 +119,6 @@
         <div class="font-bold mb-0.5">📢 お知らせ</div>
         <div id="site-announcement-text" class="whitespace-pre-wrap"></div>
       </div>
-      <button id="home-present-banner" type="button" onclick="openPresentCampaignPopup(false)" class="hidden w-full items-center justify-between gap-3 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-left shadow-sm">
-        <span class="min-w-0"><span class="block text-sm font-black text-amber-900">🎁 トレカプレゼント企画 開催中！</span><span id="home-present-banner-title" class="block truncate text-[11px] text-amber-800"></span></span><span class="shrink-0 text-amber-800">開く ›</span>
-      </button>
     </section>
 
     <section id="gllit-hub" class="w-screen relative left-1/2 -translate-x-1/2">

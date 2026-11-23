@@ -827,10 +827,9 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         .sort((a, b) => tsMillis(b.createdAt) - tsMillis(a.createdAt));
       const banner = document.getElementById("home-present-banner");
       if (banner) {
-        banner.classList.toggle("hidden", activePresentCampaigns.length === 0);
-        banner.classList.toggle("flex", activePresentCampaigns.length > 0);
-        const title = document.getElementById("home-present-banner-title");
-        if (title) title.textContent = activePresentCampaigns[0]?.title || "";
+        const showBanner = currentPageTab === "home" && activePresentCampaigns.length > 0;
+        banner.classList.toggle("hidden", !showBanner);
+        banner.classList.toggle("flex", showBanner);
       }
       if (showPopup && currentPageTab === "home" && activePresentCampaigns.length) {
         const parts = formatJstDateParts();
@@ -1110,6 +1109,12 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       closeDetailModal();
       if (!currentUser && (tab === "post" || tab === "mycards")) { if (typeof showToast === "function") { showToast("ログインしてください", "error"); } else { alert("ログインしてください"); } return; }
       currentPageTab = tab;
+      const presentBanner = document.getElementById("home-present-banner");
+      if (presentBanner) {
+        const showBanner = tab === "home" && activePresentCampaigns.length > 0;
+        presentBanner.classList.toggle("hidden", !showBanner);
+        presentBanner.classList.toggle("flex", showBanner);
+      }
       if (tab === "home") loadActivePresentCampaigns(true).catch((error) => console.error("Home present campaign load failed:", error));
       const showList = tab === 'home' || tab === 'likes';
       document.getElementById("post-menu-section").classList.toggle("hidden", tab !== 'post');
