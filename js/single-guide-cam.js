@@ -1,3 +1,35 @@
+
+function ensureSingleGuideModalExists() {
+  let modal = document.getElementById("single-guide-modal");
+  if (!modal) {
+    modal = document.createElement("div");
+    modal.id = "single-guide-modal";
+    modal.className = "fixed inset-0 bg-black/90 hidden flex-col items-center justify-center p-4";
+    modal.style.zIndex = "99999";
+    modal.innerHTML = `
+      <div class="relative w-full max-w-md bg-zinc-950 rounded-2xl overflow-hidden border border-purple-500/40 shadow-2xl">
+        <div class="flex items-center justify-between px-4 py-3 bg-zinc-900/90 border-b border-zinc-800">
+          <span class="text-white text-sm font-bold">ガイド枠カメラ</span>
+          <button type="button" onclick="closeSingleGuideCam()" class="text-zinc-300 hover:text-white text-xs font-bold px-3 py-1.5 rounded-lg bg-zinc-800">閉じる</button>
+        </div>
+        <div class="relative w-full aspect-[3/4] bg-black overflow-hidden">
+          <video id="single-guide-vid" autoplay playsinline muted class="w-full h-full object-cover"></video>
+          <div id="single-guide-frame" class="pointer-events-none absolute inset-0 m-auto w-[68%] aspect-[55/86] border-2 border-purple-400 rounded-xl shadow-[0_0_0_9999px_rgba(0,0,0,0.45)] flex items-center justify-center">
+            <span style="position:absolute;top:6px;left:8px;background:rgba(0,0,0,0.75);color:#22d3ee;font-size:11px;font-weight:bold;padding:2px 6px;border-radius:6px;">枠内に合わせると自動撮影</span>
+          </div>
+        </div>
+        <div class="p-3 bg-zinc-900 flex items-center justify-center gap-3">
+          <button type="button" id="single-guide-shutter" class="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-sm shadow">手動シャッターで撮影</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  } else {
+    modal.style.zIndex = "99999";
+  }
+  return modal;
+}
+
 (function(){
   let singleStream = null;
   let singleMode = "post";
@@ -18,10 +50,10 @@
         singleFrame.innerHTML = '<span style="position:absolute;top:6px;left:8px;background:rgba(0,0,0,0.75);color:#22d3ee;font-size:11px;font-weight:bold;padding:2px 6px;border-radius:6px;">枠内に合わせると自動撮影</span>';
       }
     }
-    const modal = document.getElementById("single-guide-modal");
+    const modal = ensureSingleGuideModalExists();
     const vid = document.getElementById("single-guide-vid");
     if(!modal || !vid) return;
-    modal.classList.remove("hidden");
+    modal.classList.remove("hidden"); modal.style.display = "flex";
     try {
       singleStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
       vid.srcObject = singleStream;
@@ -31,7 +63,7 @@
       closeSingleGuideCam();
     }
   };
-  window.closeSingleGuideCam = function(){
+  window.closeSingleGuideCam = function(){ const _m = document.getElementById("single-guide-modal"); if (_m) _m.style.display = "none";
     const modal = document.getElementById("single-guide-modal");
     if(modal) modal.classList.add("hidden");
     if(singleStream){
