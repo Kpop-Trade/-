@@ -14247,9 +14247,15 @@ window._renderAdminBannerPreviewCanvas = function() {
   ctx.drawImage(img, 0, 0, w, h);
 
   const toggleEl = document.getElementById("admin-banner-watermark-toggle");
+  const opacityEl = document.getElementById("admin-banner-watermark-opacity");
+  const opacityLabelEl = document.getElementById("admin-banner-watermark-opacity-val");
   const useWatermark = toggleEl ? toggleEl.checked : true;
+  const pct = opacityEl ? Number(opacityEl.value) : 52;
+  if (opacityLabelEl) opacityLabelEl.textContent = pct + "%";
 
   if (useWatermark) {
+    const fillAlpha = Math.max(0.1, Math.min(0.95, pct / 100));
+    const strokeAlpha = Math.max(0.08, Math.min(0.75, fillAlpha * 0.65));
     ctx.save();
     const fontSize = Math.max(20, Math.round(Math.min(w, h) * 0.14));
     ctx.font = "900 " + fontSize + "px -apple-system, BlinkMacSystemFont, sans-serif";
@@ -14263,9 +14269,9 @@ window._renderAdminBannerPreviewCanvas = function() {
     for (let y = -h; y <= h; y += stepY) {
       for (let x = -w; x <= w; x += stepX) {
         ctx.lineWidth = Math.max(2, Math.round(fontSize * 0.06));
-        ctx.strokeStyle = "rgba(0, 0, 0, 0.34)";
+        ctx.strokeStyle = "rgba(0, 0, 0, " + strokeAlpha.toFixed(2) + ")";
         ctx.strokeText("SAMPLE", x, y);
-        ctx.fillStyle = "rgba(255, 255, 255, 0.52)";
+        ctx.fillStyle = "rgba(255, 255, 255, " + fillAlpha.toFixed(2) + ")";
         ctx.fillText("SAMPLE", x, y);
       }
     }
@@ -14278,7 +14284,7 @@ window._renderAdminBannerPreviewCanvas = function() {
   const prev = document.getElementById("admin-banner-preview");
   if (prev) prev.src = compressed;
   if (wrap) wrap.classList.remove("hidden");
-};
+};;
 
 window.previewAdminBannerFile = function(input) {
   const file = input && input.files && input.files[0];
@@ -14930,3 +14936,45 @@ window.loadAdminTopBanners = async function() {
     if (typeof renderGllitMercariCarousel === "function") renderGllitMercariCarousel(window._lastGllitCarouselEvents || []);
   } catch (e) {}
 };
+
+
+// === トップ広告バナー自動ループ回転 ===
+window._startTopBannerAutoRotate = function() {
+  if (window._topBannerAutoTimer) clearInterval(window._topBannerAutoTimer);
+  window._topBannerAutoTimer = setInterval(function() {
+    if (window._topBannerIsTouching) return;
+    const track = document.getElementById("gllit-mercari-carousel-track") || document.querySelector("[data-top-banner-track], .gllit-carousel-track");
+    if (!track) return;
+    const slides = track.children;
+    if (!slides || slides.length <= 1) return;
+    const slideW = slides[0].getBoundingClientRect().width || track.clientWidth;
+    if (slideW <= 0) return;
+    const currentIdx = Math.round(track.scrollLeft / slideW);
+    const nextIdx = (currentIdx + 1) >= slides.length ? 0 : (currentIdx + 1);
+    track.scrollTo({ left: nextIdx * slideW, behavior: "smooth" });
+  }, 3500);
+};
+
+document.addEventListener("touchstart", function(e) {
+  const track = document.getElementById("gllit-mercari-carousel-track") || document.querySelector("[data-top-banner-track], .gllit-carousel-track");
+  if (track && track.contains(e.target)) window._topBannerIsTouching = true;
+}, { passive: true });
+
+document.addEventListener("touchend", function() {
+  if (window._topBannerIsTouching) {
+    setTimeout(function() { window._topBannerIsTouching = false; }, 1200);
+  }
+}, { passive: true });
+
+if (typeof renderGllitMercariCarousel === "function" && !renderGllitMercariCarousel._wrappedForAutoRotate) {
+  const _origRenderCarousel = renderGllitMercariCarousel;
+  window.renderGllitMercariCarousel = function() {
+    const res = _origRenderCarousel.apply(this, arguments);
+    window._startTopBannerAutoRotate();
+    return res;
+  };
+  window.renderGllitMercariCarousel._wrappedForAutoRotate = true;
+}
+window.addEventListener("DOMContentLoaded", function() {
+  setTimeout(window._startTopBannerAutoRotate, 800);
+});
