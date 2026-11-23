@@ -453,6 +453,13 @@
     grid-row: 2 !important;
   }
 </style>
+<script>/* FORCE_UNREGISTER_OLD_SW_V1 */
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.getRegistrations().then(regs => {
+      regs.forEach(r => r.update());
+    });
+  }
+  </script>
 </head>
 <body class="bg-illit-bg min-h-screen text-gray-800 relative overflow-x-hidden home-tab">
   <div id="app-splash-screen" role="status" aria-label="K-pop Tradeを読み込み中">
