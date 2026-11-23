@@ -14240,14 +14240,39 @@ window.previewAdminBannerFile = function(input) {
   reader.onload = function(ev) {
     const img = new Image();
     img.onload = function() {
-      const maxW = 800;
+      const maxW = 900;
       const scale = img.width > maxW ? (maxW / img.width) : 1;
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
       const canvas = document.createElement("canvas");
-      canvas.width = Math.round(img.width * scale);
-      canvas.height = Math.round(img.height * scale);
+      canvas.width = w;
+      canvas.height = h;
       const ctx = canvas.getContext("2d");
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      const compressed = canvas.toDataURL("image/jpeg", 0.78);
+      ctx.drawImage(img, 0, 0, w, h);
+
+      // 自動で薄い斜め SAMPLE 透かしを焼き込む（悪用・無断転載防止）
+      ctx.save();
+      const fontSize = Math.max(20, Math.round(Math.min(w, h) * 0.14));
+      ctx.font = "900 " + fontSize + "px -apple-system, BlinkMacSystemFont, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.translate(w / 2, h / 2);
+      ctx.rotate(-24 * Math.PI / 180);
+
+      const stepX = fontSize * 4.4;
+      const stepY = fontSize * 2.4;
+      for (let y = -h; y <= h; y += stepY) {
+        for (let x = -w; x <= w; x += stepX) {
+          ctx.lineWidth = Math.max(2, Math.round(fontSize * 0.06));
+          ctx.strokeStyle = "rgba(0, 0, 0, 0.16)";
+          ctx.strokeText("SAMPLE", x, y);
+          ctx.fillStyle = "rgba(255, 255, 255, 0.26)";
+          ctx.fillText("SAMPLE", x, y);
+        }
+      }
+      ctx.restore();
+
+      const compressed = canvas.toDataURL("image/jpeg", 0.8);
       window._pendingAdminBannerDataUrl = compressed;
       const wrap = document.getElementById("admin-banner-preview-wrap");
       const prev = document.getElementById("admin-banner-preview");
