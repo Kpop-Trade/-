@@ -211,6 +211,9 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     };
 
     let currentUser = null, allPosts = [], unsubPosts = null, selectedMember = "すべて", kindFilter = "all", sortFilter = "random", bundleFilter = "all", searchText = "", activeOnly = false, currentDetailIndex = -1, imageSearchState = null, imageSearchToken = 0, imageSearchLoading = false, postImageVectorQueue = Promise.resolve(); window.currentUser = currentUser; window.currentUser = currentUser; window.currentUser = currentUser;
+    let searchPageOpen = false, searchResultMode = false, searchHomeState = null, searchEasyFilter = "all", searchQuickMode = "";
+    const SEARCH_HISTORY_KEY = "kpop_trade_search_history_v1";
+    const SAVED_SEARCHES_KEY = "kpop_trade_saved_searches_v1";
     let pendingPostId = new URLSearchParams(location.search).get("post");
     let postMode = "exchange", postPhotos = [], processingPhotos = false, submittingPost = false, submittingGroup = false, detailPhotos = [], roomPhotos = [], roomPhotosFor = null;
     let sendingChatMessage = false, tradeActing = false, applyingToPost = false, submittingReview = false, submittingPriceOffer = false, submittingComment = false;
@@ -234,16 +237,16 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         }
       }
     }
-    function postsSkeletonHtml() {
+    function postsSkeletonHtml(isSearchResults = false) {
       return `<div class="posts-status col-span-full w-full" aria-busy="true" aria-label="読み込み中">
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
+        <div class="${isSearchResults ? "grid grid-cols-3" : "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4"} gap-2.5">
           ${Array.from({ length: 6 }).map(() => `<div class="kp-skel-card"><div class="kp-skel aspect-square"></div><div class="p-2 space-y-2"><div class="kp-skel h-3" style="width:78%"></div><div class="kp-skel h-2.5" style="width:55%"></div></div></div>`).join("")}
         </div>
         <p class="text-center text-[12px] text-gray-500 font-medium mt-3">募集一覧を読み込み中...</p>
       </div>`;
     }
     function postsEmptyHtml(msg, hint) {
-      return `<div class="posts-status kp-empty">
+      return `<div class="posts-status kp-empty col-span-full">
         <p class="text-sm font-bold text-gray-700">${msg || "まだ募集がありません"}</p>
         <p class="text-[12px] text-gray-500 mt-1.5 leading-relaxed">${hint || "条件を変えるか、右下の出品から投稿してみましょう"}</p>
       </div>`;
@@ -4366,6 +4369,297 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     window.setMember = function(i) { selectedMember = MEMBERS[i]; renderFilters(); renderPosts(); };
     window.setKind = function(k) { kindFilter = k; renderFilters(); renderPosts(); };
         window.setBundle = function(k) { bundleFilter = k; renderFilters(); renderPosts(); };
+    function readSearchHistory() {
+      try {
+        const items = JSON.parse(localStorage.getItem(SEARCH_HISTORY_KEY) || "[]");
+        return Array.isArray(items) ? items.filter(item => typeof item === "string") : [];
+      } catch (error) {
+        console.warn("Search history could not be read:", error);
+        return [];
+      }
+    }
+    function writeSearchStorage(key, value) {
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+        return true;
+      } catch (error) {
+        console.warn("Search preferences could not be saved:", error);
+        return false;
+      }
+    }
+    function readSavedSearches() {
+      try {
+        const items = JSON.parse(localStorage.getItem(SAVED_SEARCHES_KEY) || "[]");
+        return Array.isArray(items) ? items.filter(item => item && typeof item.query === "string") : [];
+      } catch (error) {
+        console.warn("Saved searches could not be read:", error);
+        return [];
+      }
+    }
+    function saveSearchToHistory(query) {
+      const history = [query, ...readSearchHistory().filter(item => item !== query)].slice(0, 20);
+      writeSearchStorage(SEARCH_HISTORY_KEY, history);
+    }
+    function renderSearchHistory() {
+      const list = document.getElementById("search-history-list");
+      if (!list) return;
+      const saved = readSavedSearches();
+      const history = readSearchHistory();
+      list.innerHTML = history.length ? history.map(query => {
+        const isSaved = saved.some(item => item.query.toLowerCase() === query.toLowerCase());
+        const encoded = escapeHtml(query);
+        return `<div class="flex items-center gap-2 py-2.5">
+          <span class="text-gray-400" aria-hidden="true">◷</span>
+          <button type="button" data-search-action="run" data-query="${encoded}" class="min-w-0 flex-1 truncate text-left text-sm text-gray-700">${encoded}</button>
+          <button type="button" data-search-action="favorite" data-query="${encoded}" aria-label="${isSaved ? "保存を解除" : "検索を保存"}" class="px-1 text-lg ${isSaved ? "text-pink-500" : "text-gray-300"}">${isSaved ? "♥" : "♡"}</button>
+          <button type="button" data-search-action="delete" data-query="${encoded}" aria-label="履歴を削除" class="px-1 text-lg text-gray-400">×</button>
+        </div>`;
+      }).join("") : '<p class="py-3 text-xs text-gray-400">検索履歴はありません</p>';
+    }
+    function renderSearchSuggestions(query) {
+      const suggestions = document.getElementById("search-suggestions");
+      const history = document.getElementById("search-history-section");
+      if (!suggestions || !history) return;
+      const text = String(query || "").trim();
+      if (!text) {
+        history.classList.remove("hidden");
+        renderSearchHistory();
+        if (searchQuickMode === "members") {
+          renderSearchQuickList(["共同購入", ...MEMBERS.slice(1).map(member => member.split(" ")[0])]);
+        } else if (searchQuickMode === "categories") {
+          renderSearchQuickList(["トレカ交換", "トレカ買取", "トレカ売却", "アルバム", "シリアル", "共同購入"]);
+        } else {
+          suggestions.innerHTML = "";
+        }
+        return;
+      }
+      history.classList.add("hidden");
+      searchQuickMode = "";
+      const terms = text.toLowerCase().split(/\s+/).filter(Boolean);
+      const candidates = new Map();
+      const addCandidate = (value, label) => {
+        const candidate = String(value || "").trim();
+        if (!candidate) return;
+        const key = candidate.toLowerCase();
+        if (terms.every(term => key.includes(term)) && !candidates.has(key)) candidates.set(key, { value: candidate, label });
+      };
+      (allPosts || []).forEach(post => {
+        addCandidate(post.title, "出品");
+        addCandidate(post.give, post.kind === "group" ? "共同購入" : "出品");
+        addCandidate(post.groupName, "グループ");
+        addCandidate(post.want, "希望");
+        addCandidate(post.member, "メンバー");
+      });
+      (catalogCardsCache || []).forEach(card => addCandidate(card.name, "登録カード"));
+      MEMBERS.slice(1).forEach(member => addCandidate(member.split(" ")[0], "メンバー"));
+      const matches = Array.from(candidates.values()).slice(0, 12);
+      if (!matches.some(item => item.value.toLowerCase() === text.toLowerCase())) {
+        matches.unshift({ value: text, label: "このキーワードで検索" });
+      }
+      suggestions.innerHTML = matches.map(item => `<button type="button" data-search-action="run" data-query="${escapeHtml(item.value)}" class="flex w-full items-center justify-between border-b border-gray-100 py-3 text-left">
+        <span class="truncate text-sm text-gray-800">${escapeHtml(item.value)}</span><span class="ml-3 shrink-0 text-[10px] text-gray-400">${escapeHtml(item.label)}　›</span>
+      </button>`).join("");
+    }
+    function renderSearchQuickList(queries) {
+      const suggestions = document.getElementById("search-suggestions");
+      if (!suggestions) return;
+      suggestions.innerHTML = queries.map(query => `<button type="button" data-search-action="run" data-query="${escapeHtml(query)}" class="flex w-full items-center justify-between border-b border-gray-100 py-3 text-left text-sm text-gray-700">
+        <span>${escapeHtml(query)}</span><span class="text-gray-400">›</span>
+      </button>`).join("");
+    }
+    function renderSearchPageMode() {
+      const home = document.getElementById("search-home-content");
+      const results = document.getElementById("search-results-view");
+      const input = document.getElementById("search-page-input");
+      const tokens = document.getElementById("search-query-chips");
+      if (home) home.classList.toggle("hidden", searchResultMode);
+      if (results) results.classList.toggle("hidden", !searchResultMode);
+      if (input) input.classList.toggle("hidden", searchResultMode);
+      if (tokens) tokens.classList.toggle("hidden", !searchResultMode);
+      renderSearchTokenChips();
+      renderSearchToolbar();
+    }
+    function renderSearchTokenChips() {
+      const container = document.getElementById("search-query-chips");
+      if (!container) return;
+      const terms = searchText.trim().split(/\s+/).filter(Boolean);
+      container.innerHTML = terms.map((term, index) => `<button type="button" data-search-action="remove-token" data-token-index="${index}" class="shrink-0 rounded-full bg-gray-200 px-2.5 py-1 text-xs font-medium text-gray-700">${escapeHtml(term)} <span aria-hidden="true">×</span></button>`).join("");
+    }
+    function renderSearchToolbar() {
+      const check = document.getElementById("search-active-only-check");
+      if (check) check.checked = activeOnly || searchEasyFilter === "active_trade";
+      const label = document.getElementById("search-sort-label");
+      if (label) label.textContent = sortFilter === "new" ? "新着順" : "おすすめ順";
+      document.querySelectorAll("[data-search-filter]").forEach(button => {
+        const active = button.dataset.searchFilter === searchEasyFilter;
+        button.classList.toggle("bg-gray-900", active);
+        button.classList.toggle("text-white", active);
+        button.classList.toggle("bg-white", !active);
+        button.classList.toggle("text-gray-700", !active);
+      });
+    }
+    window.openSearchPage = function() {
+      if (!searchPageOpen) {
+        searchHomeState = { searchText, activeOnly, selectedMember, kindFilter, bundleFilter, sortFilter, imageSearchState };
+      }
+      searchPageOpen = true;
+      searchResultMode = false;
+      searchQuickMode = "";
+      searchEasyFilter = "all";
+      searchText = "";
+      activeOnly = false;
+      selectedMember = "すべて";
+      kindFilter = "all";
+      bundleFilter = "all";
+      sortFilter = "popular";
+      if (imageSearchState || imageSearchLoading) {
+        imageSearchToken++;
+        imageSearchState = null;
+        imageSearchLoading = false;
+        updateImageSearchControls(false);
+      }
+      const page = document.getElementById("search-page");
+      page.classList.remove("hidden");
+      page.classList.add("flex");
+      const nav = document.querySelector(".lg-nav");
+      if (nav) nav.style.zIndex = "1001";
+      const input = document.getElementById("search-page-input");
+      if (input) input.value = "";
+      renderSearchPageMode();
+      renderSearchSuggestions("");
+      if (typeof window.ensureCatalogCardsLoaded === "function") {
+        window.ensureCatalogCardsLoaded().then(() => {
+          if (searchPageOpen && !searchResultMode) renderSearchSuggestions(input?.value || "");
+        }).catch(error => console.warn("Search card suggestions could not be loaded:", error));
+      }
+      setTimeout(() => input && input.focus(), 0);
+    };
+    window.closeSearchPage = function() {
+      const page = document.getElementById("search-page");
+      page.classList.add("hidden");
+      page.classList.remove("flex");
+      const nav = document.querySelector(".lg-nav");
+      if (nav) nav.style.removeProperty("z-index");
+      searchPageOpen = false;
+      searchResultMode = false;
+      searchQuickMode = "";
+      searchEasyFilter = "all";
+      if (searchHomeState) {
+        searchText = searchHomeState.searchText;
+        activeOnly = searchHomeState.activeOnly;
+        selectedMember = searchHomeState.selectedMember;
+        kindFilter = searchHomeState.kindFilter;
+        bundleFilter = searchHomeState.bundleFilter;
+        sortFilter = searchHomeState.sortFilter;
+        imageSearchState = searchHomeState.imageSearchState;
+        searchHomeState = null;
+      }
+      const mainInput = document.getElementById("main-search-input");
+      if (mainInput) mainInput.value = searchText;
+      const clearButton = document.getElementById("main-search-clear");
+      if (clearButton) clearButton.classList.toggle("hidden", !searchText);
+      const homeCheck = document.getElementById("active-only-check");
+      if (homeCheck) homeCheck.checked = activeOnly;
+      updateImageSearchControls(!!imageSearchState);
+      renderPosts();
+    };
+    window.showSearchQuickOptions = function(mode) {
+      searchQuickMode = mode === "members" || mode === "categories" ? mode : "";
+      renderSearchSuggestions("");
+    };
+    window.updateSearchSuggestions = function() {
+      searchQuickMode = "";
+      renderSearchSuggestions(document.getElementById("search-page-input")?.value || "");
+    };
+    function runSearch(query) {
+      const normalized = String(query || "").trim().replace(/\s+/g, " ");
+      if (!normalized) return;
+      searchText = normalized.toLowerCase();
+      searchResultMode = true;
+      searchQuickMode = "";
+      saveSearchToHistory(normalized);
+      renderSearchPageMode();
+      renderPosts();
+    }
+    window.runSearchFromInput = function() {
+      runSearch(document.getElementById("search-page-input")?.value || "");
+    };
+    window.clearSearchQuery = function() {
+      searchText = "";
+      searchResultMode = false;
+      searchQuickMode = "";
+      searchEasyFilter = "all";
+      activeOnly = false;
+      selectedMember = "すべて";
+      kindFilter = "all";
+      bundleFilter = "all";
+      sortFilter = "popular";
+      const input = document.getElementById("search-page-input");
+      if (input) input.value = "";
+      renderFilters();
+      renderSearchPageMode();
+      renderSearchSuggestions("");
+      renderPosts();
+    };
+    window.setSearchQuickFilter = function(filter) {
+      searchEasyFilter = searchEasyFilter === filter ? "all" : filter;
+      if (filter === "active_trade") activeOnly = searchEasyFilter === "active_trade";
+      renderSearchToolbar();
+      renderPosts();
+    };
+    window.setSearchActiveOnly = function(value) {
+      activeOnly = !!value;
+      if (!activeOnly && searchEasyFilter === "active_trade") searchEasyFilter = "all";
+      renderSearchToolbar();
+      renderPosts();
+    };
+    window.cycleSearchSort = function() {
+      sortFilter = sortFilter === "new" ? "popular" : "new";
+      renderSearchToolbar();
+      renderPosts();
+    };
+    window.saveCurrentSearch = function() {
+      const query = searchText.trim();
+      if (!query) return;
+      const searches = readSavedSearches();
+      const exists = searches.some(item => item.query.toLowerCase() === query.toLowerCase()
+        && item.activeOnly === (activeOnly || searchEasyFilter === "active_trade")
+        && item.member === selectedMember && item.kind === kindFilter && item.bundle === bundleFilter
+        && item.sort === sortFilter && item.easyFilter === searchEasyFilter);
+      if (exists) {
+        showToast("この検索条件は保存済みです", "info");
+        return;
+      }
+      searches.unshift({ query, activeOnly: activeOnly || searchEasyFilter === "active_trade", member: selectedMember, kind: kindFilter, bundle: bundleFilter, sort: sortFilter, easyFilter: searchEasyFilter, savedAt: Date.now() });
+      if (writeSearchStorage(SAVED_SEARCHES_KEY, searches.slice(0, 30))) showToast("検索条件を保存しました", "success");
+      renderSearchHistory();
+    };
+    document.getElementById("search-page")?.addEventListener("click", event => {
+      const button = event.target.closest("[data-search-action]");
+      if (!button) return;
+      const query = button.dataset.query || "";
+      if (button.dataset.searchAction === "run") {
+        const input = document.getElementById("search-page-input");
+        if (input) input.value = query;
+        runSearch(query);
+      } else if (button.dataset.searchAction === "delete") {
+        writeSearchStorage(SEARCH_HISTORY_KEY, readSearchHistory().filter(item => item !== query));
+        renderSearchHistory();
+      } else if (button.dataset.searchAction === "favorite") {
+        const searches = readSavedSearches();
+        const exists = searches.some(item => item.query.toLowerCase() === query.toLowerCase());
+        const next = exists ? searches.filter(item => item.query.toLowerCase() !== query.toLowerCase())
+          : [{ query, activeOnly: false, member: "すべて", kind: "all", bundle: "all", sort: "random", easyFilter: "all", savedAt: Date.now() }, ...searches];
+        if (writeSearchStorage(SAVED_SEARCHES_KEY, next.slice(0, 30))) showToast(exists ? "保存した検索を解除しました" : "検索を保存しました", "success");
+        renderSearchHistory();
+      } else if (button.dataset.searchAction === "remove-token") {
+        const terms = searchText.trim().split(/\s+/).filter(Boolean);
+        terms.splice(Number(button.dataset.tokenIndex), 1);
+        const nextQuery = terms.join(" ");
+        if (nextQuery) runSearch(nextQuery);
+        else window.clearSearchQuery();
+      }
+    });
     window.setSearch = function(v) {
       if ((imageSearchState || imageSearchLoading) && v.trim()) {
         imageSearchToken++;
@@ -4375,6 +4669,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       }
       searchText = v.trim().toLowerCase();
       renderPosts();
+      if (searchPageOpen && searchResultMode) renderSearchTokenChips();
     };
     function updateImageSearchControls(active, label) {
       const header = document.querySelector(".kp-market-header");
@@ -4400,6 +4695,8 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       const clearBtn = document.getElementById("main-search-clear");
       if (mainInput && mainInput.value !== v) mainInput.value = v;
       if (modalInput && modalInput.value !== v) modalInput.value = v;
+      const searchPageInput = document.getElementById("search-page-input");
+      if (searchPageInput && searchPageInput.value !== v) searchPageInput.value = v;
       if (clearBtn) clearBtn.classList.toggle("hidden", !v);
       setSearch(v);
     };
@@ -4408,7 +4705,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     window.cycleSort = function() {
       const idx = SORT_OPTIONS.findIndex(s => s.key === sortFilter);
       sortFilter = SORT_OPTIONS[(idx + 1) % SORT_OPTIONS.length].key; if (sortFilter === "random") window._randOrderMap = {};
-      renderFilters(); renderPosts();
+      renderFilters(); renderSearchToolbar(); renderPosts();
     };
     window.openFilterModal = function() { renderFilters(); document.getElementById("filter-modal").classList.remove("hidden"); };
     window.closeFilterModal = function() { document.getElementById("filter-modal").classList.add("hidden"); renderPosts(); };
@@ -4417,15 +4714,47 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       imageSearchState = null;
       imageSearchLoading = false;
       updateImageSearchControls(false);
-      selectedMember = "すべて"; kindFilter = "all"; sortFilter = "random"; bundleFilter = "all"; searchText = ""; activeOnly = false;
+      selectedMember = "すべて"; kindFilter = "all"; sortFilter = "random"; bundleFilter = "all"; searchText = ""; activeOnly = false; searchEasyFilter = "all";
       document.getElementById("search-input").value = "";
       const mainInput = document.getElementById("main-search-input");
       if (mainInput) mainInput.value = "";
       const clearBtn = document.getElementById("main-search-clear");
       if (clearBtn) clearBtn.classList.add("hidden");
       document.getElementById("active-only-check").checked = false;
+      if (searchPageOpen) {
+        searchResultMode = false;
+        searchQuickMode = "";
+        const searchInput = document.getElementById("search-page-input");
+        if (searchInput) searchInput.value = "";
+        renderSearchPageMode();
+        renderSearchSuggestions("");
+      }
       renderFilters(); renderPosts();
     };
+    const searchUiWindowHandlers = {
+      openSearchPage: window.openSearchPage,
+      closeSearchPage: window.closeSearchPage,
+      showSearchQuickOptions: window.showSearchQuickOptions,
+      updateSearchSuggestions: window.updateSearchSuggestions,
+      runSearchFromInput: window.runSearchFromInput,
+      clearSearchQuery: window.clearSearchQuery,
+      setSearchQuickFilter: window.setSearchQuickFilter,
+      setSearchActiveOnly: window.setSearchActiveOnly,
+      cycleSearchSort: window.cycleSearchSort,
+      saveCurrentSearch: window.saveCurrentSearch,
+      setMember: window.setMember,
+      setKind: window.setKind,
+      setBundle: window.setBundle,
+      setSearch: window.setSearch,
+      setActiveOnly: window.setActiveOnly,
+      cycleSort: window.cycleSort,
+      openFilterModal: window.openFilterModal,
+      closeFilterModal: window.closeFilterModal,
+      resetFilters: window.resetFilters
+    };
+    document.addEventListener("DOMContentLoaded", () => {
+      setTimeout(() => Object.assign(window, searchUiWindowHandlers), 0);
+    }, { once: true });
 
     function getPostTypeKey(p) {
       if (p.kind === "group") return "group_buy";
@@ -4536,8 +4865,10 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       return new Map(matches.map((match, index) => [match.post.id, index]));
     }
 
-    function renderPosts() {
-      const container = document.getElementById("posts-container");
+    function renderPosts(targetContainer = null) {
+      const container = targetContainer || document.getElementById("posts-container");
+      if (!container) return;
+      const isSearchResults = container.id === "search-results-container";
       const blocked = userData.blocked || []; const likes = userData.likes || [];
       const imageRanks = getImageSearchPostRanks();
       const filtered = [];
@@ -4546,7 +4877,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         if (blocked.includes(p.userId)) return;
         // 審査中（hidden）は本人・管理者以外に見せない
         if (p.status === "hidden" && !(currentUser && (p.userId === currentUser.uid || isAdmin()))) return;
-        if (activeOnly && p.status !== "active") return;
+        if ((activeOnly || (isSearchResults && searchEasyFilter === "active_trade")) && p.status !== "active") return;
         if (p.kind === "group" && Number(p.target || 0) > 0) {
           const jcnt = Math.max(0, typeof p.joinsCount === "number" ? p.joinsCount : joinsOf(p.id).length);
           if (jcnt >= Number(p.target) && !(currentUser && (p.userId === currentUser.uid || isAdmin()))) return;
@@ -4555,8 +4886,25 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         const okKind = kindFilter === "all" || (kindFilter === "likes" ? likes.includes(p.id) : kindFilter === type);
         const okMember = selectedMember === "すべて" || p.member === selectedMember;
         const okBundle = kindFilter !== "group_buy" || bundleFilter === "all" || p.bundle === bundleFilter;
-        const okText = !searchText || (p.give + " " + p.want + " " + p.userName + " " + (p.price || "")).toLowerCase().includes(searchText);
-        if (!okKind || !okMember || !okText || !okBundle) return;
+        const searchCategory = {
+          card_exchange: "トレカ交換",
+          card_buy: "トレカ買取",
+          card_sell: "トレカ売却",
+          album: "アルバム",
+          group_buy: "共同購入",
+          serial_exchange: "シリアル交換",
+          serial_buy: "シリアル買取",
+          serial_sell: "シリアル売却",
+          dearlit: "DEARLIT"
+        }[type] || "";
+        const searchBlob = [p.title, p.groupName, p.give, p.want, p.userName, p.member, p.description, p.condition, p.price, p.kind, searchCategory].join(" ").toLowerCase();
+        const okText = !searchText || searchText.split(/\s+/).filter(Boolean).every(term => searchBlob.includes(term));
+        const okEasyFilter = !isSearchResults || searchEasyFilter === "all"
+          || (searchEasyFilter === "active_trade" && !p.isBuy && !p.isSell && !["album", "serial", "group", "dearlit"].includes(p.kind))
+          || (searchEasyFilter === "card" && !["album", "serial", "group", "dearlit"].includes(p.kind))
+          || (searchEasyFilter === "album" && p.kind === "album")
+          || (searchEasyFilter === "unopened" && /未開封|新品|未使用/.test(searchBlob));
+        if (!okKind || !okMember || !okText || !okBundle || !okEasyFilter) return;
         filtered.push({ p, index });
       });
       if (imageSearchState) {
@@ -4601,6 +4949,12 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         else if (p.kind === "serial") ribbon = `<span class="absolute top-0 left-0 z-10 bg-yellow-500 text-yellow-900 text-[9px] font-bold px-2 py-0.5 rounded-br-lg shadow">シリアル</span>`;
         else if (isGroup) ribbon = `<span class="absolute top-0 left-0 z-10 bg-teal-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-br-lg shadow">共同購入</span>`;
         else ribbon = `<span class="absolute top-0 left-0 z-10 bg-illit-purple text-white text-[9px] font-bold px-2 py-0.5 rounded-br-lg shadow">交換</span>`;
+        const cardAttributes = isSearchResults
+          ? `data-search-post-id="${escapeHtml(p.id)}"`
+          : `onclick="openDetailModal(${index})"`;
+        const likeButtonAttributes = isSearchResults
+          ? `data-search-like-id="${escapeHtml(p.id)}"`
+          : `onclick="event.stopPropagation(); toggleDetailLikeFromCard('${p.id}')"`;
 
         const hasPhoto = p.photoCount && isJpegData(p.thumb);
         const photoBlock = hasPhoto
@@ -4617,10 +4971,10 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         else if (p.deadline) subInfo = "期限 " + escapeHtml(p.deadline);
 
         return `
-          <div onclick="openDetailModal(${index})" class="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 cursor-pointer ${dim ? 'opacity-60' : ''} group relative">
+          <div ${cardAttributes} class="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 cursor-pointer ${dim ? 'opacity-60' : ''} group relative">
             <div class="relative aspect-square bg-gray-50 overflow-hidden">
               ${ribbon}
-              <button onclick="event.stopPropagation(); toggleDetailLikeFromCard('${p.id}')" class="absolute top-1.5 right-1.5 z-10 px-2 h-7 flex items-center gap-1 rounded-full bg-white/90 backdrop-blur border border-gray-200 shadow-sm text-[11px] font-bold ${isLiked ? 'text-pink-500 border-pink-200 bg-pink-50/80' : 'text-gray-500'} hover:scale-105 hover:border-pink-300 transition">
+              <button ${likeButtonAttributes} class="absolute top-1.5 right-1.5 z-10 px-2 h-7 flex items-center gap-1 rounded-full bg-white/90 backdrop-blur border border-gray-200 shadow-sm text-[11px] font-bold ${isLiked ? 'text-pink-500 border-pink-200 bg-pink-50/80' : 'text-gray-500'} hover:scale-105 hover:border-pink-300 transition">
                 <span>${isLiked ? "♥" : "♡"}</span>
                 <span>${likesCount}</span>
               </button>
@@ -4640,15 +4994,24 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       });
       container.innerHTML = cards.length === 0
           ? (loadingPosts && allPosts.length === 0
-            ? postsSkeletonHtml() + `<div class="posts-status col-span-full text-center pt-1 pb-4"><button type="button" onclick="window._retriedInitialPosts=false; if(window.loadPosts) window.loadPosts(true);" class="text-[12px] text-indigo-600 underline font-bold">再試行する</button></div>`
+          ? postsSkeletonHtml(isSearchResults) + `<div class="posts-status col-span-full text-center pt-1 pb-4"><button type="button" onclick="window._retriedInitialPosts=false; if(window.loadPosts) window.loadPosts(true);" class="text-[12px] text-indigo-600 underline font-bold">再試行する</button></div>`
             : imageSearchState
               ? postsEmptyHtml("類似する出品はありません", "別の画像を試すか、画像検索をリセットしてください")
               : postsEmptyHtml("条件に合う募集はありません", "フィルターを外すか、キーワードを変えてみてください"))
         : cards.join("");
-      renderSellTab();
+      if (!isSearchResults) {
+        renderSellTab();
+        if (searchPageOpen && searchResultMode) {
+        renderPosts(document.getElementById("search-results-container"));
+        }
+      } else {
+        const loadMore = document.getElementById("search-load-more");
+        if (loadMore) loadMore.classList.toggle("hidden", !postsHasMore);
+      }
     }
 
     window.toggleDetailLikeFromCard = function(postId) { doToggleLike(allPosts.find(x => x.id === postId)); };
+    window.toggleSearchResultLike = function(postId) { doToggleLike(allPosts.find(x => x.id === postId)); };
 
     // 投稿はリアルタイム監視せず、50件ずつ取得（読み取り回数の節約）
     const POSTS_PAGE = 50;
@@ -4739,6 +5102,9 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         if (wrap) wrap.classList.toggle("hidden", !postsHasMore);
         if (gen === loadPostsGen) loadingPosts = false;
         renderPosts();
+        if (searchPageOpen && !searchResultMode) {
+          renderSearchSuggestions(document.getElementById("search-page-input")?.value || "");
+        }
         notifyWatchedListings();
         scheduleHealSoldPosts();
         if (reset && currentDetailId && !document.getElementById("detail-modal").classList.contains("hidden")) {
@@ -4928,6 +5294,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
 
     function subscribePosts() { loadPosts(true); }
     window.loadMorePosts = function() { loadPosts(false); };
+    window.loadMoreSearchPosts = function() { loadPosts(false); };
     window.refreshPosts = async function() { await loadPosts(true); showToast("最新の情報に更新しました。", "info"); };
 
     function asUnitBoxes(list) {
@@ -5137,6 +5504,22 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         });
       }
     };
+    const appMainOpenDetailModal = window.openDetailModal;
+    window.openSearchResultPost = function(postId) {
+      const index = allPosts.findIndex(post => post.id === postId);
+      if (index >= 0) appMainOpenDetailModal(index);
+    };
+    document.getElementById("search-results-container")?.addEventListener("click", event => {
+      const likeButton = event.target.closest("[data-search-like-id]");
+      if (likeButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        window.toggleSearchResultLike(likeButton.dataset.searchLikeId);
+        return;
+      }
+      const card = event.target.closest("[data-search-post-id]");
+      if (card) window.openSearchResultPost(card.dataset.searchPostId);
+    });
     window.closeDetailModal = function() {
       const modal = document.getElementById("detail-modal");
       const sheet = modal && modal.querySelector(".detail-sheet");
@@ -8483,7 +8866,7 @@ function getAiCardVectors() {
       searchText = "";
       selectedMember = "すべて";
       kindFilter = "all";
-      sortFilter = "random";
+      sortFilter = "popular";
       bundleFilter = "all";
       activeOnly = false;
       const mainInput = document.getElementById("main-search-input");
