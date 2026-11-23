@@ -1125,3 +1125,26 @@ html, body {
   overflow: hidden;
   word-break: break-word;
 }
+
+
+/* === Mercari-style Peek Carousel for Auto-GO Hero === */
+#autogo-home-track.ag-hero-track {
+  display: flex !important;
+  overflow-x: auto !important;
+  scroll-snap-type: x mandatory !important;
+  scroll-behavior: smooth;
+  gap: 10px !important;
+  padding: 4px 22px 6px !important;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+#autogo-home-track.ag-hero-track::-webkit-scrollbar {
+  display: none;
+}
+#autogo-home-track .ag-hero-card {
+  flex: 0 0 calc(100% - 8px) !important;
+  width: calc(100% - 8px) !important;
+  max-width: calc(100% - 8px) !important;
+  scroll-snap-align: center !important;
+  scroll-snap-stop: always;
+}

@@ -223,7 +223,8 @@
     const card = cards[idx];
     if (!card) return;
     heroIndex = idx;
-    card.scrollIntoView({ behavior: smooth === false ? "auto" : "smooth", inline: "center", block: "nearest" });
+    const left = card.offsetLeft - (track.clientWidth - card.offsetWidth) / 2;
+  track.scrollTo({ left: Math.max(0, left), behavior: smooth === false ? "auto" : "smooth" });
     syncDots(idx);
   }
 
