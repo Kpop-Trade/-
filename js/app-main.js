@@ -15073,3 +15073,212 @@ window.deleteAdminTopBanner = async function(idx) {
     if (statusEl) statusEl.textContent = "削除失敗: " + (e.message || e);
   }
 };
+
+
+// === 登録済みバナーの透かし・濃さをあとから再生成＆保存する機能 ===
+window._composeBannerWithWatermark = function(srcUrl, useWatermark, opacityPct) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = function() {
+      const maxW = 720;
+      const scale = img.width > maxW ? (maxW / img.width) : 1;
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, w, h);
+
+      if (useWatermark) {
+        const pct = Number(opacityPct) || 52;
+        const fillAlpha = Math.max(0.1, Math.min(0.95, pct / 100));
+        const strokeAlpha = Math.max(0.08, Math.min(0.75, fillAlpha * 0.65));
+        ctx.save();
+        const fontSize = Math.max(20, Math.round(Math.min(w, h) * 0.14));
+        ctx.font = "900 " + fontSize + "px -apple-system, BlinkMacSystemFont, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.translate(w / 2, h / 2);
+        ctx.rotate(-24 * Math.PI / 180);
+
+        const stepX = fontSize * 4.4;
+        const stepY = fontSize * 2.4;
+        for (let y = -h; y <= h; y += stepY) {
+          for (let x = -w; x <= w; x += stepX) {
+            ctx.lineWidth = Math.max(2, Math.round(fontSize * 0.06));
+            ctx.strokeStyle = "rgba(0, 0, 0, " + strokeAlpha.toFixed(2) + ")";
+            ctx.strokeText("SAMPLE", x, y);
+            ctx.fillStyle = "rgba(255, 255, 255, " + fillAlpha.toFixed(2) + ")";
+            ctx.fillText("SAMPLE", x, y);
+          }
+        }
+        ctx.restore();
+      }
+      resolve(canvas.toDataURL("image/jpeg", 0.72));
+    };
+    img.onerror = function() { reject(new Error("画像の読み込みに失敗しました")); };
+    img.src = srcUrl;
+  });
+};
+
+window._previewSavedBannerEdit = async function(idx) {
+  const list = window._adminTopBanners || [];
+  const item = list[idx];
+  if (!item) return;
+  const toggleEl = document.getElementById("saved-banner-wm-toggle-" + idx);
+  const sliderEl = document.getElementById("saved-banner-wm-opacity-" + idx);
+  const valEl = document.getElementById("saved-banner-wm-val-" + idx);
+  const imgEl = document.getElementById("saved-banner-thumb-" + idx);
+
+  const useWm = toggleEl ? toggleEl.checked : true;
+  const pct = sliderEl ? Number(sliderEl.value) : 52;
+  if (valEl) valEl.textContent = pct + "%";
+
+  const baseSrc = item.rawImageUrl || item.imageUrl;
+  try {
+    const updatedUrl = await window._composeBannerWithWatermark(baseSrc, useWm, pct);
+    if (imgEl) imgEl.src = updatedUrl;
+    item._draftImageUrl = updatedUrl;
+    item._draftUseWm = useWm;
+    item._draftOpacity = pct;
+  } catch (e) {}
+};
+
+window.saveEditedAdminBanner = async function(idx) {
+  const list = [...(window._adminTopBanners || [])];
+  const item = list[idx];
+  if (!item) return;
+  const statusEl = document.getElementById("saved-banner-status-" + idx) || document.getElementById("admin-banner-status");
+  const toggleEl = document.getElementById("saved-banner-wm-toggle-" + idx);
+  const sliderEl = document.getElementById("saved-banner-wm-opacity-" + idx);
+  const titleEl = document.getElementById("saved-banner-title-" + idx);
+  const linkEl = document.getElementById("saved-banner-link-" + idx);
+
+  const useWm = toggleEl ? toggleEl.checked : (item.useWatermark !== false);
+  const pct = sliderEl ? Number(sliderEl.value) : (item.watermarkOpacity || 52);
+  const baseSrc = item.rawImageUrl || item.imageUrl;
+
+  if (statusEl) statusEl.textContent = "更新中...";
+  try {
+    const finalUrl = item._draftImageUrl || await window._composeBannerWithWatermark(baseSrc, useWm, pct);
+    const updatedItem = {
+      ...item,
+      rawImageUrl: baseSrc,
+      imageUrl: finalUrl,
+      useWatermark: useWm,
+      watermarkOpacity: pct,
+      title: titleEl ? titleEl.value.trim() : (item.title || ""),
+      link: linkEl ? linkEl.value.trim() : (item.link || "")
+    };
+    delete updatedItem._draftImageUrl;
+    delete updatedItem._draftUseWm;
+    delete updatedItem._draftOpacity;
+
+    list[idx] = updatedItem;
+    await window._persistAndSyncTopBanners(list);
+    if (statusEl) statusEl.textContent = "更新しました！";
+    if (typeof window.renderAdminTopBannerList === "function") window.renderAdminTopBannerList();
+    if (typeof renderGllitMercariCarousel === "function") renderGllitMercariCarousel(window._lastGllitCarouselEvents || []);
+  } catch (e) {
+    if (statusEl) statusEl.textContent = "更新失敗: " + (e.message || e);
+  }
+};
+
+// 新規追加時にも元画像(rawImageUrl)と設定値を一緒に保存するよう拡張
+window.addAdminTopBanner = async function() {
+  const statusEl = document.getElementById("admin-banner-status");
+  const linkEl = document.getElementById("admin-banner-link");
+  const titleEl = document.getElementById("admin-banner-title");
+  const toggleEl = document.getElementById("admin-banner-watermark-toggle");
+  const opacityEl = document.getElementById("admin-banner-watermark-opacity");
+
+  const imageUrl = window._pendingAdminBannerDataUrl || "";
+  if (!imageUrl) { if (statusEl) statusEl.textContent = "先に写真を選択してください"; return; }
+  const link = linkEl ? linkEl.value.trim() : "";
+  const title = titleEl ? titleEl.value.trim() : "";
+  const useWatermark = toggleEl ? toggleEl.checked : true;
+  const watermarkOpacity = opacityEl ? Number(opacityEl.value) : 52;
+
+  // 元画像（透かしなし・軽量化済み）も生成して保持（あとから濃さやON/OFFを自由に変えられるようにする）
+  let rawImageUrl = "";
+  try {
+    if (window._pendingAdminBannerRawImg) {
+      rawImageUrl = await window._composeBannerWithWatermark(window._pendingAdminBannerRawImg.src, false, 0);
+    }
+  } catch (e) {}
+
+  if (statusEl) statusEl.textContent = "保存中...";
+  try {
+    const nextList = [{
+      id: String(Date.now()),
+      imageUrl,
+      rawImageUrl: rawImageUrl || imageUrl,
+      useWatermark,
+      watermarkOpacity,
+      link,
+      title
+    }, ...(window._adminTopBanners || [])];
+    await window._persistAndSyncTopBanners(nextList);
+    window._pendingAdminBannerDataUrl = "";
+    window._pendingAdminBannerRawImg = null;
+    const fileEl = document.getElementById("admin-banner-file");
+    if (fileEl) fileEl.value = "";
+    const wrap = document.getElementById("admin-banner-preview-wrap");
+    if (wrap) wrap.classList.add("hidden");
+    if (linkEl) linkEl.value = "";
+    if (titleEl) titleEl.value = "";
+    if (statusEl) statusEl.textContent = "保存しました！（あとから濃さ・ON/OFF変更可能）";
+    if (typeof window.renderAdminTopBannerList === "function") window.renderAdminTopBannerList();
+    if (typeof renderGllitMercariCarousel === "function") renderGllitMercariCarousel(window._lastGllitCarouselEvents || []);
+  } catch (e) {
+    if (statusEl) statusEl.textContent = "保存失敗: " + (e.message || e);
+  }
+};
+
+// 登録済みバナー一覧の描画を「透かしON/OFF・濃さスライダー・タイトル/URL編集・再保存」付きにアップグレード
+window.renderAdminTopBannerList = function() {
+  const container = document.getElementById("admin-banner-list");
+  if (!container) return;
+  const list = window._adminTopBanners || [];
+  if (!list.length) {
+    container.innerHTML = '<div class="text-xs text-gray-400 text-center py-3">登録中の広告バナーはありません</div>';
+    return;
+  }
+  container.innerHTML = list.map((b, idx) => {
+    const useWm = b.useWatermark !== false;
+    const pct = Number(b.watermarkOpacity) || 52;
+    const safeTitle = String(b.title || "").replace(/"/g, "&quot;");
+    const safeLink = String(b.link || "").replace(/"/g, "&quot;");
+    return `
+      <div class="bg-white rounded-2xl border border-purple-100 p-3 space-y-2.5 shadow-sm">
+        <div class="flex items-start gap-2.5">
+          <img id="saved-banner-thumb-${idx}" src="${b.imageUrl}" class="w-28 h-16 object-cover rounded-xl border border-gray-200 flex-shrink-0 bg-gray-100" alt="banner">
+          <div class="flex-1 min-w-0 space-y-1.5">
+            <input type="text" id="saved-banner-title-${idx}" value="${safeTitle}" placeholder="タイトル（任意）" class="w-full text-xs font-bold text-gray-800 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-purple-400">
+            <input type="text" id="saved-banner-link-${idx}" value="${safeLink}" placeholder="リンクURL（任意）" class="w-full text-[11px] text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-purple-400">
+          </div>
+        </div>
+        <div class="bg-purple-50/70 px-2.5 py-2 rounded-xl border border-purple-100 space-y-1.5">
+          <label class="flex items-center gap-2 text-[11px] font-bold text-gray-700 cursor-pointer select-none">
+            <input type="checkbox" id="saved-banner-wm-toggle-${idx}" ${useWm ? "checked" : ""} onchange="window._previewSavedBannerEdit(${idx})" class="w-3.5 h-3.5 accent-purple-600 rounded">
+            <span>SAMPLE透かしを入れる</span>
+          </label>
+          <div class="flex items-center gap-2 pl-5">
+            <span class="text-[10px] font-bold text-gray-500 whitespace-nowrap">濃さ</span>
+            <input type="range" id="saved-banner-wm-opacity-${idx}" min="15" max="90" value="${pct}" oninput="window._previewSavedBannerEdit(${idx})" class="w-full accent-purple-600 h-1.5 bg-purple-200 rounded-lg cursor-pointer">
+            <span id="saved-banner-wm-val-${idx}" class="text-[10px] font-black text-purple-700 w-8 text-right">${pct}%</span>
+          </div>
+        </div>
+        <div class="flex items-center justify-between gap-2 pt-0.5">
+          <span id="saved-banner-status-${idx}" class="text-[11px] font-bold text-purple-600 truncate"></span>
+          <div class="flex items-center gap-1.5 flex-shrink-0">
+            <button type="button" onclick="window.saveEditedAdminBanner(${idx})" class="px-3 py-1.5 rounded-xl bg-purple-600 text-white text-[11px] font-black active:scale-95 transition">変更を保存</button>
+            <button type="button" onclick="window.deleteAdminTopBanner(${idx})" class="px-2.5 py-1.5 rounded-xl bg-red-50 text-red-600 border border-red-200 text-[11px] font-bold active:scale-95 transition">削除</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join("");
+};
