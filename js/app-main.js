@@ -237,10 +237,10 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         }
       }
     }
-    function postsSkeletonHtml(isSearchResults = false) {
+    function postsSkeletonHtml() {
       return `<div class="posts-status col-span-full w-full" aria-busy="true" aria-label="読み込み中">
-        <div class="${isSearchResults ? "grid grid-cols-3" : "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4"} gap-2.5">
-          ${Array.from({ length: 6 }).map(() => `<div class="kp-skel-card"><div class="kp-skel aspect-square"></div><div class="p-2 space-y-2"><div class="kp-skel h-3" style="width:78%"></div><div class="kp-skel h-2.5" style="width:55%"></div></div></div>`).join("")}
+        <div class="grid grid-cols-3 gap-1">
+          ${Array.from({ length: 6 }).map((_, index) => `<div class="kp-skel aspect-square ${index === 0 ? "col-span-2 row-span-2" : ""}"></div>`).join("")}
         </div>
         <p class="text-center text-[12px] text-gray-500 font-medium mt-3">募集一覧を読み込み中...</p>
       </div>`;
@@ -4924,31 +4924,11 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           return tsMillis(b.p.createdAt) - tsMillis(a.p.createdAt);
         });
       }
-      const cards = filtered.map(({ p, index }) => {
+      const cards = filtered.map(({ p, index }, cardIndex) => {
         const isLiked = likes.includes(p.id);
-        const likesCount = Number(p.likesCount) || 0;
-        const isGroup = p.kind === "group";
-        const joins = isGroup ? joinsOf(p.id) : [];
-        const target = Number(p.target || 0);
-        const joinCount = isGroup ? Math.max(0, typeof p.joinsCount === "number" ? p.joinsCount : joins.length) : 0;
-        const full = isGroup && target > 0 && joinCount >= target;
-        const closed = isGroup && p.status === "closed";
         const isSold = p.status === "traded";
-        const dim = isExpired(p) || closed || isSold;
-        const hasPrice = !!(p.isBuy || p.isSell || isGroup) && Number(p.price || 0) > 0;
-        const priceText = hasPrice ? "¥" + Number(p.price || 0).toLocaleString() : "";
-
-        let ribbon = "";
-        if (isSold) ribbon = `<span class="absolute top-0 left-0 z-10 bg-gray-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-br-lg shadow">SOLD</span>`;
-        else if (isGroup && full) ribbon = `<span class="absolute top-0 left-0 z-10 bg-teal-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-br-lg shadow">満員</span>`;
-        else if (isGroup && closed) ribbon = `<span class="absolute top-0 left-0 z-10 bg-gray-400 text-white text-[9px] font-bold px-2 py-0.5 rounded-br-lg shadow">終了</span>`;
-        else if (p.kind === "dearlit") ribbon = `<span class="absolute top-0 left-0 z-10 bg-rose-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-br-lg shadow">DEARLIT</span>`;
-        else if (p.kind === "album") ribbon = `<span class="absolute top-0 left-0 z-10 bg-indigo-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-br-lg shadow">アルバム</span>`;
-        else if (p.isSell) ribbon = `<span class="absolute top-0 left-0 z-10 bg-purple-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-br-lg shadow">売却</span>`;
-        else if (p.isBuy) ribbon = `<span class="absolute top-0 left-0 z-10 bg-pink-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-br-lg shadow">買取</span>`;
-        else if (p.kind === "serial") ribbon = `<span class="absolute top-0 left-0 z-10 bg-yellow-500 text-yellow-900 text-[9px] font-bold px-2 py-0.5 rounded-br-lg shadow">シリアル</span>`;
-        else if (isGroup) ribbon = `<span class="absolute top-0 left-0 z-10 bg-teal-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-br-lg shadow">共同購入</span>`;
-        else ribbon = `<span class="absolute top-0 left-0 z-10 bg-illit-purple text-white text-[9px] font-bold px-2 py-0.5 rounded-br-lg shadow">交換</span>`;
+        const dim = isExpired(p) || p.status === "closed" || isSold;
+        const priceText = Number(p.price || 0) > 0 ? "¥" + Number(p.price).toLocaleString() : "交換";
         const cardAttributes = isSearchResults
           ? `data-search-post-id="${escapeHtml(p.id)}"`
           : `onclick="openDetailModal(${index})"`;
@@ -4958,43 +4938,27 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
 
         const hasPhoto = p.photoCount && isJpegData(p.thumb);
         const photoBlock = hasPhoto
-          ? `<img src="${p.thumb}" alt="" class="w-full h-full object-cover ${isSold ? 'opacity-50 grayscale' : ''}">`
-          : `<div class="w-full h-full bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center text-2xl text-purple-200">${isGroup ? "🛍" : (p.kind === "serial" ? "🎫" : "🃏")}</div>`;
-
-        let title = escapeHtml(p.give || "");
-        if (p.member && p.member !== "指定なし") title += ` (${escapeHtml(p.member.split(" ")[0])})`;
-        if (!p.isBuy && !isGroup && !p.isSell && p.want) title += ` ⇄ ${escapeHtml(p.want)}`;
-
-        let subInfo = "";
-        if (isGroup) subInfo = `${joinCount}/${target}人`;
-        else if (p.condition && CONDITION_LABEL[p.condition]) subInfo = CONDITION_LABEL[p.condition].split("：")[0];
-        else if (p.deadline) subInfo = "期限 " + escapeHtml(p.deadline);
+          ? `<img src="${p.thumb}" alt="" class="h-full w-full object-cover ${isSold ? "opacity-50 grayscale" : ""}">`
+          : `<div class="h-full w-full bg-gradient-to-br from-purple-50 to-pink-50"></div>`;
+        const cardStyle = `aspect-ratio:1/1;${cardIndex === 0 ? "grid-column:span 2;grid-row:span 2;" : ""}`;
 
         return `
-          <div ${cardAttributes} class="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 cursor-pointer ${dim ? 'opacity-60' : ''} group relative">
-            <div class="relative aspect-square bg-gray-50 overflow-hidden">
-              ${ribbon}
-              <button ${likeButtonAttributes} class="absolute top-1.5 right-1.5 z-10 px-2 h-7 flex items-center gap-1 rounded-full bg-white/90 backdrop-blur border border-gray-200 shadow-sm text-[11px] font-bold ${isLiked ? 'text-pink-500 border-pink-200 bg-pink-50/80' : 'text-gray-500'} hover:scale-105 hover:border-pink-300 transition">
-                <span>${isLiked ? "♥" : "♡"}</span>
-                <span>${likesCount}</span>
-              </button>
+          <div ${cardAttributes} style="${cardStyle}" class="relative cursor-pointer overflow-hidden rounded-xl bg-gray-50 ${dim ? "opacity-60" : ""}">
+            <div class="absolute inset-0 overflow-hidden">
               ${photoBlock}
-              ${priceText ? `<span class="absolute left-1.5 bottom-1.5 z-10 text-[12px] font-bold text-gray-900 bg-white/50 backdrop-blur rounded-lg px-2 py-1">${priceText}</span>` : ''}
-              ${isSold ? '<div class="absolute inset-0 bg-black/35 flex items-center justify-center"><span class="text-white font-bold text-sm tracking-widest">SOLD</span></div>' : ''}
-              ${!isSold && p.photoCount > 1 ? `<span class="absolute bottom-1.5 right-1.5 bg-black/50 text-white text-[9px] font-medium px-1.5 py-0.5 rounded-full">📷${p.photoCount}</span>` : ''}
-            </div>
-            <div class="pt-1.5 px-0.5 space-y-0.5">
-              <p class="text-[12px] font-normal text-gray-900 line-clamp-2 leading-snug">${title}</p>
-              ${subInfo ? `<p class="text-[10px] text-gray-500">${subInfo}</p>` : ''}
-                        ${formatRelativeTimeJa(p.updatedAt || p.createdAt) ? `<p class="text-[9px] text-gray-400">🕒 ${formatRelativeTimeJa(p.updatedAt || p.createdAt)}</p>` : ''}
-              <p class="text-[10px] text-gray-400 truncate">${escapeHtml(p.userName || "")}</p>
+              <button type="button" ${likeButtonAttributes} aria-label="${isLiked ? "いいねを解除" : "いいね"}" class="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center drop-shadow">
+                <svg width="25" height="25" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M20.8 4.9a5.5 5.5 0 0 0-7.8 0L12 5.9l-1-1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.3a5.5 5.5 0 0 0 0-7.8Z" fill="${isLiked ? "#ec4899" : "rgba(255,255,255,0.08)"}" stroke="#ffffff" stroke-width="1.8" stroke-linejoin="round"/>
+                </svg>
+              </button>
+              <span class="absolute bottom-2 left-2 z-10 text-base font-extrabold text-white" style="text-shadow:0 1px 4px rgba(0,0,0,0.75)">${priceText}</span>
             </div>
           </div>
         `;
       });
       container.innerHTML = cards.length === 0
           ? (loadingPosts && allPosts.length === 0
-          ? postsSkeletonHtml(isSearchResults) + `<div class="posts-status col-span-full text-center pt-1 pb-4"><button type="button" onclick="window._retriedInitialPosts=false; if(window.loadPosts) window.loadPosts(true);" class="text-[12px] text-indigo-600 underline font-bold">再試行する</button></div>`
+          ? postsSkeletonHtml() + `<div class="posts-status col-span-full text-center pt-1 pb-4"><button type="button" onclick="window._retriedInitialPosts=false; if(window.loadPosts) window.loadPosts(true);" class="text-[12px] text-indigo-600 underline font-bold">再試行する</button></div>`
             : imageSearchState
               ? postsEmptyHtml("類似する出品はありません", "別の画像を試すか、画像検索をリセットしてください")
               : postsEmptyHtml("条件に合う募集はありません", "フィルターを外すか、キーワードを変えてみてください"))
