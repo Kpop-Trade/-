@@ -5034,80 +5034,40 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       return new Map(matches.map((match, index) => [match.post.id, index]));
     }
 
-    function getPostThemeTerms(post) {
-      const terms = new Map();
-      const addTerm = (value, priority = 1) => {
-        const label = String(value || "")
-          .replace(/[\u0000-\u001f]/g, " ")
-          .replace(/^\s*[#＃]/, "")
-          .replace(/\s*[\(（][^)]*[\)）]\s*/g, " ")
-          .replace(/^[\s:：・|｜/／,，、]+|[\s:：・|｜/／,，、]+$/g, "")
-          .replace(/\s+/g, " ")
-          .trim();
-        const key = label.toLocaleLowerCase();
-        if (label.length < 2 || label.length > 40 || /^\d+$/.test(label)
-          || ["交換", "譲", "求", "出品", "トレカ", "カード", "グッズ", "アルバム", "共同購入", "指定なし"].includes(key)) return;
-        const previous = terms.get(key);
-        if (!previous || priority > previous.priority) terms.set(key, { label, priority });
-      };
-      const addList = (value, priority) => {
-        const values = Array.isArray(value) ? value : String(value || "").split(/[,，\n]/);
-        values.forEach(item => addTerm(item, priority));
-      };
-
-      addTerm(post.member, 6);
-      addTerm(post.albumName || post.albumTitle || post.album || post.series || post.albumId, 6);
-      addTerm(post.groupName || post.group, 2);
-      addTerm(post.catalogCardName, 4);
-      addList(post.tags || post.tag, 4);
-
-      const text = [post.title, post.give, post.want, post.description, post.keywords, post.tags, post.tag]
-        .map(value => String(value || ""))
-        .join(" ");
-      for (const match of text.matchAll(/[#＃]([^\s#＃,，、]+)/g)) addTerm(match[1], 5);
-      [post.title, post.give].forEach(value => {
-        String(value || "").split(/[|｜/／・,，、\n]+/).forEach(part => addTerm(part, 3));
-      });
-      const textKey = text.toLocaleLowerCase();
-      MEMBERS.slice(1).forEach(member => {
-        const name = member.split(" ")[0];
-        if (name && textKey.includes(name.toLocaleLowerCase())) addTerm(name, 5);
-      });
-      return terms;
-    }
-
     function buildHomeThemeGroups(entries) {
-      const topics = new Map();
-      entries.forEach(entry => {
-        getPostThemeTerms(entry.p).forEach((term, key) => {
-          if (!topics.has(key)) topics.set(key, { key, label: term.label, priority: term.priority, entries: [] });
-          const topic = topics.get(key);
-          topic.priority = Math.max(topic.priority, term.priority);
-          topic.entries.push(entry);
-        });
-      });
-      const ranked = Array.from(topics.values())
-        .filter(topic => topic.entries.length >= 3)
-        .sort((a, b) => b.entries.length - a.entries.length || b.priority - a.priority || a.label.localeCompare(b.label, "ja"));
-      const assigned = new Set();
-      const sections = [];
-      ranked.forEach(topic => {
-        if (sections.length >= 8) return;
-        const available = topic.entries.filter(entry => !assigned.has(entry.p.id));
-        if (available.length < 3) return;
-        const selected = available.slice(0, 6);
-        selected.forEach(entry => assigned.add(entry.p.id));
-        sections.push({ label: topic.label, query: topic.label, entries: selected });
-      });
-      const remaining = entries.filter(entry => !assigned.has(entry.p.id))
-        .sort((a, b) => tsMillis(b.p.createdAt) - tsMillis(a.p.createdAt));
-      for (let i = 0; i < remaining.length; i += 6) {
-        sections.push({ label: "新着トレカ・グッズ", query: "トレカ", entries: remaining.slice(i, i + 6) });
-      }
-      return sections;
+  const topics = new Map();
+  entries.forEach(entry => {
+    const rawMember = (entry.p && (entry.p.member || entry.p.memberName) || "").trim();
+    if (!rawMember || rawMember === "すべて" || rawMember === "指定なし" || rawMember === "未指定" || rawMember === "全体" || rawMember === "ALL") return;
+    const key = "member:" + rawMember.toLocaleLowerCase();
+    if (!topics.has(key)) {
+      topics.set(key, { key, label: rawMember, priority: 10, entries: [] });
     }
+    topics.get(key).entries.push(entry);
+  });
 
-    window.renderHomeThemeSections = function(entries, cardHtmlById) {
+  const assigned = new Set();
+  const sections = [];
+  const sortedTopics = Array.from(topics.values()).sort((a, b) => b.entries.length - a.entries.length);
+
+  sortedTopics.forEach(topic => {
+    if (sections.length >= 10) return;
+    const available = topic.entries.filter(entry => !assigned.has(entry.p.id));
+    if (available.length === 0) return;
+    const selected = available.slice(0, 6);
+    selected.forEach(entry => assigned.add(entry.p.id));
+    sections.push({ label: topic.label, query: topic.label, entries: selected });
+  });
+
+  const remaining = entries.filter(entry => !assigned.has(entry.p.id))
+    .sort((a, b) => tsMillis(b.p.createdAt) - tsMillis(a.p.createdAt));
+  for (let i = 0; i < remaining.length; i += 6) {
+    sections.push({ label: "新着トレカ・グッズ", query: "トレカ", entries: remaining.slice(i, i + 6) });
+  }
+  return sections;
+}
+
+window.renderHomeThemeSections = function(entries, cardHtmlById) {
       const container = document.getElementById("posts-container");
       if (!container) return "";
       const sections = buildHomeThemeGroups(entries);
