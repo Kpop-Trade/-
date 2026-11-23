@@ -3559,6 +3559,32 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       }
     });
 
+    window.openListingGuideModal = function(tab = "flow") {
+      const modal = document.getElementById("listing-guide-modal");
+      if (!modal) return;
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+      window.setListingGuideTab(tab);
+    };
+    window.closeListingGuideModal = function() {
+      const modal = document.getElementById("listing-guide-modal");
+      if (!modal) return;
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+    };
+    window.setListingGuideTab = function(tab) {
+      if (tab !== "flow" && tab !== "packing" && tab !== "shipping") return;
+      document.querySelectorAll("[data-listing-guide-tab]").forEach(button => {
+        const selected = button.dataset.listingGuideTab === tab;
+        button.style.background = selected ? "#f0f7ff" : "#ffffff";
+        button.style.color = selected ? "#1a5fb4" : "#666666";
+        button.setAttribute("aria-selected", String(selected));
+      });
+      document.querySelectorAll("[data-listing-guide-panel]").forEach(panel => {
+        panel.classList.toggle("hidden", panel.dataset.listingGuidePanel !== tab);
+      });
+    };
+
     window.openPostModal = async function(mode) {
       if (!currentUser) return /* alert hidden */ console.log("ログインが必要です。");
       try {

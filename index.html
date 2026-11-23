@@ -919,9 +919,23 @@
     <div id="post-modal-sheet" class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-hidden flex flex-col">
       <div id="post-modal-header" class="flex justify-between items-center border-b border-purple-200/50 pb-3 shrink-0">
         <h3 id="post-modal-title" class="font-bold text-base text-gray-800">🃏 トレカの出品</h3>
-        <button type="button" onclick="closePostModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none" aria-label="閉じる">&times;</button>
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="document.getElementById('listing-guide-card').classList.remove('hidden')" class="w-8 h-8 rounded-full bg-[#f5f5f7] text-base" aria-label="出品ガイドを表示">🔰</button>
+          <button type="button" onclick="closePostModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none" aria-label="閉じる">&times;</button>
+        </div>
       </div>
       <div id="post-modal-body" class="space-y-3 text-xs md:text-sm overflow-y-auto overscroll-contain flex-1 min-h-0">
+        <section id="listing-guide-card" class="space-y-2.5" style="background:#f5f5f7;border-radius:12px;padding:14px">
+          <div class="flex items-center justify-between">
+            <h4 class="text-sm font-bold text-gray-900">🔰 出品ガイド</h4>
+            <button type="button" onclick="document.getElementById('listing-guide-card').classList.add('hidden')" class="w-7 h-7 rounded-full text-gray-500 text-xl leading-none" aria-label="出品ガイドを閉じる">&times;</button>
+          </div>
+          <div class="grid gap-2" style="grid-template-columns:1fr 1fr">
+            <button type="button" onclick="openListingGuideModal('flow')" class="flex items-center justify-between text-left text-xs font-medium text-gray-800" style="background:#ffffff;border:1px solid #e0e0e0;border-radius:8px;padding:12px 14px"><span>取引の流れ</span><span class="text-gray-400">&gt;</span></button>
+            <button type="button" onclick="openListingGuideModal('packing')" class="flex items-center justify-between text-left text-xs font-medium text-gray-800" style="background:#ffffff;border:1px solid #e0e0e0;border-radius:8px;padding:12px 14px"><span>梱包方法</span><span class="text-gray-400">&gt;</span></button>
+            <button type="button" onclick="openListingGuideModal('shipping')" class="flex items-center justify-between text-left text-xs font-medium text-gray-800" style="background:#ffffff;border:1px solid #e0e0e0;border-radius:8px;padding:12px 14px"><span>配送方法</span><span class="text-gray-400">&gt;</span></button>
+          </div>
+        </section>
         <div id="exchange-style-box" class="hidden space-y-2">
           <div class="grid grid-cols-2 gap-1 p-1 bg-[#f2f2f2] rounded-full">
             <button type="button" id="exchange-style-single" onclick="setExchangeStyle('single')" class="py-2 rounded-full text-[13px] font-medium bg-white text-gray-900 shadow-sm">1枚</button>
@@ -1061,6 +1075,46 @@
         <button type="button" id="post-submit-btn" onclick="submitPost()" class="flex-1 bg-gradient-to-r from-illit-purple to-illit-accent text-white font-medium py-3 rounded-full hover:opacity-90 transition shadow-md border border-white/30">出品する</button>
       </div>
     </div>
+  </div>
+
+  <div id="listing-guide-modal" class="fixed inset-0 hidden z-[60] items-end justify-center bg-black/40 sm:items-center sm:p-4" onclick="if(event.target===this) closeListingGuideModal()">
+    <section class="w-full max-w-md max-h-[85vh] overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl" onclick="event.stopPropagation()">
+      <header class="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+        <h3 class="text-base font-bold text-gray-900">K-POPトレカ交換ガイド</h3>
+        <button type="button" onclick="closeListingGuideModal()" class="w-8 h-8 rounded-full bg-gray-100 text-gray-500 text-xl leading-none" aria-label="閉じる">&times;</button>
+      </header>
+      <div class="grid grid-cols-3 gap-1 border-b border-gray-100 px-3 py-2" role="tablist">
+        <button type="button" data-listing-guide-tab="flow" onclick="setListingGuideTab('flow')" class="rounded-full px-2 py-2 text-[11px] font-bold" role="tab">取引の流れ</button>
+        <button type="button" data-listing-guide-tab="packing" onclick="setListingGuideTab('packing')" class="rounded-full px-2 py-2 text-[11px] font-bold" role="tab">梱包方法</button>
+        <button type="button" data-listing-guide-tab="shipping" onclick="setListingGuideTab('shipping')" class="rounded-full px-2 py-2 text-[11px] font-bold" role="tab">配送方法</button>
+      </div>
+      <div class="max-h-[65vh] overflow-y-auto p-4 text-xs leading-relaxed text-gray-700">
+        <div data-listing-guide-panel="flow" class="space-y-3">
+          <h4 class="text-sm font-bold text-gray-900">取引の流れ</h4>
+          <ol class="space-y-2">
+            <li class="rounded-xl bg-gray-50 p-3"><strong>① トレカを探す</strong><br>欲しいトレカを探して交換申請、または自分のトレカを出品します。</li>
+            <li class="rounded-xl bg-gray-50 p-3"><strong>② 条件に合意</strong><br>条件が決まったら、チャットで挨拶しましょう。</li>
+            <li class="rounded-xl bg-gray-50 p-3"><strong>③ 梱包して発送</strong><br>カードを丁寧に梱包して発送し、発送通知を送ります。</li>
+            <li class="rounded-xl bg-gray-50 p-3"><strong>④ 受取評価</strong><br>トレカが届いたら受取評価をして取引完了です。</li>
+          </ol>
+        </div>
+        <div data-listing-guide-panel="packing" class="hidden space-y-3">
+          <h4 class="text-sm font-bold text-gray-900">梱包方法</h4>
+          <ol class="space-y-2">
+            <li class="rounded-xl bg-gray-50 p-3"><strong>STEP 1：スリーブに入れる</strong><br>トレカに指紋や傷がつかないよう、ぴったりサイズ（または標準サイズ）の透明スリーブに入れます。</li>
+            <li class="rounded-xl bg-gray-50 p-3"><strong>STEP 2：折れ防止</strong><br>硬質ケースに入れるか、トレカより一回り大きい厚紙・ダンボール2枚でしっかり挟んでマスキングテープで固定します。<br><span class="text-gray-500">※剥がしやすいようマステの端を少し折っておくと親切です。</span></li>
+            <li class="rounded-xl bg-gray-50 p-3"><strong>STEP 3：水濡れ防止</strong><br>雨や湿気で濡れないよう、OPP袋やジッパー付きビニール袋に入れて封をします。</li>
+            <li class="rounded-xl bg-gray-50 p-3"><strong>STEP 4：封筒に入れて封をする</strong><br>長形3号・4号などの封筒に入れ、のりやテープでしっかり封をして宛名・差出人を記入します。IDメモを同封すると、相手が誰からの郵便か分かりやすく安心です。</li>
+          </ol>
+        </div>
+        <div data-listing-guide-panel="shipping" class="hidden space-y-3">
+          <h4 class="text-sm font-bold text-gray-900">配送方法</h4>
+          <article class="rounded-xl bg-gray-50 p-3"><strong>ミニレター（郵便書簡）</strong><br>トレカ1〜2枚なら最安（85円）で送れる定番の方法です。重さ25g以内・厚さ1cm以内。</article>
+          <article class="rounded-xl bg-gray-50 p-3"><strong>普通郵便（定形郵便）</strong><br>110円（50g以内）。硬質ケース＋厚紙でしっかり補強したいときに便利です。</article>
+          <article class="rounded-xl bg-gray-50 p-3"><strong>ゆうパケットポストmini / ネコポス（匿名・追跡あり）</strong><br>高額トレカや複数枚交換のときにおすすめです。追跡番号付きで紛失リスクを防げます。</article>
+        </div>
+      </div>
+    </section>
   </div>
 
   <!-- シリアル出品 -->
