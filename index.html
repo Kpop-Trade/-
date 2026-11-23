@@ -51,30 +51,49 @@
     body.home-tab > main { padding-top: 64px !important; }
     #posts-container {
       display: grid !important;
-      grid-template-columns: repeat(3, 1fr) !important;
+      grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+      grid-auto-rows: calc((100vw - 18px) / 3) !important;
       gap: 3px !important;
       padding: 0 6px !important;
       margin: 0 !important;
+      grid-auto-flow: row !important;
     }
     #posts-container > div[onclick] {
+      display: block !important;
+      width: 100% !important;
+      height: 100% !important;
+      max-width: none !important;
+      max-height: none !important;
       margin: 0 !important;
       padding: 0 !important;
+      aspect-ratio: auto !important;
+      object-fit: cover !important;
       border-radius: 10px !important;
       overflow: hidden !important;
       position: relative !important;
-      aspect-ratio: 1 / 1 !important;
+      grid-column: auto !important;
+      grid-row: auto !important;
     }
     #posts-container > div[onclick]:first-child {
       grid-column: span 2 !important;
       grid-row: span 2 !important;
-      aspect-ratio: 1 / 1 !important;
     }
+    #posts-container > div[onclick] > div:first-child,
     #posts-container > div[onclick] img {
+      display: block !important;
       width: 100% !important;
       height: 100% !important;
+      max-width: none !important;
+      max-height: none !important;
+      min-width: 0 !important;
+      min-height: 0 !important;
+      aspect-ratio: auto !important;
       object-fit: cover !important;
+      margin: 0 !important;
+      padding: 0 !important;
       border-radius: 10px !important;
-      display: block !important;
+      overflow: hidden !important;
+      flex: none !important;
     }
   </style>
 </head>
@@ -350,7 +369,7 @@
         </button>
       </div>
 
-      <div id="posts-container" style="display:grid;grid-template-columns:repeat(3, 1fr);grid-auto-flow:row;gap:3px;width:100%;margin:0;border-radius:10px;overflow:hidden">
+      <div id="posts-container" style="display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));grid-auto-rows:calc((100vw - 18px) / 3);grid-auto-flow:row;gap:3px;width:100%;margin:0;padding:0 6px;border-radius:10px;overflow:hidden">
         <div class="posts-status col-span-full w-full" id="posts-skeleton" aria-busy="true" aria-label="読み込み中">
           <div style="display:grid;grid-template-columns:repeat(3, 1fr);grid-auto-flow:row;gap:3px">
             <div class="kp-skel aspect-square col-span-2 row-span-2" style="border-radius:10px;overflow:hidden"></div>
@@ -1603,7 +1622,7 @@
   </div>
 
   <script src="./js/mycards-binder.js?v=20261121"></script>
-  <script type="module" src="./js/app-main.js?v=1795408413ship1"></script>
+  <script type="module" src="./js/app-main.js?v=1795408566ship1"></script>
 
   <div id="xlogin-help-modal" class="hidden fixed inset-0 z-[10040] modal-backdrop items-end sm:items-center justify-center p-3" style="padding-top: max(12px, env(safe-area-inset-top)); padding-bottom: max(12px, env(safe-area-inset-bottom));" onclick="if(event.target===this) closeGoogleLoginHelp()">
     <div id="xlogin-help-sheet" class="liquid-glass-heavy w-full max-w-sm rounded-[1.75rem] p-5 shadow-2xl border border-white" role="dialog" aria-modal="true" aria-labelledby="xlogin-help-title">
