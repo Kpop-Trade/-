@@ -5036,28 +5036,32 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
 
     function buildHomeThemeGroups(entries) {
   const topics = new Map();
-  const addTopic = (key, label, priority, entry) => {
+  const addTopic = (key, label, query, priority, entry) => {
     if (!topics.has(key)) {
-      topics.set(key, { key, label, priority, entries: [] });
+      topics.set(key, { key, label, query, priority, entries: [] });
     }
     topics.get(key).entries.push(entry);
   };
 
   entries.forEach(entry => {
     const p = entry.p || {};
-    // 1. メンバー：post.member に明示的に指定されているもののみ厳密に入れる
+    const groupPrefix = (p.groupName || "").trim();
+
+    // 1. メンバー：post.member に明示的に指定されているもののみ厳密に入れ、「グループ名-メンバー名」表記にする
     const rawMember = (p.member || p.memberName || "").trim();
     if (rawMember && !["すべて", "指定なし", "未指定", "全体", "ALL"].includes(rawMember)) {
-      addTopic("member:" + rawMember.toLocaleLowerCase(), rawMember, 10, entry);
+      const memberLabel = groupPrefix ? `${groupPrefix}-${rawMember}` : rawMember;
+      const memberQuery = groupPrefix ? `${groupPrefix} ${rawMember}` : rawMember;
+      addTopic("member:" + memberLabel.toLocaleLowerCase(), memberLabel, memberQuery, 10, entry);
     }
 
     // 2. アルバム：これまで通りアルバム種別・アルバムキーワードでグループ化
     const titleText = [p.title, p.groupName, p.albumName].filter(Boolean).join(" ");
     const lowerText = titleText.toLocaleLowerCase();
     if (p.kind === "album" || lowerText.includes("アルバム") || lowerText.includes("album") || lowerText.includes("形態")) {
-      const groupPrefix = (p.groupName || "").trim();
-      const albumLabel = groupPrefix ? groupPrefix + " アルバム" : "アルバム・形態";
-      addTopic("album:" + albumLabel.toLocaleLowerCase(), albumLabel, 8, entry);
+      const albumLabel = groupPrefix ? `${groupPrefix}-アルバム` : "アルバム・形態";
+      const albumQuery = groupPrefix ? `${groupPrefix} アルバム` : "アルバム";
+      addTopic("album:" + albumLabel.toLocaleLowerCase(), albumLabel, albumQuery, 8, entry);
     }
   });
 
@@ -5074,7 +5078,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     if (available.length === 0) return;
     const selected = available.slice(0, 6);
     selected.forEach(entry => assigned.add(entry.p.id));
-    sections.push({ label: topic.label, query: topic.label, entries: selected });
+    sections.push({ label: topic.label, query: topic.query, entries: selected });
   });
 
   const remaining = entries.filter(entry => !assigned.has(entry.p.id))
