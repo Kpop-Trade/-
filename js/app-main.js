@@ -4855,7 +4855,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         : mine.map(({ p, i }) => {
             const isGroup = p.kind === "group";
             const photo = (p.photoCount && isJpegData(p.thumb)) ? `<img src="${p.thumb}" alt="" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center text-2xl text-purple-200 bg-gradient-to-br from-purple-50 to-pink-50">${isGroup ? "🛍" : (p.kind === "serial" ? "🎫" : "🃏")}</div>`;
-            const price = (p.isBuy || p.isSell || isGroup) && Number(p.price || 0) > 0 ? `<span class="absolute bottom-1 left-1 bg-black/70 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">¥${Number(p.price).toLocaleString()}</span>` : "";
+            const price = (p.isBuy || p.isSell || isGroup) && Number(p.price || 0) > 0 ? `<span class="price-badge">¥${Number(p.price).toLocaleString()}</span>` : "";
             return `<div onclick="openDetailModal(${i})" class="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 cursor-pointer active:scale-95 transition"><div class="relative aspect-square bg-gray-50 overflow-hidden">${photo}${price}<span class="absolute top-1 right-1 bg-black/65 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">👁 ${Math.max(0, Number(p.viewsCount) || 0)}</span></div><div class="p-1.5 space-y-0.5"><p class="text-[10px] font-medium text-gray-900 line-clamp-2 leading-snug">${escapeHtml(p.give || "")}</p>${formatRelativeTimeJa(p.updatedAt || p.createdAt) ? `<p class="text-[9px] text-gray-400">🕒 ${formatRelativeTimeJa(p.updatedAt || p.createdAt)}</p>` : ""}</div></div>`;
           }).join("");
       const setStatus = (id, ok, okText, ngText) => { const el = document.getElementById(id); if (!el) return; el.innerText = ok ? okText : ngText; el.className = "text-[11px] font-bold mt-1 " + (ok ? "text-green-600" : "text-pink-600"); };
@@ -5012,7 +5012,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
                 </svg>
                 <input type="checkbox" switch ${isLiked ? "checked" : ""} aria-label="${isLiked ? "いいねを解除" : "いいね"}" class="haptic-switch-overlay" onclick="event.stopPropagation()" onchange="event.stopPropagation(); if(this.checked) window.triggerHeartPop(this.parentElement); ${likeAction}">
               </span>
-              <span style="position:absolute;left:6px;bottom:6px;background:rgba(0,0,0,0.62);color:#ffffff;font-size:12px;font-weight:800;padding:2px 7px;border-radius:6px;line-height:1.3;z-index:2">${priceText}</span>
+              <span class="price-badge">${priceText}</span>
             </div>
           </div>
         `;
@@ -5779,7 +5779,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         return `<div class="relative aspect-square overflow-hidden rounded-xl bg-gray-100">
           <button type="button" onclick="openDetailModal(${i})" class="absolute inset-0 h-full w-full">${img}</button>
           ${withLike ? `<span class="absolute right-1 top-1 z-10 h-7 w-7 rounded-full text-lg text-white drop-shadow">${liked ? "♥" : "♡"}<input type="checkbox" switch ${liked ? "checked" : ""} aria-label="いいね" class="haptic-switch-overlay" onclick="event.stopPropagation()" onchange="event.stopPropagation(); if(this.checked) window.triggerHeartPop(this.parentElement); window.toggleDetailLikeFromCard('${escapeHtml(post.id)}')"></span>` : ""}
-          <span class="absolute bottom-1 left-1 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-extrabold text-white">${price}</span>
+          <span class="price-badge">${price}</span>
         </div>`;
       };
       const others = allPosts.filter(x => x.userId && x.userId === p.userId && x.id !== p.id && x.status === "active").slice(0, 12);
