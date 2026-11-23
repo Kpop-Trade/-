@@ -14782,8 +14782,8 @@ window._ensureModularFirestore = async function() {
   let g = window._globalFirestoreModular || window._modularTopBannerHelpers;
   if (g && g.db && g.doc && g.setDoc && g.getDoc) return g;
   try {
-    const appMod = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
-    const fsMod = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+    const appMod = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js");
+    const fsMod = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
     const apps = appMod.getApps();
     const activeApp = apps && apps.length ? apps[0] : null;
     const activeDb = (typeof db !== "undefined" && db) || window.db || (activeApp ? fsMod.getFirestore(activeApp) : null);
@@ -14874,7 +14874,12 @@ window.addAdminTopBanner = async function() {
   const title = titleEl ? titleEl.value.trim() : "";
   if (statusEl) statusEl.textContent = "保存中...";
   try {
-    if (typeof window._nativeSaveTopBanners !== "function") throw new Error("DB接続待機中です。2秒後にもう一度押してください");
+    if (typeof window._nativeSaveTopBanners !== "function") {
+      const fsMod = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
+      const appMod = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js");
+      const activeDb = (typeof db !== "undefined" && db) || window.db || fsMod.getFirestore(appMod.getApps()[0]);
+      window._nativeSaveTopBanners = async (items) => fsMod.setDoc(fsMod.doc(activeDb, "siteConfig", "topBanners"), { items, updatedAt: Date.now() }, { merge: true });
+    }
     const nextList = [{ id: String(Date.now()), imageUrl, link, title }, ...(window._adminTopBanners || [])];
     await window._nativeSaveTopBanners(nextList);
     window._adminTopBanners = nextList;
