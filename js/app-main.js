@@ -4983,7 +4983,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           return tsMillis(b.p.createdAt) - tsMillis(a.p.createdAt);
         });
       }
-      const cards = filtered.map(({ p, index }, cardIndex) => {
+      const cards = filtered.map(({ p, index }) => {
         const isLiked = likes.includes(p.id);
         const isSold = p.status === "traded";
         const dim = isExpired(p) || p.status === "closed" || isSold;
@@ -5000,7 +5000,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         const photoBlock = hasPhoto
           ? `<img src="${p.thumb}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:10px;overflow:hidden" class="${isSold ? "opacity-50 grayscale" : ""}">`
           : `<div style="width:100%;height:100%;display:block;border-radius:10px;overflow:hidden" class="bg-gradient-to-br from-purple-50 to-pink-50"></div>`;
-        const cardStyle = `margin:0;padding:0;width:100%;height:100%;aspect-ratio:1/1;object-fit:cover;display:block;border-radius:10px;overflow:hidden;${!isSearchResults && cardIndex === 0 ? "grid-column:span 2;grid-row:span 2;" : ""}`;
+        const cardStyle = "margin:0;padding:0;width:100%;height:100%;aspect-ratio:1/1;object-fit:cover;display:block;border-radius:10px;overflow:hidden";
 
         return `
           <div ${cardAttributes} style="${cardStyle}" class="relative cursor-pointer overflow-hidden rounded-[10px] bg-gray-50 ${dim ? "opacity-60" : ""}">
