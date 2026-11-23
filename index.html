@@ -1290,12 +1290,12 @@
   </div>
 
   <div id="todo-modal" class="fixed inset-0 bg-black/40 hidden z-50 flex items-end sm:items-center justify-center" onclick="if(event.target===this)closeTodoModal()">
-    <div class="bg-[#f3f4f6] w-full max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[88vh] flex flex-col">
-      <div class="flex justify-between items-center px-5 h-14 shrink-0 bg-white/90 border-b border-gray-100 rounded-t-3xl">
-        <h3 class="font-bold text-[17px] text-gray-900">やることリスト</h3>
-        <button type="button" onclick="closeTodoModal()" class="w-9 h-9 rounded-full bg-gray-100 text-gray-500 text-xl leading-none" aria-label="閉じる">×</button>
+    <div class="bg-[#f3f4f6] w-full max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl h-[70vh] max-h-[88vh] flex flex-col">
+      <div class="relative flex items-center px-5 h-14 shrink-0 bg-white border-b border-[#eeeeee] rounded-t-3xl">
+        <button type="button" onclick="closeTodoModal()" class="w-9 h-9 rounded-full bg-[#f3f4f6] text-[#777777] text-2xl leading-none flex items-center justify-center" aria-label="戻る">←</button>
+        <h3 class="absolute left-1/2 -translate-x-1/2 font-bold text-[16px] text-gray-900">やることリスト</h3>
       </div>
-      <div id="todo-list" class="px-3.5 py-3 pb-8 space-y-2 overflow-y-auto"></div>
+      <div id="todo-list" class="flex-1 min-h-0 px-3.5 py-3 pb-8 space-y-2 overflow-y-auto"></div>
     </div>
   </div>
 

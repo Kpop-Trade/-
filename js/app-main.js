@@ -6453,7 +6453,15 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       const tasks = getTodoTasks();
       el.innerHTML = tasks.length
         ? tasks.map((task) => `<button type="button" data-todo-kind="${task.kind}" ${task.id ? `data-todo-id="${escapeHtml(task.id)}"` : ""} class="w-full rounded-2xl bg-white px-4 py-3 text-left text-sm font-bold text-gray-800 shadow-sm active:scale-[0.99] transition">${escapeHtml(task.text)}<span class="float-right text-gray-300">›</span></button>`).join("")
-        : '<p class="py-8 text-center text-sm text-gray-500">現在やることはありません</p>';
+        : `<div class="w-full h-full flex flex-col items-center justify-center text-center">
+            <svg class="w-16 h-16 mb-4 shrink-0" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+              <rect x="10.5" y="9.5" width="30" height="39" rx="4.5" stroke="#cccccc" stroke-width="2.5"/>
+              <rect x="23.5" y="15.5" width="30" height="39" rx="4.5" fill="#f3f4f6" stroke="#cccccc" stroke-width="2.5"/>
+              <path d="m31 35 5.5 5.5L46 31" stroke="#cccccc" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <p class="text-[15px] font-bold text-[#444444]">現在、やることリストはありません</p>
+            <p class="mt-2 max-w-[280px] text-[13px] leading-[1.6] text-[#888888]">ここでは、取引上でやることが表示されます（例：発送してください）</p>
+          </div>`;
     };
     document.getElementById("todo-list").addEventListener("click", (event) => {
       const button = event.target.closest("[data-todo-kind]");
