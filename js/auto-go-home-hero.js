@@ -358,6 +358,63 @@
 
     bindHeroInteractions(pools);
 
+  
+  // === Mercari Infinite Peek Loop Setup ===
+  (function setupMercariInfinitePeek() {
+    const t = document.getElementById("autogo-home-track");
+    if (!t) return;
+    const origCards = Array.from(t.querySelectorAll(".ag-hero-card"));
+    if (origCards.length <= 1) return;
+
+    // すでにクローン済みなら二重追加しない
+    if (!t.querySelector("[data-ag-clone]")) {
+      const firstClone = origCards[0].cloneNode(true);
+      const lastClone = origCards[origCards.length - 1].cloneNode(true);
+      firstClone.setAttribute("data-ag-clone", "first");
+      lastClone.setAttribute("data-ag-clone", "last");
+      t.insertBefore(lastClone, origCards[0]);
+      t.appendChild(firstClone);
+
+      // 初期位置を本物の1枚目（index 1）に瞬時に合わせる（これで左端に最後のカード、右端に2枚目がチラ見えする）
+      requestAnimationFrame(() => {
+        const realFirst = t.querySelectorAll(".ag-hero-card")[1];
+        if (realFirst) {
+          const initLeft = realFirst.offsetLeft - (t.clientWidth - realFirst.offsetWidth) / 2;
+          t.scrollTo({ left: Math.max(0, initLeft), behavior: "auto" });
+        }
+      });
+
+      // クローンに到達したら本物の位置へシームレスにワープ
+      let loopTimer = null;
+      t.addEventListener("scroll", () => {
+        if (loopTimer) clearTimeout(loopTimer);
+        loopTimer = setTimeout(() => {
+          const allCards = Array.from(t.querySelectorAll(".ag-hero-card"));
+          const mid = t.scrollLeft + t.clientWidth / 2;
+          let best = 0, bestDist = Infinity;
+          allCards.forEach((c, idx) => {
+            const d = Math.abs(c.offsetLeft + c.offsetWidth / 2 - mid);
+            if (d < bestDist) { bestDist = d; best = idx; }
+          });
+          if (best === 0) {
+            const realLast = allCards[allCards.length - 2];
+            t.scrollTo({ left: realLast.offsetLeft - (t.clientWidth - realLast.offsetWidth) / 2, behavior: "auto" });
+            heroIndex = origCards.length - 1;
+            syncDots(heroIndex);
+          } else if (best === allCards.length - 1) {
+            const realFirst = allCards[1];
+            t.scrollTo({ left: realFirst.offsetLeft - (t.clientWidth - realFirst.offsetWidth) / 2, behavior: "auto" });
+            heroIndex = 0;
+            syncDots(heroIndex);
+          } else {
+            heroIndex = best - 1;
+            syncDots(heroIndex);
+          }
+        }, 120);
+      }, { passive: true });
+    }
+  })();
+
   // === Mercari-style Auto-Slide & Touch Pause ===
   if (window.__agAutoSlideTimer) {
     clearInterval(window.__agAutoSlideTimer);
@@ -377,13 +434,13 @@
       if (!t) return;
       const cards = t.querySelectorAll(".ag-hero-card");
       if (cards.length <= 1) return;
-      const nextIdx = (heroIndex + 1) % cards.length;
+      const realCount = Math.max(1, cards.length - (t.querySelector("[data-ag-clone]") ? 2 : 0)); const nextReal = (heroIndex + 1) % realCount; const nextIdx = t.querySelector("[data-ag-clone]") ? (heroIndex + 2) : nextReal;
       const nextCard = cards[nextIdx];
       if (!nextCard) return;
       heroIndex = nextIdx;
       const left = nextCard.offsetLeft - (t.clientWidth - nextCard.offsetWidth) / 2;
       t.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
-      syncDots(nextIdx);
+      syncDots(typeof nextReal !== "undefined" ? nextReal : nextIdx);
     }, 3800);
   }
 
