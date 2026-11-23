@@ -1,40 +1,17 @@
-
 function forceShowSingleGuideModal() {
-  let modal = document.getElementById("single-guide-modal");
-  if (!modal) {
-    modal = document.createElement("div");
-    modal.id = "single-guide-modal";
-    modal.innerHTML = `
-      <div class="relative w-full max-w-md bg-zinc-950 rounded-2xl overflow-hidden border border-purple-500/40 shadow-2xl">
-        <div class="flex items-center justify-between px-4 py-3 bg-zinc-900/90 border-b border-zinc-800">
-          <span class="text-white text-sm font-bold">ガイド枠カメラ</span>
-          <button type="button" onclick="closeSingleGuideCam()" class="text-zinc-300 hover:text-white text-xs font-bold px-3 py-1.5 rounded-lg bg-zinc-800">閉じる</button>
-        </div>
-        <div class="relative w-full aspect-[3/4] bg-black overflow-hidden">
-          <video id="single-guide-vid" autoplay playsinline muted class="w-full h-full object-cover"></video>
-          <div id="single-guide-frame" class="pointer-events-none absolute inset-0 m-auto w-[68%] aspect-[55/86] border-2 border-purple-400 rounded-xl shadow-[0_0_0_9999px_rgba(0,0,0,0.45)] flex items-center justify-center">
-            <span style="position:absolute;top:6px;left:8px;background:rgba(0,0,0,0.75);color:#22d3ee;font-size:11px;font-weight:bold;padding:2px 6px;border-radius:6px;">枠内に合わせると自動撮影</span>
-          </div>
-        </div>
-      </div>
-    `;
-  }
-  // 親モーダルのスタッキングコンテキストやhiddenに巻き込まれないようbody直下へ移動
+  const modal = document.getElementById("single-guide-modal");
+  if (!modal) return null;
   if (modal.parentElement !== document.body) {
     document.body.appendChild(modal);
   }
-  forceShowSingleGuideModal();
+  modal.classList.remove("hidden");
   modal.style.setProperty("display", "flex", "important");
-  modal.style.setProperty("position", "fixed", "important");
-  modal.style.setProperty("inset", "0", "important");
   modal.style.setProperty("z-index", "2147483647", "important");
   modal.style.setProperty("visibility", "visible", "important");
   modal.style.setProperty("opacity", "1", "important");
-  modal.style.setProperty("background", "rgba(0,0,0,0.92)", "important");
-  modal.style.setProperty("align-items", "center", "important");
-  modal.style.setProperty("justify-content", "center", "important");
   return modal;
 }
+
 
 
 
