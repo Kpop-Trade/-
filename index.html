@@ -510,6 +510,16 @@
     }
     .heart-pop { animation: heartPop .42s cubic-bezier(.2, .8, .25, 1); }
     .bell-shake { transform-origin: 50% 15%; animation: bellShake .6s ease-in-out; }
+    .haptic-switch-overlay {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      opacity: .01;
+      margin: 0;
+      cursor: pointer;
+      z-index: 3;
+    }
     @keyframes loginStampPop {
       0% { opacity: 0; transform: translate(-50%, -110%) scale(2.2) rotate(-35deg); }
       70% { opacity: 1; transform: translate(-50%, -45%) scale(.82) rotate(8deg); }
@@ -1024,7 +1034,7 @@
         <div>
           <label class="block font-medium text-gray-700 mb-1">🔔 プッシュ通知</label>
           <p id="push-status" class="text-[11px] text-gray-600 mb-2 font-medium"></p>
-          <button id="push-on-btn" onclick="enablePush()" class="w-full bg-purple-100/80 backdrop-blur border border-purple-200 text-illit-darkPurple font-medium py-2.5 rounded-full hover:bg-purple-200 transition shadow-sm">🔔 この端末で通知をオンにする</button>
+          <button id="push-on-btn" type="button" class="relative w-full overflow-hidden bg-purple-100/80 backdrop-blur border border-purple-200 text-illit-darkPurple font-medium py-2.5 rounded-full hover:bg-purple-200 transition shadow-sm">🔔 この端末で通知をオンにする<input type="checkbox" switch class="haptic-switch-overlay" aria-label="この端末で通知をオンにする" onclick="event.stopPropagation()" onchange="event.stopPropagation(); if(this.checked) { this.checked = false; window.enablePush(); }"></button>
           <button id="push-off-btn" onclick="disablePush()" class="hidden w-full bg-white/60 border border-white text-gray-600 font-medium py-2.5 rounded-full hover:bg-white transition shadow-sm">通知をオフにする</button>
         </div>
       </div>
@@ -1393,8 +1403,9 @@
             <div class="flex items-center justify-between pt-0.5">
           <div class="flex items-center gap-4">
             <div class="flex items-center gap-2">
-              <button id="detail-like-btn" onclick="window.triggerHeartPop(this); toggleDetailLike()" class="w-11 h-11 rounded-full bg-[#f5f5f5] hover:bg-[#ebebeb] active:scale-95 transition flex items-center justify-center">
+              <button id="detail-like-btn" type="button" class="relative w-11 h-11 overflow-hidden rounded-full bg-[#f5f5f5] hover:bg-[#ebebeb] active:scale-95 transition flex items-center justify-center">
                 <span id="detail-like-icon" class="text-[20px] font-normal leading-none"></span>
+                <input type="checkbox" switch class="haptic-switch-overlay" aria-label="いいね" onclick="event.stopPropagation()" onchange="event.stopPropagation(); if(this.checked) window.triggerHeartPop(this.parentElement); window.toggleDetailLike()">
               </button>
               <span id="detail-like-count" class="text-[13px] font-medium text-[#333333]">0</span>
             </div>
@@ -1622,7 +1633,7 @@
   </div>
 
   <script src="./js/mycards-binder.js?v=20261121"></script>
-  <script type="module" src="./js/app-main.js?v=1795408566ship1"></script>
+  <script type="module" src="./js/app-main.js?v=1795408716ship1"></script>
 
   <div id="xlogin-help-modal" class="hidden fixed inset-0 z-[10040] modal-backdrop items-end sm:items-center justify-center p-3" style="padding-top: max(12px, env(safe-area-inset-top)); padding-bottom: max(12px, env(safe-area-inset-bottom));" onclick="if(event.target===this) closeGoogleLoginHelp()">
     <div id="xlogin-help-sheet" class="liquid-glass-heavy w-full max-w-sm rounded-[1.75rem] p-5 shadow-2xl border border-white" role="dialog" aria-modal="true" aria-labelledby="xlogin-help-title">
@@ -3712,7 +3723,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     async function doToggleLike(p) {
       if (!currentUser) return /* alert hidden */ console.log("ログインが必要です。");
       if (!p || likeBusy.has(p.id)) return;
-      window.triggerHaptic(15);
+      window.triggerHaptic([20, 30, 20]);
       if (!(await checkDeviceLockCached())) return;
       likeBusy.add(p.id);
       try {
@@ -3734,7 +3745,9 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       const likesCount = p ? (Number(p.likesCount) || 0) : 0;
       const liked = getMyLikes().includes(postId); 
       const btn = document.getElementById("detail-like-btn"); if (!btn) return;
-      btn.className = liked ? "bg-pink-500 text-white font-medium px-4 py-2 rounded-full text-xs border border-pink-500 transition shadow-md flex items-center space-x-1" : "bg-white/80 text-pink-500 font-medium px-4 py-2 rounded-full text-xs border border-white hover:bg-white transition flex items-center space-x-1 shadow-md";
+      btn.className = liked ? "relative w-11 h-11 overflow-hidden rounded-full bg-pink-500 text-white font-medium text-xs border border-pink-500 transition shadow-md flex items-center justify-center" : "relative w-11 h-11 overflow-hidden rounded-full bg-white/80 text-pink-500 font-medium text-xs border border-white hover:bg-white transition flex items-center justify-center shadow-md";
+      const hapticSwitch = btn.querySelector(".haptic-switch-overlay");
+      if (hapticSwitch) hapticSwitch.checked = liked;
       document.getElementById("detail-like-icon").innerText = liked ? "♥" : "♡";
       document.getElementById("detail-like-count").innerText = likesCount;
     }
@@ -4030,13 +4043,13 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       }
 
       const permissionRequest = Notification.requestPermission();
-      window.triggerHaptic([15, 40, 25]);
+      window.triggerHaptic([20, 30, 20]);
       const perm = await permissionRequest;
       if (perm !== "granted") {
         markPushPromptAsked();
         return /* alert hidden */ console.log("通知権限が拒否されています。ブラウザの設定から通知を許可してください。");
       }
-      window.triggerHaptic([15, 40, 25]);
+      window.triggerHaptic([20, 30, 20]);
       window.triggerBellShake();
 
       try { 
@@ -4862,10 +4875,11 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           <div onclick="openDetailModal(${index})" style="${cardStyle}" class="relative cursor-pointer overflow-hidden rounded-[10px] bg-gray-50 ${dim ? "opacity-60" : ""}">
             <div class="absolute inset-0 overflow-hidden">
               ${photoBlock}
-              <button type="button" onclick="event.stopPropagation(); window.triggerHeartPop(this); toggleDetailLikeFromCard('${p.id}')" aria-label="${isLiked ? "いいねを解除" : "いいね"}" class="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center drop-shadow">
+              <span class="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center drop-shadow">
                 <svg width="25" height="25" viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M20.8 4.9a5.5 5.5 0 0 0-7.8 0L12 5.9l-1-1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.3a5.5 5.5 0 0 0 0-7.8Z" fill="${isLiked ? "#ec4899" : "rgba(255,255,255,0.08)"}" stroke="#ffffff" stroke-width="1.8" stroke-linejoin="round"/>
                 </svg>
+                <input type="checkbox" switch ${isLiked ? "checked" : ""} aria-label="${isLiked ? "いいねを解除" : "いいね"}" class="haptic-switch-overlay" onclick="event.stopPropagation()" onchange="event.stopPropagation(); if(this.checked) window.triggerHeartPop(this.parentElement); toggleDetailLikeFromCard('${escapeHtml(p.id)}')">
               </button>
               <span style="position:absolute;left:6px;bottom:6px;background:rgba(0,0,0,0.62);color:#ffffff;font-size:12px;font-weight:800;padding:2px 7px;border-radius:6px;line-height:1.3;z-index:2">${priceText}</span>
             </div>
@@ -5401,7 +5415,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         const liked = (userData.likes || []).includes(post.id);
         return `<div class="relative aspect-square overflow-hidden rounded-xl bg-gray-100">
           <button type="button" onclick="openDetailModal(${i})" class="absolute inset-0 h-full w-full">${img}</button>
-          ${withLike ? `<button type="button" onclick="event.stopPropagation();window.triggerHeartPop(this);window.toggleDetailLikeFromCard('${escapeHtml(post.id)}')" aria-label="いいね" class="absolute right-1 top-1 z-10 h-7 w-7 rounded-full text-lg text-white drop-shadow">${liked ? "♥" : "♡"}</button>` : ""}
+          ${withLike ? `<span class="absolute right-1 top-1 z-10 h-7 w-7 rounded-full text-lg text-white drop-shadow">${liked ? "♥" : "♡"}<input type="checkbox" switch ${liked ? "checked" : ""} aria-label="いいね" class="haptic-switch-overlay" onclick="event.stopPropagation()" onchange="event.stopPropagation(); if(this.checked) window.triggerHeartPop(this.parentElement); window.toggleDetailLikeFromCard('${escapeHtml(post.id)}')"></span>` : ""}
           <span class="absolute bottom-1 left-1 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-extrabold text-white">${price}</span>
         </div>`;
       };
@@ -8837,8 +8851,9 @@ function getAiCardVectors() {
         申し込み・メッセージ・出品の更新をすぐ受け取れます。<br>
         この確認は<strong>1回だけ</strong>表示されます。あとからマイページの「プッシュ通知設定」でも変更できます。
       </p>
-      <button type="button" onclick="enablePushFromPrompt()" class="w-full bg-gradient-to-r from-illit-purple to-illit-accent text-white font-bold py-3.5 rounded-full shadow-md border border-white/30 text-sm">
+      <button type="button" class="relative w-full overflow-hidden bg-gradient-to-r from-illit-purple to-illit-accent text-white font-bold py-3.5 rounded-full shadow-md border border-white/30 text-sm">
         🔔 通知をオンにする
+        <input type="checkbox" switch class="haptic-switch-overlay" aria-label="通知をオンにする" onclick="event.stopPropagation()" onchange="event.stopPropagation(); if(this.checked) { this.checked = false; window.enablePushFromPrompt(); }">
       </button>
       <button type="button" onclick="dismissPushPrompt()" class="w-full bg-white/70 text-gray-600 border border-white font-medium py-2.5 rounded-full text-sm hover:bg-white transition">
         あとで
@@ -9029,8 +9044,9 @@ function getAiCardVectors() {
                     <p id="ag-push-required-message" class="text-sm text-gray-700">参加には通知の許可が必要です</p>
             </div>
           </div>
-                <button type="button" onclick="requestAutoGoPushPermission(); window.triggerHaptic([15, 40, 25])" class="shrink-0 px-3 py-2 border border-gray-300 text-sm text-gray-900">
+                <button type="button" class="relative shrink-0 overflow-hidden px-3 py-2 border border-gray-300 text-sm text-gray-900">
             通知をONにする
+            <input type="checkbox" switch class="haptic-switch-overlay" aria-label="Auto-GO通知をオンにする" onclick="event.stopPropagation()" onchange="event.stopPropagation(); if(this.checked) { this.checked = false; window.triggerHaptic([20, 30, 20]); requestAutoGoPushPermission(); }">
           </button>
         </div>
               <div id="ag-push-on-view" class="hidden flex items-center gap-2 text-sm text-gray-600">

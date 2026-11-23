@@ -2598,7 +2598,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     async function doToggleLike(p) {
       if (!currentUser) return /* alert hidden */ console.log("ログインが必要です。");
       if (!p || likeBusy.has(p.id)) return;
-      window.triggerHaptic(15);
+      window.triggerHaptic([20, 30, 20]);
       if (!(await checkDeviceLockCached())) return;
       likeBusy.add(p.id);
       try {
@@ -2620,7 +2620,9 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       const likesCount = p ? (Number(p.likesCount) || 0) : 0;
       const liked = getMyLikes().includes(postId); 
       const btn = document.getElementById("detail-like-btn"); if (!btn) return;
-      btn.className = liked ? "bg-pink-500 text-white font-medium px-4 py-2 rounded-full text-xs border border-pink-500 transition shadow-md flex items-center space-x-1" : "bg-white/80 text-pink-500 font-medium px-4 py-2 rounded-full text-xs border border-white hover:bg-white transition flex items-center space-x-1 shadow-md";
+      btn.className = liked ? "relative w-11 h-11 overflow-hidden rounded-full bg-pink-500 text-white font-medium text-xs border border-pink-500 transition shadow-md flex items-center justify-center" : "relative w-11 h-11 overflow-hidden rounded-full bg-white/80 text-pink-500 font-medium text-xs border border-white hover:bg-white transition flex items-center justify-center shadow-md";
+      const hapticSwitch = btn.querySelector(".haptic-switch-overlay");
+      if (hapticSwitch) hapticSwitch.checked = liked;
       document.getElementById("detail-like-icon").innerText = liked ? "♥" : "♡";
       document.getElementById("detail-like-count").innerText = likesCount;
     }
@@ -3141,13 +3143,13 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       }
 
       const permissionRequest = Notification.requestPermission();
-      window.triggerHaptic([15, 40, 25]);
+      window.triggerHaptic([20, 30, 20]);
       const perm = await permissionRequest;
       if (perm !== "granted") {
         markPushPromptAsked();
         return /* alert hidden */ console.log("通知権限が拒否されています。ブラウザの設定から通知を許可してください。");
       }
-      window.triggerHaptic([15, 40, 25]);
+      window.triggerHaptic([20, 30, 20]);
       window.triggerBellShake();
 
       try { 
@@ -4990,9 +4992,9 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         const cardAttributes = isSearchResults
           ? `data-search-post-id="${escapeHtml(p.id)}"`
           : `onclick="openDetailModal(${index})"`;
-        const likeButtonAttributes = isSearchResults
-          ? `data-search-like-id="${escapeHtml(p.id)}"`
-          : `onclick="event.stopPropagation(); window.triggerHeartPop(this); toggleDetailLikeFromCard('${p.id}')"`;
+        const likeAction = isSearchResults
+          ? `window.toggleSearchResultLike('${escapeHtml(p.id)}')`
+          : `toggleDetailLikeFromCard('${escapeHtml(p.id)}')`;
 
         const hasPhoto = p.photoCount && isJpegData(p.thumb);
         const photoBlock = hasPhoto
@@ -5004,11 +5006,12 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           <div ${cardAttributes} style="${cardStyle}" class="relative cursor-pointer overflow-hidden rounded-[10px] bg-gray-50 ${dim ? "opacity-60" : ""}">
             <div class="absolute inset-0 overflow-hidden">
               ${photoBlock}
-              <button type="button" ${likeButtonAttributes} aria-label="${isLiked ? "いいねを解除" : "いいね"}" class="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center drop-shadow">
+              <span class="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center drop-shadow">
                 <svg width="25" height="25" viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M20.8 4.9a5.5 5.5 0 0 0-7.8 0L12 5.9l-1-1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.3a5.5 5.5 0 0 0 0-7.8Z" fill="${isLiked ? "#ec4899" : "rgba(255,255,255,0.08)"}" stroke="#ffffff" stroke-width="1.8" stroke-linejoin="round"/>
                 </svg>
-              </button>
+                <input type="checkbox" switch ${isLiked ? "checked" : ""} aria-label="${isLiked ? "いいねを解除" : "いいね"}" class="haptic-switch-overlay" onclick="event.stopPropagation()" onchange="event.stopPropagation(); if(this.checked) window.triggerHeartPop(this.parentElement); ${likeAction}">
+              </span>
               <span style="position:absolute;left:6px;bottom:6px;background:rgba(0,0,0,0.62);color:#ffffff;font-size:12px;font-weight:800;padding:2px 7px;border-radius:6px;line-height:1.3;z-index:2">${priceText}</span>
             </div>
           </div>
@@ -5775,7 +5778,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         const liked = (userData.likes || []).includes(post.id);
         return `<div class="relative aspect-square overflow-hidden rounded-xl bg-gray-100">
           <button type="button" onclick="openDetailModal(${i})" class="absolute inset-0 h-full w-full">${img}</button>
-          ${withLike ? `<button type="button" onclick="event.stopPropagation();window.triggerHeartPop(this);window.toggleDetailLikeFromCard('${escapeHtml(post.id)}')" aria-label="いいね" class="absolute right-1 top-1 z-10 h-7 w-7 rounded-full text-lg text-white drop-shadow">${liked ? "♥" : "♡"}</button>` : ""}
+          ${withLike ? `<span class="absolute right-1 top-1 z-10 h-7 w-7 rounded-full text-lg text-white drop-shadow">${liked ? "♥" : "♡"}<input type="checkbox" switch ${liked ? "checked" : ""} aria-label="いいね" class="haptic-switch-overlay" onclick="event.stopPropagation()" onchange="event.stopPropagation(); if(this.checked) window.triggerHeartPop(this.parentElement); window.toggleDetailLikeFromCard('${escapeHtml(post.id)}')"></span>` : ""}
           <span class="absolute bottom-1 left-1 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-extrabold text-white">${price}</span>
         </div>`;
       };
