@@ -14874,7 +14874,7 @@ window.addAdminTopBanner = async function() {
   const title = titleEl ? titleEl.value.trim() : "";
   if (statusEl) statusEl.textContent = "保存中...";
   try {
-    if (typeof window._nativeSaveTopBanners !== "function") throw new Error("ページを再読み込みしてください");
+    if (typeof window._nativeSaveTopBanners !== "function") throw new Error("DB接続待機中です。2秒後にもう一度押してください");
     const nextList = [{ id: String(Date.now()), imageUrl, link, title }, ...(window._adminTopBanners || [])];
     await window._nativeSaveTopBanners(nextList);
     window._adminTopBanners = nextList;
