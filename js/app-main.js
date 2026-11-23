@@ -2108,7 +2108,29 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
                 else if (adminTab === "broadcast") { setTimeout(() => { if (window.loadAdminTopBanners) window.loadAdminTopBanners(); }, 50);
           el.innerHTML = `
             <div class="space-y-4">
-              <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-2">
+              <div class="bg-purple-50 border border-purple-200 rounded-xl p-3 space-y-2.5">
+            <div class="font-bold text-purple-900 text-xs">🖼️ トップ広告カルーセル（写真＋リンク登録）</div>
+            <p class="text-[11px] text-purple-800">写真とリンクURLを登録すると、ホーム上部の流れる広告の先頭に表示されます。</p>
+            <div>
+              <label class="block text-[11px] font-bold text-gray-700 mb-1">1. バナー写真を選択</label>
+              <input type="file" id="admin-banner-file" accept="image/*" onchange="window.previewAdminBannerFile(this)" class="block w-full text-xs text-gray-700 file:mr-3 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-purple-600 file:text-white">
+              <div id="admin-banner-preview-wrap" class="hidden mt-2">
+                <img id="admin-banner-preview" src="" class="w-full h-28 object-cover rounded-xl border border-purple-200">
+              </div>
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold text-gray-700 mb-1">2. リンクURL（任意）</label>
+              <input type="url" id="admin-banner-link" placeholder="https://... または #xtrade" class="liquid-glass-input w-full rounded-xl p-2 text-xs text-gray-800">
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold text-gray-700 mb-1">3. タイトル（任意）</label>
+              <input type="text" id="admin-banner-title" maxlength="40" placeholder="例: 新作トレカ交換キャンペーン！" class="liquid-glass-input w-full rounded-xl p-2 text-xs text-gray-800">
+            </div>
+            <button type="button" onclick="window.addAdminTopBanner()" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 rounded-xl text-xs shadow-sm">広告バナーを追加する</button>
+            <p id="admin-banner-status" class="text-[11px] text-center text-gray-600"></p>
+            <div id="admin-banner-list" class="space-y-2 pt-1"></div>
+          </div>
+          <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-2">
                 <div class="font-bold text-amber-900 text-xs">📌 ホーム固定お知らせ</div>
                 <p class="text-[11px] text-amber-800">ホーム上部に常時表示されます（通知一覧には入りません）。</p>
                 <textarea id="admin-announce-text" rows="3" maxlength="400" placeholder="例: 本日22時〜メンテのため一時停止します" class="liquid-glass-input w-full rounded-xl p-2.5 text-xs text-gray-800"></textarea>
@@ -14595,3 +14617,75 @@ setTimeout(function() {
     }
   });
 }, 100);
+
+// === 取引一覧UI強化（ステータス絞り込みタブ＋見やすいカード整形） ===
+window._tradesFilterMode = window._tradesFilterMode || "all";
+window.setTradesFilter = function(mode) {
+  window._tradesFilterMode = mode || "all";
+  window.enhanceTradesListUI();
+};
+window.enhanceTradesListUI = function() {
+  const wrap = document.getElementById("trades-list");
+  if (!wrap) return;
+  const cards = Array.from(wrap.querySelectorAll("button[data-trade-id]"));
+  if (!cards.length) return;
+
+  if (!document.getElementById("trades-filter-bar")) {
+    const bar = document.createElement("div");
+    bar.id = "trades-filter-bar";
+    bar.className = "sticky top-0 z-10 bg-gray-100/95 backdrop-blur p-1 rounded-xl flex gap-1 mb-2.5 border border-gray-200 shadow-xs";
+    bar.innerHTML = `
+      <button type="button" id="tf-tab-all" onclick="window.setTradesFilter('all')" class="flex-1 py-1.5 rounded-lg text-xs font-bold bg-purple-600 text-white shadow-sm">すべて (<span id="tf-count-all">0</span>)</button>
+      <button type="button" id="tf-tab-active" onclick="window.setTradesFilter('active')" class="flex-1 py-1.5 rounded-lg text-xs font-bold text-gray-600">進行中 (<span id="tf-count-active">0</span>)</button>
+      <button type="button" id="tf-tab-done" onclick="window.setTradesFilter('done')" class="flex-1 py-1.5 rounded-lg text-xs font-bold text-gray-600">完了 (<span id="tf-count-done">0</span>)</button>
+    `;
+    wrap.insertBefore(bar, wrap.firstChild);
+  }
+
+  const mode = window._tradesFilterMode || "all";
+  let activeCount = 0, doneCount = 0;
+
+  cards.forEach(btn => {
+    const txt = btn.textContent || "";
+    const isDone = txt.includes("取引完了") || txt.includes("キャンセル") || txt.includes("完了済み");
+    const isUnread = txt.includes("新しいメッセージ");
+    if (isDone) doneCount++; else activeCount++;
+
+    // カードの視認性をスッキリ整える
+    if (isUnread) {
+      btn.style.borderColor = "#f472b6";
+      btn.style.borderWidth = "2px";
+      btn.style.backgroundColor = "#fdf2f8";
+    } else if (isDone) {
+      btn.style.opacity = "0.78";
+      btn.style.backgroundColor = "#f9fafb";
+    }
+
+    if (mode === "all") btn.classList.remove("hidden");
+    else if (mode === "active") btn.classList.toggle("hidden", isDone);
+    else if (mode === "done") btn.classList.toggle("hidden", !isDone);
+  });
+
+  const cAll = document.getElementById("tf-count-all");
+  const cAct = document.getElementById("tf-count-active");
+  const cDone = document.getElementById("tf-count-done");
+  if (cAll) cAll.textContent = cards.length;
+  if (cAct) cAct.textContent = activeCount;
+  if (cDone) cDone.textContent = doneCount;
+
+  ["all", "active", "done"].forEach(m => {
+    const tab = document.getElementById("tf-tab-" + m);
+    if (!tab) return;
+    tab.className = (m === mode)
+      ? "flex-1 py-1.5 rounded-lg text-xs font-bold bg-purple-600 text-white shadow-sm"
+      : "flex-1 py-1.5 rounded-lg text-xs font-bold text-gray-600";
+  });
+};
+
+setTimeout(function() {
+  const tWrap = document.getElementById("trades-list");
+  if (tWrap) {
+    new MutationObserver(function() { window.enhanceTradesListUI(); }).observe(tWrap, { childList: true });
+    window.enhanceTradesListUI();
+  }
+}, 500);
