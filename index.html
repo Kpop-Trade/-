@@ -277,20 +277,6 @@
           <button type="button" onclick="openFilterModal()" aria-label="一覧メニュー" class="h-8 w-8 rounded-full bg-gray-100 text-lg leading-none text-gray-500">⋮</button>
         </div>
       </div>
-      <div class="w-full mb-3">
-        <button type="button" onclick="if(window.openXTradeCreateModal){window.openXTradeCreateModal();}else{var m=document.getElementById('xtrade-create-modal');if(m)m.classList.remove('hidden');}" class="w-full flex items-center justify-between px-4 py-2.5 rounded-2xl bg-gray-900 hover:bg-black text-white shadow-sm transition active:scale-[0.99]">
-          <div class="flex items-center gap-2.5 text-left">
-            <span class="w-7 h-7 rounded-xl bg-white/15 flex items-center justify-center text-sm font-black shrink-0">𝕏</span>
-            <div>
-              <div class="text-xs font-black leading-tight">X合意 取引ルーム作成（招待URL発行）</div>
-              <div class="text-[10px] text-gray-300 leading-tight mt-0.5">DMで合意済みなら出品不要・URLを送るだけで住所交換＆評価保護</div>
-            </div>
-          </div>
-          <span class="text-[11px] font-bold px-2.5 py-1 rounded-full bg-white text-gray-900 shrink-0">作成 →</span>
-        </button>
-      </div>
-      
-
       <div id="home-filter-bar" class="hidden liquid-glass rounded-2xl px-3 py-2.5 flex items-center justify-between gap-2" style="display:none">
         <label class="flex items-center gap-2 cursor-pointer select-none">
           <input type="checkbox" id="active-only-check" onchange="setActiveOnly(this.checked)" class="w-4 h-4 rounded border-gray-300 text-illit-accent focus:ring-illit-purple">
@@ -309,11 +295,24 @@
         </div>
       </div>
 
-      <!-- Auto-GO ホーム上部バナーボタン -->
+      <!-- X合意取引ルーム作成ボタン -->
 
-<div id="posts-container" style="display:grid;grid-template-columns:repeat(3, 1fr);grid-auto-flow:dense;gap:4px;border-radius:12px;overflow:hidden">
+      <div class="w-full mb-3">
+        <button type="button" onclick="if(window.openXTradeCreateModal){window.openXTradeCreateModal();}else{var m=document.getElementById('xtrade-create-modal');if(m)m.classList.remove('hidden');}" class="w-full flex items-center justify-between px-4 py-2.5 rounded-2xl bg-gray-900 hover:bg-black text-white shadow-sm transition active:scale-[0.99]">
+          <div class="flex items-center gap-2.5 text-left">
+            <span class="w-7 h-7 rounded-xl bg-white/15 flex items-center justify-center text-sm font-black shrink-0">𝕏</span>
+            <div>
+              <div class="text-xs font-black leading-tight">X合意 取引ルーム作成（招待URL発行）</div>
+              <div class="text-[10px] text-gray-300 leading-tight mt-0.5">DMで合意済みなら出品不要・URLを送るだけで住所交換＆評価保護</div>
+            </div>
+          </div>
+          <span class="text-[11px] font-bold px-2.5 py-1 rounded-full bg-white text-gray-900 shrink-0">作成 →</span>
+        </button>
+      </div>
+
+      <div id="posts-container" style="display:grid;grid-template-columns:repeat(3, 1fr);grid-auto-flow:row;gap:6px;border-radius:12px;overflow:hidden">
         <div class="posts-status col-span-full w-full" id="posts-skeleton" aria-busy="true" aria-label="読み込み中">
-          <div class="grid grid-cols-3 gap-1">
+          <div style="display:grid;grid-template-columns:repeat(3, 1fr);grid-auto-flow:row;gap:6px">
             <div class="kp-skel aspect-square col-span-2 row-span-2"></div>
             <div class="kp-skel aspect-square"></div>
             <div class="kp-skel aspect-square"></div>
@@ -1522,7 +1521,7 @@
   </div>
 
   <script src="./js/mycards-binder.js?v=20261121"></script>
-  <script type="module" src="./js/app-main.js?v=1795405441ship1"></script>
+  <script type="module" src="./js/app-main.js?v=1795406059ship1"></script>
 
   <div id="xlogin-help-modal" class="hidden fixed inset-0 z-[10040] modal-backdrop items-end sm:items-center justify-center p-3" style="padding-top: max(12px, env(safe-area-inset-top)); padding-bottom: max(12px, env(safe-area-inset-bottom));" onclick="if(event.target===this) closeGoogleLoginHelp()">
     <div id="xlogin-help-sheet" class="liquid-glass-heavy w-full max-w-sm rounded-[1.75rem] p-5 shadow-2xl border border-white" role="dialog" aria-modal="true" aria-labelledby="xlogin-help-title">
@@ -4747,9 +4746,9 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
 
         const hasPhoto = p.photoCount && isJpegData(p.thumb);
         const photoBlock = hasPhoto
-          ? `<img src="${p.thumb}" alt="" class="h-full w-full object-cover ${isSold ? "opacity-50 grayscale" : ""}">`
+          ? `<img src="${p.thumb}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:12px;overflow:hidden" class="${isSold ? "opacity-50 grayscale" : ""}">`
           : `<div class="h-full w-full bg-gradient-to-br from-purple-50 to-pink-50"></div>`;
-        const cardStyle = `aspect-ratio:1/1;${cardIndex === 0 ? "grid-column:span 2;grid-row:span 2;" : ""}`;
+        const cardStyle = `width:100%;height:100%;aspect-ratio:1/1;display:block;border-radius:12px;overflow:hidden;${cardIndex === 0 ? "grid-column:span 2;grid-row:span 2;" : ""}`;
 
         return `
           <div onclick="openDetailModal(${index})" style="${cardStyle}" class="relative cursor-pointer overflow-hidden rounded-xl bg-gray-50 ${dim ? "opacity-60" : ""}">

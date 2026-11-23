@@ -239,7 +239,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     }
     function postsSkeletonHtml() {
       return `<div class="posts-status col-span-full w-full" aria-busy="true" aria-label="読み込み中">
-        <div class="grid grid-cols-3 gap-1">
+        <div style="display:grid;grid-template-columns:repeat(3, 1fr);grid-auto-flow:row;gap:6px">
           ${Array.from({ length: 6 }).map((_, index) => `<div class="kp-skel aspect-square ${index === 0 ? "col-span-2 row-span-2" : ""}"></div>`).join("")}
         </div>
         <p class="text-center text-[12px] text-gray-500 font-medium mt-3">募集一覧を読み込み中...</p>
@@ -4938,9 +4938,9 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
 
         const hasPhoto = p.photoCount && isJpegData(p.thumb);
         const photoBlock = hasPhoto
-          ? `<img src="${p.thumb}" alt="" class="h-full w-full object-cover ${isSold ? "opacity-50 grayscale" : ""}">`
+          ? `<img src="${p.thumb}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:12px;overflow:hidden" class="${isSold ? "opacity-50 grayscale" : ""}">`
           : `<div class="h-full w-full bg-gradient-to-br from-purple-50 to-pink-50"></div>`;
-        const cardStyle = `aspect-ratio:1/1;${cardIndex === 0 ? "grid-column:span 2;grid-row:span 2;" : ""}`;
+        const cardStyle = `width:100%;height:100%;aspect-ratio:1/1;display:block;border-radius:12px;overflow:hidden;${cardIndex === 0 ? "grid-column:span 2;grid-row:span 2;" : ""}`;
 
         return `
           <div ${cardAttributes} style="${cardStyle}" class="relative cursor-pointer overflow-hidden rounded-xl bg-gray-50 ${dim ? "opacity-60" : ""}">
