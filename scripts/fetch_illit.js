@@ -1,213 +1,244 @@
 const fs = require("fs");
+const crypto = require("crypto");
 
-function getJstDateStr(offsetDays = 0) {
-  const d = new Date(Date.now() + 9 * 3600 * 1000 + offsetDays * 86400 * 1000);
-  return d.toISOString().split("T")[0];
+function base64url(input) {
+  return Buffer.from(input).toString("base64").replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 }
 
-async function sendNotifications(projectId, token, events) {
-  const today = getJstDateStr(0);
-  const tomorrow = getJstDateStr(1);
-
-  const targets = events.filter(e => {
-    const isTodayOrTomorrow = e.date === today || e.date === tomorrow;
-    const isDeadline = e.category === "deadline" || e.category === "ticket";
-    const title = (e.title || "").toLowerCase();
-    const isImportant = title.includes("入金") || title.includes("シリアル") || title.includes("締切") || title.includes("当落") || title.includes("グッズ") || title.includes("販売");
-    return isTodayOrTomorrow || (isDeadline && isImportant);
-  });
-
-  if (targets.length === 0) {
-    console.log("通知対象の予定はありません。");
-    return;
-  }
-
-  const fsBase = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents`;
-  const histRes = await fetch(`${fsBase}/system/illit_notified`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  let sentKeys = [];
-  if (histRes.ok) {
-    const histData = await histRes.json();
-    sentKeys = (histData.fields?.keys?.arrayValue?.values || []).map(v => v.stringValue);
-  }
-
-  const newTargets = targets.filter(e => {
-    const label = e.date === today ? "today" : e.date === tomorrow ? "tomorrow" : "deadline";
-    return !sentKeys.includes(`${label}:${e.date}:${e.title}`);
-  });
-  if (newTargets.length === 0) {
-    console.log("対象予定はすべて通知済みです。");
-    return;
-  }
-
-  const qRes = await fetch(`${fsBase}:runQuery`, {
+async function getAccessToken(sa) {
+  const now = Math.floor(Date.now() / 1000);
+  const header = base64url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
+  const claim = base64url(JSON.stringify({
+    iss: sa.client_email,
+    scope: "https://www.googleapis.com/auth/cloud-platform https://www.googleapis.com/auth/datastore https://www.googleapis.com/auth/firebase.messaging",
+    aud: "https://oauth2.googleapis.com/token",
+    exp: now + 3600,
+    iat: now
+  }));
+  const sign = crypto.createSign("RSA-SHA256");
+  sign.update(`${header}.${claim}`);
+  const signature = sign.sign(sa.private_key, "base64").replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+  const jwt = `${header}.${claim}.${signature}`;
+  const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      structuredQuery: {
-        from: [{ collectionId: "tokens", allDescendants: true }]
-      }
-    })
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`
   });
-  const qRows = await qRes.json();
-  const tokenDocs = (Array.isArray(qRows) ? qRows : [])
-    .filter(r => r.document && r.document.fields?.token?.stringValue)
-    .map(r => ({
-      name: r.document.name,
-      token: r.document.fields.token.stringValue
-    }));
+  const tokenData = await tokenRes.json();
+  if (!tokenData.access_token) throw new Error("Token error: " + JSON.stringify(tokenData));
+  return tokenData.access_token;
+}
 
-  if (tokenDocs.length === 0) {
-    console.log("登録済みFCMトークンが0件のため通知スキップ。");
-    return;
+async function searchTavily(apiKey, query) {
+  try {
+    const res = await fetch("https://api.tavily.com/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        api_key: apiKey,
+        query,
+        search_depth: "basic",
+        max_results: 5,
+        include_answer: false
+      })
+    });
+    if (!res.ok) {
+      console.warn(`Tavily query failed (${res.status}): ${query}`);
+      return [];
+    }
+    const data = await res.json();
+    return Array.isArray(data.results) ? data.results : [];
+  } catch (e) {
+    console.warn(`Tavily network error (${query}):`, e.message);
+    return [];
   }
+}
 
-  const fcmUrl = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`;
-  const newlySentKeys = [...sentKeys];
+async function extractWithGroq(groqKey, searchSnippets, todayStr) {
+  const prompt = `あなたはK-POPグループ「ILLIT（アイリット）」の公式情報・スケジュール抽出AIです。
+今日の日付は ${todayStr} です。
+以下の検索結果から、ILLITに関する【スケジュール】と【新着ニュース全般】を漏れなく抽出し、JSON配列のみを出力してください。Markdownのコードブロック(\`\`\`)や解説文は一切出力しないでください。
 
-  for (const ev of newTargets) {
-    const isToday = ev.date === today;
-    const isTomorrow = ev.date === tomorrow;
-    const prefix = isToday ? "【本日】" : isTomorrow ? "【明日】" : "【締切】";
-    const timeStr = ev.time && ev.time !== "終日" ? ` (${ev.time})` : "";
-    const title = `${prefix}${ev.title}${timeStr}`;
-    const body = ev.detail || "ILLIT予定カレンダーで詳細を確認";
+【抽出対象（スケジュール＋それ以外の最新情報すべて）】
+1. 音楽番組・テレビ・ラジオ出演、授賞式、フェス、ライブ・コンサート、ファンミ
+2. アルバム・シングル・MVのカムバック・リリース情報（category: "release"）
+3. 公式サイトのお知らせ・キャンペーン・タイアップ・コラボ・アンバサダー就任・雑誌掲載・ポップアップストア・グッズ予約販売（category: "news"）
+4. シリアル応募締切、当落発表、入金期限、サイン会・お見送り会・ヨントン（category: "event"）
 
-    let okCount = 0;
-    for (const td of tokenDocs) {
-      const sendRes = await fetch(fcmUrl, {
+【出力JSONスキーマ（配列）】
+[
+  {
+    "date": "YYYY-MM-DD（不明な場合は記事公開日または ${todayStr}）",
+    "time": "HH:MM または空文字",
+    "category": "schedule | release | news | event",
+    "title": "簡潔で分かりやすい日本語タイトル（35文字以内）",
+    "detail": "補足詳細（場所・媒体・対象商品など、50文字以内）",
+    "link": "元記事の公式URL（検索結果にあるURLをそのまま設定）"
+  }
+]
+
+【検索結果】
+${searchSnippets}`;
+
+  const models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"];
+  for (const model of models) {
+    try {
+      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        headers: {
+          "Authorization": `Bearer ${groqKey}`,
+          "Content-Type": "application/json"
+        },
         body: JSON.stringify({
-          message: {
-            token: td.token,
-            notification: { title, body },
-            webpush: {
-              fcmOptions: { link: "https://kpop-trade.github.io/" }
-            }
-          }
+          model,
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.1,
+          max_tokens: 3000
         })
       });
-      if (sendRes.ok) {
-        okCount++;
-      } else {
-        const errText = await sendRes.text();
-        if (errText.includes("UNREGISTERED") || errText.includes("INVALID_ARGUMENT")) {
-          await fetch(`https://firestore.googleapis.com/v1/${td.name}`, {
-            method: "DELETE",
-            headers: { Authorization: `Bearer ${token}` }
-          });
-        }
+      if (!res.ok) {
+        console.warn(`Groq model ${model} status ${res.status}`);
+        continue;
+      }
+      const data = await res.json();
+      let content = data.choices?.[0]?.message?.content || "";
+      content = content.replace(/```json/gi, "").replace(/```/g, "").trim();
+      const start = content.indexOf("[");
+      const end = content.lastIndexOf("]");
+      if (start !== -1 && end !== -1 && end > start) {
+        const parsed = JSON.parse(content.slice(start, end + 1));
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {
+      console.warn(`Groq parse/call error (${model}):`, e.message);
+    }
+  }
+  return [];
+}
+
+async function sendNotifications(projectId, token, items) {
+  try {
+    const fsBase = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents`;
+    const jstNow = new Date(Date.now() + 9 * 3600 * 1000);
+    const today = jstNow.toISOString().slice(0, 10);
+    const tomorrow = new Date(jstNow.getTime() + 86400000).toISOString().slice(0, 10);
+
+    const targets = items.filter(e => e.date === today || e.date === tomorrow);
+    if (targets.length === 0) return;
+
+    const histRes = await fetch(`${fsBase}/system/illit_notified`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    let sentKeys = [];
+    if (histRes.ok) {
+      const histData = await histRes.json();
+      sentKeys = (histData.fields?.keys?.arrayValue?.values || []).map(v => v.stringValue);
+    }
+
+    const newTargets = targets.filter(e => {
+      const label = e.date === today ? "today" : "tomorrow";
+      return !sentKeys.includes(`${label}:${e.date}:${e.title}`);
+    });
+    if (newTargets.length === 0) return;
+
+    const qRes = await fetch(`${fsBase}:runQuery`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        structuredQuery: { from: [{ collectionId: "tokens", allDescendants: true }] }
+      })
+    });
+    const qRows = await qRes.json();
+    const tokenDocs = (Array.isArray(qRows) ? qRows : [])
+      .filter(r => r.document && r.document.fields?.token?.stringValue)
+      .map(r => r.document.fields.token.stringValue);
+
+    if (tokenDocs.length > 0) {
+      const first = newTargets[0];
+      const prefix = first.date === today ? "【本日】" : "【明日】";
+      for (const fcmToken of tokenDocs.slice(0, 200)) {
+        await fetch(`https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: {
+              token: fcmToken,
+              notification: {
+                title: `${prefix}ILLIT 最新情報・予定`,
+                body: `${first.title}${newTargets.length > 1 ? ` ほか${newTargets.length - 1}件` : ""}`
+              }
+            }
+          })
+        }).catch(() => {});
       }
     }
-    const label = isToday ? "today" : isTomorrow ? "tomorrow" : "deadline";
-    newlySentKeys.push(`${label}:${ev.date}:${ev.title}`);
-    console.log(`通知送信完了: ${title} -> ${okCount}/${tokenDocs.length}端末`);
-  }
 
-  const trimmed = newlySentKeys.slice(-100);
-  await fetch(`${fsBase}/system/illit_notified`, {
-    method: "PATCH",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      fields: {
-        keys: {
-          arrayValue: {
-            values: trimmed.map(k => ({ stringValue: k }))
-          }
-        }
-      }
-    })
-  });
+    const nextKeys = [...sentKeys];
+    for (const e of newTargets) {
+      const label = e.date === today ? "today" : "tomorrow";
+      nextKeys.push(`${label}:${e.date}:${e.title}`);
+    }
+    const trimmed = nextKeys.slice(-300);
+    await fetch(`${fsBase}/system/illit_notified`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fields: { keys: { arrayValue: { values: trimmed.map(k => ({ stringValue: k })) } } }
+      })
+    });
+  } catch (e) {
+    console.warn("FCM通知処理スキップ（本体更新は継続）:", e.message);
+  }
 }
 
 async function main() {
   const tavilyKey = process.env.TAVILY_API_KEY;
-  if (!tavilyKey) throw new Error("TAVILY_API_KEY is not set");
+  const groqKey = process.env.GROQ_API_KEY;
+  if (!tavilyKey || !groqKey) {
+    console.warn("APIキー未設定のため安全終了します");
+    return;
+  }
 
-  const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
-  if (!raw) throw new Error("FIREBASE_SERVICE_ACCOUNT is not set");
-  const sa = JSON.parse(raw);
+  const jstNow = new Date(Date.now() + 9 * 3600 * 1000);
+  const todayStr = jstNow.toISOString().slice(0, 10);
+  const year = jstNow.getUTCFullYear();
 
   const queries = [
-    `ILLIT スケジュール 2026 2027`,
-    `ILLIT シリアル 応募 締切 2026 2027`,
-    `ILLIT 当落発表 入金期限 2026 2027`,
-    `ILLIT ライブ コンサート チケット 2026 2027`,
-    `ILLIT オフラインイベント サイン会 お見送り会 2026 2027`,
-    `ILLIT タワーレコード HMV Amazon イベント ラキドロ 2026 2027`,
-    `ILLIT グッズ POP UP 予約販売 2026 2027`,
+    `ILLIT スケジュール 出演 ${year}`,
+    `ILLIT カムバ リリース 新曲 アルバム ${year}`,
+    `ILLIT グッズ POPUP コラボ お知らせ ${year}`,
+    `ILLIT シリアル 応募 締切 サイン会 イベント ${year}`,
+    `ILLIT ライブ コンサート チケット 当落 ${year}`,
     `site:illit-official.jp/news`,
-    `site:universal-music.co.jp/illit/news`,
-    `site:cdefgah.net ILLIT`
+    `site:universal-music.co.jp/illit/news`
   ];
 
-  let allResults = [];
-  for (const query of queries) {
-    const searchRes = await fetch("https://api.tavily.com/search", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        api_key: tavilyKey,
-        query: query,
-        search_depth: "basic",
-        include_answer: false,
-        max_results: 6
-      })
-    });
-    const searchData = await searchRes.json();
-    if (searchData.results) {
-      allResults.push(...searchData.results.map(r => ({
-        title: r.title,
-        content: (r.content || "").slice(0, 1200)
-      })));
-    }
+  const allResults = [];
+  for (const q of queries) {
+    const items = await searchTavily(tavilyKey, q);
+    allResults.push(...items);
   }
-  const searchContext = JSON.stringify(allResults);
 
-  const groqKey = process.env.GROQ_API_KEY;
-  const prompt = `以下の検索結果から、K-POPグループ「ILLIT（アイリット）」のスケジュールを抽出してください。現在の日付は ${getJstDateStr(0)} です。
+  const uniqueUrls = new Set();
+  const dedupedResults = [];
+  for (const r of allResults) {
+    if (!r.url || uniqueUrls.has(r.url)) continue;
+    uniqueUrls.add(r.url);
+    dedupedResults.push(r);
+  }
 
-【検索結果】
-${searchContext}
+  const snippets = dedupedResults.slice(0, 28).map((r, i) =>
+    `[${i + 1}] タイトル: ${r.title}\nURL: ${r.url}\n内容: ${String(r.content || "").slice(0, 260)}`
+  ).join("\n\n");
 
-【厳守事項】
-- 公式情報（illit-official.jp / universal-music / Weverse / タワレコ / HMV / Amazon）を最優先
-- ${getJstDateStr(0)} 以降の予定を網羅的に抽出
-- 1つの記事内に「予約開始日」「応募締切日」「当落発表日」「入金期限」「イベント開催当日」など複数の日付が含まれている場合は、必ず日付ごとに別々のイベントとしてすべて分解して出力すること
-- 店舗別イベント（タワーレコード・HMV・Amazon・POP UP STORE・ラッキードロー・サイン会・お見送り会）やグッズ販売・配送開始日も漏らさず含める
-- タイトルの冒頭に【チケット】【グッズ】【オフイベ】【タワレコ】【HMV】【Amazon】【POP UP】【リリース】【メディア】などのタグを付けて分かりやすくする
-- タイトルと詳細は日本語で出力
-- 不明な場合は空配列 [] を返す
+  const parsed = snippets ? await extractWithGroq(groqKey, snippets, todayStr) : [];
 
-【出力形式】
-[{"date":"YYYY-MM-DD","time":"HH:MM（不明なら終日）","title":"イベント名（日本語）","category":"deadline | ticket | release | event | media | birthday","detail":"補足情報（日本語）","link":"公式ページのURL（あれば、なければ空文字）"}]`;
-
-  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${groqKey}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      model: "openai/gpt-oss-120b",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.1
-    })
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error("Groq API error: " + JSON.stringify(data));
-  const text = data?.choices?.[0]?.message?.content || "[]";
-  const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
   let existing = [];
   try {
-    if (fs.existsSync("illit_calendar.json")) {
-      existing = JSON.parse(fs.readFileSync("illit_calendar.json", "utf8"));
-      if (!Array.isArray(existing)) existing = [];
-    }
+    existing = JSON.parse(fs.readFileSync("illit_calendar.json", "utf8"));
+    if (!Array.isArray(existing)) existing = [];
   } catch (e) {
-    console.warn("既存JSONの読み込みスキップ:", e.message);
+    console.warn("既存JSON読み込みスキップ:", e.message);
   }
 
   const normalize = (s) => String(s || "").toLowerCase().replace(/\s+/g, "").trim();
@@ -215,12 +246,21 @@ ${searchContext}
   let addedCount = 0;
 
   for (const item of parsed) {
-    if (!item || !item.date || !item.title) continue;
+    if (!item || !item.title) continue;
+    const cleanDate = /^\d{4}-\d{2}-\d{2}$/.test(String(item.date || "")) ? item.date : todayStr;
+    const cleanItem = {
+      date: cleanDate,
+      time: String(item.time || "").trim(),
+      category: ["schedule", "release", "news", "event"].includes(item.category) ? item.category : "news",
+      title: String(item.title).trim(),
+      detail: String(item.detail || "").trim(),
+      link: String(item.link || "").trim()
+    };
     const isDup = merged.some(
-      (ex) => ex.date === item.date && normalize(ex.title) === normalize(item.title)
+      (ex) => ex.date === cleanItem.date && normalize(ex.title) === normalize(cleanItem.title)
     );
     if (!isDup) {
-      merged.push(item);
+      merged.push(cleanItem);
       addedCount++;
     }
   }
@@ -234,35 +274,19 @@ ${searchContext}
   fs.writeFileSync("illit_calendar.json", JSON.stringify(merged, null, 2));
   console.log(`SUCCESS: 新規${addedCount}件追加（合計${merged.length}件）`);
 
-  const crypto = require("crypto");
-  function base64url(input) {
-    return Buffer.from(input).toString("base64").replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+  const rawSa = process.env.FIREBASE_SERVICE_ACCOUNT;
+  if (rawSa && rawSa.trim().startsWith("{")) {
+    try {
+      const sa = JSON.parse(rawSa);
+      const fbToken = await getAccessToken(sa);
+      await sendNotifications(sa.project_id, fbToken, parsed);
+    } catch (e) {
+      console.warn("Firebase通知スキップ:", e.message);
+    }
   }
-  async function getAccessToken(sa) {
-    const now = Math.floor(Date.now() / 1000);
-    const header = base64url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
-    const claim = base64url(JSON.stringify({
-      iss: sa.client_email,
-      scope: "https://www.googleapis.com/auth/cloud-platform https://www.googleapis.com/auth/datastore https://www.googleapis.com/auth/firebase.messaging",
-      aud: "https://oauth2.googleapis.com/token",
-      exp: now + 3600,
-      iat: now
-    }));
-    const sign = crypto.createSign("RSA-SHA256");
-    sign.update(`${header}.${claim}`);
-    const signature = sign.sign(sa.private_key, "base64").replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
-    const jwt = `${header}.${claim}.${signature}`;
-    const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`
-    });
-    const tokenData = await tokenRes.json();
-    if (!tokenData.access_token) throw new Error("Token error: " + JSON.stringify(tokenData));
-    return tokenData.access_token;
-  }
-  const fbToken = await getAccessToken(sa);
-  await sendNotifications(sa.project_id, fbToken, parsed);
 }
 
-main().catch(e => { console.error(e); process.exit(1); });
+main().catch(e => {
+  console.error("致命的エラー回避:", e);
+  process.exit(0);
+});
