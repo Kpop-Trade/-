@@ -1,11 +1,9 @@
 
-function ensureSingleGuideModalExists() {
+function forceShowSingleGuideModal() {
   let modal = document.getElementById("single-guide-modal");
   if (!modal) {
     modal = document.createElement("div");
     modal.id = "single-guide-modal";
-    modal.className = "fixed inset-0 bg-black/90 hidden flex-col items-center justify-center p-4";
-    modal.style.zIndex = "99999";
     modal.innerHTML = `
       <div class="relative w-full max-w-md bg-zinc-950 rounded-2xl overflow-hidden border border-purple-500/40 shadow-2xl">
         <div class="flex items-center justify-between px-4 py-3 bg-zinc-900/90 border-b border-zinc-800">
@@ -18,17 +16,27 @@ function ensureSingleGuideModalExists() {
             <span style="position:absolute;top:6px;left:8px;background:rgba(0,0,0,0.75);color:#22d3ee;font-size:11px;font-weight:bold;padding:2px 6px;border-radius:6px;">枠内に合わせると自動撮影</span>
           </div>
         </div>
-        <div class="p-3 bg-zinc-900 flex items-center justify-center gap-3">
-          <button type="button" id="single-guide-shutter" class="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-sm shadow">手動シャッターで撮影</button>
-        </div>
       </div>
     `;
-    document.body.appendChild(modal);
-  } else {
-    modal.style.zIndex = "99999";
   }
+  // 親モーダルのスタッキングコンテキストやhiddenに巻き込まれないようbody直下へ移動
+  if (modal.parentElement !== document.body) {
+    document.body.appendChild(modal);
+  }
+  forceShowSingleGuideModal();
+  modal.style.setProperty("display", "flex", "important");
+  modal.style.setProperty("position", "fixed", "important");
+  modal.style.setProperty("inset", "0", "important");
+  modal.style.setProperty("z-index", "2147483647", "important");
+  modal.style.setProperty("visibility", "visible", "important");
+  modal.style.setProperty("opacity", "1", "important");
+  modal.style.setProperty("background", "rgba(0,0,0,0.92)", "important");
+  modal.style.setProperty("align-items", "center", "important");
+  modal.style.setProperty("justify-content", "center", "important");
   return modal;
 }
+
+
 
 (function(){
   let singleStream = null;
@@ -50,10 +58,10 @@ function ensureSingleGuideModalExists() {
         singleFrame.innerHTML = '<span style="position:absolute;top:6px;left:8px;background:rgba(0,0,0,0.75);color:#22d3ee;font-size:11px;font-weight:bold;padding:2px 6px;border-radius:6px;">枠内に合わせると自動撮影</span>';
       }
     }
-    const modal = ensureSingleGuideModalExists();
+    const modal = forceShowSingleGuideModal();
     const vid = document.getElementById("single-guide-vid");
     if(!modal || !vid) return;
-    modal.classList.remove("hidden"); modal.style.display = "flex";
+    forceShowSingleGuideModal();
     try {
       singleStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
       vid.srcObject = singleStream;
@@ -63,8 +71,13 @@ function ensureSingleGuideModalExists() {
       closeSingleGuideCam();
     }
   };
-  window.closeSingleGuideCam = function(){ const _m = document.getElementById("single-guide-modal"); if (_m) _m.style.display = "none";
-    const modal = document.getElementById("single-guide-modal");
+  window.closeSingleGuideCam = function(){
+    const _m = document.getElementById("single-guide-modal");
+    if (_m) {
+      _m.classList.add("hidden");
+      _m.style.setProperty("display", "none", "important");
+    }
+    const modal = forceShowSingleGuideModal();
     if(modal) modal.classList.add("hidden");
     if(singleStream){
       singleStream.getTracks().forEach(t => t.stop());
