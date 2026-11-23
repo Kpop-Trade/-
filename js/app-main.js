@@ -14236,7 +14236,7 @@ window._pendingAdminBannerDataUrl = "";
 window._renderAdminBannerPreviewCanvas = function() {
   const img = window._pendingAdminBannerRawImg;
   if (!img) return;
-  const maxW = 900;
+  const maxW = 720;
   const scale = img.width > maxW ? (maxW / img.width) : 1;
   const w = Math.round(img.width * scale);
   const h = Math.round(img.height * scale);
@@ -14278,7 +14278,7 @@ window._renderAdminBannerPreviewCanvas = function() {
     ctx.restore();
   }
 
-  const compressed = canvas.toDataURL("image/jpeg", 0.8);
+  const compressed = canvas.toDataURL("image/jpeg", 0.72);
   window._pendingAdminBannerDataUrl = compressed;
   const wrap = document.getElementById("admin-banner-preview-wrap");
   const prev = document.getElementById("admin-banner-preview");
