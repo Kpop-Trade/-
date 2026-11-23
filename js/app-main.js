@@ -14776,3 +14776,90 @@ window._fastPostsCacheApplied = true;
     } catch (_) {}
   }, 4000);
 })();
+
+// === DB未初期化を完全に防ぐ自動補完ローダー ===
+window._ensureModularFirestore = async function() {
+  let g = window._globalFirestoreModular || window._modularTopBannerHelpers;
+  if (g && g.db && g.doc && g.setDoc && g.getDoc) return g;
+  try {
+    const appMod = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
+    const fsMod = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+    const apps = appMod.getApps();
+    const activeApp = apps && apps.length ? apps[0] : null;
+    const activeDb = (typeof db !== "undefined" && db) || window.db || (activeApp ? fsMod.getFirestore(activeApp) : null);
+    if (activeDb) {
+      g = {
+        db: activeDb,
+        doc: fsMod.doc,
+        getDoc: fsMod.getDoc,
+        setDoc: fsMod.setDoc,
+        onSnapshot: fsMod.onSnapshot
+      };
+      window._globalFirestoreModular = g;
+      window._modularTopBannerHelpers = g;
+      return g;
+    }
+  } catch (e) {
+    console.warn("_ensureModularFirestore fallback error:", e);
+  }
+  return null;
+};
+
+window.addAdminTopBanner = async function() {
+  const statusEl = document.getElementById("admin-banner-status");
+  const linkEl = document.getElementById("admin-banner-link");
+  const titleEl = document.getElementById("admin-banner-title");
+  const imageUrl = window._pendingAdminBannerDataUrl || "";
+  if (!imageUrl) { if (statusEl) statusEl.textContent = "先に写真を選択してください"; return; }
+  const link = linkEl ? linkEl.value.trim() : "";
+  const title = titleEl ? titleEl.value.trim() : "";
+  if (statusEl) statusEl.textContent = "保存中...";
+  try {
+    const g = await window._ensureModularFirestore();
+    if (!g || !g.db || !g.doc || !g.setDoc) throw new Error("Firestore接続に失敗しました（再読み込みしてください）");
+    const ref = g.doc(g.db, "siteConfig", "topBanners");
+    const nextList = [{ id: String(Date.now()), imageUrl, link, title }, ...(window._adminTopBanners || [])];
+    await g.setDoc(ref, { items: nextList, updatedAt: Date.now() }, { merge: true });
+    window._adminTopBanners = nextList;
+    window._pendingAdminBannerDataUrl = "";
+    const fileEl = document.getElementById("admin-banner-file");
+    if (fileEl) fileEl.value = "";
+    const wrap = document.getElementById("admin-banner-preview-wrap");
+    if (wrap) wrap.classList.add("hidden");
+    if (linkEl) linkEl.value = "";
+    if (titleEl) titleEl.value = "";
+    if (statusEl) statusEl.textContent = "保存しました！トップ広告に反映されています";
+    if (typeof window.renderAdminTopBannerList === "function") window.renderAdminTopBannerList();
+    if (typeof renderGllitMercariCarousel === "function") renderGllitMercariCarousel(window._lastGllitCarouselEvents || []);
+  } catch (e) {
+    if (statusEl) statusEl.textContent = "保存失敗: " + (e.message || e);
+  }
+};
+
+window.deleteAdminTopBanner = async function(idx) {
+  const statusEl = document.getElementById("admin-banner-status");
+  try {
+    const g = await window._ensureModularFirestore();
+    if (!g || !g.db || !g.doc || !g.setDoc) return;
+    const ref = g.doc(g.db, "siteConfig", "topBanners");
+    const nextList = (window._adminTopBanners || []).filter((_, i) => i !== idx);
+    await g.setDoc(ref, { items: nextList, updatedAt: Date.now() }, { merge: true });
+    window._adminTopBanners = nextList;
+    if (statusEl) statusEl.textContent = "削除しました";
+    if (typeof window.renderAdminTopBannerList === "function") window.renderAdminTopBannerList();
+    if (typeof renderGllitMercariCarousel === "function") renderGllitMercariCarousel(window._lastGllitCarouselEvents || []);
+  } catch (e) {}
+};
+
+window.loadAdminTopBanners = async function() {
+  try {
+    const g = await window._ensureModularFirestore();
+    if (!g || !g.db || !g.doc || !g.getDoc) return;
+    const ref = g.doc(g.db, "siteConfig", "topBanners");
+    const snap = await g.getDoc(ref);
+    const exists = typeof snap.exists === "function" ? snap.exists() : !!snap.exists;
+    window._adminTopBanners = (exists && Array.isArray(snap.data().items)) ? snap.data().items : [];
+    if (typeof window.renderAdminTopBannerList === "function") window.renderAdminTopBannerList();
+    if (typeof renderGllitMercariCarousel === "function") renderGllitMercariCarousel(window._lastGllitCarouselEvents || []);
+  } catch (e) {}
+};
