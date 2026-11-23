@@ -6877,23 +6877,38 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     window.tradeSecToggle = function(id, open) { tradeSecOpen[id] = !!open; };
     window.openTodoModal = function() {
       renderTodoList();
-      document.getElementById("todo-modal").classList.remove("hidden");
+      const modal = document.getElementById("todo-modal");
+      modal.classList.remove("hidden");
+      modal.style.display = "flex";
     };
-    window.closeTodoModal = function() { document.getElementById("todo-modal").classList.add("hidden"); };
+    window.closeTodoModal = function() {
+      const modal = document.getElementById("todo-modal");
+      modal.classList.add("hidden");
+      modal.style.display = "none";
+    };
     window.renderTodoList = function() {
       const el = document.getElementById("todo-list");
       const tasks = getTodoTasks();
-      el.innerHTML = tasks.length
-        ? tasks.map((task) => `<button type="button" data-todo-kind="${task.kind}" ${task.id ? `data-todo-id="${escapeHtml(task.id)}"` : ""} class="w-full rounded-2xl bg-white px-4 py-3 text-left text-sm font-bold text-gray-800 shadow-sm active:scale-[0.99] transition">${escapeHtml(task.text)}<span class="float-right text-gray-300">›</span></button>`).join("")
-        : `<div class="w-full h-full flex flex-col items-center justify-center text-center">
-            <svg class="w-16 h-16 mb-4 shrink-0" viewBox="0 0 64 64" fill="none" aria-hidden="true">
-              <rect x="10.5" y="9.5" width="30" height="39" rx="4.5" stroke="#cccccc" stroke-width="2.5"/>
-              <rect x="23.5" y="15.5" width="30" height="39" rx="4.5" fill="#f3f4f6" stroke="#cccccc" stroke-width="2.5"/>
-              <path d="m31 35 5.5 5.5L46 31" stroke="#cccccc" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            <p class="text-[15px] font-bold text-[#444444]">現在、やることリストはありません</p>
-            <p class="mt-2 max-w-[280px] text-[13px] leading-[1.6] text-[#888888]">ここでは、取引上でやることが表示されます（例：発送してください）</p>
-          </div>`;
+      if (tasks.length) {
+        el.style.display = "block";
+        el.style.padding = "12px 14px 80px";
+        el.innerHTML = tasks.map((task) => `<button type="button" data-todo-kind="${task.kind}" ${task.id ? `data-todo-id="${escapeHtml(task.id)}"` : ""} class="w-full rounded-2xl bg-white px-4 py-3 text-left text-sm font-bold text-gray-800 shadow-sm active:scale-[0.99] transition">${escapeHtml(task.text)}<span class="float-right text-gray-300">›</span></button>`).join("");
+        return;
+      }
+      el.style.display = "flex";
+      el.style.flexDirection = "column";
+      el.style.alignItems = "center";
+      el.style.justifyContent = "center";
+      el.style.padding = "0 32px 80px";
+      el.style.textAlign = "center";
+      el.innerHTML = `<svg width="84" height="84" viewBox="0 0 84 84" fill="none" aria-hidden="true" style="width:84px;height:84px;margin-bottom:20px;flex-shrink:0">
+          <path d="M12 28 42 13l30 15v35L42 78 12 63V28Z" fill="#e5e5e5" stroke="#d4d4d4" stroke-width="2"/>
+          <path d="m12 28 30 16 30-16M42 44v34M27 20l30 16v14L27 34V20Z" stroke="#d4d4d4" stroke-width="2" stroke-linejoin="round"/>
+          <circle cx="66" cy="19" r="13" fill="#ffffff" stroke="#d4d4d4" stroke-width="2"/>
+          <path d="m60.5 19 3.7 3.7 7.3-7.5" stroke="#b8b8b8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <p style="margin:0 0 10px;font-size:16px;font-weight:700;color:#555555">現在、やることリストはありません</p>
+        <p style="margin:0;max-width:280px;font-size:13px;line-height:1.6;color:#888888">ここでは、取引上でやることが表示されます（例：発送してください）</p>`;
     };
     document.getElementById("todo-list").addEventListener("click", (event) => {
       const button = event.target.closest("[data-todo-kind]");

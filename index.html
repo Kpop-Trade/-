@@ -1410,14 +1410,12 @@
     </div>
   </div>
 
-  <div id="todo-modal" class="fixed inset-0 bg-black/40 hidden z-50 flex items-end sm:items-center justify-center" onclick="if(event.target===this)closeTodoModal()">
-    <div class="bg-[#f3f4f6] w-full max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl h-[70vh] max-h-[88vh] flex flex-col">
-      <div class="relative flex items-center px-5 h-14 shrink-0 bg-white border-b border-[#eeeeee] rounded-t-3xl">
-        <button type="button" onclick="closeTodoModal()" class="w-9 h-9 rounded-full bg-[#f3f4f6] text-[#777777] text-2xl leading-none flex items-center justify-center" aria-label="戻る">←</button>
-        <h3 class="absolute left-1/2 -translate-x-1/2 font-bold text-[16px] text-gray-900">やることリスト</h3>
+  <div id="todo-modal" class="hidden flex flex-col" style="position:fixed;inset:0;background:#ffffff;z-index:1200;flex-direction:column;padding-bottom:80px;display:none" onclick="if(event.target===this)closeTodoModal()">
+    <div style="position:relative;display:flex;align-items:center;height:56px;min-height:56px;padding:0 12px;background:#ffffff;border-bottom:1px solid #efefef">
+        <button type="button" onclick="closeTodoModal()" style="width:36px;height:36px;border-radius:50%;background:#f5f5f5;display:flex;align-items:center;justify-content:center;color:#111111;font-size:20px;line-height:1" aria-label="戻る">←</button>
+        <h3 style="position:absolute;left:50%;transform:translateX(-50%);margin:0;font-size:16px;font-weight:700;color:#222222;white-space:nowrap">やることリスト</h3>
       </div>
-      <div id="todo-list" class="flex-1 min-h-0 px-3.5 py-3 pb-8 space-y-2 overflow-y-auto"></div>
-    </div>
+      <div id="todo-list" style="flex:1;min-height:0;overflow-y:auto;padding:12px 14px 80px"></div>
   </div>
 
   <!-- 取引一覧 -->
@@ -1539,7 +1537,7 @@
   </div>
 
   <script src="./js/mycards-binder.js?v=20261121"></script>
-  <script type="module" src="./js/app-main.js?v=1795407682ship1"></script>
+  <script type="module" src="./js/app-main.js?v=1795407773ship1"></script>
 
   <div id="xlogin-help-modal" class="hidden fixed inset-0 z-[10040] modal-backdrop items-end sm:items-center justify-center p-3" style="padding-top: max(12px, env(safe-area-inset-top)); padding-bottom: max(12px, env(safe-area-inset-bottom));" onclick="if(event.target===this) closeGoogleLoginHelp()">
     <div id="xlogin-help-sheet" class="liquid-glass-heavy w-full max-w-sm rounded-[1.75rem] p-5 shadow-2xl border border-white" role="dialog" aria-modal="true" aria-labelledby="xlogin-help-title">
@@ -6464,15 +6462,38 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     window.tradeSecToggle = function(id, open) { tradeSecOpen[id] = !!open; };
     window.openTodoModal = function() {
       renderTodoList();
-      document.getElementById("todo-modal").classList.remove("hidden");
+      const modal = document.getElementById("todo-modal");
+      modal.classList.remove("hidden");
+      modal.style.display = "flex";
     };
-    window.closeTodoModal = function() { document.getElementById("todo-modal").classList.add("hidden"); };
+    window.closeTodoModal = function() {
+      const modal = document.getElementById("todo-modal");
+      modal.classList.add("hidden");
+      modal.style.display = "none";
+    };
     window.renderTodoList = function() {
       const el = document.getElementById("todo-list");
       const tasks = getTodoTasks();
-      el.innerHTML = tasks.length
-        ? tasks.map((task) => `<button type="button" data-todo-kind="${task.kind}" ${task.id ? `data-todo-id="${escapeHtml(task.id)}"` : ""} class="w-full rounded-2xl bg-white px-4 py-3 text-left text-sm font-bold text-gray-800 shadow-sm active:scale-[0.99] transition">${escapeHtml(task.text)}<span class="float-right text-gray-300">›</span></button>`).join("")
-        : '<p class="py-8 text-center text-sm text-gray-500">現在やることはありません</p>';
+      if (tasks.length) {
+        el.style.display = "block";
+        el.style.padding = "12px 14px 80px";
+        el.innerHTML = tasks.map((task) => `<button type="button" data-todo-kind="${task.kind}" ${task.id ? `data-todo-id="${escapeHtml(task.id)}"` : ""} class="w-full rounded-2xl bg-white px-4 py-3 text-left text-sm font-bold text-gray-800 shadow-sm active:scale-[0.99] transition">${escapeHtml(task.text)}<span class="float-right text-gray-300">›</span></button>`).join("");
+        return;
+      }
+      el.style.display = "flex";
+      el.style.flexDirection = "column";
+      el.style.alignItems = "center";
+      el.style.justifyContent = "center";
+      el.style.padding = "0 32px 80px";
+      el.style.textAlign = "center";
+      el.innerHTML = `<svg width="84" height="84" viewBox="0 0 84 84" fill="none" aria-hidden="true" style="width:84px;height:84px;margin-bottom:20px;flex-shrink:0">
+          <path d="M12 28 42 13l30 15v35L42 78 12 63V28Z" fill="#e5e5e5" stroke="#d4d4d4" stroke-width="2"/>
+          <path d="m12 28 30 16 30-16M42 44v34M27 20l30 16v14L27 34V20Z" stroke="#d4d4d4" stroke-width="2" stroke-linejoin="round"/>
+          <circle cx="66" cy="19" r="13" fill="#ffffff" stroke="#d4d4d4" stroke-width="2"/>
+          <path d="m60.5 19 3.7 3.7 7.3-7.5" stroke="#b8b8b8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <p style="margin:0 0 10px;font-size:16px;font-weight:700;color:#555555">現在、やることリストはありません</p>
+        <p style="margin:0;max-width:280px;font-size:13px;line-height:1.6;color:#888888">ここでは、取引上でやることが表示されます（例：発送してください）</p>`;
     };
     document.getElementById("todo-list").addEventListener("click", (event) => {
       const button = event.target.closest("[data-todo-kind]");
