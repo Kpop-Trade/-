@@ -14863,3 +14863,54 @@ window.loadAdminTopBanners = async function() {
     if (typeof renderGllitMercariCarousel === "function") renderGllitMercariCarousel(window._lastGllitCarouselEvents || []);
   } catch (e) {}
 };
+
+window.addAdminTopBanner = async function() {
+  const statusEl = document.getElementById("admin-banner-status");
+  const linkEl = document.getElementById("admin-banner-link");
+  const titleEl = document.getElementById("admin-banner-title");
+  const imageUrl = window._pendingAdminBannerDataUrl || "";
+  if (!imageUrl) { if (statusEl) statusEl.textContent = "先に写真を選択してください"; return; }
+  const link = linkEl ? linkEl.value.trim() : "";
+  const title = titleEl ? titleEl.value.trim() : "";
+  if (statusEl) statusEl.textContent = "保存中...";
+  try {
+    if (typeof window._nativeSaveTopBanners !== "function") throw new Error("ページを再読み込みしてください");
+    const nextList = [{ id: String(Date.now()), imageUrl, link, title }, ...(window._adminTopBanners || [])];
+    await window._nativeSaveTopBanners(nextList);
+    window._adminTopBanners = nextList;
+    window._pendingAdminBannerDataUrl = "";
+    const fileEl = document.getElementById("admin-banner-file");
+    if (fileEl) fileEl.value = "";
+    const wrap = document.getElementById("admin-banner-preview-wrap");
+    if (wrap) wrap.classList.add("hidden");
+    if (linkEl) linkEl.value = "";
+    if (titleEl) titleEl.value = "";
+    if (statusEl) statusEl.textContent = "保存しました！トップ広告に反映されています";
+    if (typeof window.renderAdminTopBannerList === "function") window.renderAdminTopBannerList();
+    if (typeof renderGllitMercariCarousel === "function") renderGllitMercariCarousel(window._lastGllitCarouselEvents || []);
+  } catch (e) {
+    if (statusEl) statusEl.textContent = "保存失敗: " + (e.message || e);
+  }
+};
+
+window.deleteAdminTopBanner = async function(idx) {
+  const statusEl = document.getElementById("admin-banner-status");
+  try {
+    if (typeof window._nativeSaveTopBanners !== "function") return;
+    const nextList = (window._adminTopBanners || []).filter((_, i) => i !== idx);
+    await window._nativeSaveTopBanners(nextList);
+    window._adminTopBanners = nextList;
+    if (statusEl) statusEl.textContent = "削除しました";
+    if (typeof window.renderAdminTopBannerList === "function") window.renderAdminTopBannerList();
+    if (typeof renderGllitMercariCarousel === "function") renderGllitMercariCarousel(window._lastGllitCarouselEvents || []);
+  } catch (e) {}
+};
+
+window.loadAdminTopBanners = async function() {
+  try {
+    if (typeof window._nativeLoadTopBanners !== "function") return;
+    window._adminTopBanners = await window._nativeLoadTopBanners();
+    if (typeof window.renderAdminTopBannerList === "function") window.renderAdminTopBannerList();
+    if (typeof renderGllitMercariCarousel === "function") renderGllitMercariCarousel(window._lastGllitCarouselEvents || []);
+  } catch (e) {}
+};
