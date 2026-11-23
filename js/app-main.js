@@ -1159,6 +1159,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       closeDetailModal();
       if (!currentUser && (tab === "post" || tab === "mycards")) { if (typeof showToast === "function") { showToast("ログインしてください", "error"); } else { alert("ログインしてください"); } return; }
       currentPageTab = tab;
+      document.body.classList.toggle("home-tab", tab === "home");
       const presentBanner = document.getElementById("home-present-banner");
       if (presentBanner) {
         const showBanner = tab === "home" && activePresentCampaigns.length > 0;
@@ -4985,7 +4986,8 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         const isLiked = likes.includes(p.id);
         const isSold = p.status === "traded";
         const dim = isExpired(p) || p.status === "closed" || isSold;
-        const priceText = Number(p.price || 0) > 0 ? "¥" + Number(p.price).toLocaleString() : "交換";
+        const price = Number(p.price || p.startPrice || p.startingPrice || 0);
+        const priceText = price > 0 ? "¥" + price.toLocaleString() : "交換";
         const cardAttributes = isSearchResults
           ? `data-search-post-id="${escapeHtml(p.id)}"`
           : `onclick="openDetailModal(${index})"`;
@@ -4997,7 +4999,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         const photoBlock = hasPhoto
           ? `<img src="${p.thumb}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:10px;overflow:hidden" class="${isSold ? "opacity-50 grayscale" : ""}">`
           : `<div style="width:100%;height:100%;display:block;border-radius:10px;overflow:hidden" class="bg-gradient-to-br from-purple-50 to-pink-50"></div>`;
-        const cardStyle = `margin:0;width:100%;height:100%;aspect-ratio:1/1;object-fit:cover;display:block;border-radius:10px;overflow:hidden;${cardIndex === 0 ? "grid-column:span 2;grid-row:span 2;" : ""}`;
+        const cardStyle = `margin:0;padding:0;width:100%;height:100%;aspect-ratio:1/1;object-fit:cover;display:block;border-radius:10px;overflow:hidden;${cardIndex === 0 ? "grid-column:span 2;grid-row:span 2;" : ""}`;
 
         return `
           <div ${cardAttributes} style="${cardStyle}" class="relative cursor-pointer overflow-hidden rounded-[10px] bg-gray-50 ${dim ? "opacity-60" : ""}">
@@ -5008,7 +5010,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
                   <path d="M20.8 4.9a5.5 5.5 0 0 0-7.8 0L12 5.9l-1-1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.3a5.5 5.5 0 0 0 0-7.8Z" fill="${isLiked ? "#ec4899" : "rgba(255,255,255,0.08)"}" stroke="#ffffff" stroke-width="1.8" stroke-linejoin="round"/>
                 </svg>
               </button>
-              <span class="absolute bottom-2 left-2 z-10 text-base font-extrabold text-white" style="text-shadow:0 1px 4px rgba(0,0,0,0.75)">${priceText}</span>
+              <span style="position:absolute;left:6px;bottom:6px;background:rgba(0,0,0,0.62);color:#ffffff;font-size:12px;font-weight:800;padding:2px 7px;border-radius:6px;line-height:1.3;z-index:2">${priceText}</span>
             </div>
           </div>
         `;
