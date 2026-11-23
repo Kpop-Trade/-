@@ -14994,46 +14994,6 @@ window.loadAdminTopBanners = async function() {
 
 
 // === トップ広告バナー自動ループ回転 ===
-window._startTopBannerAutoRotate = function() {
-  if (window._topBannerAutoTimer) clearInterval(window._topBannerAutoTimer);
-  window._topBannerAutoTimer = setInterval(function() {
-    if (window._topBannerIsTouching) return;
-    const track = document.getElementById("gllit-mercari-carousel-track") || document.querySelector("[data-top-banner-track], .gllit-carousel-track");
-    if (!track) return;
-    const slides = track.children;
-    if (!slides || slides.length <= 1) return;
-    const slideW = slides[0].getBoundingClientRect().width || track.clientWidth;
-    if (slideW <= 0) return;
-    const currentIdx = Math.round(track.scrollLeft / slideW);
-    const nextIdx = (currentIdx + 1) >= slides.length ? 0 : (currentIdx + 1);
-    track.scrollTo({ left: nextIdx * slideW, behavior: "smooth" });
-  }, 3500);
-};
-
-document.addEventListener("touchstart", function(e) {
-  const track = document.getElementById("gllit-mercari-carousel-track") || document.querySelector("[data-top-banner-track], .gllit-carousel-track");
-  if (track && track.contains(e.target)) window._topBannerIsTouching = true;
-}, { passive: true });
-
-document.addEventListener("touchend", function() {
-  if (window._topBannerIsTouching) {
-    setTimeout(function() { window._topBannerIsTouching = false; }, 1200);
-  }
-}, { passive: true });
-
-if (typeof renderGllitMercariCarousel === "function" && !renderGllitMercariCarousel._wrappedForAutoRotate) {
-  const _origRenderCarousel = renderGllitMercariCarousel;
-  window.renderGllitMercariCarousel = function() {
-    const res = _origRenderCarousel.apply(this, arguments);
-    window._startTopBannerAutoRotate();
-    return res;
-  };
-  window.renderGllitMercariCarousel._wrappedForAutoRotate = true;
-}
-window.addEventListener("DOMContentLoaded", function() {
-  setTimeout(window._startTopBannerAutoRotate, 800);
-});
-
 window.addAdminTopBanner = async function() {
   const statusEl = document.getElementById("admin-banner-status");
   const linkEl = document.getElementById("admin-banner-link");
@@ -15323,3 +15283,64 @@ window._changeSavedBannerPhoto = function(idx, input) {
   };
   reader.readAsDataURL(file);
 };
+
+
+// === トップ広告バナー自動ループ回転（確実版） ===
+(function() {
+  function findBannerTrack() {
+    const byId = document.getElementById("gllit-mercari-carousel-track");
+    if (byId) return byId;
+    const candidates = Array.from(document.querySelectorAll("div, ul, section"));
+    for (const el of candidates) {
+      const idOrCls = ((el.id || "") + " " + (typeof el.className === "string" ? el.className : "")).toLowerCase();
+      if ((idOrCls.includes("carousel") || idOrCls.includes("banner") || idOrCls.includes("gllit")) &&
+          el.scrollWidth > el.clientWidth + 20 &&
+          el.children && el.children.length >= 2) {
+        return el;
+      }
+    }
+    return null;
+  }
+
+  function stepBannerCarousel() {
+    if (window._topBannerIsTouching) return;
+    const track = findBannerTrack();
+    if (!track) return;
+    const maxScroll = track.scrollWidth - track.clientWidth;
+    if (maxScroll <= 10) return;
+
+    const children = Array.from(track.children).filter(c => c.getBoundingClientRect().width > 40);
+    const step = children.length >= 2
+      ? Math.max(40, children[1].offsetLeft - children[0].offsetLeft)
+      : track.clientWidth;
+
+    if (track.scrollLeft + step >= maxScroll - 8) {
+      track.scrollTo({ left: 0, behavior: "smooth" });
+    } else {
+      track.scrollTo({ left: track.scrollLeft + step, behavior: "smooth" });
+    }
+  }
+
+  window._startTopBannerAutoRotate = function() {
+    if (window._topBannerAutoTimer) clearInterval(window._topBannerAutoTimer);
+    window._topBannerAutoTimer = setInterval(stepBannerCarousel, 3200);
+  };
+
+  document.addEventListener("touchstart", function(e) {
+    const track = findBannerTrack();
+    if (track && track.contains(e.target)) {
+      window._topBannerIsTouching = true;
+    }
+  }, { passive: true });
+
+  document.addEventListener("touchend", function() {
+    if (window._topBannerIsTouching) {
+      setTimeout(function() { window._topBannerIsTouching = false; }, 1500);
+    }
+  }, { passive: true });
+
+  window._startTopBannerAutoRotate();
+  setInterval(function() {
+    if (!window._topBannerAutoTimer) window._startTopBannerAutoRotate();
+  }, 4000);
+})();
