@@ -244,6 +244,19 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         <p class="text-center text-[12px] text-gray-500 font-medium mt-3">募集一覧を読み込み中...</p>
       </div>`;
     }
+    function homeFeedSkeletonHtml() {
+      if (typeof window.homeFeedSkeletonMarkup === "string" && window.homeFeedSkeletonMarkup) {
+        return window.homeFeedSkeletonMarkup;
+      }
+      const section = (layout) => `<section>
+        <div class="home-feed-skeleton-header">
+          <div class="kpop-skeleton-box home-feed-skeleton-title"></div>
+          <div class="home-feed-skeleton-actions"><div class="kpop-skeleton-box home-feed-skeleton-action"></div><div class="kpop-skeleton-box home-feed-skeleton-action"></div></div>
+        </div>
+        <div class="home-feed-skeleton-grid ${layout}">${Array.from({ length: 6 }, () => '<div class="kpop-skeleton-box"></div>').join("")}</div>
+      </section>`;
+      return `<div class="home-feed-skeleton" aria-busy="true" aria-label="読み込み中">${section("is-odd")}${section("is-even")}</div>`;
+    }
     function postsEmptyHtml(msg, hint) {
       return `<div class="posts-status kp-empty col-span-full">
         <p class="text-sm font-bold text-gray-700">${msg || "まだ募集がありません"}</p>
@@ -5021,10 +5034,137 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       return new Map(matches.map((match, index) => [match.post.id, index]));
     }
 
+    function getPostThemeTerms(post) {
+      const terms = new Map();
+      const addTerm = (value, priority = 1) => {
+        const label = String(value || "")
+          .replace(/[\u0000-\u001f]/g, " ")
+          .replace(/^\s*[#＃]/, "")
+          .replace(/\s*[\(（][^)]*[\)）]\s*/g, " ")
+          .replace(/^[\s:：・|｜/／,，、]+|[\s:：・|｜/／,，、]+$/g, "")
+          .replace(/\s+/g, " ")
+          .trim();
+        const key = label.toLocaleLowerCase();
+        if (label.length < 2 || label.length > 40 || /^\d+$/.test(label)
+          || ["交換", "譲", "求", "出品", "トレカ", "カード", "グッズ", "アルバム", "共同購入", "指定なし"].includes(key)) return;
+        const previous = terms.get(key);
+        if (!previous || priority > previous.priority) terms.set(key, { label, priority });
+      };
+      const addList = (value, priority) => {
+        const values = Array.isArray(value) ? value : String(value || "").split(/[,，\n]/);
+        values.forEach(item => addTerm(item, priority));
+      };
+
+      addTerm(post.member, 6);
+      addTerm(post.albumName || post.albumTitle || post.album || post.series || post.albumId, 6);
+      addTerm(post.groupName || post.group, 2);
+      addTerm(post.catalogCardName, 4);
+      addList(post.tags || post.tag, 4);
+
+      const text = [post.title, post.give, post.want, post.description, post.keywords, post.tags, post.tag]
+        .map(value => String(value || ""))
+        .join(" ");
+      for (const match of text.matchAll(/[#＃]([^\s#＃,，、]+)/g)) addTerm(match[1], 5);
+      [post.title, post.give].forEach(value => {
+        String(value || "").split(/[|｜/／・,，、\n]+/).forEach(part => addTerm(part, 3));
+      });
+      const textKey = text.toLocaleLowerCase();
+      MEMBERS.slice(1).forEach(member => {
+        const name = member.split(" ")[0];
+        if (name && textKey.includes(name.toLocaleLowerCase())) addTerm(name, 5);
+      });
+      return terms;
+    }
+
+    function buildHomeThemeGroups(entries) {
+      const topics = new Map();
+      entries.forEach(entry => {
+        getPostThemeTerms(entry.p).forEach((term, key) => {
+          if (!topics.has(key)) topics.set(key, { key, label: term.label, priority: term.priority, entries: [] });
+          const topic = topics.get(key);
+          topic.priority = Math.max(topic.priority, term.priority);
+          topic.entries.push(entry);
+        });
+      });
+      const ranked = Array.from(topics.values())
+        .filter(topic => topic.entries.length >= 3)
+        .sort((a, b) => b.entries.length - a.entries.length || b.priority - a.priority || a.label.localeCompare(b.label, "ja"));
+      const assigned = new Set();
+      const sections = [];
+      ranked.forEach(topic => {
+        if (sections.length >= 8) return;
+        const available = topic.entries.filter(entry => !assigned.has(entry.p.id));
+        if (available.length < 3) return;
+        const selected = available.slice(0, 6);
+        selected.forEach(entry => assigned.add(entry.p.id));
+        sections.push({ label: topic.label, query: topic.label, entries: selected });
+      });
+      const remaining = entries.filter(entry => !assigned.has(entry.p.id))
+        .sort((a, b) => tsMillis(b.p.createdAt) - tsMillis(a.p.createdAt));
+      for (let i = 0; i < remaining.length; i += 6) {
+        sections.push({ label: "新着トレカ・グッズ", query: "トレカ", entries: remaining.slice(i, i + 6) });
+      }
+      return sections;
+    }
+
+    window.renderHomeThemeSections = function(entries, cardHtmlById) {
+      const container = document.getElementById("posts-container");
+      if (!container) return "";
+      const sections = buildHomeThemeGroups(entries);
+      if (!container.dataset.homeThemeActionsBound) {
+        container.dataset.homeThemeActionsBound = "true";
+        container.addEventListener("click", event => {
+          const button = event.target.closest("[data-home-theme-action]");
+          if (!button) return;
+          event.preventDefault();
+          event.stopPropagation();
+          const query = button.dataset.themeQuery || "";
+          if (button.dataset.homeThemeAction === "follow") {
+            window.triggerHaptic();
+            const searches = readSavedSearches();
+            const exists = searches.some(item => item.query.toLocaleLowerCase() === query.toLocaleLowerCase());
+            const next = exists
+              ? searches.filter(item => item.query.toLocaleLowerCase() !== query.toLocaleLowerCase())
+              : [{ query, activeOnly: false, member: "すべて", kind: "all", bundle: "all", sort: "new", easyFilter: "all", savedAt: Date.now() }, ...searches];
+            if (writeSearchStorage(SAVED_SEARCHES_KEY, next.slice(0, 30))) {
+              button.textContent = exists ? "♡" : "♥";
+              button.setAttribute("aria-pressed", String(!exists));
+              showToast(exists ? "検索条件の保存を解除しました" : "検索条件を保存しました", "success");
+            } else {
+              showToast("検索条件を保存できませんでした", "error");
+            }
+            return;
+          }
+          window.openSearchPage();
+          const input = document.getElementById("search-page-input");
+          if (input) input.value = query;
+          window.runSearchFromInput();
+        });
+      }
+      const savedQueries = new Set(readSavedSearches().map(item => item.query.toLocaleLowerCase()));
+      return sections.map((section, index) => {
+        const saved = savedQueries.has(section.query.toLocaleLowerCase());
+        const cards = section.entries.map(entry => cardHtmlById.get(entry.p.id) || "").join("");
+        return `<section class="home-theme-section">
+          <div class="home-theme-section-header">
+            <button type="button" class="home-theme-title" data-home-theme-action="search" data-theme-query="${escapeHtml(section.query)}">${escapeHtml(section.label)}</button>
+            <div class="flex shrink-0 items-center gap-2">
+              <button type="button" class="home-theme-action" data-home-theme-action="follow" data-theme-query="${escapeHtml(section.query)}" aria-label="検索条件を保存" aria-pressed="${saved}">${saved ? "♥" : "♡"}</button>
+              <button type="button" class="home-theme-action" data-home-theme-action="more" data-theme-query="${escapeHtml(section.query)}" aria-label="このキーワードでもっと見る">⋮</button>
+            </div>
+          </div>
+          <div class="home-theme-grid ${index % 2 === 0 ? "is-odd" : "is-even"}">${cards}</div>
+        </section>`;
+      }).join("");
+    };
+
     function renderPosts(targetContainer = null) {
       const container = targetContainer || document.getElementById("posts-container");
       if (!container) return;
       const isSearchResults = container.id === "search-results-container";
+      const isHomeFeed = !isSearchResults && container.id === "posts-container";
+      if (isHomeFeed && homeFeedSkeletonVisible) return;
+      if (isHomeFeed) container.classList.remove("home-feed-loading");
       const blocked = userData.blocked || []; const likes = userData.likes || [];
       const imageRanks = getImageSearchPostRanks();
       const filtered = [];
@@ -5100,7 +5240,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         const cardStyle = "margin:0;padding:0;width:100%;height:100%;aspect-ratio:1/1;object-fit:cover;display:block;border-radius:10px;overflow:hidden";
 
         return `
-          <div ${cardAttributes} style="${cardStyle}" class="relative cursor-pointer overflow-hidden rounded-[10px] bg-gray-50 ${dim ? "opacity-60" : ""}">
+          <div ${cardAttributes} data-home-post-card style="${cardStyle}" class="relative cursor-pointer overflow-hidden rounded-[10px] bg-gray-50 ${dim ? "opacity-60" : ""}">
             <div class="absolute inset-0 overflow-hidden">
               ${photoBlock}
               <span class="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center drop-shadow">
@@ -5114,13 +5254,22 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           </div>
         `;
       });
-      container.innerHTML = cards.length === 0
+      const shouldGroupHome = !isSearchResults && container.id === "posts-container"
+        && document.body.classList.contains("home-tab") && !searchText.trim()
+        && kindFilter === "all" && selectedMember === "すべて" && !imageSearchState;
+      if (shouldGroupHome && filtered.length && typeof window.renderHomeThemeSections === "function") {
+        container.classList.add("home-theme-grouped");
+        container.innerHTML = window.renderHomeThemeSections(filtered, new Map(filtered.map((entry, index) => [entry.p.id, cards[index]])));
+      } else {
+        container.classList.remove("home-theme-grouped");
+        container.innerHTML = cards.length === 0
           ? (loadingPosts && allPosts.length === 0
-          ? postsSkeletonHtml(isSearchResults ? 4 : 3) + `<div class="posts-status col-span-full text-center pt-1 pb-4"><button type="button" onclick="window._retriedInitialPosts=false; if(window.loadPosts) window.loadPosts(true);" class="text-[12px] text-indigo-600 underline font-bold">再試行する</button></div>`
+          ? (isHomeFeed ? homeFeedSkeletonHtml() : postsSkeletonHtml(4)) + (isHomeFeed ? "" : `<div class="posts-status col-span-full text-center pt-1 pb-4"><button type="button" onclick="window._retriedInitialPosts=false; if(window.loadPosts) window.loadPosts(true);" class="text-[12px] text-indigo-600 underline font-bold">再試行する</button></div>`)
             : imageSearchState
               ? postsEmptyHtml("類似する出品はありません", "別の画像を試すか、画像検索をリセットしてください")
               : postsEmptyHtml("条件に合う募集はありません", "フィルターを外すか、キーワードを変えてみてください"))
-        : cards.join("");
+          : cards.join("");
+      }
       if (!isSearchResults) {
         renderSellTab();
         if (searchPageOpen && searchResultMode) {
@@ -5137,7 +5286,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
 
     // 投稿はリアルタイム監視せず、50件ずつ取得（読み取り回数の節約）
     const POSTS_PAGE = 50;
-    let postsCursor = null, postsHasMore = false, loadingPosts = false, loadPostsGen = 0;
+    let postsCursor = null, postsHasMore = false, loadingPosts = false, loadPostsGen = 0, homeFeedSkeletonVisible = false;
     function postsErrorHtml(title, detail) {
       return `<div class="posts-status p-4 m-4 bg-red-100 text-red-700 text-sm rounded-xl border border-red-300 text-center font-bold">⚠️ ${title}<br><span class="text-xs font-normal">${detail || ""}</span><br><button type="button" onclick="window.loadPosts && window.loadPosts(true)" class="mt-2 text-xs underline text-red-600">再試行</button></div>`;
     }
@@ -5169,7 +5318,12 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       loadingPosts = true;
       if (reset) {
         const container = document.getElementById("posts-container");
-        if (container && allPosts.length === 0) container.innerHTML = postsSkeletonHtml();
+        if (container) {
+          homeFeedSkeletonVisible = true;
+          container.classList.remove("home-theme-grouped");
+          container.classList.add("home-feed-loading");
+          container.innerHTML = homeFeedSkeletonHtml();
+        }
       }
       try {
         let snap = null;
@@ -5190,8 +5344,10 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         if (gen !== loadPostsGen) return;
         if (!snap) {
           loadingPosts = false;
+          homeFeedSkeletonVisible = false;
           const container = document.getElementById("posts-container");
           if (container) {
+            container.classList.remove("home-feed-loading");
             container.innerHTML = postsErrorHtml(
               "データの読み込みに失敗しました",
               escapeHtml((lastErr && lastErr.message) || "通信エラー") + " · 再試行してください"
@@ -5222,7 +5378,10 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         postsHasMore = snap.docs.length === POSTS_PAGE;
         const wrap = document.getElementById("load-more-wrap");
         if (wrap) wrap.classList.toggle("hidden", !postsHasMore);
-        if (gen === loadPostsGen) loadingPosts = false;
+        if (gen === loadPostsGen) {
+          loadingPosts = false;
+          homeFeedSkeletonVisible = false;
+        }
         renderPosts();
         if (searchPageOpen && !searchResultMode) {
           renderSearchSuggestions(document.getElementById("search-page-input")?.value || "");
@@ -5245,8 +5404,10 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         console.error("posts load error:", err);
         if (gen === loadPostsGen) {
           loadingPosts = false;
+          homeFeedSkeletonVisible = false;
           const container = document.getElementById("posts-container");
           if (container && allPosts.length === 0) {
+            container.classList.remove("home-feed-loading");
             container.innerHTML = postsErrorHtml(
               "投稿の読み込みに失敗しました",
               escapeHtml(err?.message || "error") + " · 🔄 または下の再試行を押してください"
@@ -5632,9 +5793,9 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         }
       }
       const primaryActions = actions.innerHTML;
-      actions.innerHTML = `<div class="flex items-center gap-2">
-        <button type="button" onclick="openBundleRequestModal()" class="min-w-0 flex-1 rounded-full border border-[#ff3b4e] bg-white py-3 text-xs font-bold text-[#ff3b4e]">まとめ買い依頼</button>
-        <div class="min-w-0 flex-1">${primaryActions}</div>
+      actions.innerHTML = `<div class="detail-action-row">
+        <button type="button" onclick="openBundleRequestModal()" class="detail-bundle-request">まとめ買い依頼</button>
+        <div>${primaryActions}</div>
       </div>`;
       const more = document.getElementById("detail-more");
       if (more) {
