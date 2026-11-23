@@ -14264,9 +14264,9 @@ window.previewAdminBannerFile = function(input) {
       for (let y = -h; y <= h; y += stepY) {
         for (let x = -w; x <= w; x += stepX) {
           ctx.lineWidth = Math.max(2, Math.round(fontSize * 0.06));
-          ctx.strokeStyle = "rgba(0, 0, 0, 0.16)";
+          ctx.strokeStyle = "rgba(0, 0, 0, 0.34)";
           ctx.strokeText("SAMPLE", x, y);
-          ctx.fillStyle = "rgba(255, 255, 255, 0.26)";
+          ctx.fillStyle = "rgba(255, 255, 255, 0.52)";
           ctx.fillText("SAMPLE", x, y);
         }
       }
