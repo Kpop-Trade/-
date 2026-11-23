@@ -5487,7 +5487,11 @@ window.renderHomeThemeSections = function(entries, cardHtmlById) {
           _gllitEvents = res.ok ? await res.json() : [];
         }
         const today = gllitTodayKey();
-        const upcoming = dedupeCalendarEvents(_gllitEvents || []).filter(e => e && e.date >= today).sort((a, b) => String(a.date).localeCompare(String(b.date)) || String(a.time || "").localeCompare(String(b.time || ""))).slice(0, 8);
+        const allSortedEvents = dedupeCalendarEvents(_gllitEvents || []).filter(e => e && e.date).sort((a, b) => String(a.date).localeCompare(String(b.date)) || String(a.time || "").localeCompare(String(b.time || "")));
+    const futureEvents = allSortedEvents.filter(e => e.date >= today);
+    const upcoming = (futureEvents.length ? futureEvents : allSortedEvents.slice(-8)).slice(0, 8);
+    window.__lastGllitCarouselEvents = upcoming;
+    const _unused = ([] ).filter(e => e && e.date >= today).sort((a, b) => String(a.date).localeCompare(String(b.date)) || String(a.time || "").localeCompare(String(b.time || ""))).slice(0, 8);
         sched.innerHTML = upcoming.length
           ? `<div class="font-bold text-gray-800 mb-1">次の予定</div>` + upcoming.map(e => {
               const href = e.link && String(e.link).startsWith("http") ? e.link : "";
@@ -5501,7 +5505,7 @@ window.renderHomeThemeSections = function(entries, cardHtmlById) {
         sched.textContent = "予定を読み込めませんでした";
       if (typeof renderGllitMercariCarousel === "function") renderGllitMercariCarousel([]);
       }
-      if (typeof renderGllitMercariCarousel === "function") renderGllitMercariCarousel(typeof upcoming !== "undefined" ? upcoming : []);
+      if (typeof renderGllitMercariCarousel === "function") renderGllitMercariCarousel(window.__lastGllitCarouselEvents || []);
     renderGllitMatches();
     }
     function renderGllitMatches() {
@@ -14167,7 +14171,7 @@ function renderGllitMercariCarousel(upcomingList) {
       badge: dateStr ? "📅 " + dateStr + (e.time ? " " + e.time : "") : "📅 SCHEDULE",
       subRight: "予定表 ›",
       title: e.title || "スケジュール",
-      desc: e.note || e.place || "タップして予定表を開く",
+      desc: e.detail || e.note || e.place || "タップして予定表を開く",
       bg: gradients[idx % gradients.length],
       action: "openIllitCalendar()"
     };
