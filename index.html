@@ -505,14 +505,21 @@
 </style>
 <script>
 (function() {
-  const targetKeywords = ["notif", "notice", "todo", "task", "yarukoto"];
+  const targetKeywords = ["notif", "notice", "todo", "task", "yarukoto", "bell", "inbox", "activity", "alert", "message-box", "oshirase"];
 
   function isSlideTargetModal(el) {
     if (!el || el.nodeType !== 1) return false;
     const id = (el.id || "").toLowerCase();
     const textHint = (el.getAttribute("data-modal") || "").toLowerCase();
-    return targetKeywords.some(k => id.includes(k) || textHint.includes(k)) &&
-           (id.includes("modal") || id.includes("view") || id.includes("panel") || id.includes("drawer") || el.classList.contains("fixed"));
+    if (targetKeywords.some(k => id.includes(k) || textHint.includes(k))) {
+      return id.includes("modal") || id.includes("view") || id.includes("panel") || id.includes("drawer") || id.includes("box") || id.includes("list") || el.classList.contains("fixed");
+    }
+    if (el.classList.contains("fixed") && el.classList.contains("inset-0")) {
+      const heading = el.querySelector("h1, h2, h3, .font-bold, .font-black");
+      const titleTxt = heading ? (heading.textContent || "").trim() : "";
+      if (titleTxt.includes("通知") || titleTxt.includes("やること")) return true;
+    }
+    return false;
   }
 
   function getActiveSlideModal() {
@@ -565,6 +572,14 @@
     for (const m of mutations) {
       if (m.type === "attributes" && (m.attributeName === "class" || m.attributeName === "style")) {
         triggerSlideIfTarget(m.target);
+      } else if (m.type === "childList" && m.addedNodes && m.addedNodes.length) {
+        m.addedNodes.forEach(node => {
+          if (node.nodeType === 1) {
+            triggerSlideIfTarget(node);
+            const inner = node.querySelector && node.querySelector(".fixed, [id*='notif'], [id*='notice']");
+            if (inner) triggerSlideIfTarget(inner);
+          }
+        });
       }
     }
   });
@@ -639,6 +654,7 @@
     mo.observe(document.body, {
       attributes: true,
       attributeFilter: ["class", "style"],
+      childList: true,
       subtree: true
     });
   });
@@ -2244,7 +2260,7 @@
   </div>
 
   <script src="./js/mycards-binder.js?v=20261121"></script>
-  <script type="module" src="./js/app-main.js?v=1795426395ship1"></script>
+  <script type="module" src="./js/app-main.js?v=1795426449ship1"></script>
 
   <div id="xlogin-help-modal" class="hidden fixed inset-0 z-[10040] modal-backdrop items-end sm:items-center justify-center p-3" style="padding-top: max(12px, env(safe-area-inset-top)); padding-bottom: max(12px, env(safe-area-inset-bottom));" onclick="if(event.target===this) closeGoogleLoginHelp()">
     <div id="xlogin-help-sheet" class="liquid-glass-heavy w-full max-w-sm rounded-[1.75rem] p-5 shadow-2xl border border-white" role="dialog" aria-modal="true" aria-labelledby="xlogin-help-title">
