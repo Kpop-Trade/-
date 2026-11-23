@@ -14255,8 +14255,32 @@ function renderGllitMercariCarousel(upcomingList) {
     }, 110);
   };
 
-  track.ontouchstart = () => { paused = true; };
-  track.ontouchend = () => { paused = false; };
+  
+  // モバイルSafariの横スクロールカルーセル内でもタップを確実に検知してカレンダーを開く
+  let tapStartX = 0, tapStartY = 0, tapStartTime = 0;
+  track.addEventListener("touchstart", (ev) => {
+    paused = true;
+    if (ev.touches && ev.touches[0]) {
+      tapStartX = ev.touches[0].clientX;
+      tapStartY = ev.touches[0].clientY;
+      tapStartTime = Date.now();
+    }
+  }, { passive: true });
+
+  track.addEventListener("touchend", (ev) => {
+    paused = false;
+    const t = ev.changedTouches && ev.changedTouches[0];
+    if (!t) return;
+    const dx = Math.abs(t.clientX - tapStartX);
+    const dy = Math.abs(t.clientY - tapStartY);
+    const dt = Date.now() - tapStartTime;
+    if (dx < 10 && dy < 10 && dt < 450) {
+      if (typeof window.openIllitCalendar === "function") {
+        window.openIllitCalendar();
+      }
+    }
+  }, { passive: true });
+
   track.ontouchcancel = () => { paused = false; };
 
   window.__gllitCarouselTimer = setInterval(() => {
