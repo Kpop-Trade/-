@@ -1574,6 +1574,7 @@ exports.onTradeUpdated = onDocumentUpdated("trades/{tradeId}", async (event) => 
   const jobs = [];
 
   if (a.status === "completed" && b.status !== "completed" &&
+      a.received && a.received[a.ownerId] === true && a.received[a.applicantId] === true &&
       a.ownerId && a.applicantId && a.ownerId !== a.applicantId) {
     const userIds = [a.ownerId, a.applicantId].sort();
     const completedAt = event.data.after.updateTime?.toDate() || new Date();
@@ -1594,13 +1595,18 @@ exports.onTradeUpdated = onDocumentUpdated("trades/{tradeId}", async (event) => 
       const userSnaps = rest.slice(2, 4);
       const campaignSnap = rest[4];
       if (!tradeSnap.exists || tradeSnap.data().pointsAwarded !== undefined) return;
+      const currentTrade = tradeSnap.data();
+      if (!currentTrade.received ||
+          currentTrade.received[userIds[0]] !== true ||
+          currentTrade.received[userIds[1]] !== true) return;
       if (pairSnap.exists || usageSnaps.some((snap) => Number(snap.data()?.count || 0) >= 5)) {
         tx.update(tradeRef, { pointsAwarded: false, pointsAwardedMonth: month });
         return;
       }
-      const isDoubleDay = (campaignSnap.exists && Array.isArray(campaignSnap.data().doublePointDates)
-        ? campaignSnap.data().doublePointDates : []).includes(completedDate);
-      const points = isDoubleDay ? 200 : 100;
+      const campaign = campaignSnap.exists ? campaignSnap.data() : {};
+      const isDoubleDay = campaign.doubleActive === true ||
+        (Array.isArray(campaign.doublePointDates) ? campaign.doublePointDates : []).includes(completedDate);
+      const points = isDoubleDay ? 40 : 20;
       userRefs.forEach((ref, i) => {
         const user = userSnaps[i].exists ? userSnaps[i].data() : {};
         tx.set(ref, {
@@ -1648,7 +1654,6 @@ exports.claimDailyLoginBonus = onCall(async (request) => {
   if (!request.auth) throw new HttpsError("unauthenticated", "authentication required");
   const uid = request.auth.uid;
   const today = jstDate();
-  const month = today.slice(0, 7);
   const userRef = db.collection("users").doc(uid);
   const campaignRef = db.collection("config").doc("pointCampaign");
   return db.runTransaction(async (tx) => {
@@ -1657,14 +1662,21 @@ exports.claimDailyLoginBonus = onCall(async (request) => {
     const campaign = campaignSnap.exists ? campaignSnap.data() : {};
     const doublePointDates = Array.isArray(campaign.doublePointDates)
       ? campaign.doublePointDates.filter((date) => typeof date === "string") : [];
-    const isDoubleDay = doublePointDates.includes(today);
+    const isDoubleDay = campaign.doubleActive === true || doublePointDates.includes(today);
     const loginStamps = (Array.isArray(user.loginStamps) ? user.loginStamps : [])
-      .filter((date) => typeof date === "string" && date.startsWith(`${month}-`));
+      .filter((date) => typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date) &&
+        date >= new Date(Date.parse(`${today}T00:00:00Z`) - 90 * 86400000).toISOString().slice(0, 10));
     const totalPoints = Number(user.points) || 0;
     if (user.lastLoginBonusDate === today) {
       const currentStamps = [...new Set([...loginStamps, today])].sort();
-      if (currentStamps.length !== loginStamps.length) tx.set(userRef, { loginStamps: currentStamps }, { merge: true });
-      return { awarded: false, pointsAdded: 0, isDoubleDay, totalPoints, loginStamps: currentStamps, doublePointDates };
+      if (JSON.stringify(currentStamps) !== JSON.stringify(user.loginStamps || [])) {
+        tx.set(userRef, { loginStamps: currentStamps }, { merge: true });
+      }
+      return {
+        awarded: false, pointsAdded: 0, isDoubleDay, totalPoints,
+        loginStamps: currentStamps, doublePointDates, doubleActive: campaign.doubleActive === true,
+        lastLoginBonusDate: today
+      };
     }
     const pointsAdded = isDoubleDay ? 20 : 10;
     const updatedStamps = [...new Set([...loginStamps, today])].sort();
@@ -1676,12 +1688,13 @@ exports.claimDailyLoginBonus = onCall(async (request) => {
     }, { merge: true });
     return {
       awarded: true, pointsAdded, isDoubleDay, totalPoints: totalPoints + pointsAdded,
-      loginStamps: updatedStamps, doublePointDates
+      loginStamps: updatedStamps, doublePointDates, doubleActive: campaign.doubleActive === true,
+      lastLoginBonusDate: today
     };
   });
 });
 
-exports.grantProfileAndInviteBonus = onCall(async (request) => {
+async function claimProfileOrInviteBonus(request) {
   if (!request.auth) throw new HttpsError("unauthenticated", "authentication required");
   const uid = request.auth.uid;
   const inviteCode = String((request.data || {}).inviteCode || "").trim().toUpperCase();
@@ -1692,9 +1705,11 @@ exports.grantProfileAndInviteBonus = onCall(async (request) => {
   const userSnap = await userRef.get();
   const currentUser = userSnap.exists ? userSnap.data() : {};
   let inviterRef = null;
-  if (inviteCode && !currentUser.profileBonusGranted && !currentUser.referredBy) {
+  if (inviteCode && !currentUser.referredBy) {
     const inviterSnap = await db.collection("users").where("inviteCode", "==", inviteCode).limit(1).get();
-    if (!inviterSnap.empty && inviterSnap.docs[0].id !== uid) inviterRef = inviterSnap.docs[0].ref;
+    if (inviterSnap.empty) throw new HttpsError("not-found", "invite code not found");
+    if (inviterSnap.docs[0].id === uid) throw new HttpsError("failed-precondition", "self-invites are not allowed");
+    inviterRef = inviterSnap.docs[0].ref;
   }
   const code = createHash("sha256").update(uid).digest("hex").slice(0, 10).toUpperCase();
   return db.runTransaction(async (tx) => {
@@ -1708,28 +1723,39 @@ exports.grantProfileAndInviteBonus = onCall(async (request) => {
     const updates = { inviteCode: user.inviteCode || code };
     let profileAwarded = false;
     let inviteAwarded = false;
+    let updatedPoints = Number(user.points) || 0;
+    let updatedHistory = user.pointHistory;
     if (isComplete && !user.profileBonusGranted) {
-      const points = (Number(user.points) || 0) + 100;
-      updates.points = points;
+      updatedPoints += 30;
       updates.profileBonusGranted = true;
-      updates.pointHistory = appendPointHistory(user.pointHistory, 100, "profile", "プロフィール完了ボーナス");
+      updatedHistory = appendPointHistory(updatedHistory, 30, "profile", "プロフィール完了ボーナス");
       profileAwarded = true;
-      if (inviter && inviter.inviteCode === inviteCode && !user.referredBy && inviterRef) {
-        updates.referredBy = inviterRef.id;
-        const inviterPoints = (Number(inviter.points) || 0) + 100;
-        tx.set(inviterRef, {
-          points: inviterPoints,
-          pointHistory: appendPointHistory(inviter.pointHistory, 100, "invite", "友だち招待ボーナス")
-        }, { merge: true });
-        updates.points = points + 100;
-        updates.pointHistory = appendPointHistory(updates.pointHistory, 100, "invite", "友だち招待ボーナス");
-        inviteAwarded = true;
-      }
+    }
+    if (inviteCode && inviter && inviter.inviteCode === inviteCode && !user.referredBy && inviterRef) {
+      updates.referredBy = inviterRef.id;
+      tx.set(inviterRef, {
+        points: (Number(inviter.points) || 0) + 50,
+        pointHistory: appendPointHistory(inviter.pointHistory, 50, "invite", "友だち招待ボーナス")
+      }, { merge: true });
+      updatedPoints += 50;
+      updatedHistory = appendPointHistory(updatedHistory, 50, "invite", "友だち招待ボーナス");
+      inviteAwarded = true;
+    }
+    if (profileAwarded || inviteAwarded) {
+      updates.points = updatedPoints;
+      updates.pointHistory = updatedHistory;
     }
     tx.set(userRef, updates, { merge: true });
-    return { profileAwarded, inviteAwarded, inviteCode: updates.inviteCode };
+    return {
+      profileAwarded, inviteAwarded, inviteCode: updates.inviteCode,
+      alreadyInvited: !!user.referredBy, referredBy: user.referredBy || (inviteAwarded ? inviterRef.id : ""),
+      totalPoints: updatedPoints
+    };
   });
-});
+}
+
+exports.claimProfileOrInviteBonus = onCall(claimProfileOrInviteBonus);
+exports.grantProfileAndInviteBonus = onCall(claimProfileOrInviteBonus);
 
 exports.enterRaffle = onCall(async (request) => {
   if (!request.auth) throw new HttpsError("unauthenticated", "authentication required");
@@ -1747,18 +1773,22 @@ exports.enterRaffle = onCall(async (request) => {
     }
     const user = userSnap.exists ? userSnap.data() : {};
     const points = Number(user.points) || 0;
-    if (points < 100) throw new HttpsError("failed-precondition", "not enough points");
+    const costPoints = Number(raffleSnap.data().costPoints ?? 100);
+    if (!Number.isSafeInteger(costPoints) || costPoints < 1) {
+      throw new HttpsError("failed-precondition", "raffle point cost is invalid");
+    }
+    if (points < costPoints) throw new HttpsError("failed-precondition", "not enough points");
     tx.set(userRef, {
-      points: points - 100,
-      pointHistory: appendPointHistory(user.pointHistory, -100, "raffle", "トレカ抽選応募")
+      points: points - costPoints,
+      pointHistory: appendPointHistory(user.pointHistory, -costPoints, "raffle", "トレカ抽選応募")
     }, { merge: true });
-    tx.create(entryRef, { userId: uid, createdAt: FV.serverTimestamp() });
+    tx.create(entryRef, { userId: uid, costPoints, createdAt: FV.serverTimestamp() });
     tx.update(raffleRef, { entriesCount: (Number(raffleSnap.data().entriesCount) || 0) + 1 });
-    return { ok: true, entryId: entryRef.id, totalPoints: points - 100 };
+    return { ok: true, entryId: entryRef.id, totalPoints: points - costPoints, costPoints };
   });
 });
 
-exports.drawRaffleWinners = onCall({ timeoutSeconds: 300 }, async (request) => {
+async function drawRaffleWinner(request) {
   assertAdmin(request);
   const raffleId = String((request.data || {}).raffleId || "");
   if (!/^[\w-]{1,120}$/.test(raffleId)) throw new HttpsError("invalid-argument", "invalid raffle");
@@ -1804,8 +1834,13 @@ exports.drawRaffleWinners = onCall({ timeoutSeconds: 300 }, async (request) => {
       });
     });
     await Promise.all(winners.map((uid) =>
-      push(uid, "トレカ抽選に当選しました！", `${raffleSnap.data().title || "トレカ抽選"}に当選しました。`, { url: SITE })
-        .catch((error) => console.error("Raffle winner push failed:", uid, error))
+      notify(uid, {
+        id: `raffle_winner_${raffleId}`,
+        text: `${raffleSnap.data().title || "トレカ抽選"}に当選しました。賞品の受け取りについて運営からの連絡をご確認ください。`,
+        type: "success",
+        title: "🎉 トレカ抽選に当選しました",
+        link: { url: SITE }
+      }).catch((error) => console.error("Raffle winner notification failed:", uid, error))
     ));
     return { winners };
   } catch (error) {
@@ -1817,7 +1852,10 @@ exports.drawRaffleWinners = onCall({ timeoutSeconds: 300 }, async (request) => {
     }
     throw error;
   }
-});
+}
+
+exports.drawRaffleWinner = onCall({ timeoutSeconds: 300 }, drawRaffleWinner);
+exports.drawRaffleWinners = onCall({ timeoutSeconds: 300 }, drawRaffleWinner);
 
 exports.setDoublePointDates = onCall(async (request) => {
   assertAdmin(request);
@@ -1833,28 +1871,94 @@ exports.setDoublePointDates = onCall(async (request) => {
   const doublePointDates = [...new Set(dates)].sort();
   await db.collection("config").doc("pointCampaign").set({
     doublePointDates, updatedAt: FV.serverTimestamp(), updatedBy: request.auth.uid
-  });
+  }, { merge: true });
   return { doublePointDates };
 });
 
-exports.createRaffle = onCall(async (request) => {
+exports.adminToggleDoublePoint = onCall(async (request) => {
+  assertAdmin(request);
+  if (typeof (request.data || {}).doubleActive !== "boolean") {
+    throw new HttpsError("invalid-argument", "doubleActive must be boolean");
+  }
+  const doubleActive = request.data.doubleActive;
+  await db.collection("config").doc("pointCampaign").set({
+    doubleActive, updatedAt: FV.serverTimestamp(), updatedBy: request.auth.uid
+  }, { merge: true });
+  return { doubleActive };
+});
+
+async function adminCreateRaffle(request) {
   assertAdmin(request);
   const data = request.data || {};
   const title = String(data.title || "").trim();
   const imageUrl = String(data.imageUrl || "").trim();
   const winnerCount = Number(data.winnerCount);
+  const costPoints = Number(data.costPoints);
+  const prizeDescription = String(data.prizeDescription || "").trim();
   const endsAt = new Date(data.endsAt);
   if (!title || title.length > 120 || !/^https:\/\//i.test(imageUrl) || imageUrl.length > 2048 ||
       !Number.isInteger(winnerCount) || winnerCount < 1 || winnerCount > 100 ||
+      !Number.isSafeInteger(costPoints) || costPoints < 1 || costPoints > 100000 ||
+      !prizeDescription || prizeDescription.length > 1000 ||
       !Number.isFinite(endsAt.getTime()) || endsAt.getTime() <= Date.now()) {
     throw new HttpsError("invalid-argument", "invalid raffle data");
   }
   const raffleRef = db.collection("raffles").doc();
   await raffleRef.set({
-    title, imageUrl, winnerCount, endsAt: admin.firestore.Timestamp.fromDate(endsAt),
+    title, imageUrl, winnerCount, costPoints, prizeDescription,
+    endsAt: admin.firestore.Timestamp.fromDate(endsAt),
     status: "active", entriesCount: 0, createdAt: FV.serverTimestamp(), createdBy: request.auth.uid
   });
   return { raffleId: raffleRef.id };
+}
+
+exports.adminCreateRaffle = onCall(adminCreateRaffle);
+exports.createRaffle = onCall(adminCreateRaffle);
+
+exports.adminUploadRaffleImage = onCall({
+  maxInstances: 10,
+  timeoutSeconds: 120,
+  memory: "512MiB"
+}, async (request) => {
+  assertAdmin(request);
+  const dataUrl = request.data && request.data.dataUrl;
+  if (typeof dataUrl !== "string" || !dataUrl) throw new HttpsError("invalid-argument", "image required");
+  const match = dataUrl.replace(/\s+/g, "").match(
+    /^data:image\/(jpeg|jpg|png|webp|gif|apng|avif|heic|heif);base64,([A-Za-z0-9+/=]+)$/i
+  );
+  if (!match) throw new HttpsError("invalid-argument", "unsupported image");
+  const imageType = match[1].toLowerCase() === "jpg" ? "jpeg" : match[1].toLowerCase();
+  const buffer = Buffer.from(match[2], "base64");
+  if (!buffer.length || buffer.length > 4 * 1024 * 1024) {
+    throw new HttpsError("invalid-argument", "image must be 4 MB or smaller");
+  }
+  const extension = imageType === "jpeg" ? "jpg" : imageType;
+  const path = `raffles/${randomUUID()}.${extension}`;
+  const token = randomUUID();
+  let lastStorageError = null;
+  for (const bucketName of STORAGE_BUCKET_CANDIDATES) {
+    try {
+      const bucket = admin.storage().bucket(bucketName);
+      await bucket.file(path).save(buffer, {
+        resumable: false,
+        validation: false,
+        metadata: {
+          contentType: `image/${imageType}`,
+          cacheControl: "public, max-age=3600",
+          metadata: { firebaseStorageDownloadTokens: token }
+        }
+      });
+      return {
+        imageUrl: `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(path)}?alt=media&token=${token}`
+      };
+    } catch (error) {
+      lastStorageError = error;
+      console.error("Raffle image storage failed:", bucketName, error && error.message ? error.message : error);
+    }
+  }
+  throw new HttpsError("unavailable", "failed to upload raffle image", {
+    cause: lastStorageError && lastStorageError.message ? lastStorageError.message : String(lastStorageError || "")
+  });
 });
 
 // ===== キャンセル回数の警告（クライアントが cancelHistory を更新したとき） =====
