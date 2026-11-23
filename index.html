@@ -1016,7 +1016,27 @@
       </div>
     </div>
     <div id="admin-controls" class="hidden"></div>
-    <div id="admin-content" class="space-y-3 text-sm"></div>
+    
+    <div id="admin-top-banner-standalone" class="bg-purple-50 border-2 border-purple-300 rounded-2xl p-3.5 mb-3 space-y-2.5 shadow-sm">
+      <div class="flex items-center justify-between">
+        <span class="font-bold text-purple-900 text-xs">🖼️ トップ広告カルーセル（写真＋リンク登録）</span>
+        <span class="text-[10px] font-bold bg-purple-600 text-white px-2 py-0.5 rounded-full">即時反映</span>
+      </div>
+      <div>
+        <input type="file" id="admin-banner-file" accept="image/*" onchange="window.previewAdminBannerFile(this)" class="block w-full text-xs text-gray-700 file:mr-3 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-purple-600 file:text-white">
+        <div id="admin-banner-preview-wrap" class="hidden mt-2">
+          <img id="admin-banner-preview" src="" class="w-full h-28 object-cover rounded-xl border border-purple-200">
+        </div>
+      </div>
+      <div class="grid grid-cols-1 gap-2">
+        <input type="url" id="admin-banner-link" placeholder="リンクURL（例: https://... や #xtrade）" class="liquid-glass-input w-full rounded-xl p-2 text-xs text-gray-800">
+        <input type="text" id="admin-banner-title" maxlength="40" placeholder="タイトル（任意・例: 新作トレカ交換キャンペーン！）" class="liquid-glass-input w-full rounded-xl p-2 text-xs text-gray-800">
+      </div>
+      <button type="button" onclick="window.addAdminTopBanner()" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 rounded-xl text-xs shadow-sm">広告バナーを追加する</button>
+      <p id="admin-banner-status" class="text-[11px] text-center text-gray-600"></p>
+      <div id="admin-banner-list" class="space-y-2"></div>
+    </div>
+<div id="admin-content" class="space-y-3 text-sm"></div>
   </section>
 
 
@@ -2051,7 +2071,7 @@
   </div>
 
   <script src="./js/mycards-binder.js?v=20261121"></script>
-  <script type="module" src="./js/app-main.js?v=1795423037ship1"></script>
+  <script type="module" src="./js/app-main.js?v=1795424360ship1"></script>
 
   <div id="xlogin-help-modal" class="hidden fixed inset-0 z-[10040] modal-backdrop items-end sm:items-center justify-center p-3" style="padding-top: max(12px, env(safe-area-inset-top)); padding-bottom: max(12px, env(safe-area-inset-bottom));" onclick="if(event.target===this) closeGoogleLoginHelp()">
     <div id="xlogin-help-sheet" class="liquid-glass-heavy w-full max-w-sm rounded-[1.75rem] p-5 shadow-2xl border border-white" role="dialog" aria-modal="true" aria-labelledby="xlogin-help-title">
