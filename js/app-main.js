@@ -14651,16 +14651,17 @@ setTimeout(function() {
 
 // === Modular SDK 対応版 トップ広告バナー保存・読込 ===
 window._getTopBannersRef = function() {
-  const h = window._modularTopBannerHelpers;
-  if (h && h.doc && typeof db !== "undefined" && db) return h.doc(db, "siteConfig", "topBanners");
-  if (typeof db !== "undefined" && db && typeof db.collection === "function") return db.collection("siteConfig").doc("topBanners");
+  const g = window._globalFirestoreModular || window._modularTopBannerHelpers;
+  const activeDb = (g && g.db) || (typeof db !== "undefined" ? db : null);
+  if (g && g.doc && activeDb) return g.doc(activeDb, "siteConfig", "topBanners");
+  if (activeDb && typeof activeDb.collection === "function") return activeDb.collection("siteConfig").doc("topBanners");
   return null;
 };
 
 window.loadAdminTopBanners = async function() {
   try {
     const ref = window._getTopBannersRef();
-    const h = window._modularTopBannerHelpers;
+    const h = window._globalFirestoreModular || window._modularTopBannerHelpers;
     if (!ref) return;
     const snap = (h && h.getDoc) ? await h.getDoc(ref) : await ref.get();
     const exists = typeof snap.exists === "function" ? snap.exists() : !!snap.exists;
@@ -14683,7 +14684,7 @@ window.addAdminTopBanner = async function() {
   if (statusEl) statusEl.textContent = "保存中...";
   try {
     const ref = window._getTopBannersRef();
-    const h = window._modularTopBannerHelpers;
+    const h = window._globalFirestoreModular || window._modularTopBannerHelpers;
     if (!ref) throw new Error("DB未初期化");
     const nextList = [{ id: String(Date.now()), imageUrl, link, title }, ...(window._adminTopBanners || [])];
     if (h && h.setDoc) await h.setDoc(ref, { items: nextList, updatedAt: Date.now() }, { merge: true });
@@ -14708,7 +14709,7 @@ window.deleteAdminTopBanner = async function(idx) {
   const statusEl = document.getElementById("admin-banner-status");
   try {
     const ref = window._getTopBannersRef();
-    const h = window._modularTopBannerHelpers;
+    const h = window._globalFirestoreModular || window._modularTopBannerHelpers;
     if (!ref) return;
     const nextList = (window._adminTopBanners || []).filter((_, i) => i !== idx);
     if (h && h.setDoc) await h.setDoc(ref, { items: nextList, updatedAt: Date.now() }, { merge: true });
@@ -14722,7 +14723,7 @@ window.deleteAdminTopBanner = async function(idx) {
 
 setTimeout(function() {
   const ref = window._getTopBannersRef();
-  const h = window._modularTopBannerHelpers;
+  const h = window._globalFirestoreModular || window._modularTopBannerHelpers;
   if (ref && h && h.onSnapshot) {
     h.onSnapshot(ref, function(snap) {
       const exists = typeof snap.exists === "function" ? snap.exists() : !!snap.exists;
