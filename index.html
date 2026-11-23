@@ -32,7 +32,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js?v=20261121"></script>
 
   <script src="./js/tailwind-config.js?v=20261121"></script>
-  <link rel="stylesheet" href="./styles.css?v=20261122inapp1">
+  <link rel="stylesheet" href="./styles.css?v=20261123gap1">
   <link rel="stylesheet" href="./liquid-glass.css?v=20261121">
   <link rel="stylesheet" href="./mycards-binder.css?v=20261121c">
 
@@ -400,21 +400,26 @@
     padding: 0 !important;
     margin: 0 !important;
   }
-  .home-theme-section {
+  #posts-container.home-theme-grouped > .home-theme-section {
     display: flex !important;
     flex-direction: column !important;
     gap: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
     min-height: 0 !important;
+    height: auto !important;
+    grid-column: auto !important;
+    grid-row: auto !important;
   }
-  .home-theme-section-header {
+  #posts-container.home-theme-grouped > .home-theme-section > .home-theme-section-header {
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
     margin: 0 !important;
-    padding: 10px 8px 6px !important;
+    padding: 8px 8px 4px !important;
     min-height: 0 !important;
+    height: auto !important;
+    flex: none !important;
   }
   .home-theme-grid {
     margin-top: 0 !important;
