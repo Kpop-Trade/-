@@ -32,7 +32,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js?v=20261121"></script>
 
   <script src="./js/tailwind-config.js?v=20261121"></script>
-  <link rel="stylesheet" href="./styles.css?v=1795418710gap1">
+  <link rel="stylesheet" href="./styles.css?v=1795418829gap1">
   <link rel="stylesheet" href="./liquid-glass.css?v=20261121">
   <link rel="stylesheet" href="./mycards-binder.css?v=20261121c">
 
@@ -606,24 +606,27 @@
       </div>
     </section>
 
-    <section id="gllit-hub" class="w-screen relative left-1/2 -translate-x-1/2">
-  <button type="button" onclick="openIllitCalendar()" class="gllit-led-board w-full rounded-none px-4 py-3.5 flex items-center gap-3 overflow-hidden border-y-2 border-neutral-800 shadow-lg active:opacity-95 transition text-left">
-    <div class="relative flex-1 overflow-hidden py-0.5">
-      <div id="gllit-ticker-track" class="gllit-marquee-track text-sm sm:text-base font-black tracking-wide">
-        <span class="pr-12">📅 予定を読み込み中...</span>
-        <span class="pr-12">📅 予定を読み込み中...</span>
-      </div>
-    </div>
-    <span class="shrink-0 text-xs font-bold text-amber-400/90">予定表 ›</span>
-  </button>
-  <div class="hidden">
-    <div id="gllit-hub-tasks"></div>
-    <div id="gllit-hub-schedule">予定を読み込み中...</div>
-    <div id="gllit-stat-exchange"></div>
-    <div id="gllit-stat-serial"></div>
-    <div id="gllit-stat-group"></div>
-  </div>
-</section>
+    <section id="gllit-hub" class="w-screen relative left-1/2 -translate-x-1/2 pt-1 pb-2 overflow-hidden">
+        <div id="gllit-carousel-track" class="gllit-mercari-track">
+          <button type="button" onclick="openIllitCalendar()" class="gllit-mercari-card" style="background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 55%,#312e81 100%);">
+            <div class="flex items-center justify-between gap-2 mb-1">
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-400 text-slate-900">📅 SCHEDULE</span>
+              <span class="text-[11px] font-bold text-amber-300">予定表を開く ›</span>
+            </div>
+            <div class="text-white font-black text-base leading-snug truncate">🗓️ ILLIT 予定・カムバ情報をチェック</div>
+            <div class="text-slate-300 text-xs mt-0.5 truncate">タップしてカレンダー一覧を表示</div>
+          </button>
+        </div>
+        <div id="gllit-carousel-dots" class="flex justify-center items-center gap-1.5 mt-1.5"></div>
+        <div class="hidden">
+          <div id="gllit-ticker-track"></div>
+          <div id="gllit-hub-tasks"></div>
+          <div id="gllit-hub-schedule">予定を読み込み中...</div>
+          <div id="gllit-stat-exchange"></div>
+          <div id="gllit-stat-serial"></div>
+          <div id="gllit-stat-group"></div>
+        </div>
+      </section>
 
     <section id="post-menu-section" class="hidden space-y-5 pb-28">
       <!-- 件数カード -->
@@ -2025,7 +2028,7 @@
   </div>
 
   <script src="./js/mycards-binder.js?v=20261121"></script>
-  <script type="module" src="./js/app-main.js?v=1795415601ship1"></script>
+  <script type="module" src="./js/app-main.js?v=1795418829ship1"></script>
 
   <div id="xlogin-help-modal" class="hidden fixed inset-0 z-[10040] modal-backdrop items-end sm:items-center justify-center p-3" style="padding-top: max(12px, env(safe-area-inset-top)); padding-bottom: max(12px, env(safe-area-inset-bottom));" onclick="if(event.target===this) closeGoogleLoginHelp()">
     <div id="xlogin-help-sheet" class="liquid-glass-heavy w-full max-w-sm rounded-[1.75rem] p-5 shadow-2xl border border-white" role="dialog" aria-modal="true" aria-labelledby="xlogin-help-title">

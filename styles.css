@@ -1125,3 +1125,39 @@ html, body {
   overflow: hidden;
   word-break: break-word;
 }
+
+
+/* === Mercari-style Top Banner Carousel (#gllit-hub) === */
+.gllit-mercari-track {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  gap: 8px;
+  padding: 2px 16px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.gllit-mercari-track::-webkit-scrollbar {
+  display: none;
+}
+.gllit-mercari-card {
+  flex: 0 0 calc(100vw - 32px);
+  width: calc(100vw - 32px);
+  max-width: 448px;
+  border-radius: 12px;
+  padding: 14px 16px;
+  text-align: left;
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.14);
+  transition: transform 0.15s ease;
+}
+.gllit-mercari-card:active {
+  transform: scale(0.985);
+}
+@media (min-width: 480px) {
+  .gllit-mercari-card {
+    flex: 0 0 calc(100% - 32px);
+    width: calc(100% - 32px);
+  }
+}

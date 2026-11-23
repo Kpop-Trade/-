@@ -5499,8 +5499,10 @@ window.renderHomeThemeSections = function(entries, cardHtmlById) {
           : "直近の予定はありません";
       } catch (_) {
         sched.textContent = "予定を読み込めませんでした";
+      if (typeof renderGllitMercariCarousel === "function") renderGllitMercariCarousel([]);
       }
-      renderGllitMatches();
+      if (typeof renderGllitMercariCarousel === "function") renderGllitMercariCarousel(typeof upcoming !== "undefined" ? upcoming : []);
+    renderGllitMatches();
     }
     function renderGllitMatches() {
       const el = document.getElementById("gllit-matches");
@@ -14145,3 +14147,125 @@ window.renderMyCardsPieCharts = function() {
       '<div class="grid grid-cols-2 gap-2">' + albumCardsHtml + '</div>' +
     '</div>';
 };
+
+
+function renderGllitMercariCarousel(upcomingList) {
+  const track = document.getElementById("gllit-carousel-track");
+  const dotsWrap = document.getElementById("gllit-carousel-dots");
+  if (!track) return;
+
+  const gradients = [
+    "linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%)",
+    "linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)",
+    "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+    "linear-gradient(135deg, #f59e0b 0%, #ea580c 100%)",
+    "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)"
+  ];
+
+  const items = [];
+  (upcomingList || []).forEach((e, idx) => {
+    const dateStr = String(e.date || "").slice(5).replace("-", "/");
+    items.push({
+      badge: dateStr ? "📅 " + dateStr + (e.time ? " " + e.time : "") : "📅 SCHEDULE",
+      subRight: "予定表 ›",
+      title: e.title || "スケジュール",
+      desc: "タップして詳細・カレンダーを確認",
+      bg: gradients[idx % gradients.length],
+      action: "openIllitCalendar()"
+    });
+  });
+
+  // 予定が0〜1件でも必ず複数枚のメルカリ風バナーが左右チラ見え＆自動スライドするように案内バナーを追加
+  items.push({
+    badge: "✨ AUTO-GO",
+    subRight: "参加する ›",
+    title: "抱き合わせゼロ・定価共同購入",
+    desc: "希望メンバー枠を選ぶだけで自動マッチング交換！",
+    bg: "linear-gradient(135deg, #9333ea 0%, #ec4899 100%)",
+    action: "if(typeof openAutoGoModal==='function')openAutoGoModal();"
+  });
+  items.push({
+    badge: "🛡️ 安心取引",
+    subRight: "詳細を見る ›",
+    title: "X合意 取引ルーム＆アズカリ決済",
+    desc: "URLを送るだけで住所交換・評価保護まで完結！",
+    bg: "linear-gradient(135deg, #0f172a 0%, #334155 100%)",
+    action: "if(typeof openAzukariGuide==='function')openAzukariGuide();"
+  });
+
+  const makeCard = (item, cloneAttr) => `
+    <button type="button" ${cloneAttr || ""} onclick="${item.action}" class="gllit-mercari-card" style="background:${item.bg};">
+      <div class="flex items-center justify-between gap-2 mb-1">
+        <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-white/95 text-slate-900 shadow-xs">${escapeHtml(item.badge)}</span>
+        <span class="text-[11px] font-bold text-white/90">${escapeHtml(item.subRight)}</span>
+      </div>
+      <div class="text-white font-black text-[15px] leading-snug truncate">${escapeHtml(item.title)}</div>
+      <div class="text-white/85 text-xs mt-0.5 truncate">${escapeHtml(item.desc)}</div>
+    </button>`;
+
+  const firstClone = makeCard(items[0], 'data-clone="first"');
+  const lastClone = makeCard(items[items.length - 1], 'data-clone="last"');
+  track.innerHTML = lastClone + items.map((it) => makeCard(it, "")).join("") + firstClone;
+
+  let activeIdx = 0;
+  const updateDots = (idx) => {
+    if (!dotsWrap) return;
+    dotsWrap.innerHTML = items.map((_, i) =>
+      `<span class="inline-block h-1.5 rounded-full transition-all ${i === idx ? "w-4 bg-slate-800" : "w-1.5 bg-slate-300"}"></span>`
+    ).join("");
+  };
+  updateDots(0);
+
+  const goToRealIndex = (realIdx, smooth) => {
+    const cards = track.querySelectorAll(".gllit-mercari-card");
+    const targetCard = cards[realIdx + 1];
+    if (!targetCard) return;
+    const left = targetCard.offsetLeft - (track.clientWidth - targetCard.offsetWidth) / 2;
+    track.scrollTo({ left: Math.max(0, left), behavior: smooth ? "smooth" : "auto" });
+    activeIdx = ((realIdx % items.length) + items.length) % items.length;
+    updateDots(activeIdx);
+  };
+
+  requestAnimationFrame(() => goToRealIndex(0, false));
+
+  if (window.__gllitCarouselTimer) clearInterval(window.__gllitCarouselTimer);
+  let paused = false;
+  let scrollDebounce = null;
+
+  track.onscroll = () => {
+    if (scrollDebounce) clearTimeout(scrollDebounce);
+    scrollDebounce = setTimeout(() => {
+      const cards = Array.from(track.querySelectorAll(".gllit-mercari-card"));
+      const mid = track.scrollLeft + track.clientWidth / 2;
+      let best = 1, bestDist = Infinity;
+      cards.forEach((c, idx) => {
+        const d = Math.abs(c.offsetLeft + c.offsetWidth / 2 - mid);
+        if (d < bestDist) { bestDist = d; best = idx; }
+      });
+      if (best === 0) {
+        goToRealIndex(items.length - 1, false);
+      } else if (best === cards.length - 1) {
+        goToRealIndex(0, false);
+      } else {
+        activeIdx = best - 1;
+        updateDots(activeIdx);
+      }
+    }, 110);
+  };
+
+  track.ontouchstart = () => { paused = true; };
+  track.ontouchend = () => { paused = false; };
+  track.ontouchcancel = () => { paused = false; };
+
+  window.__gllitCarouselTimer = setInterval(() => {
+    if (paused || document.hidden) return;
+    const cards = track.querySelectorAll(".gllit-mercari-card");
+    const nextVisualIdx = activeIdx + 2;
+    const targetCard = cards[nextVisualIdx];
+    if (!targetCard) return;
+    const left = targetCard.offsetLeft - (track.clientWidth - targetCard.offsetWidth) / 2;
+    track.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
+    activeIdx = (activeIdx + 1) % items.length;
+    updateDots(activeIdx);
+  }, 3800);
+}
