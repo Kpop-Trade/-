@@ -5489,7 +5489,11 @@ window.renderHomeThemeSections = function(entries, cardHtmlById) {
         const today = gllitTodayKey();
         const allSortedEvents = dedupeCalendarEvents(_gllitEvents || []).filter(e => e && e.date).sort((a, b) => String(a.date).localeCompare(String(b.date)) || String(a.time || "").localeCompare(String(b.time || "")));
     const futureEvents = allSortedEvents.filter(e => e.date >= today);
-    const upcoming = (futureEvents.length ? futureEvents : allSortedEvents.slice(-8)).slice(0, 8);
+    const newsItems = allSortedEvents.filter(e => e.category === "release" || e.category === "news" || String(e.title || "").includes("リリース") || String(e.title || "").includes("お知らせ")).slice(-5).reverse();
+    const baseSched = (futureEvents.length ? futureEvents : allSortedEvents.slice(-6)).slice(0, 6);
+    const mergedMap = new Map();
+    [...newsItems, ...baseSched].forEach(ev => mergedMap.set((ev.date || "") + "_" + (ev.title || ""), ev));
+    const upcoming = Array.from(mergedMap.values()).slice(0, 10);
     window.__lastGllitCarouselEvents = upcoming;
     const _unused = ([] ).filter(e => e && e.date >= today).sort((a, b) => String(a.date).localeCompare(String(b.date)) || String(a.time || "").localeCompare(String(b.time || ""))).slice(0, 8);
         sched.innerHTML = upcoming.length
@@ -14274,7 +14278,7 @@ function renderGllitMercariCarousel(upcomingList) {
     const dx = Math.abs(t.clientX - tapStartX);
     const dy = Math.abs(t.clientY - tapStartY);
     const dt = Date.now() - tapStartTime;
-    if (dx < 10 && dy < 10 && dt < 450) {
+    if (dx < 18 && dy < 18 && dt < 600) {
       if (typeof window.openIllitCalendar === "function") {
         window.openIllitCalendar();
       }
