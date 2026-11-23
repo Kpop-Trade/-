@@ -838,6 +838,7 @@
 
 
 
+
 <style id="kp-banner-peek-style">
 .kp-active-banner-track {
   display: flex !important;
@@ -846,7 +847,8 @@
   overflow-x: auto !important;
   overflow-y: hidden !important;
   gap: 10px !important;
-  padding: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
   margin-left: -16px !important;
   margin-right: -16px !important;
   width: calc(100% + 32px) !important;
@@ -854,124 +856,145 @@
   scroll-snap-type: x mandatory !important;
   box-sizing: border-box !important;
   -webkit-overflow-scrolling: touch !important;
+  scrollbar-width: none !important;
+}
+.kp-active-banner-track::-webkit-scrollbar {
+  display: none !important;
 }
 .kp-active-banner-track > * {
-  flex: 0 0 calc(100% - 44px) !important;
-  width: calc(100% - 44px) !important;
-  min-width: calc(100% - 44px) !important;
-  max-width: calc(100% - 44px) !important;
+  flex: 0 0 calc(100% - 48px) !important;
+  width: calc(100% - 48px) !important;
+  min-width: calc(100% - 48px) !important;
+  max-width: calc(100% - 48px) !important;
   scroll-snap-align: center !important;
   box-sizing: border-box !important;
 }
 .kp-banner-ghost-prev,
 .kp-banner-ghost-next {
-  opacity: 0.85 !important;
+  opacity: 0.88 !important;
 }
 </style>
 <script id="kp-banner-peek-fix">
 (function() {
-  function detectBannerTracks() {
-    const found = new Set();
-    document.querySelectorAll("#gllit-mercari-carousel-track, [data-top-banner-track], .gllit-carousel-track").forEach(el => found.add(el));
+  function findRealBannerTrack() {
+    // 1. 明示ID・属性を優先
+    const explicit = document.querySelector("#gllit-mercari-carousel-track, [data-top-banner-track], .gllit-carousel-track");
+    if (explicit) return explicit;
 
-    // バナー画像（SAMPLE透かしや紅白などのトップバナー画像）を内包する横並びコンテナを自動特定
-    document.querySelectorAll("img").forEach(img => {
-      const rect = img.getBoundingClientRect();
-      if (rect.top > 30 && rect.top < 360 && rect.width > 180 && rect.height > 70 && rect.height < 240) {
-        let cur = img.parentElement;
-        while (cur && cur !== document.body) {
-          const st = getComputedStyle(cur);
-          if ((st.display === "flex" || st.overflowX === "auto" || st.overflowX === "scroll") && cur.children.length >= 1) {
-            found.add(cur);
-            break;
+    // 2. 検索バーの下〜Auto-GOの上にあるバナー画像（高さ90〜220px、幅200px以上）から「各スライドを直接並べている親トラック」を特定
+    const imgs = Array.from(document.querySelectorAll("img")).filter(img => {
+      const r = img.getBoundingClientRect();
+      return r.top >= 40 && r.top <= 340 && r.width >= 200 && r.height >= 90 && r.height <= 230;
+    });
+    if (!imgs.length) return null;
+
+    let el = imgs[0].parentElement;
+    while (el && el !== document.body) {
+      const st = getComputedStyle(el);
+      const isRow = st.display === "flex" || st.display === "inline-flex" || st.overflowX === "auto" || st.overflowX === "scroll";
+      // 直下の子要素がスライドカード（幅が200px以上）になっているコンテナを採用
+      const cardChildren = Array.from(el.children).filter(c => {
+        const cr = c.getBoundingClientRect();
+        return cr.width >= 180 && cr.height >= 80;
+      });
+      if (isRow && cardChildren.length >= 1 && el.getBoundingClientRect().height < 260) {
+        return el;
+      }
+      el = el.parentElement;
+    }
+    return null;
+  }
+
+  function enforceLeftPeek() {
+    const track = findRealBannerTrack();
+    if (!track) return;
+
+    track.classList.add("kp-active-banner-track");
+
+    // 親ラッパーの左右クリップを解除
+    let p = track.parentElement;
+    for (let i = 0; i < 4 && p && p !== document.body; i++) {
+      if (getComputedStyle(p).overflowX === "hidden") {
+        p.style.setProperty("overflow-x", "visible", "important");
+      }
+      p = p.parentElement;
+    }
+
+    const realSlides = Array.from(track.children).filter(
+      el => !el.classList.contains("kp-banner-ghost-prev") && !el.classList.contains("kp-banner-ghost-next")
+    );
+    if (!realSlides.length) return;
+
+    const hasPrev = Boolean(track.querySelector(".kp-banner-ghost-prev"));
+    const hasNext = Boolean(track.querySelector(".kp-banner-ghost-next"));
+    const key = String(realSlides.length);
+
+    if (!hasPrev || !hasNext || track.dataset.kpPeekReady !== key) {
+      track.querySelectorAll(".kp-banner-ghost-prev, .kp-banner-ghost-next").forEach(g => g.remove());
+
+      const prevClone = realSlides[realSlides.length - 1].cloneNode(true);
+      prevClone.classList.add("kp-banner-ghost-prev");
+      prevClone.removeAttribute("id");
+      track.insertBefore(prevClone, realSlides[0]);
+
+      const nextClone = realSlides[0].cloneNode(true);
+      nextClone.classList.add("kp-banner-ghost-next");
+      nextClone.removeAttribute("id");
+      track.appendChild(nextClone);
+
+      track.dataset.kpPeekReady = key;
+    }
+
+    // 初期状態や外部リセットで scrollLeft が 0 付近になっていたら、1枚目の本物（＝左側に前のバナーが約14px覗く位置）へ強制移動
+    const slideW = realSlides[0].getBoundingClientRect().width;
+    if (slideW > 100 && !track.dataset.kpUserTouching) {
+      const gap = 10;
+      const step = slideW + gap;
+      const centerOffset = (track.clientWidth - slideW) / 2;
+      const targetPos = step - centerOffset;
+      if (track.scrollLeft < targetPos * 0.35) {
+        track.style.scrollBehavior = "auto";
+        track.scrollLeft = targetPos;
+        track.style.scrollBehavior = "";
+      }
+    }
+
+    if (!track.dataset.kpLoopBound) {
+      track.dataset.kpLoopBound = "1";
+      track.addEventListener("touchstart", () => { track.dataset.kpUserTouching = "1"; }, { passive: true });
+      track.addEventListener("touchend", () => { setTimeout(() => { delete track.dataset.kpUserTouching; }, 350); }, { passive: true });
+
+      let timer = null;
+      track.addEventListener("scroll", () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          const reals = Array.from(track.children).filter(
+            el => !el.classList.contains("kp-banner-ghost-prev") && !el.classList.contains("kp-banner-ghost-next")
+          );
+          if (!reals.length) return;
+          const sw = reals[0].getBoundingClientRect().width;
+          if (sw <= 100) return;
+          const step = sw + 10;
+          const centerOffset = (track.clientWidth - sw) / 2;
+          const firstPos = step - centerOffset;
+          const lastPos = step * reals.length - centerOffset;
+
+          if (track.scrollLeft < firstPos - step * 0.45) {
+            track.style.scrollBehavior = "auto";
+            track.scrollLeft = lastPos;
+            track.style.scrollBehavior = "";
+          } else if (track.scrollLeft > lastPos + step * 0.45) {
+            track.style.scrollBehavior = "auto";
+            track.scrollLeft = firstPos;
+            track.style.scrollBehavior = "";
           }
-          cur = cur.parentElement;
-        }
-      }
-    });
-    return Array.from(found);
+        }, 120);
+      }, { passive: true });
+    }
   }
 
-  function applyUniversalLeftPeek() {
-    const tracks = detectBannerTracks();
-    tracks.forEach(track => {
-      track.classList.add("kp-active-banner-track");
-
-      // 親ラッパーの左右クリップを解除して画面端まで前のバナーが見えるようにする
-      let p = track.parentElement;
-      for (let i = 0; i < 3 && p && p !== document.body; i++) {
-        p.style.overflowX = "visible";
-        p = p.parentElement;
-      }
-
-      const realSlides = Array.from(track.children).filter(
-        el => !el.classList.contains("kp-banner-ghost-prev") && !el.classList.contains("kp-banner-ghost-next")
-      );
-      if (!realSlides.length) return;
-
-      const key = String(realSlides.length);
-      if (track.dataset.kpPeekReady !== key) {
-        track.querySelectorAll(".kp-banner-ghost-prev, .kp-banner-ghost-next").forEach(g => g.remove());
-
-        const prevClone = realSlides[realSlides.length - 1].cloneNode(true);
-        prevClone.classList.add("kp-banner-ghost-prev");
-        prevClone.removeAttribute("id");
-        track.insertBefore(prevClone, realSlides[0]);
-
-        const nextClone = realSlides[0].cloneNode(true);
-        nextClone.classList.add("kp-banner-ghost-next");
-        nextClone.removeAttribute("id");
-        track.appendChild(nextClone);
-
-        track.dataset.kpPeekReady = key;
-
-        const alignCenter = () => {
-          const slideW = realSlides[0].getBoundingClientRect().width || (track.clientWidth - 44);
-          const gap = 10;
-          const centerOffset = (track.clientWidth - slideW) / 2;
-          track.style.scrollBehavior = "auto";
-          track.scrollLeft = (slideW + gap) - centerOffset;
-          track.style.scrollBehavior = "";
-        };
-        requestAnimationFrame(alignCenter);
-        setTimeout(alignCenter, 120);
-        setTimeout(alignCenter, 450);
-      }
-
-      if (!track.dataset.kpLoopBound) {
-        track.dataset.kpLoopBound = "1";
-        let timer = null;
-        track.addEventListener("scroll", () => {
-          clearTimeout(timer);
-          timer = setTimeout(() => {
-            const reals = Array.from(track.children).filter(
-              el => !el.classList.contains("kp-banner-ghost-prev") && !el.classList.contains("kp-banner-ghost-next")
-            );
-            if (!reals.length) return;
-            const slideW = reals[0].getBoundingClientRect().width || (track.clientWidth - 44);
-            const gap = 10;
-            const step = slideW + gap;
-            const centerOffset = (track.clientWidth - slideW) / 2;
-            const firstPos = step - centerOffset;
-            const lastPos = step * reals.length - centerOffset;
-
-            if (track.scrollLeft < firstPos - step * 0.45) {
-              track.style.scrollBehavior = "auto";
-              track.scrollLeft = lastPos;
-              track.style.scrollBehavior = "";
-            } else if (track.scrollLeft > lastPos + step * 0.45) {
-              track.style.scrollBehavior = "auto";
-              track.scrollLeft = firstPos;
-              track.style.scrollBehavior = "";
-            }
-          }, 120);
-        }, { passive: true });
-      }
-    });
-  }
-
-  setInterval(applyUniversalLeftPeek, 900);
-  window.addEventListener("load", () => setTimeout(applyUniversalLeftPeek, 250));
+  setInterval(enforceLeftPeek, 600);
+  window.addEventListener("load", () => setTimeout(enforceLeftPeek, 200));
 })();
 </script>
 
@@ -2575,7 +2598,7 @@
   </div>
 
   <script src="./js/mycards-binder.js?v=20261121"></script>
-  <script type="module" src="./js/app-main.js?v=1795442634ship1"></script>
+  <script type="module" src="./js/app-main.js?v=1795442728ship1"></script>
 
   <div id="xlogin-help-modal" class="hidden fixed inset-0 z-[10040] modal-backdrop items-end sm:items-center justify-center p-3" style="padding-top: max(12px, env(safe-area-inset-top)); padding-bottom: max(12px, env(safe-area-inset-bottom));" onclick="if(event.target===this) closeGoogleLoginHelp()">
     <div id="xlogin-help-sheet" class="liquid-glass-heavy w-full max-w-sm rounded-[1.75rem] p-5 shadow-2xl border border-white" role="dialog" aria-modal="true" aria-labelledby="xlogin-help-title">
@@ -10113,9 +10136,9 @@ function getAiCardVectors() {
     <button type="button" onclick="snapSingleGuideCam()" class="w-full py-3.5 rounded-full bg-gradient-to-r from-purple-600 to-cyan-500 text-white font-bold text-sm shadow-lg active:scale-95 transition">📸 枠内を撮影して決定</button>
   </div>
 </div>
-<script src="./js/single-guide-cam.js?v=1795442634"></script>
+<script src="./js/single-guide-cam.js?v=1795442728"></script>
 
-<script src="./js/guide-cam-mode-sync.js?v=1795442634"></script>
+<script src="./js/guide-cam-mode-sync.js?v=1795442728"></script>
 
 
 <script id="ai-scan-anim-script" src="./js/ai-scan-anim.js?v=20261121"></script>
