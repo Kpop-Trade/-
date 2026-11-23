@@ -5036,19 +5036,37 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
 
     function buildHomeThemeGroups(entries) {
   const topics = new Map();
-  entries.forEach(entry => {
-    const rawMember = (entry.p && (entry.p.member || entry.p.memberName) || "").trim();
-    if (!rawMember || rawMember === "すべて" || rawMember === "指定なし" || rawMember === "未指定" || rawMember === "全体" || rawMember === "ALL") return;
-    const key = "member:" + rawMember.toLocaleLowerCase();
+  const addTopic = (key, label, priority, entry) => {
     if (!topics.has(key)) {
-      topics.set(key, { key, label: rawMember, priority: 10, entries: [] });
+      topics.set(key, { key, label, priority, entries: [] });
     }
     topics.get(key).entries.push(entry);
+  };
+
+  entries.forEach(entry => {
+    const p = entry.p || {};
+    // 1. メンバー：post.member に明示的に指定されているもののみ厳密に入れる
+    const rawMember = (p.member || p.memberName || "").trim();
+    if (rawMember && !["すべて", "指定なし", "未指定", "全体", "ALL"].includes(rawMember)) {
+      addTopic("member:" + rawMember.toLocaleLowerCase(), rawMember, 10, entry);
+    }
+
+    // 2. アルバム：これまで通りアルバム種別・アルバムキーワードでグループ化
+    const titleText = [p.title, p.groupName, p.albumName].filter(Boolean).join(" ");
+    const lowerText = titleText.toLocaleLowerCase();
+    if (p.kind === "album" || lowerText.includes("アルバム") || lowerText.includes("album") || lowerText.includes("形態")) {
+      const groupPrefix = (p.groupName || "").trim();
+      const albumLabel = groupPrefix ? groupPrefix + " アルバム" : "アルバム・形態";
+      addTopic("album:" + albumLabel.toLocaleLowerCase(), albumLabel, 8, entry);
+    }
   });
 
   const assigned = new Set();
   const sections = [];
-  const sortedTopics = Array.from(topics.values()).sort((a, b) => b.entries.length - a.entries.length);
+  const sortedTopics = Array.from(topics.values()).sort((a, b) => {
+    if (b.entries.length !== a.entries.length) return b.entries.length - a.entries.length;
+    return b.priority - a.priority;
+  });
 
   sortedTopics.forEach(topic => {
     if (sections.length >= 10) return;
