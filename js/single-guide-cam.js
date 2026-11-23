@@ -48,7 +48,7 @@ function forceShowSingleGuideModal() {
       closeSingleGuideCam();
     }
   };
-  window.closeSingleGuideCam = function(){
+  window.closeSingleGuideCam = function(){ window.forceCloseSingleGuideModal();
     const _m = document.getElementById("single-guide-modal");
     if (_m) {
       _m.classList.add("hidden");
@@ -119,3 +119,42 @@ function forceShowSingleGuideModal() {
     }, "image/jpeg", 0.92);
   };
 })();
+
+
+window.forceCloseSingleGuideModal = function() {
+  const modal = document.getElementById("single-guide-modal");
+  if (modal) {
+    modal.classList.add("hidden");
+    modal.style.setProperty("display", "none", "important");
+    modal.style.setProperty("visibility", "hidden", "important");
+  }
+  const vid = document.getElementById("single-guide-vid");
+  if (vid && vid.srcObject) {
+    try {
+      vid.srcObject.getTracks().forEach(t => t.stop());
+    } catch (e) {}
+    vid.srcObject = null;
+  }
+};
+
+document.addEventListener("click", function(e) {
+  const modal = document.getElementById("single-guide-modal");
+  if (!modal || modal.classList.contains("hidden")) return;
+  const btn = e.target.closest("button, [role='button'], a, span");
+  if (!btn || !modal.contains(btn)) return;
+  const txt = (btn.textContent || "").trim();
+  const oc = (btn.getAttribute("onclick") || "") + " " + (btn.id || "") + " " + (btn.className || "");
+  if (
+    txt === "×" ||
+    txt === "✕" ||
+    txt === "✖" ||
+    txt === "閉じる" ||
+    txt === "戻る" ||
+    /close/i.test(oc)
+  ) {
+    if (typeof window.closeSingleGuideCam === "function") {
+      try { window.closeSingleGuideCam(); } catch (err) {}
+    }
+    window.forceCloseSingleGuideModal();
+  }
+}, true);
