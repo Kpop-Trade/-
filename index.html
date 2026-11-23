@@ -1917,7 +1917,14 @@
         <button type="button" id="room-title" onclick="openSellerProfileFromRoom()" class="font-bold text-sm text-gray-900 truncate drop-shadow-sm text-left hover:text-illit-darkPurple transition max-w-[80%]"></button>
         <button onclick="closeRoom()" class="text-gray-500 hover:text-gray-700 font-bold text-xl leading-none bg-white/50 w-8 h-8 rounded-full border border-white shadow-sm">&times;</button>
       </div>
-      <div class="p-4 space-y-3 border-b border-white/50 bg-white/20 overflow-y-auto shrink-0 max-h-[38%]" id="room-top-box">
+      
+    <div class="flex items-center justify-between px-4 py-3 border-b border-white/50 bg-white/60 backdrop-blur-md shrink-0">
+      <div class="flex items-center gap-2 min-w-0">
+        <span class="text-sm font-black text-gray-800 truncate">取引ルーム</span>
+      </div>
+      <button type="button" onclick="if(window.closeRoom){closeRoom();}else{document.getElementById('room-modal')?.classList.add('hidden');}" aria-label="取引ルームを閉じる" class="w-9 h-9 rounded-full bg-white/90 hover:bg-white border border-gray-200/80 shadow-sm flex items-center justify-center text-gray-700 hover:text-gray-900 text-lg font-bold transition active:scale-95 shrink-0">✕</button>
+    </div>
+    <div class="p-4 space-y-3 border-b border-white/50 bg-white/20 overflow-y-auto shrink-0 max-h-[38%]" id="room-top-box">
         <div id="room-info"></div>
         <div id="room-paypay-box"></div>
         <div id="room-photos"></div>
