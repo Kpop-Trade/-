@@ -146,11 +146,11 @@ getRedirectResult(auth)
     }
     function notifCategory(n) {
       if (!n) return "notice";
-      if (n.category === "trade" || n.category === "notice" || n.category === "autogo") return n.category;
       const linkK = n.link && n.link.k;
       const targetType = n.target && n.target.type;
-      const blob = String((n.title || "") + " " + (n.text || ""));
-      if (linkK === "autogo" || targetType === "autogo" || /Auto-GO/i.test(blob)) return "autogo";
+      const blob = String((n.type || "") + " " + (n.title || "") + " " + (n.text || ""));
+      if (linkK === "autogo" || targetType === "autogo" || /auto[\s_-]?go|group[\s_-]?buy|共同\s*購入/i.test(blob)) return "autogo";
+      if (n.category === "trade" || n.category === "notice" || n.category === "autogo") return n.category;
       if (n.type === "admin" || n.type === "card_list") return "notice";
       if (linkK === "trade" || targetType === "trade" || n.type === "trade") return "trade";
       if (/申し込み|発送完了|発送・|合意|取引が|メッセージ/.test(blob)) return "trade";
@@ -553,23 +553,15 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       badge.classList.toggle("hidden", unread === 0);
     }
 
-    function paintNotifTabs(list) {
-      const counts = { all: 0, trade: 0, notice: 0, autogo: 0 };
-      list.forEach(n => {
-        if (n.read) return;
-        const c = notifCategory(n);
-        counts.all += 1;
-        if (counts[c] !== undefined) counts[c] += 1;
-      });
-      const labels = { all: "すべて", trade: "取引", notice: "お知らせ", autogo: "Auto-GO" };
+    function paintNotifTabs() {
       document.querySelectorAll("[data-notif-tab]").forEach(btn => {
         const tab = btn.dataset.notifTab;
         const on = tab === notifTab;
-        const n = counts[tab] || 0;
-        btn.textContent = n ? labels[tab] + " " + n : labels[tab];
-        btn.className = "notif-tab shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold border " + (on
-          ? (tab === "autogo" ? "bg-purple-600 text-white border-purple-600" : "bg-gray-900 text-white border-gray-900")
-          : "bg-white/70 text-gray-600 border-white");
+        btn.style.border = on ? "1.5px solid #2b7de9" : "1px solid #dddddd";
+        btn.style.background = on ? "#f0f7ff" : "#ffffff";
+        btn.style.color = on ? "#1a5fb4" : "#555555";
+        btn.style.fontWeight = on ? "700" : "400";
+        btn.setAttribute("aria-selected", String(on));
       });
     }
 
@@ -584,13 +576,13 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
 
     window.openNotificationsModal = function(tab) {
       if (!currentUser) return /* alert hidden */ console.log("ログインが必要です。");
-      if (tab === "all" || tab === "trade" || tab === "notice" || tab === "autogo") notifTab = tab;
+      if (tab === "all" || tab === "autogo") notifTab = tab;
       document.getElementById("notifications-modal").classList.remove("hidden");
       renderNotificationsList();
       window.markAllNotificationsRead();
     };
     window.setNotifTab = function(tab) {
-      if (tab !== "all" && tab !== "trade" && tab !== "notice" && tab !== "autogo") return;
+      if (tab !== "all" && tab !== "autogo") return;
       notifTab = tab;
       renderNotificationsList();
     };
@@ -599,13 +591,11 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       const el = document.getElementById("notifications-list");
       if (!el) return;
       const all = inboxNotifications();
-      paintNotifTabs(all);
+      paintNotifTabs();
       const list = notifTab === "all" ? all : all.filter(n => notifCategory(n) === notifTab);
       const emptyCopy = {
         all: "通知はありません",
-        trade: "取引の通知はありません",
-        notice: "お知らせはありません",
-        autogo: "Auto-GOの購入URLや催促は、まだ届いていません"
+        autogo: "Auto-GOの通知はありません"
       };
       if (list.length === 0) {
         el.innerHTML = '<p class="text-xs text-gray-500 text-center py-8 font-medium bg-white/30 rounded-xl">' + emptyCopy[notifTab] + '</p>';
@@ -613,28 +603,39 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       }
       el.innerHTML = list.map(n => {
         const ms = notifCreatedMs(n);
-        const time = ms ? new Date(ms) : null;
-        const timeStr = time ? ((time.getMonth()+1) + "/" + time.getDate() + " " + String(time.getHours()).padStart(2,"0") + ":" + String(time.getMinutes()).padStart(2,"0")) : "";
         const cat = notifCategory(n);
-        const isAdminNotif = n.type === "admin" || cat === "notice";
+        const age = ms ? Math.max(0, Date.now() - ms) : null;
+        const timeStr = age === null ? "" : age < 60 * 1000 ? "たった今"
+          : age < 60 * 60 * 1000 ? Math.floor(age / (60 * 1000)) + "分前"
+          : age < 24 * 60 * 60 * 1000 ? Math.floor(age / (60 * 60 * 1000)) + "時間前"
+          : age < 30 * 24 * 60 * 60 * 1000 ? Math.floor(age / (24 * 60 * 60 * 1000)) + "日前"
+          : Math.floor(age / (30 * 24 * 60 * 60 * 1000)) + "ヶ月前";
         const purchaseUrl = safeHttpUrl(n.purchaseUrl || (n.link && n.link.purchaseUrl));
         const hasTarget = (n.target && n.target.type && n.target.id) || cat === "autogo";
-        const catLabel = cat === "trade" ? "取引" : cat === "autogo" ? "Auto-GO" : "お知らせ";
-        const catClass = cat === "trade" ? "text-pink-600" : cat === "autogo" ? "text-purple-700" : "text-amber-700";
+        const isPeerNotification = cat === "trade" || /like|いいね|取引|相手/i.test(String((n.type || "") + " " + (n.title || "") + " " + (n.text || "")));
+        const rawImage = (isPeerNotification ? [n.thumb, n.thumbnail, n.image, n.photo, n.userPhoto, n.senderPhoto] : []).find(value =>
+          typeof value === "string" && (isJpegData(value) || safeHttpUrl(value))
+        );
+        const imageSrc = rawImage ? (isJpegData(rawImage) ? rawImage : safeHttpUrl(rawImage)) : "";
+        const icon = imageSrc
+          ? `<img src="${escapeHtml(imageSrc)}" alt="" class="w-10 h-10 rounded-full object-cover shrink-0">`
+          : `<div class="w-10 h-10 rounded-full bg-[#f7efff] flex items-center justify-center shrink-0" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <rect x="5.5" y="3.5" width="13" height="17" rx="2.5" fill="#eadcff" stroke="#c6a7ef"/>
+                <rect x="8" y="6" width="8" height="5" rx="1" fill="#ffd7e6"/>
+                <path d="M8.5 14.5h7M8.5 17h5" stroke="#a77bd5" stroke-width="1.3" stroke-linecap="round"/>
+                <path d="m16.5 4 1.4 1.4" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+            </div>`;
         const urlBtn = purchaseUrl ? `<a href="${escapeHtml(purchaseUrl)}" target="_blank" rel="noopener" data-notif-url="1" class="mt-2 inline-flex items-center justify-center px-3 py-1.5 rounded-full bg-purple-600 text-white text-[11px] font-bold">購入URLを開く</a>` : "";
-        return `<div data-notif-id="${escapeHtml(n.id)}" class="liquid-glass-input rounded-xl p-3 ${n.read ? "opacity-70" : (cat === "autogo" ? "border-purple-300 bg-purple-50/60" : isAdminNotif ? "border-amber-200 bg-amber-50/40" : "border-pink-200")} ${hasTarget ? "cursor-pointer" : ""}">
-          <div class="flex justify-between items-start gap-2">
-            <div class="flex-1 min-w-0">
-              <div class="text-[10px] font-bold ${catClass} mb-0.5">${catLabel}${n.title ? " · " + escapeHtml(n.title) : ""}</div>
-              <p class="text-xs font-medium text-gray-800 leading-relaxed">${escapeHtml(n.text)}</p>
-              ${urlBtn}
-            </div>
-            <div class="flex items-center gap-1.5 shrink-0">
-              ${!n.read ? '<span class="w-2 h-2 rounded-full bg-pink-500"></span>' : ""}
-              ${hasTarget ? '<span class="text-gray-400 text-sm">›</span>' : ""}
-            </div>
+        return `<div data-notif-id="${escapeHtml(n.id)}" class="flex items-center gap-3 bg-white px-4 py-3 border-b border-[#f0f0f0] ${hasTarget ? "cursor-pointer" : ""}">
+          ${icon}
+          <div class="flex-1 min-w-0">
+            <p class="text-[13.5px] text-[#222222] leading-[1.45]">${escapeHtml(n.text || n.title || "")}</p>
+            <div class="text-[11.5px] text-[#888888] mt-0.5">${timeStr}</div>
+            ${urlBtn}
           </div>
-          <div class="text-[10px] text-gray-500 mt-1 font-medium">${timeStr}${hasTarget ? " · タップで開く" : ""}</div>
+          <span class="text-[#cccccc] text-xl leading-none shrink-0" aria-hidden="true">&gt;</span>
         </div>`;
       }).join("");
     }

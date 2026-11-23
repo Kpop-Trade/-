@@ -796,23 +796,19 @@
   </div>
 
   <!-- 通知一覧 -->
-  <div id="notifications-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
-    <div class="liquid-glass-heavy w-full max-w-md rounded-[2rem] p-6 space-y-3 shadow-2xl max-h-[85vh] flex flex-col">
-      <div class="flex justify-between items-center border-b border-purple-200/50 pb-3 shrink-0">
-        <h3 class="font-bold text-base text-gray-800">🔔 通知</h3>
-        <div class="flex items-center gap-2">
-          <button onclick="markAllNotificationsRead()" class="text-[11px] font-medium text-illit-darkPurple underline">すべて既読</button>
-          <button onclick="closeNotificationsModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
+  <div id="notifications-modal" class="fixed inset-0 bg-white hidden z-50">
+    <div class="w-full max-w-md h-full mx-auto flex flex-col bg-white">
+      <header class="relative h-14 shrink-0 flex items-center justify-center bg-white border-b border-[#eeeeee]">
+        <button type="button" onclick="closeNotificationsModal()" aria-label="戻る" class="absolute left-4 w-9 h-9 rounded-full bg-[#f3f3f3] text-[#555555] text-lg flex items-center justify-center">←</button>
+        <h3 class="text-base font-bold text-[#222222]">お知らせ</h3>
+      </header>
+      <div class="px-4 py-3 shrink-0">
+        <div id="notif-tabs" class="flex gap-2" role="tablist">
+          <button type="button" data-notif-tab="all" onclick="setNotifTab('all')" class="notif-tab px-4 py-2 rounded-full text-xs font-bold border">すべて</button>
+          <button type="button" data-notif-tab="autogo" onclick="setNotifTab('autogo')" class="notif-tab px-4 py-2 rounded-full text-xs font-bold border">Auto-GO</button>
         </div>
       </div>
-      <div id="notif-tabs" class="flex gap-1.5 overflow-x-auto shrink-0" role="tablist">
-        <button type="button" data-notif-tab="all" onclick="setNotifTab('all')" class="notif-tab shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold border bg-gray-900 text-white border-gray-900">すべて</button>
-        <button type="button" data-notif-tab="trade" onclick="setNotifTab('trade')" class="notif-tab shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold border bg-white/70 text-gray-600 border-white">取引</button>
-        <button type="button" data-notif-tab="notice" onclick="setNotifTab('notice')" class="notif-tab shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold border bg-white/70 text-gray-600 border-white">お知らせ</button>
-        <button type="button" data-notif-tab="autogo" onclick="setNotifTab('autogo')" class="notif-tab shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold border bg-white/70 text-gray-600 border-white">Auto-GO</button>
-      </div>
-      <p class="text-[10px] text-gray-500 shrink-0">届いてから1ヶ月間残ります。Auto-GOの購入URLと催促は「Auto-GO」に届きます。</p>
-      <div id="notifications-list" class="flex-1 overflow-y-auto space-y-2"></div>
+      <div id="notifications-list" class="flex-1 overflow-y-auto bg-white"></div>
     </div>
   </div>
 
