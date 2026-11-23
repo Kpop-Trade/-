@@ -14689,3 +14689,48 @@ setTimeout(function() {
     window.enhanceTradesListUI();
   }
 }, 500);
+
+// === 管理パネル（お知らせ・通知タブ）への写真＋リンク広告UI確実注入 ===
+window.injectAdminTopBannerUI = function() {
+  if (document.getElementById("admin-banner-manager-box")) return;
+  const announceInput = document.getElementById("admin-announce-text");
+  if (!announceInput) return;
+  const parentBox = announceInput.closest("div.bg-amber-50") || announceInput.parentElement;
+  if (!parentBox || !parentBox.parentElement) return;
+
+  const box = document.createElement("div");
+  box.id = "admin-banner-manager-box";
+  box.className = "bg-purple-50 border border-purple-200 rounded-xl p-3 space-y-2.5 mb-3";
+  box.innerHTML = `
+    <div class="font-bold text-purple-900 text-xs">🖼️ トップ広告カルーセル（写真＋リンク登録）</div>
+    <p class="text-[11px] text-purple-800">写真とリンクURLを登録すると、ホーム上部の流れる広告の先頭に表示されます。</p>
+    <div>
+      <label class="block text-[11px] font-bold text-gray-700 mb-1">1. バナー写真を選択</label>
+      <input type="file" id="admin-banner-file" accept="image/*" onchange="window.previewAdminBannerFile(this)" class="block w-full text-xs text-gray-700 file:mr-3 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-purple-600 file:text-white">
+      <div id="admin-banner-preview-wrap" class="hidden mt-2">
+        <img id="admin-banner-preview" src="" class="w-full h-28 object-cover rounded-xl border border-purple-200">
+      </div>
+    </div>
+    <div>
+      <label class="block text-[11px] font-bold text-gray-700 mb-1">2. リンクURL（任意）</label>
+      <input type="url" id="admin-banner-link" placeholder="https://... または #xtrade" class="liquid-glass-input w-full rounded-xl p-2 text-xs text-gray-800">
+    </div>
+    <div>
+      <label class="block text-[11px] font-bold text-gray-700 mb-1">3. タイトル（任意）</label>
+      <input type="text" id="admin-banner-title" maxlength="40" placeholder="例: 新作トレカ交換キャンペーン！" class="liquid-glass-input w-full rounded-xl p-2 text-xs text-gray-800">
+    </div>
+    <button type="button" onclick="window.addAdminTopBanner()" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 rounded-xl text-xs shadow-sm">広告バナーを追加する</button>
+    <p id="admin-banner-status" class="text-[11px] text-center text-gray-600"></p>
+    <div id="admin-banner-list" class="space-y-2 pt-1"></div>
+  `;
+  parentBox.parentElement.insertBefore(box, parentBox);
+  if (typeof window.loadAdminTopBanners === "function") window.loadAdminTopBanners();
+};
+
+setTimeout(function() {
+  new MutationObserver(function() {
+    if (document.getElementById("admin-announce-text") && !document.getElementById("admin-banner-manager-box")) {
+      window.injectAdminTopBannerUI();
+    }
+  }).observe(document.body, { childList: true, subtree: true });
+}, 500);
