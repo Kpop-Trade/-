@@ -14291,7 +14291,7 @@ window._pendingAdminBannerDataUrl = "";
 window._renderAdminBannerPreviewCanvas = function() {
   const img = window._pendingAdminBannerRawImg;
   if (!img) return;
-  const maxW = 720;
+  const maxW = 480;
   const scale = img.width > maxW ? (maxW / img.width) : 1;
   const w = Math.round(img.width * scale);
   const h = Math.round(img.height * scale);
@@ -14333,7 +14333,7 @@ window._renderAdminBannerPreviewCanvas = function() {
     ctx.restore();
   }
 
-  const compressed = canvas.toDataURL("image/jpeg", 0.72);
+  const compressed = canvas.toDataURL("image/jpeg", 0.52);
   window._pendingAdminBannerDataUrl = compressed;
   const wrap = document.getElementById("admin-banner-preview-wrap");
   const prev = document.getElementById("admin-banner-preview");
@@ -15041,7 +15041,7 @@ window._composeBannerWithWatermark = function(srcUrl, useWatermark, opacityPct) 
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = function() {
-      const maxW = 720;
+      const maxW = 480;
       const scale = img.width > maxW ? (maxW / img.width) : 1;
       const w = Math.round(img.width * scale);
       const h = Math.round(img.height * scale);
@@ -15076,7 +15076,7 @@ window._composeBannerWithWatermark = function(srcUrl, useWatermark, opacityPct) 
         }
         ctx.restore();
       }
-      resolve(canvas.toDataURL("image/jpeg", 0.72));
+      resolve(canvas.toDataURL("image/jpeg", 0.52));
     };
     img.onerror = function() { reject(new Error("画像の読み込みに失敗しました")); };
     img.src = srcUrl;
@@ -15343,4 +15343,40 @@ window._changeSavedBannerPhoto = function(idx, input) {
   setInterval(function() {
     if (!window._topBannerAutoTimer) window._startTopBannerAutoRotate();
   }, 4000);
+})();
+
+
+(function() {
+  const _origPersist = window._persistAndSyncTopBanners;
+  window._persistAndSyncTopBanners = async function(nextList) {
+    const cleaned = [];
+    for (const item of (nextList || [])) {
+      const { rawImageUrl, _draftImageUrl, _draftUseWm, _draftOpacity, _draftRawImageUrl, ...clean } = item;
+      if (clean.imageUrl && clean.imageUrl.length > 65000 && typeof window._composeBannerWithWatermark === "function") {
+        try {
+          clean.imageUrl = await window._composeBannerWithWatermark(
+            clean.imageUrl,
+            clean.useWatermark !== false,
+            clean.watermarkOpacity || 52
+          );
+        } catch (e) {}
+      }
+      cleaned.push(clean);
+    }
+
+    const byteLen = new TextEncoder().encode(JSON.stringify({ items: cleaned, updatedAt: Date.now() })).length;
+    if (byteLen > 980000) {
+      throw new Error("バナー合計容量(" + Math.round(byteLen / 1024) + "KB)がFirestore上限(1024KB)に近いため、不要なバナーを1〜2件削除してから追加してください");
+    }
+
+    if (typeof _origPersist === "function") {
+      return await _origPersist(cleaned);
+    }
+    window._adminTopBanners = cleaned;
+    try { localStorage.setItem("kp_cached_top_banners", JSON.stringify(cleaned)); } catch (e) {}
+    const fsMod = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
+    const appMod = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js");
+    const activeDb = (typeof db !== "undefined" && db) || window.db || fsMod.getFirestore(appMod.getApps()[0]);
+    await fsMod.setDoc(fsMod.doc(activeDb, "siteConfig", "topBanners"), { items: cleaned, updatedAt: Date.now() }, { merge: true });
+  };
 })();
