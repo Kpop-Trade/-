@@ -15136,7 +15136,7 @@ window._previewSavedBannerEdit = async function(idx) {
   const pct = sliderEl ? Number(sliderEl.value) : 52;
   if (valEl) valEl.textContent = pct + "%";
 
-  const baseSrc = item.rawImageUrl || item.imageUrl;
+  const baseSrc = item._draftRawImageUrl || item.rawImageUrl || item.imageUrl;
   try {
     const updatedUrl = await window._composeBannerWithWatermark(baseSrc, useWm, pct);
     if (imgEl) imgEl.src = updatedUrl;
@@ -15158,7 +15158,7 @@ window.saveEditedAdminBanner = async function(idx) {
 
   const useWm = toggleEl ? toggleEl.checked : (item.useWatermark !== false);
   const pct = sliderEl ? Number(sliderEl.value) : (item.watermarkOpacity || 52);
-  const baseSrc = item.rawImageUrl || item.imageUrl;
+  const baseSrc = item._draftRawImageUrl || item.rawImageUrl || item.imageUrl;
 
   if (statusEl) statusEl.textContent = "更新中...";
   try {
@@ -15175,6 +15175,7 @@ window.saveEditedAdminBanner = async function(idx) {
     delete updatedItem._draftImageUrl;
     delete updatedItem._draftUseWm;
     delete updatedItem._draftOpacity;
+    delete updatedItem._draftRawImageUrl;
 
     list[idx] = updatedItem;
     await window._persistAndSyncTopBanners(list);
@@ -15254,7 +15255,13 @@ window.renderAdminTopBannerList = function() {
     return `
       <div class="bg-white rounded-2xl border border-purple-100 p-3 space-y-2.5 shadow-sm">
         <div class="flex items-start gap-2.5">
-          <img id="saved-banner-thumb-${idx}" src="${b.imageUrl}" class="w-28 h-16 object-cover rounded-xl border border-gray-200 flex-shrink-0 bg-gray-100" alt="banner">
+          <div class="flex flex-col items-center gap-1 flex-shrink-0">
+            <img id="saved-banner-thumb-${idx}" src="${b.imageUrl}" class="w-28 h-16 object-cover rounded-xl border border-gray-200 flex-shrink-0 bg-gray-100" alt="banner">
+            <label class="w-28 text-center py-1 rounded-lg bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-black cursor-pointer active:scale-95 transition">
+              画像を変更
+              <input type="file" accept="image/*" class="hidden" onchange="window._changeSavedBannerPhoto(${idx}, this)">
+            </label>
+          </div>
           <div class="flex-1 min-w-0 space-y-1.5">
             <input type="text" id="saved-banner-title-${idx}" value="${safeTitle}" placeholder="タイトル（任意）" class="w-full text-xs font-bold text-gray-800 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-purple-400">
             <input type="text" id="saved-banner-link-${idx}" value="${safeLink}" placeholder="リンクURL（任意）" class="w-full text-[11px] text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-purple-400">
@@ -15281,4 +15288,38 @@ window.renderAdminTopBannerList = function() {
       </div>
     `;
   }).join("");
+};
+
+
+window._changeSavedBannerPhoto = function(idx, input) {
+  const file = input && input.files && input.files[0];
+  if (!file) return;
+  const list = window._adminTopBanners || [];
+  const item = list[idx];
+  if (!item) return;
+
+  const reader = new FileReader();
+  reader.onload = async function(ev) {
+    try {
+      const cleanBaseUrl = await window._composeBannerWithWatermark(ev.target.result, false, 0);
+      item._draftRawImageUrl = cleanBaseUrl;
+
+      const toggleEl = document.getElementById("saved-banner-wm-toggle-" + idx);
+      const sliderEl = document.getElementById("saved-banner-wm-opacity-" + idx);
+      const useWm = toggleEl ? toggleEl.checked : (item.useWatermark !== false);
+      const pct = sliderEl ? Number(sliderEl.value) : (item.watermarkOpacity || 52);
+
+      const finalUrl = await window._composeBannerWithWatermark(cleanBaseUrl, useWm, pct);
+      const imgEl = document.getElementById("saved-banner-thumb-" + idx);
+      if (imgEl) imgEl.src = finalUrl;
+      item._draftImageUrl = finalUrl;
+
+      const statusEl = document.getElementById("saved-banner-status-" + idx);
+      if (statusEl) statusEl.textContent = "新しい写真を選択中（「変更を保存」で確定）";
+    } catch (e) {
+      const statusEl = document.getElementById("saved-banner-status-" + idx);
+      if (statusEl) statusEl.textContent = "画像読込エラー: " + (e.message || e);
+    }
+  };
+  reader.readAsDataURL(file);
 };
