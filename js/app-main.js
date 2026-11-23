@@ -533,36 +533,46 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     }
     window.showToast = showToast;
 
-    window.triggerHaptic = function(pattern = 15) {
+    let hapticAudioContext = null;
+    window.triggerHaptic = function() {
       if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
         try {
-          navigator.vibrate(pattern);
-          return;
+          navigator.vibrate(25);
         } catch (error) {
           console.debug("Vibration is unavailable:", error);
         }
       }
+
       try {
-        let input = document.getElementById("iosHapticSwitch");
-        let label = document.getElementById("iosHapticLabel");
-        if (!input) {
-          input = document.createElement("input");
-          input.type = "checkbox";
-          input.id = "iosHapticSwitch";
-          input.setAttribute("switch", "");
-          input.style.cssText = "position:fixed;opacity:0;pointer-events:none;left:-9999px";
-          document.body.appendChild(input);
-        }
-        if (!label) {
-          label = document.createElement("label");
-          label.htmlFor = "iosHapticSwitch";
-          label.id = "iosHapticLabel";
-          label.style.cssText = "position:fixed;opacity:0;pointer-events:none;left:-9999px";
-          document.body.appendChild(label);
-        }
-        label.click();
+        document.getElementById("nativeHapticLabel")?.click();
       } catch (error) {
-        console.debug("iOS haptic fallback is unavailable:", error);
+        console.debug("Native haptic switch is unavailable:", error);
+      }
+
+      try {
+        const AudioContextConstructor = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextConstructor) return;
+        if (!hapticAudioContext) hapticAudioContext = new AudioContextConstructor();
+        const context = hapticAudioContext;
+        if (context.state === "suspended") context.resume().catch(error => console.debug("Haptic audio could not resume:", error));
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+        const start = context.currentTime;
+        oscillator.type = "sine";
+        oscillator.frequency.setValueAtTime(150, start);
+        oscillator.frequency.exponentialRampToValueAtTime(40, start + 0.018);
+        gain.gain.setValueAtTime(0.02, start);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.018);
+        oscillator.connect(gain);
+        gain.connect(context.destination);
+        oscillator.addEventListener("ended", () => {
+          oscillator.disconnect();
+          gain.disconnect();
+        }, { once: true });
+        oscillator.start(start);
+        oscillator.stop(start + 0.018);
+      } catch (error) {
+        console.debug("Haptic audio is unavailable:", error);
       }
     };
     window.triggerHeartPop = function(button) {
@@ -1156,6 +1166,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
 
     window.switchTab = function(tab) {
       closeDetailModal();
+      if (tab !== "home" && typeof window.closeHomeSearch === "function") window.closeHomeSearch();
       if (!currentUser && (tab === "post" || tab === "mycards")) { if (typeof showToast === "function") { showToast("ログインしてください", "error"); } else { alert("ログインしてください"); } return; }
       currentPageTab = tab;
       document.body.classList.toggle("home-tab", tab === "home");
@@ -2596,9 +2607,9 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       });
     }
     async function doToggleLike(p) {
+      window.triggerHaptic();
       if (!currentUser) return /* alert hidden */ console.log("ログインが必要です。");
       if (!p || likeBusy.has(p.id)) return;
-      window.triggerHaptic([20, 30, 20]);
       if (!(await checkDeviceLockCached())) return;
       likeBusy.add(p.id);
       try {
@@ -3133,7 +3144,8 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       } catch (e) { console.warn("onMessage bind error:", e); }
     }
 
-    window.enablePush = async function() {
+    window.enablePush = async function(skipHaptic = false) {
+      if (!skipHaptic) window.triggerHaptic();
       if (!currentUser || !("Notification" in window) || !("serviceWorker" in navigator)) {
         return /* alert hidden */ console.log("お使いのブラウザはプッシュ通知に対応していません。");
       }
@@ -3143,13 +3155,11 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       }
 
       const permissionRequest = Notification.requestPermission();
-      window.triggerHaptic([20, 30, 20]);
       const perm = await permissionRequest;
       if (perm !== "granted") {
         markPushPromptAsked();
         return /* alert hidden */ console.log("通知権限が拒否されています。ブラウザの設定から通知を許可してください。");
       }
-      window.triggerHaptic([20, 30, 20]);
       window.triggerBellShake();
 
       try { 
@@ -3181,10 +3191,11 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       if (m) m.classList.remove("hidden");
     };
     window.enablePushFromPrompt = async function() {
+      window.triggerHaptic();
       markPushPromptAsked();
       const m = document.getElementById("push-prompt-modal");
       if (m) m.classList.add("hidden");
-      await enablePush();
+      await window.enablePush(true);
     };
     window.maybeShowPushPrompt = function() {
       try {
@@ -4454,11 +4465,13 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       writeSearchStorage(SEARCH_HISTORY_KEY, history);
     }
     function renderSearchHistory() {
-      const list = document.getElementById("search-history-list");
-      if (!list) return;
+      const lists = ["search-history-list", "home-search-history-list"]
+        .map(id => document.getElementById(id))
+        .filter(Boolean);
+      if (!lists.length) return;
       const saved = readSavedSearches();
       const history = readSearchHistory();
-      list.innerHTML = history.length ? history.map(query => {
+      const html = history.length ? history.map(query => {
         const isSaved = saved.some(item => item.query.toLowerCase() === query.toLowerCase());
         const encoded = escapeHtml(query);
         return `<div class="flex items-center gap-2 py-2.5">
@@ -4468,25 +4481,32 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           <button type="button" data-search-action="delete" data-query="${encoded}" aria-label="履歴を削除" class="px-1 text-lg text-gray-400">×</button>
         </div>`;
       }).join("") : '<p class="py-3 text-xs text-gray-400">検索履歴はありません</p>';
+      lists.forEach(list => { list.innerHTML = html; });
     }
     function renderSearchSuggestions(query) {
-      const suggestions = document.getElementById("search-suggestions");
-      const history = document.getElementById("search-history-section");
-      if (!suggestions || !history) return;
+      const suggestions = ["search-suggestions", "home-search-suggestions"]
+        .map(id => document.getElementById(id))
+        .filter(Boolean);
+      const historySections = ["search-history-section", "home-search-history-section"]
+        .map(id => document.getElementById(id))
+        .filter(Boolean);
+      if (!suggestions.length || !historySections.length) return;
+      const setSuggestions = html => suggestions.forEach(element => { element.innerHTML = html; });
+      const setHistoryVisible = visible => historySections.forEach(element => element.classList.toggle("hidden", !visible));
       const text = String(query || "").trim();
       if (!text) {
-        history.classList.remove("hidden");
+        setHistoryVisible(true);
         renderSearchHistory();
         if (searchQuickMode === "members") {
           renderSearchQuickList(["共同購入", ...MEMBERS.slice(1).map(member => member.split(" ")[0])]);
         } else if (searchQuickMode === "categories") {
           renderSearchQuickList(["トレカ交換", "トレカ買取", "トレカ売却", "アルバム", "シリアル", "共同購入"]);
         } else {
-          suggestions.innerHTML = "";
+          setSuggestions("");
         }
         return;
       }
-      history.classList.add("hidden");
+      setHistoryVisible(false);
       searchQuickMode = "";
       const terms = text.toLowerCase().split(/\s+/).filter(Boolean);
       const candidates = new Map();
@@ -4509,16 +4529,25 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       if (!matches.some(item => item.value.toLowerCase() === text.toLowerCase())) {
         matches.unshift({ value: text, label: "このキーワードで検索" });
       }
-      suggestions.innerHTML = matches.map(item => `<button type="button" data-search-action="run" data-query="${escapeHtml(item.value)}" class="flex w-full items-center justify-between border-b border-gray-100 py-3 text-left">
+      setSuggestions(matches.map(item => `<button type="button" data-search-action="run" data-query="${escapeHtml(item.value)}" class="flex w-full items-center justify-between border-b border-gray-100 py-3 text-left">
         <span class="truncate text-sm text-gray-800">${escapeHtml(item.value)}</span><span class="ml-3 shrink-0 text-[10px] text-gray-400">${escapeHtml(item.label)}　›</span>
-      </button>`).join("");
+      </button>`).join(""));
     }
     function renderSearchQuickList(queries) {
-      const suggestions = document.getElementById("search-suggestions");
-      if (!suggestions) return;
-      suggestions.innerHTML = queries.map(query => `<button type="button" data-search-action="run" data-query="${escapeHtml(query)}" class="flex w-full items-center justify-between border-b border-gray-100 py-3 text-left text-sm text-gray-700">
+      const suggestions = ["search-suggestions", "home-search-suggestions"]
+        .map(id => document.getElementById(id))
+        .filter(Boolean);
+      const html = queries.map(query => `<button type="button" data-search-action="run" data-query="${escapeHtml(query)}" class="flex w-full items-center justify-between border-b border-gray-100 py-3 text-left text-sm text-gray-700">
         <span>${escapeHtml(query)}</span><span class="text-gray-400">›</span>
       </button>`).join("");
+      suggestions.forEach(element => { element.innerHTML = html; });
+    }
+    function renderHomeSearchPopular() {
+      const container = document.getElementById("home-search-popular");
+      if (!container) return;
+      const groups = Array.from(new Set((allPosts || []).map(post => String(post.groupName || "").trim()).filter(Boolean))).slice(0, 6);
+      const popular = groups.length ? groups : ["共同購入", "トレカ交換", "アルバム"];
+      container.innerHTML = popular.map(query => `<button type="button" data-search-action="run" data-query="${escapeHtml(query)}" class="rounded-full bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700">${escapeHtml(query)}</button>`).join("");
     }
     function renderSearchPageMode() {
       const home = document.getElementById("search-home-content");
@@ -4551,6 +4580,47 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         button.classList.toggle("text-gray-700", !active);
       });
     }
+    window.openHomeSearch = function() {
+      const header = document.querySelector(".kp-market-header");
+      const input = document.getElementById("main-search-input");
+      const panel = document.getElementById("home-search-panel");
+      if (!header || !input) return;
+      if (!header.classList.contains("is-searching")) {
+        header.classList.add("is-searching");
+        if (panel) panel.setAttribute("aria-hidden", "false");
+        renderHomeSearchPopular();
+        renderSearchSuggestions(input.value);
+      }
+      if (document.activeElement !== input) input.focus({ preventScroll: true });
+    };
+    window.closeHomeSearch = function() {
+      const header = document.querySelector(".kp-market-header");
+      const input = document.getElementById("main-search-input");
+      const panel = document.getElementById("home-search-panel");
+      if (header) header.classList.remove("is-searching");
+      if (panel) panel.setAttribute("aria-hidden", "true");
+      if (input) input.blur();
+    };
+    window.updateHomeSearch = function(query) {
+      renderSearchSuggestions(query);
+    };
+    window.clearHomeSearchQuery = function() {
+      const input = document.getElementById("main-search-input");
+      if (!input) return;
+      input.value = "";
+      window.syncSearch("");
+      renderSearchSuggestions("");
+      input.focus({ preventScroll: true });
+    };
+    window.submitHomeSearch = function() {
+      const input = document.getElementById("main-search-input");
+      const query = String(input?.value || "").trim();
+      if (!query) return;
+      saveSearchToHistory(query);
+      renderSearchHistory();
+      window.syncSearch(query);
+      window.closeHomeSearch();
+    };
     window.openSearchPage = function() {
       if (!searchPageOpen) {
         searchHomeState = { searchText, activeOnly, selectedMember, kindFilter, bundleFilter, sortFilter, imageSearchState };
@@ -4717,6 +4787,33 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         const nextQuery = terms.join(" ");
         if (nextQuery) runSearch(nextQuery);
         else window.clearSearchQuery();
+      }
+    });
+    document.getElementById("home-search-panel")?.addEventListener("click", event => {
+      const button = event.target.closest("[data-search-action]");
+      if (!button) return;
+      const query = button.dataset.query || "";
+      if (button.dataset.searchAction === "run") {
+        if (!query) return;
+        const input = document.getElementById("main-search-input");
+        if (input) input.value = query;
+        saveSearchToHistory(query);
+        renderSearchHistory();
+        window.syncSearch(query);
+        window.closeHomeSearch();
+      } else if (button.dataset.searchAction === "delete") {
+        writeSearchStorage(SEARCH_HISTORY_KEY, readSearchHistory().filter(item => item !== query));
+        renderSearchHistory();
+      } else if (button.dataset.searchAction === "favorite") {
+        const searches = readSavedSearches();
+        const exists = searches.some(item => item.query.toLowerCase() === query.toLowerCase());
+        const next = exists ? searches.filter(item => item.query.toLowerCase() !== query.toLowerCase())
+          : [{ query, activeOnly: false, member: "すべて", kind: "all", bundle: "all", sort: "random", easyFilter: "all", savedAt: Date.now() }, ...searches];
+        if (writeSearchStorage(SAVED_SEARCHES_KEY, next.slice(0, 30))) {
+          if (!exists) window.triggerHaptic([15, 40, 25]);
+          showToast(exists ? "保存した検索を解除しました" : "検索を保存しました", "success");
+        }
+        renderSearchHistory();
       }
     });
     window.setSearch = function(v) {

@@ -122,6 +122,88 @@
       z-index: 2 !important;
       pointer-events: none !important;
     }
+    .kp-market-header-inner,
+    #header-searchbar,
+    #user-profile,
+    #home-search-back {
+      transition: gap .26s cubic-bezier(0.22, 1, 0.36, 1), padding .26s cubic-bezier(0.22, 1, 0.36, 1), flex .26s cubic-bezier(0.22, 1, 0.36, 1), width .26s cubic-bezier(0.22, 1, 0.36, 1), opacity .26s cubic-bezier(0.22, 1, 0.36, 1), transform .26s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    #home-search-back {
+      display: flex;
+      flex: 0 0 0;
+      width: 0;
+      height: 34px;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      padding: 0;
+      border: 0;
+      border-radius: 50%;
+      background: #e9e9eb;
+      color: #222;
+      opacity: 0;
+      transform: translateX(-8px);
+      pointer-events: none;
+    }
+    #home-search-panel {
+      position: absolute;
+      top: calc(52px + env(safe-area-inset-top, 0px));
+      right: 0;
+      left: 0;
+      max-height: calc(100dvh - 52px - env(safe-area-inset-top, 0px));
+      overflow-y: auto;
+      padding: 12px 16px 24px;
+      background: #fff;
+      box-shadow: 0 12px 20px rgba(0, 0, 0, .08);
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-8px);
+      transition: opacity .26s cubic-bezier(0.22, 1, 0.36, 1), transform .26s cubic-bezier(0.22, 1, 0.36, 1), visibility .26s;
+      pointer-events: none;
+    }
+    .kp-market-header.is-searching {
+      z-index: 1100 !important;
+    }
+    .kp-market-header.is-searching .kp-market-header-inner {
+      gap: 0;
+      padding-right: 8px;
+      padding-left: 8px;
+    }
+    .kp-market-header.is-searching #home-search-back {
+      flex-basis: 34px;
+      width: 34px;
+      opacity: 1;
+      transform: translateX(0);
+      pointer-events: auto;
+    }
+    .kp-market-header.is-searching #header-searchbar {
+      flex: 1 1 100%;
+      min-width: 0;
+    }
+    .kp-market-header.is-searching #user-profile {
+      flex: 0 0 0;
+      width: 0;
+      gap: 0;
+      overflow: hidden;
+      opacity: 0;
+      transform: translateX(24px);
+      pointer-events: none;
+    }
+    .kp-market-header.is-searching .header-photo-search,
+    .kp-market-header.is-searching #image-search-badge,
+    .kp-market-header.is-searching #image-search-reset {
+      display: none !important;
+    }
+    .kp-market-header.is-searching #home-search-panel {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+    #home-search-suggestions:empty,
+    #home-search-history-list:empty {
+      display: none;
+    }
   </style>
 </head>
 <body class="bg-illit-bg min-h-screen text-gray-800 relative overflow-x-hidden home-tab">
@@ -141,18 +223,16 @@
 
 
   <div id="toast-container" class="fixed top-20 left-1/2 -translate-x-1/2 z-[110] space-y-2 w-[92%] max-w-sm pointer-events-none"></div>
-  <input type="checkbox" switch id="iosHapticSwitch" aria-hidden="true" tabindex="-1" style="position:fixed;opacity:0;pointer-events:none;left:-9999px">
-  <label for="iosHapticSwitch" id="iosHapticLabel" aria-hidden="true" style="position:fixed;opacity:0;pointer-events:none;left:-9999px"></label>
-
   <header class="kp-market-header lg-header" style="position:fixed;top:0;left:0;right:0;z-index:1000;background:#ffffff">
     <div class="kp-market-header-inner">
       <div id="header-searchbar">
+        <button type="button" id="home-search-back" onclick="window.closeHomeSearch()" aria-label="検索を閉じる">←</button>
         <svg class="header-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <circle cx="10.8" cy="10.8" r="6.8" stroke="currentColor" stroke-width="1.6"/>
           <path d="m16 16 4.2 4.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
         </svg>
-        <input type="text" id="main-search-input" onclick="openSearchPage()" readonly placeholder="トレカ名・右のカメラで写真検索" aria-label="トレカをさがす" style="font-size:13px;text-overflow:ellipsis;cursor:pointer">
-        <button type="button" id="main-search-clear" onclick="syncSearch('')" aria-label="検索をクリア" class="hidden">×</button>
+        <input type="search" id="main-search-input" onpointerdown="window.openHomeSearch(event)" ontouchend="window.openHomeSearch(event)" onclick="window.openHomeSearch(event)" onfocus="window.openHomeSearch()" oninput="window.updateHomeSearch(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();window.submitHomeSearch()}" placeholder="キーワードからさがす" aria-label="トレカをさがす" style="font-size:13px;text-overflow:ellipsis">
+        <button type="button" id="main-search-clear" onclick="window.clearHomeSearchQuery()" aria-label="検索をクリア" class="hidden">×</button>
         <span id="image-search-badge" class="hidden" title="画像検索結果（一致度順）" aria-label="画像検索結果（一致度順）">画像検索結果（一致度順）</span>
         <button type="button" id="image-search-reset" class="hidden" onclick="clearListingImageSearch()" aria-label="画像検索をリセット">×</button>
         <button type="button" class="header-photo-search" onclick="openHeaderImageSearch()" aria-label="写真からトレカを検索">
@@ -189,6 +269,18 @@
           <span id="user-name" class="sr-only"></span>
         </button>
       </div>
+    </div>
+    <div id="home-search-panel" aria-hidden="true">
+      <div class="mb-3">
+        <div class="mb-2 text-xs font-bold text-gray-500">人気のグループ</div>
+        <div id="home-search-popular" class="flex flex-wrap gap-2"></div>
+      </div>
+      <div id="home-search-suggestions" class="space-y-1"></div>
+      <section id="home-search-history-section" class="mt-4">
+        <h3 class="mb-2 text-sm font-bold text-gray-800">検索履歴</h3>
+        <div id="home-search-history-list" class="divide-y divide-gray-100"></div>
+      </section>
+      <button type="button" onclick="window.closeHomeSearch()" class="mt-4 w-full rounded-full bg-gray-100 py-2.5 text-sm font-bold text-gray-600">閉じる</button>
     </div>
   </header>
 
@@ -355,7 +447,7 @@
         </div>
       </div>
       
-      <div class="flex items-center justify-between px-2" style="margin:8px 0 6px">
+      <div class="hidden flex items-center justify-between px-2" style="margin:8px 0 6px">
         <h3 id="list-section-title" class="font-bold text-base text-gray-800 drop-shadow-sm">最新の募集</h3>
         <div class="flex items-center gap-1">
           <span class="mr-1 text-xs font-bold text-illit-accent bg-white/50 px-2 py-1 rounded-full border border-white">交換手数料0円</span>
@@ -1660,7 +1752,7 @@
   </div>
 
   <script src="./js/mycards-binder.js?v=20261121"></script>
-  <script type="module" src="./js/app-main.js?v=1795408913ship1"></script>
+  <script type="module" src="./js/app-main.js?v=1795409697ship1"></script>
 
   <div id="xlogin-help-modal" class="hidden fixed inset-0 z-[10040] modal-backdrop items-end sm:items-center justify-center p-3" style="padding-top: max(12px, env(safe-area-inset-top)); padding-bottom: max(12px, env(safe-area-inset-bottom));" onclick="if(event.target===this) closeGoogleLoginHelp()">
     <div id="xlogin-help-sheet" class="liquid-glass-heavy w-full max-w-sm rounded-[1.75rem] p-5 shadow-2xl border border-white" role="dialog" aria-modal="true" aria-labelledby="xlogin-help-title">
@@ -2722,6 +2814,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
 
     window.switchTab = function(tab) {
       closeDetailModal();
+      if (tab !== "home" && typeof window.closeHomeSearch === "function") window.closeHomeSearch();
     if (!currentUser && (tab === "post" || tab === "mycards")) { if (typeof showToast === "function") { showToast("ログインしてください", "error"); } else { alert("ログインしてください"); } return; }
       currentPageTab = tab;
     document.body.classList.toggle("home-tab", tab === "home");
@@ -3748,9 +3841,9 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       });
     }
     async function doToggleLike(p) {
+      window.triggerHaptic();
       if (!currentUser) return /* alert hidden */ console.log("ログインが必要です。");
       if (!p || likeBusy.has(p.id)) return;
-      window.triggerHaptic([20, 30, 20]);
       if (!(await checkDeviceLockCached())) return;
       likeBusy.add(p.id);
       try {
@@ -4060,7 +4153,8 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       } catch (e) { console.warn("onMessage bind error:", e); }
     }
 
-    window.enablePush = async function() {
+    window.enablePush = async function(skipHaptic = false) {
+      if (!skipHaptic) window.triggerHaptic();
       if (!currentUser || !("Notification" in window) || !("serviceWorker" in navigator)) {
         return /* alert hidden */ console.log("お使いのブラウザはプッシュ通知に対応していません。");
       }
@@ -4070,13 +4164,11 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       }
 
       const permissionRequest = Notification.requestPermission();
-      window.triggerHaptic([20, 30, 20]);
       const perm = await permissionRequest;
       if (perm !== "granted") {
         markPushPromptAsked();
         return /* alert hidden */ console.log("通知権限が拒否されています。ブラウザの設定から通知を許可してください。");
       }
-      window.triggerHaptic([20, 30, 20]);
       window.triggerBellShake();
 
       try { 
@@ -4108,10 +4200,11 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       if (m) m.classList.remove("hidden");
     };
     window.enablePushFromPrompt = async function() {
+      window.triggerHaptic();
       markPushPromptAsked();
       const m = document.getElementById("push-prompt-modal");
       if (m) m.classList.add("hidden");
-      await enablePush();
+      await window.enablePush(true);
     };
     window.maybeShowPushPrompt = function() {
       try {
@@ -9333,5 +9426,9 @@ function getAiCardVectors() {
 <script src="./js/gllit-ticker.js?v=20261121"></script>
 
 <script src="./js/auto-go-received.js?v=20261121c"></script>
+<div style="position:fixed;bottom:0;right:0;width:1px;height:1px;overflow:hidden;opacity:0.01;pointer-events:none;z-index:-1">
+  <input type="checkbox" switch id="nativeHapticSwitch">
+  <label for="nativeHapticSwitch" id="nativeHapticLabel">haptic</label>
+</div>
 </body>
 
