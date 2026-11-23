@@ -5339,7 +5339,7 @@ window.renderHomeThemeSections = function(entries, cardHtmlById) {
           } catch (e) {
             lastErr = e;
             console.warn("loadPosts attempt", attempt + 1, e?.message || e);
-            await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
+            await new Promise((r) => setTimeout(r, 180 * (attempt + 1)));
           }
         }
         if (gen !== loadPostsGen) return;
@@ -5358,7 +5358,7 @@ window.renderHomeThemeSections = function(entries, cardHtmlById) {
         }
         if (reset && snap.empty && !window._retriedInitialPosts) {
           window._retriedInitialPosts = true;
-          await new Promise((r) => setTimeout(r, 800));
+          await new Promise((r) => setTimeout(r, 200));
           if (gen !== loadPostsGen) return;
           try { snap = await fetchPostsSnap(true, true); } catch (_) {}
         }
@@ -14728,11 +14728,7 @@ window.injectAdminTopBannerUI = function() {
 };
 
 setTimeout(function() {
-  new MutationObserver(function() {
-    if (document.getElementById("admin-announce-text") && !document.getElementById("admin-banner-manager-box")) {
-      window.injectAdminTopBannerUI();
-    }
-  }).observe(document.body, { childList: true, subtree: true });
+  /* removed heavy body MutationObserver */
 }, 500);
 
 // === Modular SDK 対応版 トップ広告バナー保存・読込 ===
@@ -14820,3 +14816,44 @@ setTimeout(function() {
     window.loadAdminTopBanners();
   }
 }, 1500);
+
+// === 募集一覧（loadPosts）0秒即表示キャッシュ ===
+window._fastPostsCacheApplied = true;
+(function() {
+  const CACHE_KEY = "kpop_trade_fast_posts_v1";
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (raw) {
+      const cached = JSON.parse(raw);
+      if (Array.isArray(cached) && cached.length && typeof allPosts !== "undefined" && Array.isArray(allPosts) && allPosts.length === 0) {
+        allPosts.push(...cached);
+        setTimeout(function() {
+          if (typeof renderPosts === "function") renderPosts();
+        }, 30);
+      }
+    }
+  } catch (_) {}
+
+  // allPosts が更新されたら上位30件を軽量キャッシュ保存
+  setInterval(function() {
+    try {
+      if (typeof allPosts !== "undefined" && Array.isArray(allPosts) && allPosts.length > 0) {
+        const slim = allPosts.slice(0, 30).map(p => ({
+          id: p.id,
+          uid: p.uid || "",
+          nickname: p.nickname || "",
+          avatarUrl: p.avatarUrl || "",
+          xUsername: p.xUsername || "",
+          give: p.give || "",
+          want: p.want || "",
+          kind: p.kind || "trade",
+          price: p.price || "",
+          status: p.status || "open",
+          images: Array.isArray(p.images) ? p.images.slice(0, 1) : [],
+          createdAt: p.createdAt || Date.now()
+        }));
+        localStorage.setItem(CACHE_KEY, JSON.stringify(slim));
+      }
+    } catch (_) {}
+  }, 4000);
+})();

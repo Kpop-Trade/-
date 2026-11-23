@@ -453,13 +453,25 @@
     grid-row: 2 !important;
   }
 </style>
-<script>/* FORCE_UNREGISTER_OLD_SW_V1 */
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.getRegistrations().then(regs => {
-      regs.forEach(r => r.update());
-    });
+<script>/* FORCE_UNREGISTER_OLD_SW_V2 */
+(async function() {
+  const ver = "20261123_v4";
+  if (localStorage.getItem("kp_sw_cleared_ver") !== ver) {
+    localStorage.setItem("kp_sw_cleared_ver", ver);
+    try {
+      if ("serviceWorker" in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map(r => r.unregister()));
+      }
+      if ("caches" in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k)));
+      }
+    } catch (_) {}
+    location.reload();
   }
-  </script>
+})();
+</script>
 </head>
 <body class="bg-illit-bg min-h-screen text-gray-800 relative overflow-x-hidden home-tab">
   <div id="app-splash-screen" role="status" aria-label="K-pop Tradeを読み込み中">
@@ -2039,7 +2051,7 @@
   </div>
 
   <script src="./js/mycards-binder.js?v=20261121"></script>
-  <script type="module" src="./js/app-main.js?v=1795422591ship1"></script>
+  <script type="module" src="./js/app-main.js?v=1795423037ship1"></script>
 
   <div id="xlogin-help-modal" class="hidden fixed inset-0 z-[10040] modal-backdrop items-end sm:items-center justify-center p-3" style="padding-top: max(12px, env(safe-area-inset-top)); padding-bottom: max(12px, env(safe-area-inset-bottom));" onclick="if(event.target===this) closeGoogleLoginHelp()">
     <div id="xlogin-help-sheet" class="liquid-glass-heavy w-full max-w-sm rounded-[1.75rem] p-5 shadow-2xl border border-white" role="dialog" aria-modal="true" aria-labelledby="xlogin-help-title">
