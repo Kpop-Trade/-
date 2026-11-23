@@ -275,14 +275,20 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    match /raffles/{raffleId} {
+    match /present_campaigns/{campaignId} {
       allow read: if true;
-      allow write: if false;
+      allow create, update, delete: if isAdmin();
 
       match /entries/{entryId} {
         allow read: if isAdmin() ||
           (isSignedIn() && resource.data.userId == request.auth.uid);
-        allow write: if false;
+        //応募とポイント消費はCallable Function内で同一トランザクション処理する。
+        allow create, update, delete: if false;
+      }
+
+      match /winners/{userId} {
+        allow read: if isAdmin();
+        allow create, update, delete: if false;
       }
     }
 

@@ -19,13 +19,14 @@
     const auth = getAuth(app);
     const rewardCalls = {
       claimDailyLoginBonus: httpsCallable(getFunctions(app, "asia-northeast1"), "claimDailyLoginBonus"),
-      claimProfileOrInviteBonus: httpsCallable(getFunctions(app, "asia-northeast1"), "claimProfileOrInviteBonus"),
-      enterRaffle: httpsCallable(getFunctions(app, "asia-northeast1"), "enterRaffle"),
-      drawRaffleWinner: httpsCallable(getFunctions(app, "asia-northeast1"), "drawRaffleWinner", { timeout: 300000 }),
+      claimRegistrationAndInviteBonus: httpsCallable(getFunctions(app, "asia-northeast1"), "claimRegistrationAndInviteBonus"),
+      claimProfileBonus: httpsCallable(getFunctions(app, "asia-northeast1"), "claimProfileBonus"),
+      enterPresentCampaign: httpsCallable(getFunctions(app, "asia-northeast1"), "enterPresentCampaign"),
+      finishPresentCampaign: httpsCallable(getFunctions(app, "asia-northeast1"), "finishPresentCampaign", { timeout: 300000 }),
       setDoublePointDates: httpsCallable(getFunctions(app, "asia-northeast1"), "setDoublePointDates"),
       adminToggleDoublePoint: httpsCallable(getFunctions(app, "asia-northeast1"), "adminToggleDoublePoint"),
-      adminCreateRaffle: httpsCallable(getFunctions(app, "asia-northeast1"), "adminCreateRaffle"),
-      adminUploadRaffleImage: httpsCallable(getFunctions(app, "asia-northeast1"), "adminUploadRaffleImage", { timeout: 120000 })
+      adminCreatePresentCampaign: httpsCallable(getFunctions(app, "asia-northeast1"), "adminCreatePresentCampaign"),
+      adminUploadPresentCampaignImage: httpsCallable(getFunctions(app, "asia-northeast1"), "adminUploadPresentCampaignImage", { timeout: 120000 })
     };
 window.__autoGoRefs = {
   app, auth,
@@ -209,7 +210,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       want: "bg-pink-100 text-pink-700 border-pink-200"
     };
 
-    let currentUser = null, allPosts = [], unsubPosts = null, selectedMember = "すべて", kindFilter = "all", sortFilter = "random", bundleFilter = "all", searchText = "", activeOnly = false, currentDetailIndex = -1; window.currentUser = currentUser; window.currentUser = currentUser; window.currentUser = currentUser;
+    let currentUser = null, allPosts = [], unsubPosts = null, selectedMember = "すべて", kindFilter = "all", sortFilter = "random", bundleFilter = "all", searchText = "", activeOnly = false, currentDetailIndex = -1, imageSearchState = null, imageSearchToken = 0, imageSearchLoading = false, postImageVectorQueue = Promise.resolve(); window.currentUser = currentUser; window.currentUser = currentUser; window.currentUser = currentUser;
     let pendingPostId = new URLSearchParams(location.search).get("post");
     let postMode = "exchange", postPhotos = [], processingPhotos = false, submittingPost = false, submittingGroup = false, detailPhotos = [], roomPhotos = [], roomPhotosFor = null;
     let sendingChatMessage = false, tradeActing = false, applyingToPost = false, submittingReview = false, submittingPriceOffer = false, submittingComment = false;
@@ -248,9 +249,20 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       </div>`;
     }
     let myTrades = [], unsubTrades = null, groupJoins = {}, unsubJoins = null, currentTrade = null, roomMessages = [], unsubRoom = null, unsubMsgs = null, unsubTradeShipping = null, roomTradeShipping = {};
-    let reviewState = { tradeId: null, done: null }, selectedRating = 0, sendingImage = false, roomBoxKey = null, userData = { profile: {}, blocked: [], likes: [], reads: {}, notifications: [], cancelHistory: [], myCards: {}, collectionPublic: false, customCards: [], cardWatch: {}, points: 0, pointHistory: [], inviteCode: "", loginStamps: [], lastLoginBonusDate: "", profileBonusGranted: false, referredBy: "" };
+    let reviewState = { tradeId: null, done: null }, selectedRating = 0, sendingImage = false, roomBoxKey = null, userData = { profile: {}, blocked: [], likes: [], reads: {}, notifications: [], cancelHistory: [], myCards: {}, collectionPublic: false, customCards: [], cardWatch: {}, points: 0, pointHistory: [], inviteCode: "", loginStamps: [], lastLoginBonusDate: "", registrationBonusGranted: false, profileBonusGranted: false, referredBy: "" };
     let loginCalendarData = null;
     let dailyBonusRequestUid = null;
+    let activePresentCampaigns = [];
+    let currentPageTab = "home";
+    const pendingInviteStorageKey = "pending-registration-invite-code";
+    try {
+      const urlInviteCode = new URLSearchParams(location.search).get("ref");
+      if (urlInviteCode && /^[A-Z0-9]{4,20}$/i.test(urlInviteCode)) {
+        sessionStorage.setItem(pendingInviteStorageKey, urlInviteCode.toUpperCase());
+      }
+    } catch (error) {
+      console.warn("Referral URL could not be stored:", error);
+    }
     let doublePointActive = false;
     let unsubUser = null, unsubNotifs = null, editingPostId = null, migratingLocal = false, photoCache = {};
     let notifTab = "all";
@@ -739,10 +751,6 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit"
       }).formatToParts(date).map(({ type, value }) => [type, value])
     );
-    const formatRaffleDeadline = (value) => {
-      const date = value?.toDate ? value.toDate() : new Date(value);
-      return Number.isNaN(date.getTime()) ? "締切未設定" : date.toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
-    };
     window.openLoginCalendar = async function(animateToday = false) {
       if (!currentUser) return;
       if (!loginCalendarData) {
@@ -775,7 +783,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         const isDouble = loginCalendarData.doubleActive === true || doubleDates.has(date);
         const isToday = date === today;
         const stamped = stamps.has(date);
-        const stamp = isToday && animateToday ? "GET / 済" : (stamped ? "済" : "");
+        const stamp = stamped ? "済" : "";
         html += `<div class="relative min-w-0 min-h-[58px] rounded-lg border p-1 text-center ${isDouble ? "border-amber-400 bg-amber-100 text-amber-900" : "border-purple-100 bg-white/70 text-gray-700"} ${isToday ? "ring-2 ring-purple-500" : ""}">
           <div class="text-[10px] font-bold">${day}</div><div class="text-[8px] leading-tight ${isDouble ? "font-black text-amber-800" : "text-gray-500"}">${isDouble ? "2倍! 20pt" : "10pt"}</div>
           ${stamp ? `<span id="${isToday && animateToday ? "login-today-stamp" : ""}" class="login-stamp absolute left-1/2 top-1/2 whitespace-nowrap rounded-full border-2 border-pink-500 bg-white/90 px-1.5 py-0.5 text-[9px] font-black text-pink-600 shadow">${escapeHtml(stamp)}</span>` : ""}
@@ -793,12 +801,105 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     window.closeLoginCalendar = function() {
       document.getElementById("login-calendar-modal").classList.add("hidden");
     };
+    async function loadActivePresentCampaigns(showPopup = false) {
+      const snapshot = await getDocs(query(collection(db, "present_campaigns"), where("status", "==", "active")));
+      activePresentCampaigns = snapshot.docs
+        .map((campaign) => ({ id: campaign.id, ...campaign.data() }))
+        .sort((a, b) => tsMillis(b.createdAt) - tsMillis(a.createdAt));
+      const banner = document.getElementById("home-present-banner");
+      if (banner) {
+        banner.classList.toggle("hidden", activePresentCampaigns.length === 0);
+        banner.classList.toggle("flex", activePresentCampaigns.length > 0);
+        const title = document.getElementById("home-present-banner-title");
+        if (title) title.textContent = activePresentCampaigns[0]?.title || "";
+      }
+      if (showPopup && currentPageTab === "home" && activePresentCampaigns.length) {
+        const parts = formatJstDateParts();
+        let dismissed = false;
+        try {
+          dismissed = sessionStorage.getItem(`present-popup-dismissed-${parts.year}-${parts.month}-${parts.day}`) === "1";
+        } catch (error) { console.warn("Present popup dismissal state could not be read:", error); }
+        if (!dismissed) window.openPresentCampaignPopup(true).catch((error) => console.error("Present campaign popup failed:", error));
+      }
+      return activePresentCampaigns;
+    }
+    window.closePointsModal = function() {
+      document.getElementById("points-modal").classList.add("hidden");
+    };
+    window.openPointsModal = async function() {
+      document.getElementById("points-modal").classList.remove("hidden");
+      await window.renderRewards();
+    };
+    window.closePresentCampaignPopup = function(dismissToday = true) {
+      document.getElementById("present-campaign-popup").classList.add("hidden");
+      if (dismissToday) {
+        const parts = formatJstDateParts();
+        try { sessionStorage.setItem(`present-popup-dismissed-${parts.year}-${parts.month}-${parts.day}`, "1"); }
+        catch (error) { console.warn("Present popup dismissal state could not be saved:", error); }
+      }
+    };
+    window.openPresentCampaignPopup = async function(automatic = false) {
+      let campaigns = activePresentCampaigns;
+      if (!campaigns.length) campaigns = await loadActivePresentCampaigns(false);
+      if (!campaigns.length) return;
+      const campaign = campaigns[0];
+      const image = /^https:\/\//i.test(String(campaign.imageUrl || ""))
+        ? `<img src="${escapeHtml(campaign.imageUrl)}" alt="" class="max-h-64 w-full rounded-xl bg-white object-contain">` : "";
+      document.getElementById("present-popup-content").innerHTML = `<article class="space-y-3">${image}<h4 class="text-base font-black text-gray-900">${escapeHtml(campaign.title || "トレカプレゼント企画")}</h4><p class="text-xs text-gray-700">${escapeHtml(campaign.prizeDescription || "")}</p><p class="text-[11px] font-bold text-amber-900">100pt＝1口で応募できます</p><button type="button" data-present-enter="${escapeHtml(campaign.id)}" data-present-count="1" class="w-full rounded-full bg-purple-600 py-3 text-sm font-bold text-white disabled:bg-gray-300">100pt＝1口で応募する</button></article>`;
+      document.getElementById("present-campaign-popup").classList.remove("hidden");
+      if (!automatic) {
+        const parts = formatJstDateParts();
+        try { sessionStorage.setItem(`present-popup-dismissed-${parts.year}-${parts.month}-${parts.day}`, "1"); }
+        catch (error) { console.warn("Present popup dismissal state could not be saved:", error); }
+      }
+    };
+    async function enterPresentCampaign(campaignId, count, button) {
+      if (!currentUser) {
+        showToast("応募するにはログインしてください", "error");
+        return;
+      }
+      button.disabled = true;
+      try {
+        const { data } = await rewardCalls.enterPresentCampaign({ campaignId, count });
+        userData.points = Number(data.totalPoints) || 0;
+        const balance = String(userData.points);
+        document.getElementById("points-balance").textContent = balance;
+        document.getElementById("points-modal-balance").textContent = balance;
+        showToast(`${count}口応募しました（${data.costPoints}pt消費）`, "success");
+        await Promise.all([window.renderRewards(), loadActivePresentCampaigns(false)]);
+      } catch (error) {
+        console.error("Present campaign entry failed:", error);
+        showToast(error?.code === "functions/failed-precondition"
+          ? "ポイント不足または企画の受付が終了しています"
+          : "応募できませんでした。時間をおいて再度お試しください", "error");
+      } finally {
+        button.disabled = false;
+      }
+    }
+    for (const listId of ["present-campaign-list", "present-popup-content"]) {
+      document.getElementById(listId).addEventListener("click", async (event) => {
+        const button = event.target.closest("[data-present-enter]");
+        if (!button) return;
+        const count = Number(button.dataset.presentCount || document.getElementById(`present-count-${button.dataset.presentEnter}`)?.value || 1);
+        if (!Number.isSafeInteger(count) || count < 1 || count > 100) {
+          showToast("応募口数を選択してください", "error");
+          return;
+        }
+        await enterPresentCampaign(button.dataset.presentEnter, count, button);
+      });
+    }
     window.renderRewards = async function() {
       const pointsCard = document.getElementById("points-card");
       pointsCard.classList.toggle("hidden", !currentUser);
+      document.getElementById("points-login-prompt").classList.toggle("hidden", !!currentUser);
+      const balance = String(currentUser ? Number(userData.points) || 0 : 0);
+      document.getElementById("points-balance").textContent = balance;
+      document.getElementById("points-modal-balance").textContent = balance;
       if (currentUser) {
-        document.getElementById("points-balance").textContent = String(Number(userData.points) || 0);
         document.getElementById("mypage-invite-code").textContent = userData.inviteCode || "準備中";
+        const inviteUrl = new URL(location.pathname, location.origin);
+        inviteUrl.searchParams.set("ref", userData.inviteCode || "");
+        document.getElementById("mypage-invite-url").value = userData.inviteCode ? inviteUrl.toString() : "";
         const parts = formatJstDateParts();
         const today = `${parts.year}-${parts.month}-${parts.day}`;
         const doubleToday = loginCalendarData?.doubleActive === true ||
@@ -834,7 +935,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         inviteButton.classList.toggle("opacity-50", invited);
         document.getElementById("invite-bonus-status").textContent = invited
           ? "招待ボーナスは受取済みです"
-          : "招待した方・された方にそれぞれ50pt付与されます。";
+          : "招待した方・された方に各70pt付与されます。";
         const history = Array.isArray(userData.pointHistory) ? [...userData.pointHistory].reverse().slice(0, 20) : [];
         document.getElementById("point-history-list").innerHTML = history.length
           ? history.map((item) => {
@@ -845,61 +946,35 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           }).join("")
           : "履歴はありません";
       }
-      const list = document.getElementById("raffle-list");
       try {
-        const snapshot = await getDocs(collection(db, "raffles"));
-        const active = snapshot.docs
-          .map((raffle) => ({ id: raffle.id, ...raffle.data() }))
-          .filter((raffle) => raffle.status === "active" &&
-            (raffle.endsAt?.toMillis ? raffle.endsAt.toMillis() : new Date(raffle.endsAt).getTime()) > Date.now())
-          .sort((a, b) => {
-            const endTime = (raffle) => raffle.endsAt?.toMillis ? raffle.endsAt.toMillis() : new Date(raffle.endsAt).getTime();
-            return endTime(a) - endTime(b);
-          });
+        const active = await loadActivePresentCampaigns(false);
+        const list = document.getElementById("present-campaign-list");
         if (!active.length) {
-          list.innerHTML = '<p class="text-xs text-gray-500">現在開催中の抽選はありません。</p>';
+          list.innerHTML = '<p class="text-xs text-gray-500">現在開催中のプレゼント企画はありません。</p>';
           return;
         }
-        const cards = await Promise.all(active.map(async (raffle) => {
-          let myEntries = 0;
+        const cards = await Promise.all(active.map(async (campaign) => {
+          let entryCount = 0;
           if (currentUser) {
-            const entries = await getDocs(query(
-              collection(db, "raffles", raffle.id, "entries"), where("userId", "==", currentUser.uid)
-            ));
-            myEntries = entries.size;
+            const entry = await getDoc(doc(db, "present_campaigns", campaign.id, "entries", currentUser.uid));
+            entryCount = entry.exists() ? Number(entry.data().count) || 0 : 0;
           }
-          const costPoints = Number(raffle.costPoints ?? 100);
+          const image = /^https:\/\//i.test(String(campaign.imageUrl || ""))
+            ? `<img src="${escapeHtml(campaign.imageUrl)}" alt="" loading="lazy" class="max-h-56 w-full rounded-t-xl bg-white object-contain">` : "";
           return `<article class="overflow-hidden rounded-xl border border-white bg-white/70">
-            ${raffle.imageUrl ? `<img src="${escapeHtml(raffle.imageUrl)}" alt="" loading="lazy" class="max-h-56 w-full object-contain bg-white">` : ""}
-            <div class="space-y-2 p-3"><h4 class="break-words font-bold text-sm text-gray-900">${escapeHtml(raffle.title || "トレカ抽選")}</h4>
-            <p class="break-words text-xs text-gray-600">${escapeHtml(raffle.prizeDescription || "")}</p>
-            <div class="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-gray-600"><span>締切：${escapeHtml(formatRaffleDeadline(raffle.endsAt))}</span><span>当選：${Number(raffle.winnerCount) || 0}人</span><span>応募口数：${myEntries}口</span></div>
-            <button type="button" data-raffle-enter="${escapeHtml(raffle.id)}" ${currentUser ? "" : "disabled"} class="w-full rounded-full bg-purple-600 py-2.5 text-xs font-bold text-white disabled:bg-gray-300">${currentUser ? `${costPoints}ptで1口応募` : "ログインして応募"}</button></div>
+            ${image}<div class="space-y-2 p-3"><h4 class="break-words font-bold text-sm text-gray-900">${escapeHtml(campaign.title || "トレカプレゼント企画")}</h4>
+            <p class="break-words text-xs text-gray-600">${escapeHtml(campaign.prizeDescription || "")}</p>
+            <div class="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-gray-600"><span>当選：${Number(campaign.winnerCount) || 1}人</span><span>応募口数：${Number(campaign.entriesCount) || 0}口</span><span>あなたの応募：${entryCount}口</span></div>
+            <div class="flex gap-2"><select id="present-count-${escapeHtml(campaign.id)}" aria-label="応募口数" class="liquid-glass-input min-w-0 flex-1 rounded-xl p-2 text-xs" ${currentUser ? "" : "disabled"}>${Array.from({ length: 20 }, (_, index) => `<option value="${index + 1}">${index + 1}口（${(index + 1) * 100}pt）</option>`).join("")}</select>
+            <button type="button" data-present-enter="${escapeHtml(campaign.id)}" class="shrink-0 rounded-full bg-purple-600 px-4 py-2.5 text-xs font-bold text-white disabled:bg-gray-300" ${currentUser ? "" : "disabled"}>${currentUser ? "応募する" : "ログインして応募"}</button></div></div>
           </article>`;
         }));
         list.innerHTML = cards.join("");
       } catch (e) {
-        console.error("Raffle list load failed:", e);
-        list.innerHTML = '<p class="text-xs text-red-600">抽選を読み込めませんでした。</p>';
+        console.error("Present campaign list load failed:", e);
+        document.getElementById("present-campaign-list").innerHTML = '<p class="text-xs text-red-600">企画を読み込めませんでした。</p>';
       }
     };
-    document.getElementById("raffle-list").addEventListener("click", async (event) => {
-      const button = event.target.closest("[data-raffle-enter]");
-      if (!button || !currentUser) return;
-      button.disabled = true;
-      try {
-        const result = await rewardCalls.enterRaffle({ raffleId: button.dataset.raffleEnter });
-        userData.points = Number(result.data.totalPoints) || 0;
-        document.getElementById("points-balance").textContent = String(userData.points);
-        showToast("抽選に1口応募しました", "success");
-        await window.renderRewards();
-      } catch (e) {
-        console.error("Raffle entry failed:", e);
-        showToast(e?.code === "functions/failed-precondition" ? "ポイント不足または応募期間外です" : "応募に失敗しました", "error");
-      } finally {
-        button.disabled = false;
-      }
-    });
     window.claimDailyLoginBonus = async function() {
       if (!currentUser) return;
       const button = document.getElementById("login-bonus-claim-btn");
@@ -924,19 +999,31 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         button.disabled = false;
       }
     };
-    window.claimProfileOrInviteBonus = async function() {
+    window.claimProfileBonus = async function() {
       if (!currentUser) return;
       try {
-        const { data } = await rewardCalls.claimProfileOrInviteBonus({});
+        const { data } = await rewardCalls.claimProfileBonus({});
         userData.points = Number(data.totalPoints);
-        userData.inviteCode = data.inviteCode || userData.inviteCode;
         userData.profileBonusGranted = userData.profileBonusGranted || data.profileAwarded;
-        userData.referredBy = data.referredBy || userData.referredBy;
         showToast(data.profileAwarded ? "プロフィール完成ボーナス +30pt！" : "プロフィールを完成するとボーナスを受け取れます", data.profileAwarded ? "success" : "info");
         await window.renderRewards();
       } catch (e) {
         console.error("Profile bonus claim failed:", e);
         showToast("プロフィールボーナスを受け取れませんでした", "error");
+      }
+    };
+    window.copyInviteUrl = async function() {
+      const input = document.getElementById("mypage-invite-url");
+      if (!input.value) return showToast("招待URLを準備できませんでした", "error");
+      try {
+        await navigator.clipboard.writeText(input.value);
+        showToast("招待URLをコピーしました", "success");
+      } catch (error) {
+        console.error("Invite URL copy failed:", error);
+        input.focus();
+        input.select();
+        if (document.execCommand("copy")) showToast("招待URLをコピーしました", "success");
+        else showToast("招待URLをコピーできませんでした", "error");
       }
     };
     window.claimInviteBonus = async function(event) {
@@ -946,32 +1033,63 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       const inviteCode = input.value.trim().toUpperCase();
       if (!inviteCode) return showToast("招待コードを入力してください", "error");
       try {
-        const { data } = await rewardCalls.claimProfileOrInviteBonus({ inviteCode });
+        const { data } = await rewardCalls.claimRegistrationAndInviteBonus({ inviteCode });
         userData.points = Number(data.totalPoints);
         userData.inviteCode = data.inviteCode || userData.inviteCode;
         userData.referredBy = data.referredBy || userData.referredBy;
+        userData.registrationBonusGranted = userData.registrationBonusGranted || data.registrationAwarded;
         if (data.inviteAwarded) {
           input.value = "";
-          showToast("招待ボーナス +50ptを受け取りました", "success");
+          showToast("招待ボーナス +70ptを受け取りました", "success");
+        } else if (data.inviteStatus === "not-found") {
+          showToast("招待コードが見つかりません", "error");
+        } else if (data.inviteStatus === "self") {
+          showToast("自分の招待コードは使用できません", "error");
         } else {
-          showToast(data.alreadyInvited ? "招待ボーナスは受取済みです" : "招待ボーナスの対象ではありません", "info");
+          showToast(data.inviteStatus === "already-claimed" ? "招待ボーナスは受取済みです" : "招待ボーナスを受け取れませんでした", "info");
         }
         await window.renderRewards();
       } catch (e) {
         console.error("Invite bonus claim failed:", e);
-        showToast(e?.code === "functions/not-found" ? "招待コードが見つかりません" : "招待ボーナスを受け取れませんでした", "error");
+        showToast("招待ボーナスを受け取れませんでした", "error");
       }
     };
+    async function claimRegistrationAndInviteBonus(user) {
+      let inviteCode = "";
+      try { inviteCode = sessionStorage.getItem(pendingInviteStorageKey) || ""; } catch (error) { console.warn("Pending invite could not be read:", error); }
+      try {
+        const { data } = await rewardCalls.claimRegistrationAndInviteBonus({ inviteCode });
+        userData.points = Number(data.totalPoints) || 0;
+        userData.inviteCode = data.inviteCode || userData.inviteCode;
+        userData.referredBy = data.referredBy || userData.referredBy;
+        userData.registrationBonusGranted = userData.registrationBonusGranted || data.registrationAwarded;
+        if (data.registrationAwarded || data.inviteAwarded) {
+          const awarded = (data.registrationAwarded ? 100 : 0) + (data.inviteAwarded ? 70 : 0);
+          showToast(`ポイント特典 +${awarded}ptを受け取りました`, "success");
+        }
+        if (inviteCode) {
+          try { sessionStorage.removeItem(pendingInviteStorageKey); } catch (error) { console.warn("Pending invite could not be cleared:", error); }
+          const url = new URL(location.href);
+          url.searchParams.delete("ref");
+          history.replaceState(history.state, "", url);
+          if (!data.inviteAwarded && data.inviteStatus === "not-found") showToast("招待コードが見つかりませんでした", "error");
+          if (!data.inviteAwarded && data.inviteStatus === "self") showToast("自分の招待コードは使用できません", "error");
+        }
+        await window.renderRewards();
+      } catch (error) {
+        console.error("Registration and invite bonus claim failed:", user.uid, error);
+        showToast("登録・招待ポイントを反映できませんでした", "error");
+      }
+    }
     window.openMyPage = function() { switchTab('mypage'); };
     window.closeMyPage = function() { switchTab('home'); };
+    loadActivePresentCampaigns(true).catch((error) => console.error("Home present campaign load failed:", error));
 
     window.switchTab = function(tab) {
       closeDetailModal();
-    if (!currentUser && (tab === "post" || tab === "mycards" || tab === "mypage")) { if (typeof showToast === "function") { showToast("ログインしてください", "error"); } else { alert("ログインしてください"); } return; }
-      if ((tab === 'mycards' || tab === 'mypage') && !currentUser) {
-        /* alert hidden */ console.log("ログインが必要です。");
-        return;
-      }
+      if (!currentUser && (tab === "post" || tab === "mycards")) { if (typeof showToast === "function") { showToast("ログインしてください", "error"); } else { alert("ログインしてください"); } return; }
+      currentPageTab = tab;
+      if (tab === "home") loadActivePresentCampaigns(true).catch((error) => console.error("Home present campaign load failed:", error));
       const showList = tab === 'home' || tab === 'likes';
       document.getElementById("post-menu-section").classList.toggle("hidden", tab !== 'post');
       document.getElementById("post-list-section").classList.toggle("hidden", !showList);
@@ -1019,6 +1137,9 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       }
       window.scrollTo({ top: 0, behavior: 'smooth' });
       if (typeof window.syncNavGlass === "function") window.syncNavGlass();
+    };
+    window.openHeaderImageSearch = function() {
+      document.getElementById("header-image-search-input").click();
     };
 
     function getOrCreateDeviceId() {
@@ -1172,11 +1293,14 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     function updateUserAvatar() {
       const avatar = document.getElementById("user-avatar");
       if (!avatar) return;
+      const placeholder = document.getElementById("user-avatar-placeholder");
       const photo = getMyProfile()?.photo;
       if (photo && isJpegData(photo)) {
         avatar.src = photo; avatar.classList.remove("hidden");
+        if (placeholder) placeholder.classList.add("hidden");
       } else {
         avatar.classList.add("hidden"); avatar.removeAttribute("src");
+        if (placeholder) placeholder.classList.remove("hidden");
       }
     }
     function subscribeUserData() {
@@ -1204,7 +1328,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         if (Array.isArray(d.notifications) && storedNotifs.length !== d.notifications.length) {
           saveUserData({ notifications: storedNotifs }).catch(() => {});
         }
-        userData = { profile: d.profile || {}, blocked: d.blocked || [], likes: d.likes || [], reads: d.reads || {}, notifications: storedNotifs, cancelHistory: d.cancelHistory || [], myCards: d.myCards || {}, collectionPublic: !!d.collectionPublic, customCards: Array.isArray(d.customCards) ? d.customCards : [], cardWatch: d.cardWatch && typeof d.cardWatch === "object" ? d.cardWatch : {}, shipping: userData.shipping || {}, points: Number(d.points) || 0, pointHistory: Array.isArray(d.pointHistory) ? d.pointHistory : [], inviteCode: d.inviteCode || "", loginStamps: Array.isArray(d.loginStamps) ? d.loginStamps : [], lastLoginBonusDate: d.lastLoginBonusDate || "", profileBonusGranted: !!d.profileBonusGranted, referredBy: d.referredBy || "" };
+        userData = { profile: d.profile || {}, blocked: d.blocked || [], likes: d.likes || [], reads: d.reads || {}, notifications: storedNotifs, cancelHistory: d.cancelHistory || [], myCards: d.myCards || {}, collectionPublic: !!d.collectionPublic, customCards: Array.isArray(d.customCards) ? d.customCards : [], cardWatch: d.cardWatch && typeof d.cardWatch === "object" ? d.cardWatch : {}, shipping: userData.shipping || {}, points: Number(d.points) || 0, pointHistory: Array.isArray(d.pointHistory) ? d.pointHistory : [], inviteCode: d.inviteCode || "", loginStamps: Array.isArray(d.loginStamps) ? d.loginStamps : [], lastLoginBonusDate: d.lastLoginBonusDate || "", registrationBonusGranted: !!d.registrationBonusGranted, profileBonusGranted: !!d.profileBonusGranted, referredBy: d.referredBy || "" };
         if (currentUser) {
           document.getElementById("user-name").innerText = getMyDisplayName();
           updateUserAvatar();
@@ -1386,8 +1510,8 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     window.renderAdminRewards = async function() {
       if (!isAdmin()) return;
       try {
-        const [campaign, raffles] = await Promise.all([
-          getDoc(doc(db, "config", "pointCampaign")), getDocs(collection(db, "raffles"))
+        const [campaign, presentCampaigns] = await Promise.all([
+          getDoc(doc(db, "config", "pointCampaign")), getDocs(collection(db, "present_campaigns"))
         ]);
         doublePointActive = campaign.exists() && campaign.data().doubleActive === true;
         const toggle = document.getElementById("double-point-toggle");
@@ -1398,14 +1522,16 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         document.getElementById("double-point-date-list").innerHTML = dates.length
           ? dates.map((date) => `<span class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-1 text-amber-900">${escapeHtml(date)}<button type="button" aria-label="削除" onclick="removeDoublePointDate('${escapeHtml(date)}')" class="font-bold">×</button></span>`).join("")
           : '<span class="text-gray-500">設定なし</span>';
-        const records = raffles.docs.map((raffle) => ({ id: raffle.id, ...raffle.data() }));
-        document.getElementById("admin-raffle-list").innerHTML = records.length
-          ? records.map((raffle) => `<div class="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white/70 p-2"><span class="min-w-0 flex-1 break-words">${escapeHtml(raffle.title || "トレカ抽選")}・${escapeHtml(raffle.status || "")}（${Number(raffle.entriesCount) || 0}口）</span>${raffle.status === "active" ? `<button type="button" onclick="drawRaffle('${escapeHtml(raffle.id)}')" class="shrink-0 rounded-full bg-pink-600 px-3 py-1.5 font-bold text-white">当選確定</button>` : ""}</div>`).join("")
-          : '<p class="text-gray-500">抽選はありません。</p>';
+        const records = presentCampaigns.docs
+          .map((item) => ({ id: item.id, ...item.data() }))
+          .sort((a, b) => tsMillis(b.createdAt) - tsMillis(a.createdAt));
+        document.getElementById("admin-present-list").innerHTML = records.length
+          ? records.map((item) => `<div class="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white/70 p-2"><span class="min-w-0 flex-1 break-words">${escapeHtml(item.title || "トレカプレゼント企画")}・${escapeHtml(item.status || "")}（${Number(item.entriesCount) || 0}口）${Number(item.winnerCountDrawn) ? `／当選 ${Number(item.winnerCountDrawn)}人` : ""}</span>${item.status === "active" ? `<button type="button" onclick="finishPresentCampaign('${escapeHtml(item.id)}')" class="shrink-0 rounded-full bg-pink-600 px-3 py-1.5 font-bold text-white">当選確定・終了</button>` : ""}</div>`).join("")
+          : '<p class="text-gray-500">プレゼント企画はありません。</p>';
       } catch (e) {
         console.error("Admin reward data load failed:", e);
         document.getElementById("double-point-date-list").textContent = "設定を読み込めませんでした";
-        document.getElementById("admin-raffle-list").textContent = "抽選を読み込めませんでした";
+        document.getElementById("admin-present-list").textContent = "企画を読み込めませんでした";
       }
     };
     window.toggleDoublePointDay = async function() {
@@ -1441,13 +1567,13 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         showToast("ポイント2倍デーを更新できませんでした", "error");
       }
     }
-    window.createRaffleFromAdmin = async function(event) {
+    window.createPresentCampaignFromAdmin = async function(event) {
       event.preventDefault();
       const form = event.currentTarget;
       const button = form.querySelector('button[type="submit"]');
       button.disabled = true;
       try {
-        const imageFile = document.getElementById("raffle-image-input").files?.[0];
+        const imageFile = document.getElementById("present-image-input").files?.[0];
         const supportedImageTypes = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/apng", "image/avif", "image/heic", "image/heif"];
         if (!imageFile || !supportedImageTypes.includes(imageFile.type.toLowerCase())) {
           throw new Error("JPEG・PNG・WebP・GIFなどの画像を選択してください");
@@ -1459,35 +1585,34 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           reader.onerror = () => reject(reader.error || new Error("画像を読み込めませんでした"));
           reader.readAsDataURL(imageFile);
         });
-        const uploaded = await rewardCalls.adminUploadRaffleImage({ dataUrl: imageDataUrl });
-        const endsAtJst = document.getElementById("raffle-ends-at-input").value;
-        await rewardCalls.adminCreateRaffle({
-          title: document.getElementById("raffle-title-input").value.trim(),
+        const uploaded = await rewardCalls.adminUploadPresentCampaignImage({ dataUrl: imageDataUrl });
+        await rewardCalls.adminCreatePresentCampaign({
+          title: document.getElementById("present-title-input").value.trim(),
           imageUrl: uploaded.data.imageUrl,
-          prizeDescription: document.getElementById("raffle-prize-description-input").value.trim(),
-          costPoints: Number(document.getElementById("raffle-cost-points-input").value),
-          winnerCount: Number(document.getElementById("raffle-winner-count-input").value),
-          endsAt: new Date(`${endsAtJst}:00+09:00`).toISOString()
+          prizeDescription: document.getElementById("present-prize-description-input").value.trim(),
+          winnerCount: Number(document.getElementById("present-winner-count-input").value)
         });
         form.reset();
         await Promise.all([window.renderAdminRewards(), window.renderRewards()]);
-        showToast("トレカ抽選を作成しました", "success");
+        await loadActivePresentCampaigns(false);
+        showToast("トレカプレゼント企画を作成しました", "success");
       } catch (e) {
-        console.error("Raffle creation failed:", e);
-        showToast(e?.message || "抽選を作成できませんでした", "error");
+        console.error("Present campaign creation failed:", e);
+        showToast(e?.message || "企画を作成できませんでした", "error");
       } finally {
         button.disabled = false;
       }
     };
-    window.drawRaffle = async function(raffleId) {
+    window.finishPresentCampaign = async function(campaignId) {
       if (!isAdmin()) return;
+      if (!confirm("応募内容から当選者を確定し、この企画を終了します。よろしいですか？")) return;
       try {
-        const result = await rewardCalls.drawRaffleWinner({ raffleId });
-        showToast(`${result.data.winners.length}人の当選者を確定しました`, "success");
-        await Promise.all([window.renderAdminRewards(), window.renderRewards()]);
+        const result = await rewardCalls.finishPresentCampaign({ campaignId });
+        showToast(`${result.data.winners.length}人の当選者を確定し、企画を終了しました`, "success");
+        await Promise.all([window.renderAdminRewards(), window.renderRewards(), loadActivePresentCampaigns(false)]);
       } catch (e) {
-        console.error("Raffle draw failed:", e);
-        showToast("抽選を実行できませんでした", "error");
+        console.error("Present campaign finish failed:", e);
+        showToast("当選確定・終了に失敗しました", "error");
       }
     };
 
@@ -2715,11 +2840,9 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         return /* alert hidden */ console.log("失敗しました。\n" + (e?.code || e?.message || ""));
       }
       try {
-        const { data } = await rewardCalls.claimProfileOrInviteBonus({});
+        const { data } = await rewardCalls.claimProfileBonus({});
         userData.points = Number(data.totalPoints);
-        userData.inviteCode = data.inviteCode || userData.inviteCode;
         userData.profileBonusGranted = userData.profileBonusGranted || data.profileAwarded;
-        userData.referredBy = data.referredBy || userData.referredBy;
       } catch (e) {
         console.error("Profile bonus claim failed:", e);
         showToast("ポイント特典を反映できませんでした。時間をおいて再度お試しください。", "error");
@@ -3341,16 +3464,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
             } catch (e) {
               console.error("Daily login bonus claim failed:", e);
             }
-            try {
-              const { data } = await rewardCalls.claimProfileOrInviteBonus({});
-              userData.points = Number(data.totalPoints);
-              userData.inviteCode = data.inviteCode || userData.inviteCode;
-              userData.profileBonusGranted = userData.profileBonusGranted || data.profileAwarded;
-              userData.referredBy = data.referredBy || userData.referredBy;
-              if (!document.getElementById("mypage-section").classList.contains("hidden")) window.renderRewards();
-            } catch (e) {
-              console.error("Profile bonus initialization failed:", e);
-            }
+            await claimRegistrationAndInviteBonus(user);
           })();
         }
         loginBtn.classList.add("hidden"); userProfile.classList.remove("hidden");
@@ -3395,13 +3509,15 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         dailyBonusRequestUid = null;
         loginCalendarData = null;
         window.closeLoginCalendar();
-        loginBtn.classList.remove("hidden"); userProfile.classList.add("hidden");
+        const adminBtn = document.getElementById("admin-panel-btn");
+        if (adminBtn) adminBtn.classList.add("hidden");
+        loginBtn.classList.remove("hidden"); userProfile.classList.remove("hidden");
         if (unsubTrades) unsubTrades(); if (unsubUser) unsubUser(); if (unsubNotifs) unsubNotifs(); unsubTrades=null; unsubUser=null; unsubNotifs=null; serverNotifs = [];
         tradesLoaded = false;
         if (typeof loadPosts === "function" && allPosts.length === 0) loadPosts(true);
         if (unsubSusp) { unsubSusp(); unsubSusp = null; }
         document.getElementById("suspended-modal").classList.add("hidden");
-        userData = { profile: {}, blocked: [], likes: [], reads: {}, notifications: [], cancelHistory: [], myCards: {}, collectionPublic: false, customCards: [], cardWatch: {}, points: 0, pointHistory: [], inviteCode: "", loginStamps: [], lastLoginBonusDate: "", profileBonusGranted: false, referredBy: "" }; myTrades = []; updateBadge(); updateNotifBadge();
+        userData = { profile: {}, blocked: [], likes: [], reads: {}, notifications: [], cancelHistory: [], myCards: {}, collectionPublic: false, customCards: [], cardWatch: {}, points: 0, pointHistory: [], inviteCode: "", loginStamps: [], lastLoginBonusDate: "", registrationBonusGranted: false, profileBonusGranted: false, referredBy: "" }; myTrades = []; updateUserAvatar(); updateBadge(); updateNotifBadge();
         window.renderRewards();
         prevUnreadCount = -1; prevTradeCountAsOwner = -1;
         window._tradeWatchReady = false;
@@ -4049,6 +4165,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
               createdAt: serverTimestamp()
             });
           }
+          if (item.photos[0]?.full) enqueuePostImageVector(ref.id, item.photos[0].full);
           if (item.catalogCardId) {
             notifyCardWatchers(item.catalogCardId, item.catalogCardName || item.give, ref.id).catch(function() {});
           }
@@ -4167,6 +4284,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           paymentMethod: "azukari"
         });
         for (let i = 0; i < postPhotos.length; i++) await addDoc(collection(db, "posts", ref.id, "photos"), { data: postPhotos[i].full, order: i, createdAt: serverTimestamp() });
+        if (postPhotos[0]?.full) enqueuePostImageVector(ref.id, postPhotos[0].full);
         
         showToast("共同購入の募集を開始しました！詳細画面からXでシェアできます", "success");
         
@@ -4194,7 +4312,34 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     window.setMember = function(i) { selectedMember = MEMBERS[i]; renderFilters(); renderPosts(); };
     window.setKind = function(k) { kindFilter = k; renderFilters(); renderPosts(); };
         window.setBundle = function(k) { bundleFilter = k; renderFilters(); renderPosts(); };
-    window.setSearch = function(v) { searchText = v.trim().toLowerCase(); renderPosts(); };
+    window.setSearch = function(v) {
+      if ((imageSearchState || imageSearchLoading) && v.trim()) {
+        imageSearchToken++;
+        imageSearchState = null;
+        imageSearchLoading = false;
+        updateImageSearchControls(false);
+      }
+      searchText = v.trim().toLowerCase();
+      renderPosts();
+    };
+    function updateImageSearchControls(active, label) {
+      const header = document.querySelector(".kp-market-header");
+      const badge = document.getElementById("image-search-badge");
+      const reset = document.getElementById("image-search-reset");
+      if (header) header.classList.toggle("image-search-active", active);
+      if (badge) {
+        badge.textContent = label || "画像検索結果（一致度順）";
+        badge.classList.toggle("hidden", !active);
+      }
+      if (reset) reset.classList.toggle("hidden", !active);
+    }
+    window.clearListingImageSearch = function() {
+      imageSearchToken++;
+      imageSearchState = null;
+      imageSearchLoading = false;
+      updateImageSearchControls(false);
+      renderPosts();
+    };
     window.syncSearch = function(v) {
       const mainInput = document.getElementById("main-search-input");
       const modalInput = document.getElementById("search-input");
@@ -4214,8 +4359,16 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     window.openFilterModal = function() { renderFilters(); document.getElementById("filter-modal").classList.remove("hidden"); };
     window.closeFilterModal = function() { document.getElementById("filter-modal").classList.add("hidden"); renderPosts(); };
     window.resetFilters = function() {
+      imageSearchToken++;
+      imageSearchState = null;
+      imageSearchLoading = false;
+      updateImageSearchControls(false);
       selectedMember = "すべて"; kindFilter = "all"; sortFilter = "random"; bundleFilter = "all"; searchText = ""; activeOnly = false;
       document.getElementById("search-input").value = "";
+      const mainInput = document.getElementById("main-search-input");
+      if (mainInput) mainInput.value = "";
+      const clearBtn = document.getElementById("main-search-clear");
+      if (clearBtn) clearBtn.classList.add("hidden");
       document.getElementById("active-only-check").checked = false;
       renderFilters(); renderPosts();
     };
@@ -4270,11 +4423,72 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       setStatus("sell-status-push", !!(currentUser && localStorage.getItem(pushStorageKey())), "✅ オン", currentUser ? "オフ" : "ログインすると設定できます");
     }
 
+    const POST_IMAGE_SIMILARITY_THRESHOLD = 0.5;
+    function normalizeImageSearchText(value) {
+      return String(value || "").toLowerCase().replace(/\s+/g, "");
+    }
+    function catalogCardMatchesPost(candidate, post) {
+      const card = candidate && candidate.card;
+      if (!card) return false;
+      if (card.id && post.catalogCardId === card.id) return true;
+      const postText = normalizeImageSearchText([
+        post.catalogCardName, post.member, post.give, post.want, post.albumName, post.albumId
+      ].join(" "));
+      const terms = [card.name, card.member, _candidateAlbumName(card)]
+        .map(normalizeImageSearchText)
+        .filter(term => term.length >= 2);
+      return terms.some(term => postText.includes(term));
+    }
+    function cosineSimilarity(left, right) {
+      if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length || left.length === 0) return null;
+      let dot = 0, leftNorm = 0, rightNorm = 0;
+      for (let i = 0; i < left.length; i++) {
+        const a = Number(left[i]), b = Number(right[i]);
+        if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
+        dot += a * b;
+        leftNorm += a * a;
+        rightNorm += b * b;
+      }
+      if (leftNorm === 0 || rightNorm === 0) return null;
+      return dot / Math.sqrt(leftNorm * rightNorm);
+    }
+    function getImageSearchPostRanks() {
+      if (!imageSearchState) return null;
+      const matches = [];
+      for (const post of allPosts) {
+        if (!post || !post.id || post.status !== "active") continue;
+        const catalogMatch = imageSearchState.cards.find(candidate => catalogCardMatchesPost(candidate, post));
+        let similarity = null;
+        if (Array.isArray(post.imageVector)) {
+          for (const queryVector of imageSearchState.vectors) {
+            const score = cosineSimilarity(queryVector, post.imageVector);
+            if (score !== null && (similarity === null || score > similarity)) similarity = score;
+          }
+        }
+        if (!catalogMatch && (similarity === null || similarity < POST_IMAGE_SIMILARITY_THRESHOLD)) continue;
+        matches.push({
+          post,
+          isCatalogMatch: !!catalogMatch,
+          catalogScore: Number(catalogMatch && (catalogMatch.score || catalogMatch.raw)) || 0,
+          similarity: similarity === null ? -1 : similarity
+        });
+      }
+      matches.sort((a, b) => {
+        if (a.isCatalogMatch !== b.isCatalogMatch) return a.isCatalogMatch ? -1 : 1;
+        if (a.isCatalogMatch && a.catalogScore !== b.catalogScore) return b.catalogScore - a.catalogScore;
+        if (a.similarity !== b.similarity) return b.similarity - a.similarity;
+        return tsMillis(b.post.createdAt) - tsMillis(a.post.createdAt);
+      });
+      return new Map(matches.map((match, index) => [match.post.id, index]));
+    }
+
     function renderPosts() {
       const container = document.getElementById("posts-container");
       const blocked = userData.blocked || []; const likes = userData.likes || [];
+      const imageRanks = getImageSearchPostRanks();
       const filtered = [];
       allPosts.forEach((p, index) => {
+        if (imageSearchState && (p.status !== "active" || !imageRanks.has(p.id))) return;
         if (blocked.includes(p.userId)) return;
         // 審査中（hidden）は本人・管理者以外に見せない
         if (p.status === "hidden" && !(currentUser && (p.userId === currentUser.uid || isAdmin()))) return;
@@ -4291,7 +4505,9 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         if (!okKind || !okMember || !okText || !okBundle) return;
         filtered.push({ p, index });
       });
-      if (sortFilter === "random") {
+      if (imageSearchState) {
+        filtered.sort((a, b) => imageRanks.get(a.p.id) - imageRanks.get(b.p.id));
+      } else if (sortFilter === "random") {
         window._randOrderMap = window._randOrderMap || {};
         filtered.forEach(({ p }) => {
           if (p && p.id && window._randOrderMap[p.id] === undefined) {
@@ -4371,7 +4587,9 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       container.innerHTML = cards.length === 0
           ? (loadingPosts && allPosts.length === 0
             ? postsSkeletonHtml() + `<div class="posts-status col-span-full text-center pt-1 pb-4"><button type="button" onclick="window._retriedInitialPosts=false; if(window.loadPosts) window.loadPosts(true);" class="text-[12px] text-indigo-600 underline font-bold">再試行する</button></div>`
-            : postsEmptyHtml("条件に合う募集はありません", "フィルターを外すか、キーワードを変えてみてください"))
+            : imageSearchState
+              ? postsEmptyHtml("類似する出品はありません", "別の画像を試すか、画像検索をリセットしてください")
+              : postsEmptyHtml("条件に合う募集はありません", "フィルターを外すか、キーワードを変えてみてください"))
         : cards.join("");
       renderSellTab();
     }
@@ -7890,6 +8108,38 @@ function getAiCardVectors() {
       return arr;
     }
 
+    async function extractListingImageVectors(dataUrl, includeAlternateViews = true) {
+      const views = await cardQueryViews(dataUrl);
+      const extractor = await getAiClipExtractor();
+      const vectors = [];
+      for (let index = 0; index < views.length; index++) {
+        const view = views[index];
+        const output = await extractor(view, { pooling: "mean", normalize: true });
+        const vector = poolImageEmbedding(output);
+        if (vector && vector.every(Number.isFinite)) vectors.push(vector);
+        if (!includeAlternateViews) break;
+      }
+      return vectors;
+    }
+    async function savePostImageVector(postId, dataUrl) {
+      if (!postId || !dataUrl) return;
+      try {
+        const vectors = await extractListingImageVectors(dataUrl, false);
+        if (!vectors.length) throw new Error("画像ベクトルを生成できませんでした");
+        const imageVector = vectors[0];
+        await updateDoc(doc(db, "posts", postId), { imageVector });
+        const localPost = allPosts.find(post => post.id === postId);
+        if (localPost) localPost.imageVector = imageVector;
+      } catch (error) {
+        console.warn("Post image vector save failed:", postId, error?.code || error);
+      }
+    }
+    function enqueuePostImageVector(postId, dataUrl) {
+      postImageVectorQueue = postImageVectorQueue
+        .then(() => savePostImageVector(postId, dataUrl))
+        .catch(error => console.warn("Post image vector queue failed:", postId, error?.code || error));
+    }
+
     function isolateCardSource(img) {
       const w0 = img.naturalWidth || img.width;
       const h0 = img.naturalHeight || img.height;
@@ -8104,6 +8354,76 @@ function getAiCardVectors() {
       }
       return findSimilarCards(dataUrl, true);
     }
+    window.runListingImageSearch = async function(inputEl) {
+      const file = inputEl && inputEl.files && inputEl.files[0];
+      if (inputEl) inputEl.value = "";
+      if (!file) return;
+
+      const requestToken = ++imageSearchToken;
+      imageSearchState = null;
+      imageSearchLoading = true;
+      updateImageSearchControls(true, "画像解析中");
+      searchText = "";
+      selectedMember = "すべて";
+      kindFilter = "all";
+      sortFilter = "random";
+      bundleFilter = "all";
+      activeOnly = false;
+      const mainInput = document.getElementById("main-search-input");
+      const modalInput = document.getElementById("search-input");
+      const textClear = document.getElementById("main-search-clear");
+      const activeOnlyCheck = document.getElementById("active-only-check");
+      if (mainInput) mainInput.value = "";
+      if (modalInput) modalInput.value = "";
+      if (textClear) textClear.classList.add("hidden");
+      if (activeOnlyCheck) activeOnlyCheck.checked = false;
+      renderFilters();
+      window.switchTab("home");
+
+      try {
+        const source = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        const image = await loadImageFromFile(file);
+        const query = compressFromImage(image, { maxSide: 1400, quality: 0.92, maxChars: 1200000 }) || source;
+        let vectors = [];
+        try {
+          vectors = await extractListingImageVectors(query);
+        } catch (error) {
+          console.warn("Listing image vector extraction failed:", error?.code || error);
+        }
+        if (requestToken !== imageSearchToken) return;
+        let cards = [];
+        try {
+          const matches = await recognizeCardImage(query);
+          cards = Array.isArray(matches) ? matches : [];
+        } catch (error) {
+          console.warn("Listing image catalog search failed:", error?.code || error);
+        }
+        if (requestToken !== imageSearchToken) return;
+        imageSearchLoading = false;
+        if (!cards.length && !vectors.length) {
+          updateImageSearchControls(false);
+          showToast("画像を解析できませんでした。再度お試しください", "error");
+          renderPosts();
+          return;
+        }
+        imageSearchState = { cards, vectors };
+        updateImageSearchControls(true, "画像検索結果（一致度順）");
+        renderPosts();
+        if (!vectors.length) showToast("出品画像の類似検索を利用できないため、カード候補のみ表示しています", "info");
+      } catch (error) {
+        if (requestToken !== imageSearchToken) return;
+        imageSearchLoading = false;
+        console.error("Listing image search failed:", error);
+        updateImageSearchControls(false);
+        showToast("画像検索に失敗しました。再度お試しください", "error");
+        renderPosts();
+      }
+    };
     async function findSimilarCards(uploadedDataUrl, skipAI) {
       try {
         if (!skipAI) {

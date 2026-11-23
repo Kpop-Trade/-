@@ -51,37 +51,50 @@
 
   <div id="toast-container" class="fixed top-20 left-1/2 -translate-x-1/2 z-[110] space-y-2 w-[92%] max-w-sm pointer-events-none"></div>
 
-  <header class="liquid-glass lg-header border-b-0 mb-4">
-    <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-      <div class="flex items-center space-x-2">
-        <h1
-          class="brand-logo"
-          role="button"
-          tabindex="0"
-          aria-label="ILLIT Trade（ホームへ）"
-          onclick="if(typeof switchTab==='function')switchTab('home')"
-          onkeydown="if((event.key==='Enter'||event.key===' ')&&typeof switchTab==='function'){event.preventDefault();switchTab('home');}"
-        ><span class="brand-logo-illit">ILLIT</span><span class="brand-logo-trade">Trade</span></h1>
+  <header class="kp-market-header lg-header">
+    <div class="kp-market-header-inner">
+      <div id="header-searchbar">
+        <svg class="header-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="10.8" cy="10.8" r="6.8" stroke="currentColor" stroke-width="1.6"/>
+          <path d="m16 16 4.2 4.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+        <input type="text" id="main-search-input" oninput="syncSearch(this.value)" placeholder="トレカをさがす" aria-label="トレカをさがす">
+        <button type="button" id="main-search-clear" onclick="syncSearch('')" aria-label="検索をクリア" class="hidden">×</button>
+        <span id="image-search-badge" class="hidden" title="画像検索結果（一致度順）" aria-label="画像検索結果（一致度順）">画像検索結果（一致度順）</span>
+        <button type="button" id="image-search-reset" class="hidden" onclick="clearListingImageSearch()" aria-label="画像検索をリセット">×</button>
+        <button type="button" class="header-photo-search" onclick="openHeaderImageSearch()" aria-label="写真からトレカを検索">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M8 3.5H5.5a2 2 0 0 0-2 2V8M16 3.5h2.5a2 2 0 0 1 2 2V8M20.5 16v2.5a2 2 0 0 1-2 2H16M8 20.5H5.5a2 2 0 0 1-2-2V16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+            <circle cx="12" cy="12" r="3.1" stroke="currentColor" stroke-width="1.7"/>
+          </svg>
+        </button>
       </div>
-      <div id="auth-container" class="flex items-center space-x-2">
-        <button id="login-btn" onclick="loginWithGoogle()" class="bg-white/80 backdrop-blur border border-white text-illit-darkPurple text-xs md:text-sm font-bold py-2 px-4 rounded-full transition shadow-sm hover:bg-white">Googleログイン</button>
-        <div id="user-profile" class="hidden flex items-center space-x-2">
-          <button id="admin-panel-btn" onclick="openAdminModal()" class="hidden bg-red-100/80 text-red-700 text-xs font-bold px-2.5 py-1.5 rounded-full hover:bg-red-200 transition" title="管理者パネル">👑</button>
-          <button id="notif-btn" type="button" onclick="openNotificationsModal()" onpointerdown="this.classList.add('holding')" onpointerup="this.classList.remove('holding')" onpointerleave="this.classList.remove('holding')" onpointercancel="this.classList.remove('holding')" aria-label="通知">
-            <span class="notif-ring"></span>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M6.2 9.4a5.8 5.8 0 0 1 11.6 0c0 3.7 1 5 1.5 5.4H4.7c.5-.4 1.5-1.7 1.5-5.4Z" stroke="#222" stroke-width="1.7" stroke-linejoin="round"/>
-              <path d="M10 18.4a2 2 0 0 0 4 0" stroke="#222" stroke-width="1.7" stroke-linecap="round"/>
+      <input id="header-image-search-input" type="file" accept="image/*" capture="environment" class="hidden" onchange="runListingImageSearch(this)">
+      <div id="user-profile" class="kp-market-actions">
+        <button id="notif-btn" type="button" onclick="openNotificationsModal()" onpointerdown="this.classList.add('holding')" onpointerup="this.classList.remove('holding')" onpointerleave="this.classList.remove('holding')" onpointercancel="this.classList.remove('holding')" aria-label="通知">
+          <span class="notif-ring"></span>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M6.2 9.4a5.8 5.8 0 0 1 11.6 0c0 3.7 1 5 1.5 5.4H4.7c.5-.4 1.5-1.7 1.5-5.4Z" stroke="#222" stroke-width="1.8" stroke-linejoin="round"/>
+            <path d="M10 18.4a2 2 0 0 0 4 0" stroke="#222" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+          <span id="notif-badge" class="hidden absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 border border-white">0</span>
+        </button>
+        <button type="button" class="header-icon-button" onclick="openTradesModal()" aria-label="やることリスト・取引">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="m5 12.5 4.5 4.5L19 7.5" stroke="#222" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span id="trades-badge" class="hidden absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 border border-white">0</span>
+        </button>
+        <button type="button" class="header-profile-button" onclick="openMyPage()" aria-label="マイページ">
+          <img id="user-avatar" src="" alt="" class="hidden">
+          <span id="user-avatar-placeholder" aria-hidden="true">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="8" r="3.4" stroke="currentColor" stroke-width="1.6"/>
+              <path d="M5.5 20c.5-3.1 3-5 6.5-5s6 1.9 6.5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
             </svg>
-            <span id="notif-badge" class="hidden absolute -top-0.5 -right-0.5 bg-pink-500 text-white text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 border border-white">0</span>
-          </button>
-          <button onclick="openTradesModal()" class="relative hidden md:block bg-purple-100/80 backdrop-blur text-illit-darkPurple text-xs font-bold px-3 py-1.5 rounded-full hover:bg-purple-200 transition border border-white">
-            💬 取引
-            <span id="trades-badge" class="hidden absolute -top-1.5 -right-1.5 bg-pink-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-sm border border-white">0</span>
-          </button>
-          <img id="user-avatar" src="" alt="" class="w-7 h-7 rounded-full object-cover border-2 border-white shadow-sm hidden cursor-pointer" onclick="openMyPage()">
-          <span id="user-name" class="text-xs md:text-sm font-bold text-gray-700 max-w-[70px] truncate cursor-pointer" onclick="openMyPage()"></span>
-        </div>
+          </span>
+          <span id="user-name" class="sr-only"></span>
+        </button>
       </div>
     </div>
   </header>
@@ -102,6 +115,9 @@
         <div class="font-bold mb-0.5">📢 お知らせ</div>
         <div id="site-announcement-text" class="whitespace-pre-wrap"></div>
       </div>
+      <button id="home-present-banner" type="button" onclick="openPresentCampaignPopup(false)" class="hidden w-full items-center justify-between gap-3 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-left shadow-sm">
+        <span class="min-w-0"><span class="block text-sm font-black text-amber-900">🎁 トレカプレゼント企画 開催中！</span><span id="home-present-banner-title" class="block truncate text-[11px] text-amber-800"></span></span><span class="shrink-0 text-amber-800">開く ›</span>
+      </button>
     </section>
 
     <section id="gllit-hub" class="w-screen relative left-1/2 -translate-x-1/2">
@@ -213,15 +229,6 @@
       </div>
       
 
-      <!-- 【追加】ここに常時表示の検索バー -->
-      <div class="px-1">
-        <div class="relative">
-          <input type="text" id="main-search-input" oninput="syncSearch(this.value)" placeholder="メンバー名・トレカ名・出品者名で検索" class="w-full liquid-glass-input lg-search rounded-2xl pl-4 pr-9 py-2.5 text-sm outline-none text-gray-700 placeholder-gray-400 bg-white/75 backdrop-blur-md border border-white/50 font-medium tracking-wide">
-          <button id="main-search-clear" onclick="syncSearch('')" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm font-bold">×</button>
-        </div>
-      </div>
-
-
       <div class="liquid-glass rounded-2xl px-3 py-2.5 flex items-center justify-between gap-2">
         <label class="flex items-center gap-2 cursor-pointer select-none">
           <input type="checkbox" id="active-only-check" onchange="setActiveOnly(this.checked)" class="w-4 h-4 rounded border-gray-300 text-illit-accent focus:ring-illit-purple">
@@ -325,35 +332,11 @@
       <div class="flex items-center justify-between px-1">
         <h2 class="font-bold text-lg text-gray-900">👤 マイページ</h2>
       </div>
-      <div id="mypage-rewards-area" class="space-y-3">
-        <div id="points-card" class="hidden liquid-glass rounded-2xl p-4 border border-white/60 space-y-2">
-          <div class="flex items-center justify-between gap-2">
-            <div><p class="text-xs text-gray-600">保有ポイント</p><p class="text-2xl font-black text-purple-700"><span id="points-balance">0</span><span class="text-sm ml-1">pt</span></p></div>
-            <button type="button" onclick="openLoginCalendar()" class="shrink-0 rounded-full bg-purple-100 text-purple-800 px-3 py-2 text-xs font-bold">📅 ログインカレンダー</button>
-          </div>
-          <button id="login-bonus-claim-btn" type="button" onclick="claimDailyLoginBonus()" class="w-full rounded-full bg-purple-600 py-2.5 text-xs font-bold text-white disabled:bg-gray-300">ログインボーナスを受け取る</button>
-          <div class="rounded-xl bg-white/70 p-3">
-            <p class="mb-2 text-xs font-bold text-gray-700">📅 7日間ログインスタンプ</p>
-            <div id="login-stamp-week" class="grid grid-cols-7 gap-1.5"></div>
-          </div>
-          <p class="text-xs text-gray-700 break-all">あなたの招待コード：<strong id="mypage-invite-code">---</strong></p>
-          <div class="space-y-2 rounded-xl bg-purple-50/70 p-3">
-            <p id="profile-bonus-status" class="text-xs font-bold text-gray-700">プロフィール完成で30pt獲得</p>
-            <button id="profile-bonus-claim-btn" type="button" onclick="claimProfileOrInviteBonus()" class="w-full rounded-full bg-purple-100 py-2 text-xs font-bold text-purple-800">プロフィール完成ボーナスを受け取る</button>
-            <p id="invite-bonus-status" class="text-[11px] text-gray-600">招待した方・された方にそれぞれ50pt付与されます。</p>
-            <form class="flex gap-2" onsubmit="claimInviteBonus(event)">
-              <input id="mypage-invite-code-input" type="text" maxlength="20" placeholder="招待コードを入力" class="liquid-glass-input min-w-0 flex-1 rounded-xl p-2 text-xs uppercase">
-              <button id="invite-bonus-submit-btn" type="submit" class="shrink-0 rounded-xl bg-pink-500 px-3 py-2 text-xs font-bold text-white">招待特典</button>
-            </form>
-          </div>
-          <div><p class="text-xs font-bold text-gray-700 mb-1">ポイント履歴</p><div id="point-history-list" class="max-h-32 overflow-y-auto space-y-1 text-[11px] text-gray-600">履歴はありません</div></div>
-        </div>
-        <div class="liquid-glass rounded-2xl p-4 border border-white/60 space-y-3">
-          <div><h3 class="font-bold text-gray-900">🎟 トレカ抽選</h3><p class="text-[11px] text-gray-600">ポイントを使って応募できます。応募口数が多いほど当選確率が上がります。</p></div>
-          <div id="raffle-list" class="space-y-3"><p class="text-xs text-gray-500">抽選を読み込み中...</p></div>
-        </div>
-      </div>
       <div id="mypage-account-area">
+      <div class="flex flex-wrap items-center gap-2 mb-3">
+        <button id="login-btn" onclick="loginWithGoogle()" class="bg-white/80 backdrop-blur border border-white text-illit-darkPurple text-xs md:text-sm font-bold py-2 px-4 rounded-full transition shadow-sm hover:bg-white">Googleログイン</button>
+        <button id="admin-panel-btn" onclick="openAdminModal()" class="hidden bg-red-100/80 text-red-700 text-xs font-bold px-3 py-2 rounded-full hover:bg-red-200 transition" title="管理者パネル">👑 管理者パネル</button>
+      </div>
       <div class="flex items-center space-x-4 bg-white/40 rounded-2xl p-4 border border-white/60 liquid-glass">
         <img id="mypage-avatar" src="" alt="" class="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md hidden">
         <div id="mypage-avatar-placeholder" class="w-16 h-16 rounded-full bg-white/60 border border-white flex items-center justify-center text-2xl">👤</div>
@@ -361,6 +344,16 @@
           <div id="mypage-name" class="font-bold text-gray-900 truncate">ゲスト</div>
           <div class="text-[11px] text-gray-500 mt-0.5">各設定へ移動できます</div>
         </div>
+      </div>
+      </div>
+      <div id="mypage-rewards-area" class="space-y-3">
+        <button id="points-row" type="button" onclick="openPointsModal()" class="w-full flex items-center justify-between gap-3 bg-white border-b border-[#eeeeee] px-4 py-[15px] text-left">
+          <span class="flex min-w-0 items-center">
+            <span class="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-[#ffb800] text-sm font-black text-white">P</span>
+            <span class="ml-[10px] text-[15px] font-bold text-[#222]">ポイント</span>
+          </span>
+          <span class="flex shrink-0 items-center gap-2 text-[#222]"><span class="text-[13px] font-bold">P</span><span id="points-balance" class="text-base font-bold">0</span><svg width="8" height="14" viewBox="0 0 8 14" fill="none" aria-hidden="true"><path d="m1 1 5 6-5 6" stroke="#333" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </button>
       </div>
       <div class="space-y-2">
         <button onclick="openTradesModal()" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">💬 取引一覧</span><span class="text-gray-400">›</span></button>
@@ -378,7 +371,6 @@
         <button onclick="openInquiry()" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">📩 運営に問い合わせ</span><span class="text-gray-400">›</span></button>
         <button onclick="openTerms(true)" class="w-full liquid-glass-input rounded-2xl p-4 flex items-center justify-between hover:bg-white/70 transition text-left"><span class="font-medium text-sm text-gray-800">📜 利用規約</span><span class="text-gray-400">›</span></button>
         <button onclick="logout()" class="w-full bg-white border border-gray-200 text-gray-600 font-medium py-3 rounded-full text-sm">ログアウト</button>
-      </div>
       </div>
     </section>
   <style>
@@ -398,6 +390,41 @@
       <button type="button" onclick="closeLoginCalendar()" class="w-full rounded-full bg-purple-600 py-2.5 text-sm font-bold text-white">閉じる</button>
     </div>
   </div>
+    <div id="points-modal" class="fixed inset-0 modal-backdrop hidden z-[75] flex items-center justify-center p-3" onclick="if(event.target===this)closePointsModal()">
+      <div class="liquid-glass-heavy w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-3xl p-4 sm:p-5 space-y-4">
+        <div class="flex items-center justify-between gap-3"><h3 class="text-lg font-black text-gray-900">🟡 ポイント</h3><button type="button" onclick="closePointsModal()" aria-label="閉じる" class="w-9 h-9 shrink-0 rounded-full bg-white/80 text-gray-600 text-xl">&times;</button></div>
+        <div id="points-card" class="hidden space-y-4">
+          <div class="flex items-center justify-between rounded-2xl bg-white/80 p-4"><div><p class="text-xs text-gray-600">保有ポイント</p><p class="text-2xl font-black text-gray-900"><span id="points-modal-balance">0</span><span class="ml-1 text-sm">pt</span></p></div><button type="button" onclick="openLoginCalendar()" class="shrink-0 rounded-full bg-purple-100 px-3 py-2 text-xs font-bold text-purple-800">📅 カレンダー</button></div>
+          <p class="rounded-xl bg-amber-50 p-3 text-xs font-bold text-amber-900">新規登録で100pt、毎日のログインで10pt（2倍デーは20pt）獲得できます。</p>
+          <button id="login-bonus-claim-btn" type="button" onclick="claimDailyLoginBonus()" class="w-full rounded-full bg-purple-600 py-2.5 text-xs font-bold text-white disabled:bg-gray-300">ログインボーナスを受け取る</button>
+          <div class="rounded-xl bg-white/70 p-3"><p class="mb-2 text-xs font-bold text-gray-700">📅 7日間ログインスタンプ</p><div id="login-stamp-week" class="grid grid-cols-7 gap-1.5"></div></div>
+          <div class="space-y-2 rounded-xl bg-purple-50/70 p-3">
+            <p id="profile-bonus-status" class="text-xs font-bold text-gray-700">プロフィール完成で30pt獲得</p>
+            <button id="profile-bonus-claim-btn" type="button" onclick="claimProfileBonus()" class="w-full rounded-full bg-purple-100 py-2 text-xs font-bold text-purple-800">プロフィール完成ボーナスを受け取る</button>
+          </div>
+          <div class="space-y-2 rounded-xl bg-white/70 p-3">
+            <p class="text-xs font-bold text-gray-800">友だちを招待</p>
+            <div class="flex min-w-0 gap-2"><input id="mypage-invite-url" type="text" readonly class="liquid-glass-input min-w-0 flex-1 rounded-xl p-2 text-[11px]"><button type="button" onclick="copyInviteUrl()" class="shrink-0 rounded-xl bg-gray-800 px-3 py-2 text-xs font-bold text-white">コピー</button></div>
+            <p class="text-[11px] text-gray-600">招待コード：<strong id="mypage-invite-code">---</strong> ／ 招待した方・された方に各70pt</p>
+            <p id="invite-bonus-status" class="text-[11px] text-gray-600">招待コードを入力すると、招待した方・された方に各70pt付与されます。</p>
+            <form class="flex gap-2" onsubmit="claimInviteBonus(event)"><input id="mypage-invite-code-input" type="text" maxlength="20" autocapitalize="characters" placeholder="招待コードを入力" class="liquid-glass-input min-w-0 flex-1 rounded-xl p-2 text-xs uppercase"><button id="invite-bonus-submit-btn" type="submit" class="shrink-0 rounded-xl bg-pink-500 px-3 py-2 text-xs font-bold text-white">適用</button></form>
+          </div>
+          <div><p class="mb-1 text-xs font-bold text-gray-700">ポイント履歴</p><div id="point-history-list" class="max-h-32 space-y-1 overflow-y-auto text-[11px] text-gray-600">履歴はありません</div></div>
+        </div>
+        <div class="space-y-3 rounded-2xl border border-amber-100 bg-amber-50/70 p-3">
+          <p class="text-xs font-bold text-gray-800">100pt＝1口としてトレカのプレゼント企画に応募できます。</p>
+          <p id="points-login-prompt" class="hidden text-xs text-gray-600">応募するにはログインしてください。</p>
+          <div id="present-campaign-list" class="space-y-3"><p class="text-xs text-gray-500">開催中の企画を読み込み中...</p></div>
+        </div>
+      </div>
+    </div>
+    <div id="present-campaign-popup" class="fixed inset-0 modal-backdrop hidden z-[85] flex items-center justify-center p-3" onclick="if(event.target===this)closePresentCampaignPopup(true)">
+      <div class="liquid-glass-heavy w-full max-w-md max-h-[90vh] overflow-y-auto rounded-3xl p-4 sm:p-5 space-y-3">
+        <div class="flex items-center justify-between gap-2"><h3 class="font-black text-gray-900">🎁 トレカプレゼント企画 開催中！</h3><button type="button" onclick="closePresentCampaignPopup(true)" aria-label="閉じる" class="w-9 h-9 shrink-0 rounded-full bg-white/80 text-gray-600 text-xl">&times;</button></div>
+        <div id="present-popup-content" class="space-y-3"></div>
+        <button type="button" onclick="closePresentCampaignPopup(true)" class="w-full rounded-full bg-white py-2.5 text-sm font-bold text-gray-700">閉じる</button>
+      </div>
+    </div>
   <!-- 管理画面（通常ページ） -->
   <section id="admin-section" class="hidden space-y-4 pb-28">
     <div class="flex items-center justify-between px-1">
@@ -417,7 +444,7 @@
       <button onclick="switchAdminTab('broadcast')" id="admin-tab-broadcast" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">📢 一斉通知</button>
       <button onclick="switchAdminTab('cards')" id="admin-tab-cards" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">🃏 トレカ写真</button>
       <button onclick="switchAdminTab('logs')" id="admin-tab-logs" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">📝 操作ログ</button>
-      <button onclick="switchAdminTab('rewards')" id="admin-tab-rewards" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">🎟 ポイント・抽選</button>
+      <button onclick="switchAdminTab('rewards')" id="admin-tab-rewards" class="px-3 py-2 border-b-2 border-transparent text-gray-500 whitespace-nowrap hover:text-purple-600 transition">🎁 ポイント・プレゼント企画</button>
     </div>
 
     <div id="admin-rewards-panel" class="hidden liquid-glass rounded-2xl p-4 space-y-4">
@@ -434,20 +461,17 @@
         </div>
         <div id="double-point-date-list" class="flex flex-wrap gap-2 text-xs"></div>
       </div>
-      <form class="space-y-2 border-t border-purple-100 pt-3" onsubmit="createRaffleFromAdmin(event)">
-        <h3 class="font-bold text-sm">🃏 トレカ抽選を作成</h3>
-        <input id="raffle-title-input" type="text" maxlength="120" required placeholder="抽選タイトル" class="liquid-glass-input w-full min-w-0 rounded-xl p-2.5 text-sm">
-        <label class="block text-xs text-gray-600">景品画像<input id="raffle-image-input" type="file" accept="image/*" required class="liquid-glass-input mt-1 w-full min-w-0 rounded-xl p-2.5 text-xs"></label>
-        <input id="raffle-prize-description-input" type="text" maxlength="1000" required placeholder="賞品の説明" class="liquid-glass-input w-full min-w-0 rounded-xl p-2.5 text-sm">
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <label class="text-xs text-gray-600">応募に必要なポイント<input id="raffle-cost-points-input" type="number" min="1" max="100000" required value="100" class="liquid-glass-input mt-1 w-full min-w-0 rounded-xl p-2.5 text-sm text-gray-800"></label>
-          <label class="text-xs text-gray-600">当選人数<input id="raffle-winner-count-input" type="number" min="1" max="100" required value="1" class="liquid-glass-input mt-1 w-full min-w-0 rounded-xl p-2.5 text-sm text-gray-800"></label>
-          <label class="text-xs text-gray-600">締切（JST）<input id="raffle-ends-at-input" type="datetime-local" required class="liquid-glass-input mt-1 w-full min-w-0 rounded-xl p-2.5 text-sm text-gray-800"></label>
-        </div>
-        <button type="submit" class="w-full rounded-full bg-purple-600 py-2.5 text-sm font-bold text-white">抽選を作成</button>
+      <form class="space-y-2 border-t border-purple-100 pt-3" onsubmit="createPresentCampaignFromAdmin(event)">
+        <h3 class="font-bold text-sm">🃏 新規トレカプレゼント企画</h3>
+        <input id="present-title-input" type="text" maxlength="120" required placeholder="企画タイトル" class="liquid-glass-input w-full min-w-0 rounded-xl p-2.5 text-sm">
+        <label class="block text-xs text-gray-600">トレカ画像<input id="present-image-input" type="file" accept="image/*" required class="liquid-glass-input mt-1 w-full min-w-0 rounded-xl p-2.5 text-xs"></label>
+        <input id="present-prize-description-input" type="text" maxlength="1000" required placeholder="賞品の説明" class="liquid-glass-input w-full min-w-0 rounded-xl p-2.5 text-sm">
+        <label class="block text-xs text-gray-600">当選人数<input id="present-winner-count-input" type="number" min="1" max="100" required value="1" class="liquid-glass-input mt-1 w-full min-w-0 rounded-xl p-2.5 text-sm text-gray-800"></label>
+        <p class="text-[11px] text-gray-500">応募は100pt＝1口です。企画は当選確定・終了まで開催されます。</p>
+        <button type="submit" class="w-full rounded-full bg-purple-600 py-2.5 text-sm font-bold text-white">企画を作成</button>
       </form>
       <div class="border-t border-purple-100 pt-3">
-        <h3 class="font-bold text-sm mb-2">抽選実行</h3><div id="admin-raffle-list" class="space-y-2 text-xs"></div>
+        <h3 class="font-bold text-sm mb-2">開催中企画の当選確定・終了</h3><div id="admin-present-list" class="space-y-2 text-xs"></div>
       </div>
     </div>
     <div id="admin-controls" class="hidden"></div>
@@ -823,7 +847,6 @@
       </div>
       <div id="profile-section-basic" class="space-y-3 text-xs md:text-sm hidden">
         <div><label class="block font-medium text-gray-700 mb-1">サイト内ニックネーム</label><input type="text" id="profile-nickname" maxlength="30" placeholder="例: 芋けんぴ推し" class="liquid-glass-input w-full rounded-xl p-2.5 text-gray-800"></div>
-        <div><label class="block font-medium text-gray-700 mb-1">友だち招待コード（任意）</label><input type="text" id="profile-invite-code" maxlength="20" autocapitalize="characters" placeholder="招待コードを入力" class="liquid-glass-input w-full min-w-0 rounded-xl p-2.5 text-gray-800"><p class="mt-1 text-[10px] text-gray-500">初回プロフィール保存時に有効なコードを入力すると、双方にポイントが付与されます。</p></div>
         <div>
           <label class="block font-medium text-gray-700 mb-1">プロフィール写真</label>
           <div class="flex items-center space-x-3">
@@ -1418,14 +1441,14 @@
     const auth = getAuth(app);
     const rewardCalls = {
       claimDailyLoginBonus: httpsCallable(getFunctions(app, "asia-northeast1"), "claimDailyLoginBonus"),
-      grantProfileAndInviteBonus: httpsCallable(getFunctions(app, "asia-northeast1"), "grantProfileAndInviteBonus"),
-      claimProfileOrInviteBonus: httpsCallable(getFunctions(app, "asia-northeast1"), "claimProfileOrInviteBonus"),
-      enterRaffle: httpsCallable(getFunctions(app, "asia-northeast1"), "enterRaffle"),
-      drawRaffleWinner: httpsCallable(getFunctions(app, "asia-northeast1"), "drawRaffleWinner", { timeout: 300000 }),
+      claimRegistrationAndInviteBonus: httpsCallable(getFunctions(app, "asia-northeast1"), "claimRegistrationAndInviteBonus"),
+      claimProfileBonus: httpsCallable(getFunctions(app, "asia-northeast1"), "claimProfileBonus"),
+      enterPresentCampaign: httpsCallable(getFunctions(app, "asia-northeast1"), "enterPresentCampaign"),
+      finishPresentCampaign: httpsCallable(getFunctions(app, "asia-northeast1"), "finishPresentCampaign", { timeout: 300000 }),
       setDoublePointDates: httpsCallable(getFunctions(app, "asia-northeast1"), "setDoublePointDates"),
       adminToggleDoublePoint: httpsCallable(getFunctions(app, "asia-northeast1"), "adminToggleDoublePoint"),
-      adminCreateRaffle: httpsCallable(getFunctions(app, "asia-northeast1"), "adminCreateRaffle"),
-      adminUploadRaffleImage: httpsCallable(getFunctions(app, "asia-northeast1"), "adminUploadRaffleImage", { timeout: 120000 })
+      adminCreatePresentCampaign: httpsCallable(getFunctions(app, "asia-northeast1"), "adminCreatePresentCampaign"),
+      adminUploadPresentCampaignImage: httpsCallable(getFunctions(app, "asia-northeast1"), "adminUploadPresentCampaignImage", { timeout: 120000 })
     };
 window.__autoGoRefs = {
   app, auth,
@@ -1550,7 +1573,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     let pendingPostId = new URLSearchParams(location.search).get("post");
     let postMode = "exchange", postPhotos = [], processingPhotos = false, submittingPost = false, submittingGroup = false, detailPhotos = [], roomPhotos = [], roomPhotosFor = null;
     let myTrades = [], unsubTrades = null, groupJoins = {}, unsubJoins = null, currentTrade = null, roomMessages = [], unsubRoom = null, unsubMsgs = null;
-    let reviewState = { tradeId: null, done: null }, selectedRating = 0, sendingImage = false, roomBoxKey = null, userData = { profile: {}, blocked: [], likes: [], reads: {}, notifications: [], cancelHistory: [], myCards: {}, collectionPublic: false, customCards: [], cardWatch: {} };
+    let reviewState = { tradeId: null, done: null }, selectedRating = 0, sendingImage = false, roomBoxKey = null, userData = { profile: {}, blocked: [], likes: [], reads: {}, notifications: [], cancelHistory: [], myCards: {}, collectionPublic: false, customCards: [], cardWatch: {}, points: 0, pointHistory: [], inviteCode: "", loginStamps: [], lastLoginBonusDate: "", registrationBonusGranted: false, profileBonusGranted: false, referredBy: "" };
     let unsubUser = null, editingPostId = null, migratingLocal = false, photoCache = {};
     let pendingProfilePhoto = null;
     let prevUnreadCount = -1;
@@ -1956,16 +1979,24 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     }
     let loginCalendarData = null;
     let dailyBonusRequestUid = null;
+    let registrationBonusRequestUid = null;
+    let activePresentCampaigns = [];
+    let currentPageTab = "home";
+    const pendingInviteStorageKey = "pending-registration-invite-code";
+    try {
+      const urlInviteCode = new URLSearchParams(location.search).get("ref");
+      if (urlInviteCode && /^[A-Z0-9]{4,20}$/i.test(urlInviteCode)) {
+        sessionStorage.setItem(pendingInviteStorageKey, urlInviteCode.toUpperCase());
+      }
+    } catch (error) {
+      console.warn("Referral URL could not be stored:", error);
+    }
     let doublePointActive = false;
     const formatJstDateParts = (date = new Date()) => Object.fromEntries(
       new Intl.DateTimeFormat("en-CA", {
         timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit"
       }).formatToParts(date).map(({ type, value }) => [type, value])
     );
-    const formatRaffleDeadline = (value) => {
-      const date = value?.toDate ? value.toDate() : new Date(value);
-      return Number.isNaN(date.getTime()) ? "締切未設定" : date.toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
-    };
     window.openLoginCalendar = async function(animateToday = false) {
       if (!currentUser) return;
       if (!loginCalendarData) {
@@ -1998,7 +2029,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         const isDouble = loginCalendarData.doubleActive === true || doubleDates.has(date);
         const isToday = date === today;
         const isStamped = stamps.has(date);
-        const stamp = isToday && animateToday ? "GET / 済" : (isStamped ? "済" : "");
+        const stamp = isStamped ? "済" : "";
         html += `<div class="relative min-w-0 min-h-[58px] rounded-lg border p-1 text-center ${isDouble ? "border-amber-400 bg-amber-100 text-amber-900" : "border-purple-100 bg-white/70 text-gray-700"} ${isToday ? "ring-2 ring-purple-500" : ""}">
           <div class="text-[10px] font-bold">${day}</div><div class="text-[8px] leading-tight ${isDouble ? "font-black text-amber-800" : "text-gray-500"}">${isDouble ? "2倍! 20pt" : "10pt"}</div>
           ${stamp ? `<span id="${isToday && animateToday ? "login-today-stamp" : ""}" class="login-stamp absolute left-1/2 top-1/2 whitespace-nowrap rounded-full border-2 border-pink-500 bg-white/90 px-1.5 py-0.5 text-[9px] font-black text-pink-600 shadow">${escapeHtml(stamp)}</span>` : ""}
@@ -2022,12 +2053,105 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     window.closeLoginCalendar = function() {
       document.getElementById("login-calendar-modal").classList.add("hidden");
     };
+    async function loadActivePresentCampaigns(showPopup = false) {
+      const snapshot = await getDocs(query(collection(db, "present_campaigns"), where("status", "==", "active")));
+      activePresentCampaigns = snapshot.docs
+        .map((campaign) => ({ id: campaign.id, ...campaign.data() }))
+        .sort((a, b) => tsMillis(b.createdAt) - tsMillis(a.createdAt));
+      const banner = document.getElementById("home-present-banner");
+      if (banner) {
+        banner.classList.toggle("hidden", activePresentCampaigns.length === 0);
+        banner.classList.toggle("flex", activePresentCampaigns.length > 0);
+        const title = document.getElementById("home-present-banner-title");
+        if (title) title.textContent = activePresentCampaigns[0]?.title || "";
+      }
+      if (showPopup && currentPageTab === "home" && activePresentCampaigns.length) {
+        const parts = formatJstDateParts();
+        let dismissed = false;
+        try {
+          dismissed = sessionStorage.getItem(`present-popup-dismissed-${parts.year}-${parts.month}-${parts.day}`) === "1";
+        } catch (error) { console.warn("Present popup dismissal state could not be read:", error); }
+        if (!dismissed) window.openPresentCampaignPopup(true).catch((error) => console.error("Present campaign popup failed:", error));
+      }
+      return activePresentCampaigns;
+    }
+    window.closePointsModal = function() {
+      document.getElementById("points-modal").classList.add("hidden");
+    };
+    window.openPointsModal = async function() {
+      document.getElementById("points-modal").classList.remove("hidden");
+      await window.renderRewards();
+    };
+    window.closePresentCampaignPopup = function(dismissToday = true) {
+      document.getElementById("present-campaign-popup").classList.add("hidden");
+      if (dismissToday) {
+        const parts = formatJstDateParts();
+        try { sessionStorage.setItem(`present-popup-dismissed-${parts.year}-${parts.month}-${parts.day}`, "1"); }
+        catch (error) { console.warn("Present popup dismissal state could not be saved:", error); }
+      }
+    };
+    window.openPresentCampaignPopup = async function(automatic = false) {
+      let campaigns = activePresentCampaigns;
+      if (!campaigns.length) campaigns = await loadActivePresentCampaigns(false);
+      if (!campaigns.length) return;
+      const campaign = campaigns[0];
+      const image = /^https:\/\//i.test(String(campaign.imageUrl || ""))
+        ? `<img src="${escapeHtml(campaign.imageUrl)}" alt="" class="max-h-64 w-full rounded-xl bg-white object-contain">` : "";
+      document.getElementById("present-popup-content").innerHTML = `<article class="space-y-3">${image}<h4 class="text-base font-black text-gray-900">${escapeHtml(campaign.title || "トレカプレゼント企画")}</h4><p class="text-xs text-gray-700">${escapeHtml(campaign.prizeDescription || "")}</p><p class="text-[11px] font-bold text-amber-900">100pt＝1口で応募できます</p><button type="button" data-present-enter="${escapeHtml(campaign.id)}" data-present-count="1" class="w-full rounded-full bg-purple-600 py-3 text-sm font-bold text-white disabled:bg-gray-300">100pt＝1口で応募する</button></article>`;
+      document.getElementById("present-campaign-popup").classList.remove("hidden");
+      if (!automatic) {
+        const parts = formatJstDateParts();
+        try { sessionStorage.setItem(`present-popup-dismissed-${parts.year}-${parts.month}-${parts.day}`, "1"); }
+        catch (error) { console.warn("Present popup dismissal state could not be saved:", error); }
+      }
+    };
+    async function enterPresentCampaign(campaignId, count, button) {
+      if (!currentUser) {
+        showToast("応募するにはログインしてください", "error");
+        return;
+      }
+      button.disabled = true;
+      try {
+        const { data } = await rewardCalls.enterPresentCampaign({ campaignId, count });
+        userData.points = Number(data.totalPoints) || 0;
+        const balance = String(userData.points);
+        document.getElementById("points-balance").textContent = balance;
+        document.getElementById("points-modal-balance").textContent = balance;
+        showToast(`${count}口応募しました（${data.costPoints}pt消費）`, "success");
+        await Promise.all([window.renderRewards(), loadActivePresentCampaigns(false)]);
+      } catch (error) {
+        console.error("Present campaign entry failed:", error);
+        showToast(error?.code === "functions/failed-precondition"
+          ? "ポイント不足または企画の受付が終了しています"
+          : "応募できませんでした。時間をおいて再度お試しください", "error");
+      } finally {
+        button.disabled = false;
+      }
+    }
+    for (const listId of ["present-campaign-list", "present-popup-content"]) {
+      document.getElementById(listId).addEventListener("click", async (event) => {
+        const button = event.target.closest("[data-present-enter]");
+        if (!button) return;
+        const count = Number(button.dataset.presentCount || document.getElementById(`present-count-${button.dataset.presentEnter}`)?.value || 1);
+        if (!Number.isSafeInteger(count) || count < 1 || count > 100) {
+          showToast("応募口数を選択してください", "error");
+          return;
+        }
+        await enterPresentCampaign(button.dataset.presentEnter, count, button);
+      });
+    }
     window.renderRewards = async function() {
       const pointsCard = document.getElementById("points-card");
       pointsCard.classList.toggle("hidden", !currentUser);
+      document.getElementById("points-login-prompt").classList.toggle("hidden", !!currentUser);
+      const balance = String(currentUser ? Number(userData.points) || 0 : 0);
+      document.getElementById("points-balance").textContent = balance;
+      document.getElementById("points-modal-balance").textContent = balance;
       if (currentUser) {
-        document.getElementById("points-balance").textContent = String(Number(userData.points) || 0);
         document.getElementById("mypage-invite-code").textContent = userData.inviteCode || "準備中";
+        const inviteUrl = new URL(location.pathname, location.origin);
+        inviteUrl.searchParams.set("ref", userData.inviteCode || "");
+        document.getElementById("mypage-invite-url").value = userData.inviteCode ? inviteUrl.toString() : "";
         const todayParts = formatJstDateParts();
         const today = `${todayParts.year}-${todayParts.month}-${todayParts.day}`;
         const doubleToday = loginCalendarData?.doubleActive === true ||
@@ -2066,7 +2190,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         inviteButton.classList.toggle("opacity-50", invited);
         document.getElementById("invite-bonus-status").textContent = invited
           ? "招待ボーナスは受取済みです"
-          : "招待した方・された方にそれぞれ50pt付与されます。";
+          : "招待した方・された方に各70pt付与されます。";
         const history = Array.isArray(userData.pointHistory) ? [...userData.pointHistory].reverse().slice(0, 20) : [];
         document.getElementById("point-history-list").innerHTML = history.length
           ? history.map((item) => {
@@ -2077,61 +2201,34 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           }).join("")
           : "履歴はありません";
       }
-      const list = document.getElementById("raffle-list");
       try {
-        const snapshot = await getDocs(collection(db, "raffles"));
-        const active = snapshot.docs
-          .map((raffle) => ({ id: raffle.id, ...raffle.data() }))
-          .filter((raffle) => raffle.status === "active" &&
-            (raffle.endsAt?.toMillis ? raffle.endsAt.toMillis() : new Date(raffle.endsAt).getTime()) > Date.now())
-          .sort((a, b) => {
-            const endTime = (raffle) => raffle.endsAt?.toMillis ? raffle.endsAt.toMillis() : new Date(raffle.endsAt).getTime();
-            return endTime(a) - endTime(b);
-          });
+        const active = await loadActivePresentCampaigns(false);
+        const list = document.getElementById("present-campaign-list");
         if (!active.length) {
-          list.innerHTML = '<p class="text-xs text-gray-500">現在開催中の抽選はありません。</p>';
+          list.innerHTML = '<p class="text-xs text-gray-500">現在開催中のプレゼント企画はありません。</p>';
           return;
         }
-        const cards = await Promise.all(active.map(async (raffle) => {
-          let myEntries = 0;
+        const cards = await Promise.all(active.map(async (campaign) => {
+          let entryCount = 0;
           if (currentUser) {
-            const entries = await getDocs(query(
-              collection(db, "raffles", raffle.id, "entries"), where("userId", "==", currentUser.uid)
-            ));
-            myEntries = entries.size;
+            const entry = await getDoc(doc(db, "present_campaigns", campaign.id, "entries", currentUser.uid));
+            entryCount = entry.exists() ? Number(entry.data().count) || 0 : 0;
           }
+          const image = /^https:\/\//i.test(String(campaign.imageUrl || ""))
+            ? `<img src="${escapeHtml(campaign.imageUrl)}" alt="" loading="lazy" class="max-h-56 w-full rounded-t-xl bg-white object-contain">` : "";
           return `<article class="overflow-hidden rounded-xl border border-white bg-white/70">
-            ${raffle.imageUrl ? `<img src="${escapeHtml(raffle.imageUrl)}" alt="" loading="lazy" class="max-h-56 w-full object-contain bg-white">` : ""}
-            <div class="space-y-2 p-3"><h4 class="break-words font-bold text-sm text-gray-900">${escapeHtml(raffle.title || "トレカ抽選")}</h4>
-            <p class="break-words text-xs text-gray-600">${escapeHtml(raffle.prizeDescription || "")}</p>
-            <div class="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-gray-600"><span>締切：${escapeHtml(formatRaffleDeadline(raffle.endsAt))}</span><span>当選：${Number(raffle.winnerCount) || 0}人</span><span>応募口数：${myEntries}口</span></div>
-            <button type="button" data-raffle-enter="${escapeHtml(raffle.id)}" ${currentUser ? "" : "disabled"} class="w-full rounded-full bg-purple-600 py-2.5 text-xs font-bold text-white disabled:bg-gray-300">${currentUser ? `${Number(raffle.costPoints ?? 100)}ptで1口応募` : "ログインして応募"}</button></div>
+            ${image}<div class="space-y-2 p-3"><h4 class="break-words font-bold text-sm text-gray-900">${escapeHtml(campaign.title || "トレカプレゼント企画")}</h4>
+            <p class="break-words text-xs text-gray-600">${escapeHtml(campaign.prizeDescription || "")}</p>
+            <div class="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-gray-600"><span>当選：${Number(campaign.winnerCount) || 1}人</span><span>応募口数：${Number(campaign.entriesCount) || 0}口</span><span>あなたの応募：${entryCount}口</span></div>
+            <div class="flex gap-2"><select id="present-count-${escapeHtml(campaign.id)}" aria-label="応募口数" class="liquid-glass-input min-w-0 flex-1 rounded-xl p-2 text-xs" ${currentUser ? "" : "disabled"}>${Array.from({ length: 20 }, (_, index) => `<option value="${index + 1}">${index + 1}口（${(index + 1) * 100}pt）</option>`).join("")}</select><button type="button" data-present-enter="${escapeHtml(campaign.id)}" class="shrink-0 rounded-full bg-purple-600 px-4 py-2.5 text-xs font-bold text-white disabled:bg-gray-300" ${currentUser ? "" : "disabled"}>${currentUser ? "応募する" : "ログインして応募"}</button></div></div>
           </article>`;
         }));
         list.innerHTML = cards.join("");
       } catch (e) {
-        console.error("Raffle list load failed:", e);
-        list.innerHTML = '<p class="text-xs text-red-600">抽選を読み込めませんでした。</p>';
+        console.error("Present campaign list load failed:", e);
+        document.getElementById("present-campaign-list").innerHTML = '<p class="text-xs text-red-600">企画を読み込めませんでした。</p>';
       }
     };
-    document.getElementById("raffle-list").addEventListener("click", async (event) => {
-      const button = event.target.closest("[data-raffle-enter]");
-      if (!button) return;
-      if (!currentUser) return;
-      button.disabled = true;
-      try {
-        const result = await rewardCalls.enterRaffle({ raffleId: button.dataset.raffleEnter });
-        userData.points = Number(result.data.totalPoints) || 0;
-        document.getElementById("points-balance").textContent = String(userData.points);
-        showToast("抽選に1口応募しました", "success");
-        await window.renderRewards();
-      } catch (e) {
-        console.error("Raffle entry failed:", e);
-        showToast(e?.code === "functions/failed-precondition" ? "ポイント不足または応募期間外です" : "応募に失敗しました", "error");
-      } finally {
-        button.disabled = false;
-      }
-    });
     window.claimDailyLoginBonus = async function() {
       if (!currentUser) return;
       const button = document.getElementById("login-bonus-claim-btn");
@@ -2156,20 +2253,32 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         button.disabled = false;
       }
     };
-    window.claimProfileOrInviteBonus = async function() {
+    window.claimProfileBonus = async function() {
       if (!currentUser) return;
       try {
-        const { data } = await rewardCalls.claimProfileOrInviteBonus({});
+        const { data } = await rewardCalls.claimProfileBonus({});
         userData.points = Number(data.totalPoints);
-        userData.inviteCode = data.inviteCode || userData.inviteCode;
         userData.profileBonusGranted = userData.profileBonusGranted || data.profileAwarded;
-        userData.referredBy = data.referredBy || userData.referredBy;
         if (data.profileAwarded) showToast("プロフィール完成ボーナス +30pt！", "success");
         else showToast("プロフィールを完成するとボーナスを受け取れます", "info");
         await window.renderRewards();
       } catch (e) {
         console.error("Profile bonus claim failed:", e);
         showToast("プロフィールボーナスを受け取れませんでした", "error");
+      }
+    };
+    window.copyInviteUrl = async function() {
+      const input = document.getElementById("mypage-invite-url");
+      if (!input.value) return showToast("招待URLを準備できませんでした", "error");
+      try {
+        await navigator.clipboard.writeText(input.value);
+        showToast("招待URLをコピーしました", "success");
+      } catch (error) {
+        console.error("Invite URL copy failed:", error);
+        input.focus();
+        input.select();
+        if (document.execCommand("copy")) showToast("招待URLをコピーしました", "success");
+        else showToast("招待URLをコピーできませんでした", "error");
       }
     };
     window.claimInviteBonus = async function(event) {
@@ -2179,27 +2288,59 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       const inviteCode = input.value.trim().toUpperCase();
       if (!inviteCode) return showToast("招待コードを入力してください", "error");
       try {
-        const { data } = await rewardCalls.claimProfileOrInviteBonus({ inviteCode });
+        const { data } = await rewardCalls.claimRegistrationAndInviteBonus({ inviteCode });
         userData.points = Number(data.totalPoints);
         userData.inviteCode = data.inviteCode || userData.inviteCode;
         userData.referredBy = data.referredBy || userData.referredBy;
+        userData.registrationBonusGranted = userData.registrationBonusGranted || data.registrationAwarded;
         if (data.inviteAwarded) {
           input.value = "";
-          showToast("招待ボーナス +50ptを受け取りました", "success");
+          showToast("招待ボーナス +70ptを受け取りました", "success");
+        } else if (data.inviteStatus === "not-found") {
+          showToast("招待コードが見つかりません", "error");
+        } else if (data.inviteStatus === "self") {
+          showToast("自分の招待コードは使用できません", "error");
         } else {
-          showToast(data.alreadyInvited ? "招待ボーナスは受取済みです" : "招待ボーナスの対象ではありません", "info");
+          showToast(data.inviteStatus === "already-claimed" ? "招待ボーナスは受取済みです" : "招待ボーナスを受け取れませんでした", "info");
         }
         await window.renderRewards();
       } catch (e) {
         console.error("Invite bonus claim failed:", e);
-        showToast(e?.code === "functions/not-found" ? "招待コードが見つかりません" : "招待ボーナスを受け取れませんでした", "error");
+        showToast("招待ボーナスを受け取れませんでした", "error");
       }
     };
+    async function claimRegistrationAndInviteBonus(user) {
+      let inviteCode = "";
+      try { inviteCode = sessionStorage.getItem(pendingInviteStorageKey) || ""; } catch (error) { console.warn("Pending invite could not be read:", error); }
+      try {
+        const { data } = await rewardCalls.claimRegistrationAndInviteBonus({ inviteCode });
+        userData.points = Number(data.totalPoints) || 0;
+        userData.inviteCode = data.inviteCode || userData.inviteCode;
+        userData.referredBy = data.referredBy || userData.referredBy;
+        userData.registrationBonusGranted = userData.registrationBonusGranted || data.registrationAwarded;
+        if (data.registrationAwarded || data.inviteAwarded) {
+          const awarded = (data.registrationAwarded ? 100 : 0) + (data.inviteAwarded ? 70 : 0);
+          showToast(`ポイント特典 +${awarded}ptを受け取りました`, "success");
+        }
+        if (inviteCode) {
+          try { sessionStorage.removeItem(pendingInviteStorageKey); } catch (error) { console.warn("Pending invite could not be cleared:", error); }
+          const url = new URL(location.href);
+          url.searchParams.delete("ref");
+          history.replaceState(history.state, "", url);
+          if (!data.inviteAwarded && data.inviteStatus === "not-found") showToast("招待コードが見つかりませんでした", "error");
+          if (!data.inviteAwarded && data.inviteStatus === "self") showToast("自分の招待コードは使用できません", "error");
+        }
+        await window.renderRewards();
+      } catch (error) {
+        console.error("Registration and invite bonus claim failed:", user.uid, error);
+        showToast("登録・招待ポイントを反映できませんでした", "error");
+      }
+    }
     window.renderAdminRewards = async function() {
       if (!isAdmin()) return;
       try {
-        const [campaign, raffles] = await Promise.all([
-          getDoc(doc(db, "config", "pointCampaign")), getDocs(collection(db, "raffles"))
+        const [campaign, presentCampaigns] = await Promise.all([
+          getDoc(doc(db, "config", "pointCampaign")), getDocs(collection(db, "present_campaigns"))
         ]);
         doublePointActive = campaign.exists() && campaign.data().doubleActive === true;
         const toggle = document.getElementById("double-point-toggle");
@@ -2210,14 +2351,16 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         document.getElementById("double-point-date-list").innerHTML = dates.length
           ? dates.map((date) => `<span class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-1 text-amber-900">${escapeHtml(date)}<button type="button" aria-label="削除" onclick="removeDoublePointDate('${escapeHtml(date)}')" class="font-bold">×</button></span>`).join("")
           : '<span class="text-gray-500">設定なし</span>';
-        const records = raffles.docs.map((raffle) => ({ id: raffle.id, ...raffle.data() }));
-        document.getElementById("admin-raffle-list").innerHTML = records.length
-          ? records.map((raffle) => `<div class="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white/70 p-2"><span class="min-w-0 flex-1 break-words">${escapeHtml(raffle.title || "トレカ抽選")}・${escapeHtml(raffle.status || "")}（${Number(raffle.entriesCount) || 0}口）</span>${raffle.status === "active" ? `<button type="button" onclick="drawRaffle('${escapeHtml(raffle.id)}')" class="shrink-0 rounded-full bg-pink-600 px-3 py-1.5 font-bold text-white">抽選実行</button>` : ""}</div>`).join("")
-          : '<p class="text-gray-500">抽選はありません。</p>';
+        const records = presentCampaigns.docs
+          .map((item) => ({ id: item.id, ...item.data() }))
+          .sort((a, b) => tsMillis(b.createdAt) - tsMillis(a.createdAt));
+        document.getElementById("admin-present-list").innerHTML = records.length
+          ? records.map((item) => `<div class="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white/70 p-2"><span class="min-w-0 flex-1 break-words">${escapeHtml(item.title || "トレカプレゼント企画")}・${escapeHtml(item.status || "")}（${Number(item.entriesCount) || 0}口）${Number(item.winnerCountDrawn) ? `／当選 ${Number(item.winnerCountDrawn)}人` : ""}</span>${item.status === "active" ? `<button type="button" onclick="finishPresentCampaign('${escapeHtml(item.id)}')" class="shrink-0 rounded-full bg-pink-600 px-3 py-1.5 font-bold text-white">当選確定・終了</button>` : ""}</div>`).join("")
+          : '<p class="text-gray-500">プレゼント企画はありません。</p>';
       } catch (e) {
         console.error("Admin reward data load failed:", e);
         document.getElementById("double-point-date-list").textContent = "設定を読み込めませんでした";
-        document.getElementById("admin-raffle-list").textContent = "抽選を読み込めませんでした";
+        document.getElementById("admin-present-list").textContent = "企画を読み込めませんでした";
       }
     };
     window.toggleDoublePointDay = async function() {
@@ -2253,13 +2396,13 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         showToast("ポイント2倍デーを更新できませんでした", "error");
       }
     }
-    window.createRaffleFromAdmin = async function(event) {
+    window.createPresentCampaignFromAdmin = async function(event) {
       event.preventDefault();
       const form = event.currentTarget;
       const button = form.querySelector('button[type="submit"]');
       button.disabled = true;
       try {
-        const imageFile = document.getElementById("raffle-image-input").files?.[0];
+        const imageFile = document.getElementById("present-image-input").files?.[0];
         const supportedImageTypes = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/apng", "image/avif", "image/heic", "image/heif"];
         if (!imageFile || !supportedImageTypes.includes(imageFile.type.toLowerCase())) {
           throw new Error("JPEG・PNG・WebP・GIFなどの画像を選択してください");
@@ -2271,43 +2414,45 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           reader.onerror = () => reject(reader.error || new Error("画像を読み込めませんでした"));
           reader.readAsDataURL(imageFile);
         });
-        const uploaded = await rewardCalls.adminUploadRaffleImage({ dataUrl: imageDataUrl });
-        const endsAtJst = document.getElementById("raffle-ends-at-input").value;
-        await rewardCalls.adminCreateRaffle({
-          title: document.getElementById("raffle-title-input").value.trim(),
+        const uploaded = await rewardCalls.adminUploadPresentCampaignImage({ dataUrl: imageDataUrl });
+        await rewardCalls.adminCreatePresentCampaign({
+          title: document.getElementById("present-title-input").value.trim(),
           imageUrl: uploaded.data.imageUrl,
-          prizeDescription: document.getElementById("raffle-prize-description-input").value.trim(),
-          costPoints: Number(document.getElementById("raffle-cost-points-input").value),
-          winnerCount: Number(document.getElementById("raffle-winner-count-input").value),
-          endsAt: new Date(`${endsAtJst}:00+09:00`).toISOString()
+          prizeDescription: document.getElementById("present-prize-description-input").value.trim(),
+          winnerCount: Number(document.getElementById("present-winner-count-input").value)
         });
         form.reset();
         await Promise.all([window.renderAdminRewards(), window.renderRewards()]);
-        showToast("トレカ抽選を作成しました", "success");
+        await loadActivePresentCampaigns(false);
+        showToast("トレカプレゼント企画を作成しました", "success");
       } catch (e) {
-        console.error("Raffle creation failed:", e);
-        showToast(e?.message || "抽選を作成できませんでした", "error");
+        console.error("Present campaign creation failed:", e);
+        showToast(e?.message || "企画を作成できませんでした", "error");
       } finally {
         button.disabled = false;
       }
     };
-    window.drawRaffle = async function(raffleId) {
+    window.finishPresentCampaign = async function(campaignId) {
       if (!isAdmin()) return;
+      if (!confirm("応募内容から当選者を確定し、この企画を終了します。よろしいですか？")) return;
       try {
-        const result = await rewardCalls.drawRaffleWinner({ raffleId });
-        showToast(`${result.data.winners.length}人の当選者を確定しました`, "success");
-        await Promise.all([window.renderAdminRewards(), window.renderRewards()]);
+        const result = await rewardCalls.finishPresentCampaign({ campaignId });
+        showToast(`${result.data.winners.length}人の当選者を確定し、企画を終了しました`, "success");
+        await Promise.all([window.renderAdminRewards(), window.renderRewards(), loadActivePresentCampaigns(false)]);
       } catch (e) {
-        console.error("Raffle draw failed:", e);
-        showToast("抽選を実行できませんでした", "error");
+        console.error("Present campaign finish failed:", e);
+        showToast("当選確定・終了に失敗しました", "error");
       }
     };
     window.openMyPage = function() { switchTab('mypage'); };
     window.closeMyPage = function() { switchTab('home'); };
+    loadActivePresentCampaigns(true).catch((error) => console.error("Home present campaign load failed:", error));
 
     window.switchTab = function(tab) {
       closeDetailModal();
     if (!currentUser && (tab === "post" || tab === "mycards")) { if (typeof showToast === "function") { showToast("ログインしてください", "error"); } else { alert("ログインしてください"); } return; }
+      currentPageTab = tab;
+      if (tab === "home") loadActivePresentCampaigns(true).catch((error) => console.error("Home present campaign load failed:", error));
       if (tab === 'mycards' && !currentUser) {
         /* alert hidden */ console.log("ログインが必要です。");
         return;
@@ -2429,11 +2574,14 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     function updateUserAvatar() {
       const avatar = document.getElementById("user-avatar");
       if (!avatar) return;
+      const placeholder = document.getElementById("user-avatar-placeholder");
       const photo = getMyProfile()?.photo;
       if (photo && isJpegData(photo)) {
         avatar.src = photo; avatar.classList.remove("hidden");
+        if (placeholder) placeholder.classList.add("hidden");
       } else {
         avatar.classList.add("hidden"); avatar.removeAttribute("src");
+        if (placeholder) placeholder.classList.remove("hidden");
       }
     }
     function subscribeUserData() {
@@ -2457,7 +2605,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           if (p && Object.keys(p).length > 0) payload.profile = p;
           setDoc(ref, payload, { merge: true }).finally(() => migratingLocal = false);
         }
-        userData = { profile: d.profile || {}, blocked: d.blocked || [], likes: d.likes || [], reads: d.reads || {}, notifications: d.notifications || [], cancelHistory: d.cancelHistory || [], myCards: d.myCards || {}, collectionPublic: !!d.collectionPublic, customCards: Array.isArray(d.customCards) ? d.customCards : [], cardWatch: d.cardWatch && typeof d.cardWatch === "object" ? d.cardWatch : {}, points: Number(d.points) || 0, pointHistory: Array.isArray(d.pointHistory) ? d.pointHistory : [], inviteCode: d.inviteCode || "", loginStamps: Array.isArray(d.loginStamps) ? d.loginStamps : [], lastLoginBonusDate: d.lastLoginBonusDate || "", profileBonusGranted: !!d.profileBonusGranted, referredBy: d.referredBy || "" };
+        userData = { profile: d.profile || {}, blocked: d.blocked || [], likes: d.likes || [], reads: d.reads || {}, notifications: d.notifications || [], cancelHistory: d.cancelHistory || [], myCards: d.myCards || {}, collectionPublic: !!d.collectionPublic, customCards: Array.isArray(d.customCards) ? d.customCards : [], cardWatch: d.cardWatch && typeof d.cardWatch === "object" ? d.cardWatch : {}, points: Number(d.points) || 0, pointHistory: Array.isArray(d.pointHistory) ? d.pointHistory : [], inviteCode: d.inviteCode || "", loginStamps: Array.isArray(d.loginStamps) ? d.loginStamps : [], lastLoginBonusDate: d.lastLoginBonusDate || "", registrationBonusGranted: !!d.registrationBonusGranted, profileBonusGranted: !!d.profileBonusGranted, referredBy: d.referredBy || "" };
         if (currentUser) {
           document.getElementById("user-name").innerText = getMyDisplayName();
           updateUserAvatar();
@@ -3366,7 +3514,6 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       const s = userData.profile || {};
       pendingProfilePhoto = null;
       document.getElementById("profile-nickname").value = s.nickname || "";
-      document.getElementById("profile-invite-code").value = "";
       const pp = document.getElementById("profile-paypay"); if (pp) pp.value = s.paypay || "";
       document.getElementById("profile-name").value = s.name || currentUser.displayName || "";
       document.getElementById("profile-zip").value = s.zip || "";
@@ -3408,8 +3555,6 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     window.saveProfile = async function() {
       if (!currentUser) return;
       const prev = userData.profile || {};
-      const inviteCode = profileSection === "basic"
-        ? (document.getElementById("profile-invite-code")?.value || "").trim().toUpperCase() : "";
       let p = {};
 
       // セクションごとに更新する項目を限定（他項目を空で上書きしない）
@@ -3464,12 +3609,9 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       }
       let bonusError = null;
       try {
-        const { data } = await rewardCalls.claimProfileOrInviteBonus({ inviteCode });
+        const { data } = await rewardCalls.claimProfileBonus({});
         userData.points = Number(data.totalPoints);
-        userData.inviteCode = data.inviteCode || userData.inviteCode;
         userData.profileBonusGranted = userData.profileBonusGranted || data.profileAwarded;
-        userData.referredBy = data.referredBy || userData.referredBy;
-        if (inviteCode) document.getElementById("profile-invite-code").value = "";
       } catch (e) {
         bonusError = e;
         console.error("Profile/invite bonus failed:", e);
@@ -3767,6 +3909,10 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
             console.error("Daily login bonus claim failed:", e);
           });
         }
+        if (registrationBonusRequestUid !== user.uid) {
+          registrationBonusRequestUid = user.uid;
+          claimRegistrationAndInviteBonus(user);
+        }
         loginBtn.classList.add("hidden"); userProfile.classList.remove("hidden");
         document.getElementById("user-name").innerText = getMyDisplayName();
         updateUserAvatar();
@@ -3778,15 +3924,19 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         if (typeof maybeShowPushPrompt === "function") maybeShowPushPrompt();
       } else {
         dailyBonusRequestUid = null;
+        registrationBonusRequestUid = null;
         loginCalendarData = null;
         window.closeLoginCalendar();
-        loginBtn.classList.remove("hidden"); userProfile.classList.add("hidden");
+        const adminBtn = document.getElementById("admin-panel-btn");
+        if (adminBtn) adminBtn.classList.add("hidden");
+        loginBtn.classList.remove("hidden"); userProfile.classList.remove("hidden");
         if (unsubTrades) unsubTrades(); if (unsubUser) unsubUser(); unsubTrades=null; unsubUser=null;
         tradesLoaded = false;
         if (typeof loadPosts === "function" && allPosts.length === 0) { loadingPosts = false; loadPosts(true); }
         if (unsubSusp) { unsubSusp(); unsubSusp = null; }
         document.getElementById("suspended-modal").classList.add("hidden");
-        userData = { profile: {}, blocked: [], likes: [], reads: {}, notifications: [], cancelHistory: [], myCards: {}, collectionPublic: false, customCards: [], cardWatch: {}, points: 0, pointHistory: [], inviteCode: "", loginStamps: [], lastLoginBonusDate: "", profileBonusGranted: false, referredBy: "" }; myTrades = []; updateBadge(); updateNotifBadge();
+        userData = { profile: {}, blocked: [], likes: [], reads: {}, notifications: [], cancelHistory: [], myCards: {}, collectionPublic: false, customCards: [], cardWatch: {}, points: 0, pointHistory: [], inviteCode: "", loginStamps: [], lastLoginBonusDate: "", registrationBonusGranted: false, profileBonusGranted: false, referredBy: "" }; myTrades = []; updateBadge(); updateNotifBadge();
+        window.renderRewards();
         prevUnreadCount = -1; prevTradeCountAsOwner = -1;
         updateUserAvatar();
       }
