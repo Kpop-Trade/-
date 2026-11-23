@@ -837,44 +837,71 @@
 
 
 
+
 <style id="kp-banner-peek-style">
-#gllit-mercari-carousel-track,
-[data-top-banner-track],
-.gllit-carousel-track {
+.kp-active-banner-track {
   display: flex !important;
   flex-direction: row !important;
+  flex-wrap: nowrap !important;
   overflow-x: auto !important;
   overflow-y: hidden !important;
   gap: 10px !important;
-  padding-left: 0 !important;
-  padding-right: 0 !important;
+  padding: 0 !important;
+  margin-left: -16px !important;
+  margin-right: -16px !important;
+  width: calc(100% + 32px) !important;
+  max-width: calc(100% + 32px) !important;
   scroll-snap-type: x mandatory !important;
   box-sizing: border-box !important;
-  max-width: 100% !important;
+  -webkit-overflow-scrolling: touch !important;
 }
-#gllit-mercari-carousel-track > *,
-[data-top-banner-track] > *,
-.gllit-carousel-track > * {
-  flex: 0 0 calc(100% - 36px) !important;
-  width: calc(100% - 36px) !important;
-  min-width: calc(100% - 36px) !important;
-  max-width: calc(100% - 36px) !important;
+.kp-active-banner-track > * {
+  flex: 0 0 calc(100% - 44px) !important;
+  width: calc(100% - 44px) !important;
+  min-width: calc(100% - 44px) !important;
+  max-width: calc(100% - 44px) !important;
   scroll-snap-align: center !important;
   box-sizing: border-box !important;
 }
 .kp-banner-ghost-prev,
 .kp-banner-ghost-next {
-  opacity: 0.78;
+  opacity: 0.85 !important;
 }
 </style>
 <script id="kp-banner-peek-fix">
 (function() {
-  function setupLeftAndRightPeek() {
-    const tracks = document.querySelectorAll("#gllit-mercari-carousel-track, [data-top-banner-track], .gllit-carousel-track");
+  function detectBannerTracks() {
+    const found = new Set();
+    document.querySelectorAll("#gllit-mercari-carousel-track, [data-top-banner-track], .gllit-carousel-track").forEach(el => found.add(el));
+
+    // バナー画像（SAMPLE透かしや紅白などのトップバナー画像）を内包する横並びコンテナを自動特定
+    document.querySelectorAll("img").forEach(img => {
+      const rect = img.getBoundingClientRect();
+      if (rect.top > 30 && rect.top < 360 && rect.width > 180 && rect.height > 70 && rect.height < 240) {
+        let cur = img.parentElement;
+        while (cur && cur !== document.body) {
+          const st = getComputedStyle(cur);
+          if ((st.display === "flex" || st.overflowX === "auto" || st.overflowX === "scroll") && cur.children.length >= 1) {
+            found.add(cur);
+            break;
+          }
+          cur = cur.parentElement;
+        }
+      }
+    });
+    return Array.from(found);
+  }
+
+  function applyUniversalLeftPeek() {
+    const tracks = detectBannerTracks();
     tracks.forEach(track => {
-      const parent = track.parentElement;
-      if (parent && getComputedStyle(parent).overflowX === "hidden") {
-        parent.style.overflowX = "visible";
+      track.classList.add("kp-active-banner-track");
+
+      // 親ラッパーの左右クリップを解除して画面端まで前のバナーが見えるようにする
+      let p = track.parentElement;
+      for (let i = 0; i < 3 && p && p !== document.body; i++) {
+        p.style.overflowX = "visible";
+        p = p.parentElement;
       }
 
       const realSlides = Array.from(track.children).filter(
@@ -882,45 +909,46 @@
       );
       if (!realSlides.length) return;
 
-      const countKey = String(realSlides.length);
-      if (track.dataset.kpPeekReady !== countKey) {
+      const key = String(realSlides.length);
+      if (track.dataset.kpPeekReady !== key) {
         track.querySelectorAll(".kp-banner-ghost-prev, .kp-banner-ghost-next").forEach(g => g.remove());
 
-        // 左側に「前のバナー（末尾のクローン）」を配置して左端からチラ見せする
         const prevClone = realSlides[realSlides.length - 1].cloneNode(true);
         prevClone.classList.add("kp-banner-ghost-prev");
         prevClone.removeAttribute("id");
         track.insertBefore(prevClone, realSlides[0]);
 
-        // 右側に「次のバナー（先頭のクローン）」を配置して右端からもチラ見せする
         const nextClone = realSlides[0].cloneNode(true);
         nextClone.classList.add("kp-banner-ghost-next");
         nextClone.removeAttribute("id");
         track.appendChild(nextClone);
 
-        track.dataset.kpPeekReady = countKey;
+        track.dataset.kpPeekReady = key;
 
-        // 初期位置を「1枚目のスライドが中央（＝左右両端に前後のバナーがはみ出して見える位置）」に合わせる
-        requestAnimationFrame(() => {
-          const slideW = realSlides[0].getBoundingClientRect().width || (track.clientWidth - 36);
+        const alignCenter = () => {
+          const slideW = realSlides[0].getBoundingClientRect().width || (track.clientWidth - 44);
           const gap = 10;
           const centerOffset = (track.clientWidth - slideW) / 2;
+          track.style.scrollBehavior = "auto";
           track.scrollLeft = (slideW + gap) - centerOffset;
-        });
+          track.style.scrollBehavior = "";
+        };
+        requestAnimationFrame(alignCenter);
+        setTimeout(alignCenter, 120);
+        setTimeout(alignCenter, 450);
       }
 
-      // 無限ループ風：左端クローンまでスワイプしたら末尾の本物へ、右端クローンまで行ったら先頭の本物へシームレス移動
       if (!track.dataset.kpLoopBound) {
         track.dataset.kpLoopBound = "1";
-        let scrollEndTimer = null;
+        let timer = null;
         track.addEventListener("scroll", () => {
-          clearTimeout(scrollEndTimer);
-          scrollEndTimer = setTimeout(() => {
+          clearTimeout(timer);
+          timer = setTimeout(() => {
             const reals = Array.from(track.children).filter(
               el => !el.classList.contains("kp-banner-ghost-prev") && !el.classList.contains("kp-banner-ghost-next")
             );
             if (!reals.length) return;
-            const slideW = reals[0].getBoundingClientRect().width || (track.clientWidth - 36);
+            const slideW = reals[0].getBoundingClientRect().width || (track.clientWidth - 44);
             const gap = 10;
             const step = slideW + gap;
             const centerOffset = (track.clientWidth - slideW) / 2;
@@ -942,8 +970,8 @@
     });
   }
 
-  setInterval(setupLeftAndRightPeek, 1000);
-  window.addEventListener("load", () => setTimeout(setupLeftAndRightPeek, 300));
+  setInterval(applyUniversalLeftPeek, 900);
+  window.addEventListener("load", () => setTimeout(applyUniversalLeftPeek, 250));
 })();
 </script>
 
@@ -2547,7 +2575,7 @@
   </div>
 
   <script src="./js/mycards-binder.js?v=20261121"></script>
-  <script type="module" src="./js/app-main.js?v=1795440280ship1"></script>
+  <script type="module" src="./js/app-main.js?v=1795440494ship1"></script>
 
   <div id="xlogin-help-modal" class="hidden fixed inset-0 z-[10040] modal-backdrop items-end sm:items-center justify-center p-3" style="padding-top: max(12px, env(safe-area-inset-top)); padding-bottom: max(12px, env(safe-area-inset-bottom));" onclick="if(event.target===this) closeGoogleLoginHelp()">
     <div id="xlogin-help-sheet" class="liquid-glass-heavy w-full max-w-sm rounded-[1.75rem] p-5 shadow-2xl border border-white" role="dialog" aria-modal="true" aria-labelledby="xlogin-help-title">
