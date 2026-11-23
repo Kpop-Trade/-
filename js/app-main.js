@@ -5487,7 +5487,7 @@ window.renderHomeThemeSections = function(entries, cardHtmlById) {
           _gllitEvents = res.ok ? await res.json() : [];
         }
         const today = gllitTodayKey();
-        const upcoming = dedupeCalendarEvents(_gllitEvents || []).filter(e => e && e.date >= today).sort((a, b) => String(a.date).localeCompare(String(b.date)) || String(a.time || "").localeCompare(String(b.time || ""))).slice(0, 4);
+        const upcoming = dedupeCalendarEvents(_gllitEvents || []).filter(e => e && e.date >= today).sort((a, b) => String(a.date).localeCompare(String(b.date)) || String(a.time || "").localeCompare(String(b.time || ""))).slice(0, 8);
         sched.innerHTML = upcoming.length
           ? `<div class="font-bold text-gray-800 mb-1">次の予定</div>` + upcoming.map(e => {
               const href = e.link && String(e.link).startsWith("http") ? e.link : "";
@@ -14155,53 +14155,52 @@ function renderGllitMercariCarousel(upcomingList) {
   if (!track) return;
 
   const gradients = [
-    "linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%)",
-    "linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)",
-    "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-    "linear-gradient(135deg, #f59e0b 0%, #ea580c 100%)",
-    "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)"
+    "linear-gradient(135deg, #0f172a 0%, #1e1b4b 55%, #312e81 100%)",
+    "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)",
+    "linear-gradient(135deg, #311042 0%, #4c1d95 100%)",
+    "linear-gradient(135deg, #0c4a6e 0%, #1e3a8a 100%)"
   ];
 
-  const items = [];
-  (upcomingList || []).forEach((e, idx) => {
+  const items = (upcomingList || []).map((e, idx) => {
     const dateStr = String(e.date || "").slice(5).replace("-", "/");
-    items.push({
+    return {
       badge: dateStr ? "📅 " + dateStr + (e.time ? " " + e.time : "") : "📅 SCHEDULE",
       subRight: "予定表 ›",
       title: e.title || "スケジュール",
-      desc: "タップして詳細・カレンダーを確認",
+      desc: e.note || e.place || "タップして予定表を開く",
       bg: gradients[idx % gradients.length],
       action: "openIllitCalendar()"
-    });
+    };
   });
 
-  // 予定が0〜1件でも必ず複数枚のメルカリ風バナーが左右チラ見え＆自動スライドするように案内バナーを追加
-  items.push({
-    badge: "✨ AUTO-GO",
-    subRight: "参加する ›",
-    title: "抱き合わせゼロ・定価共同購入",
-    desc: "希望メンバー枠を選ぶだけで自動マッチング交換！",
-    bg: "linear-gradient(135deg, #9333ea 0%, #ec4899 100%)",
-    action: "if(typeof openAutoGoModal==='function')openAutoGoModal();"
-  });
-  items.push({
-    badge: "🛡️ 安心取引",
-    subRight: "詳細を見る ›",
-    title: "X合意 取引ルーム＆アズカリ決済",
-    desc: "URLを送るだけで住所交換・評価保護まで完結！",
-    bg: "linear-gradient(135deg, #0f172a 0%, #334155 100%)",
-    action: "if(typeof openAzukariGuide==='function')openAzukariGuide();"
-  });
+  if (!items.length) {
+    items.push({
+      badge: "📅 SCHEDULE",
+      subRight: "予定表 ›",
+      title: "直近の予定はありません",
+      desc: "タップしてカレンダー全体を見る",
+      bg: gradients[0],
+      action: "openIllitCalendar()"
+    });
+  }
 
   const makeCard = (item, cloneAttr) => `
     <button type="button" ${cloneAttr || ""} onclick="${item.action}" class="gllit-mercari-card" style="background:${item.bg};">
       <div class="flex items-center justify-between gap-2 mb-1">
-        <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-white/95 text-slate-900 shadow-xs">${escapeHtml(item.badge)}</span>
-        <span class="text-[11px] font-bold text-white/90">${escapeHtml(item.subRight)}</span>
+        <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-400 text-slate-900 shadow-xs">${escapeHtml(item.badge)}</span>
+        <span class="text-[11px] font-bold text-amber-300">${escapeHtml(item.subRight)}</span>
       </div>
       <div class="text-white font-black text-[15px] leading-snug truncate">${escapeHtml(item.title)}</div>
-      <div class="text-white/85 text-xs mt-0.5 truncate">${escapeHtml(item.desc)}</div>
+      <div class="text-slate-300 text-xs mt-0.5 truncate">${escapeHtml(item.desc)}</div>
     </button>`;
+
+  if (window.__gllitCarouselTimer) clearInterval(window.__gllitCarouselTimer);
+
+  if (items.length === 1) {
+    track.innerHTML = makeCard(items[0], "");
+    if (dotsWrap) dotsWrap.innerHTML = "";
+    return;
+  }
 
   const firstClone = makeCard(items[0], 'data-clone="first"');
   const lastClone = makeCard(items[items.length - 1], 'data-clone="last"');
@@ -14228,7 +14227,6 @@ function renderGllitMercariCarousel(upcomingList) {
 
   requestAnimationFrame(() => goToRealIndex(0, false));
 
-  if (window.__gllitCarouselTimer) clearInterval(window.__gllitCarouselTimer);
   let paused = false;
   let scrollDebounce = null;
 
@@ -14260,8 +14258,7 @@ function renderGllitMercariCarousel(upcomingList) {
   window.__gllitCarouselTimer = setInterval(() => {
     if (paused || document.hidden) return;
     const cards = track.querySelectorAll(".gllit-mercari-card");
-    const nextVisualIdx = activeIdx + 2;
-    const targetCard = cards[nextVisualIdx];
+    const targetCard = cards[activeIdx + 2];
     if (!targetCard) return;
     const left = targetCard.offsetLeft - (track.clientWidth - targetCard.offsetWidth) / 2;
     track.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
