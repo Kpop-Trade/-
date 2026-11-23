@@ -76,7 +76,6 @@ function isPwaOrMobile() {
   const mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   return standalone || mobile;
 }
-
 // リダイレクト結果の処理
 getRedirectResult(auth)
   .then((result) => {
@@ -5345,6 +5344,8 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     window.viewPhoto = function(kind, i) { const arr = kind === "room" ? roomPhotos : detailPhotos; if (isJpegData(arr[i])) { document.getElementById("image-viewer-img").src = arr[i]; document.getElementById("image-viewer").classList.remove("hidden"); } };
     async function loadDetailPhotos(p, index) {
       const el = document.getElementById("detail-photos"); detailPhotos = [];
+      const countBadge = document.getElementById("detail-photo-count");
+      if (countBadge) countBadge.classList.add("hidden");
       if (p.kind === "serial" || !p.photoCount) { el.innerHTML = ""; return; }
       const paint = function (list) {
         if (!list.length) { el.innerHTML = ""; return; }
@@ -5360,15 +5361,24 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
               return `<button type="button" class="bundle-hit ${cls}" style="left:${b.x * 100}%;top:${b.y * 100}%;width:${b.w * 100}%;height:${b.h * 100}%" onclick="event.stopPropagation(); toggleBundleBox(${bi})">${sold || hold || on ? "<span>×</span>" : ""}</button>`;
             }).join("");
             el.style.height = "64vh";
-            return `<div class="shot"><div class="bundle-frame"><img src="${src}" alt="">${hits}</div></div>`;
+            return `<div class="shot" style="flex:0 0 100%;scroll-snap-align:start"><div class="bundle-frame"><img src="${src}" alt="">${hits}</div></div>`;
           }
-          return `<div class="shot"><img src="${src}" alt="" onclick="viewPhoto('detail', ${i})"></div>`;
+          return `<div class="shot" style="flex:0 0 100%;scroll-snap-align:start"><img src="${src}" alt="" style="display:block;width:100%;height:100%;object-fit:contain" onclick="viewPhoto('detail', ${i})"></div>`;
         }).join("");
         if (!(boxes.length > 1)) el.style.height = "";
-        el.innerHTML = `<div class="detail-film">${shots}</div>`;
+        el.innerHTML = `<div class="detail-film" style="display:flex;overflow-x:auto;scroll-snap-type:x mandatory;aspect-ratio:1/1;border-radius:12px">${shots}</div>`;
+        const film = el.querySelector(".detail-film");
+        const updateCount = () => {
+          if (!countBadge) return;
+          const current = Math.min(list.length, Math.round(film.scrollLeft / Math.max(1, film.clientWidth)) + 1);
+          countBadge.textContent = `${current}/${list.length}`;
+          countBadge.classList.toggle("hidden", list.length < 2);
+        };
+        film.addEventListener("scroll", updateCount, { passive: true });
+        updateCount();
       };
       const first = isJpegData(p.thumb) ? p.thumb : "";
-      if (first) paint([first]);
+      if (first) { detailPhotos = [first]; paint(detailPhotos); }
       try { const list = await getPhotos(p.id); if (currentDetailIndex !== index) return; detailPhotos = list; if (list.length) paint(list); }
       catch (e) {}
     }
@@ -5403,20 +5413,24 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     window.openDetailModal = function(index) {
       const p = allPosts[index]; if (!p) return;
       currentDetailIndex = index; currentDetailId = p.id; window._bundlePick = new Set(); const isGroup = p.kind === "group", isBuy = !!p.isBuy;
+      window._currentDetailPostId = p.id;
       let title = "募集の詳細";
       if (isGroup) title = "🛍 共同購入の詳細";
       else if (p.kind === "album") title = "💿 アルバムの詳細";
       else if (p.kind === "dearlit") title = "🎁 DEARLITの詳細";
       else if (isBuy) title = "💳 買取（購入希望）の詳細";
       else if (p.isSell) title = "💰 売却の詳細";
-      document.getElementById("detail-title").innerText = "";
+      const detailTitle = document.getElementById("detail-title");
+      const headSummary = document.getElementById("detail-head-summary");
+      if (detailTitle) detailTitle.innerText = p.give || title;
+      if (headSummary) headSummary.style.opacity = "0";
       const itemTitle = document.getElementById("detail-item-title");
       if (itemTitle) itemTitle.innerText = p.give || title;
       const priceHead = document.getElementById("detail-price-head");
-      if (priceHead) priceHead.innerText = "";
-      if (isGroup || isBuy || p.isSell) {
-        document.getElementById("detail-price").innerHTML = "¥" + Number(p.price || 0).toLocaleString();
-      }
+      const priceValue = Number(p.price || p.startPrice || p.startingPrice || 0);
+      if (priceHead) priceHead.innerText = priceValue > 0 ? "¥" + priceValue.toLocaleString() : "交換";
+      document.getElementById("detail-price").innerText = priceValue > 0 ? "¥" + priceValue.toLocaleString() : "交換";
+      document.getElementById("detail-price-note").innerText = priceValue > 0 ? "送料込み" : "";
       document.getElementById("detail-give").innerText = p.give;
       document.getElementById("detail-want").innerText = p.want || "（なし）";
       document.getElementById("detail-member").innerText = p.member || "指定なし";
@@ -5435,15 +5449,28 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       }
       document.getElementById("detail-give-box").querySelector("span").innerText = isGroup ? "商品" : (isBuy ? "求" : "譲");
       document.getElementById("detail-want-box").classList.toggle("hidden", isBuy || isGroup || p.isSell);
-      document.getElementById("detail-price-box").classList.toggle("hidden", !(isBuy || isGroup || p.isSell));
+      document.getElementById("detail-price-box").classList.remove("hidden");
       const condBox = document.getElementById("detail-condition-box");
       if (p.condition && CONDITION_LABEL[p.condition]) {
         condBox.classList.remove("hidden");
         document.getElementById("detail-condition").innerText = String(CONDITION_LABEL[p.condition] || "").split("：").pop();
       } else condBox.classList.add("hidden");
       const descBox = document.getElementById("detail-desc-box");
-      if (p.description) { descBox.classList.remove("hidden"); descBox.innerText = p.description; }
-      else { descBox.classList.add("hidden"); }
+      const descMore = document.getElementById("detail-desc-more");
+      if (p.description) {
+        descBox.classList.remove("hidden");
+        descBox.innerText = p.description;
+        const longDescription = p.description.length > 220;
+        descBox.classList.toggle("line-clamp-4", longDescription);
+        descMore.classList.toggle("hidden", !longDescription);
+        descMore.innerText = "もっと見る";
+        descMore.dataset.expanded = "false";
+      } else {
+        descBox.classList.add("hidden");
+        descMore.classList.add("hidden");
+      }
+      const followButton = document.getElementById("detail-follow-btn");
+      if (followButton) window.updateSellerFollowButton(p.userId);
       const joins = isGroup ? joinsOf(p.id) : []; const target = Number(p.target || 0); const joinCount = isGroup ? Math.max(0, typeof p.joinsCount === "number" ? p.joinsCount : joins.length) : 0; const full = isGroup && target > 0 && joinCount >= target; const closed = isGroup && p.status === "closed"; const isSold = p.status === "traded"; const joined = !!(isGroup && currentUser && joins.some(j => j.id === currentUser.uid));
       let extra = "";
       if (p.kind === "serial" && p.deadline) extra += `<div>有効期限: <b>${escapeHtml(p.deadline)}</b></div>`;
@@ -5493,17 +5520,22 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           const pillWrap = document.getElementById("detail-pricecut-pill-wrap");
       if (pillWrap) {
         if (p.isSell && (!currentUser || p.userId !== currentUser.uid)) {
-          pillWrap.innerHTML = `<button type="button" onclick="proposePriceCutById('${escapeHtml(p.id)}')" class="inline-flex items-center gap-1.5 rounded-full bg-[#f5f5f5] hover:bg-[#ebebeb] active:scale-95 transition px-3.5 py-2 text-[12px] font-bold text-[#333333]"><span class="w-4 h-4 rounded-full border border-[#555555] inline-flex items-center justify-center text-[10px] leading-none">¥</span><span>値下げ依頼</span></button>`;
+          pillWrap.innerHTML = `<button type="button" onclick="proposePriceCutById('${escapeHtml(p.id)}')" class="inline-flex items-center gap-1.5 rounded-full bg-[#f5f5f5] hover:bg-[#ebebeb] active:scale-95 transition px-3.5 py-2 text-[12px] font-bold text-[#333333]"><span class="w-4 h-4 rounded-full border border-[#555555] inline-flex items-center justify-center text-[10px] leading-none">¥</span><span>値下げ・条件相談</span></button>`;
         } else {
           pillWrap.innerHTML = "";
         }
       }
-      const btnLabel = isGroup ? "応募する" : (p.isSell ? "購入へ" : "申し込む");
+      const btnLabel = isGroup ? "応募する" : (p.isSell ? "購入へ" : (isStandardExchangePost(p) ? "交換申請へ" : "申し込む"));
       const onclick = isGroup ? `joinGroup(${index})` : (p.isSell ? `confirmPurchase(${index})` : `applyToPost(${index})`);
       const btnGrad = isGroup ? "from-teal-400 to-teal-500" : "from-illit-purple to-illit-accent";
       actions.innerHTML = `<div class="px-3 py-2.5"><button type="button" onclick="${onclick}" class="w-full bg-gradient-to-r ${btnGrad} text-white font-bold py-3 rounded-full shadow-md border border-white/30">${btnLabel}</button></div>`;
         }
       }
+      const primaryActions = actions.innerHTML;
+      actions.innerHTML = `<div class="flex items-center gap-2">
+        <button type="button" onclick="openBundleRequestModal()" class="min-w-0 flex-1 rounded-full border border-[#ff3b4e] bg-white py-3 text-xs font-bold text-[#ff3b4e]">まとめ買い依頼</button>
+        <div class="min-w-0 flex-1">${primaryActions}</div>
+      </div>`;
       const more = document.getElementById("detail-more");
       if (more) {
         let moreHtml = "";
@@ -5517,7 +5549,14 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       const sheet = modal.querySelector(".detail-sheet");
       if (sheet) { sheet.style.transition = "none"; sheet.style.transform = ""; }
       const scroller = modal.querySelector(".detail-scroll");
-      if (scroller) { scroller.scrollTop = 0; scroller.scrollLeft = 0; }
+      if (scroller) {
+        scroller.scrollTop = 0;
+        scroller.scrollLeft = 0;
+        scroller.onscroll = () => {
+          const summary = document.getElementById("detail-head-summary");
+          if (summary) summary.style.opacity = scroller.scrollTop > 120 ? "1" : "0";
+        };
+      }
       modal.classList.remove("hidden"); loadDetailPhotos(p, index); if (p.userId) loadRating(p.userId, index); renderDetailRails(p); loadPostComments(p.id); loadSellOffers(p);
       if (isGroup && currentUser && !joinsFresh[p.id]) {
         joinsFresh[p.id] = true;
@@ -5551,22 +5590,224 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       modal.classList.add("hidden");
       currentDetailIndex = -1;
       currentDetailId = null;
+      window._currentDetailPostId = null;
+    };
+
+    window.toggleDetailDescription = function() {
+      const description = document.getElementById("detail-desc-box");
+      const button = document.getElementById("detail-desc-more");
+      if (!description || !button) return;
+      const expanded = button.dataset.expanded === "true";
+      button.dataset.expanded = String(!expanded);
+      description.classList.toggle("line-clamp-4", expanded);
+      button.textContent = expanded ? "もっと見る" : "閉じる";
+    };
+
+    window.updateSellerFollowButton = function(sellerId) {
+      const button = document.getElementById("detail-follow-btn");
+      if (!button) return;
+      let followed = [];
+      try { followed = JSON.parse(localStorage.getItem("kpop_trade_followed_sellers") || "[]"); } catch (error) {
+        console.warn("Follow list could not be read:", error);
+      };
+      const isFollowed = followed.includes(sellerId);
+      button.textContent = isFollowed ? "フォロー中" : "+ フォロー";
+      button.classList.toggle("bg-gray-900", isFollowed);
+      button.classList.toggle("text-white", isFollowed);
+      button.classList.toggle("bg-white", !isFollowed);
+    }
+    window.toggleSellerFollow = function() {
+      const post = allPosts.find(item => item.id === window._currentDetailPostId);
+      if (!post || !post.userId) return;
+      try {
+        const key = "kpop_trade_followed_sellers";
+        const followed = JSON.parse(localStorage.getItem(key) || "[]");
+        const next = followed.includes(post.userId)
+          ? followed.filter(id => id !== post.userId)
+          : [...followed, post.userId];
+        localStorage.setItem(key, JSON.stringify(next));
+        window.updateSellerFollowButton(post.userId);
+      } catch (error) {
+        console.error("Could not save seller follow state:", error);
+        showToast("フォロー設定を保存できませんでした", "error");
+      }
+    };
+
+    window.openBundleRequestModal = function() {
+      const current = allPosts.find(item => item.id === window._currentDetailPostId);
+      if (!current || !current.userId) return;
+      const candidates = [current, ...allPosts.filter(post =>
+        post.id !== current.id && post.userId === current.userId && post.status === "active"
+      )];
+      const list = document.getElementById("bundle-request-items");
+      if (!list) return;
+      list.innerHTML = candidates.map((post, index) => {
+        const price = Number(post.price || post.startPrice || post.startingPrice || 0);
+        return `<label class="flex items-center gap-3 rounded-xl border border-gray-200 p-3">
+          <input type="checkbox" data-bundle-post-id="${escapeHtml(post.id)}" ${index === 0 ? "checked" : ""} onchange="updateBundleRequestTotal()" class="h-4 w-4 shrink-0">
+          <span class="min-w-0 flex-1 truncate text-sm font-bold text-gray-800">${escapeHtml(post.give || "出品")}</span>
+          <span class="shrink-0 text-xs font-bold text-gray-600">${price > 0 ? "¥" + price.toLocaleString() : "交換"}</span>
+        </label>`;
+      }).join("");
+      document.getElementById("bundle-request-custom-price").value = "";
+      document.getElementById("bundle-request-message").value = "";
+      document.querySelector('input[name="bundle-request-price-mode"][value="same"]').checked = true;
+      updateBundleRequestTotal();
+      document.getElementById("bundle-request-modal").classList.remove("hidden");
+    };
+    window.closeBundleRequestModal = function() {
+      document.getElementById("bundle-request-modal").classList.add("hidden");
+    };
+    window.updateBundleRequestTotal = function() {
+      const selectedIds = [...document.querySelectorAll("#bundle-request-items [data-bundle-post-id]:checked")].map(input => input.dataset.bundlePostId);
+      const selected = selectedIds.map(id => allPosts.find(post => post.id === id)).filter(Boolean);
+      const total = selected.reduce((sum, post) => sum + Math.max(0, Number(post.price || post.startPrice || post.startingPrice || 0)), 0);
+      const totalEl = document.getElementById("bundle-request-total");
+      if (totalEl) totalEl.textContent = "¥" + total.toLocaleString();
+      const mode = document.querySelector('input[name="bundle-request-price-mode"]:checked')?.value || "same";
+      const custom = document.getElementById("bundle-request-custom-price");
+      if (custom) custom.classList.toggle("hidden", mode !== "custom");
+      return { selected, total, mode };
+    };
+    window.sendBundleRequest = async function() {
+      const current = allPosts.find(item => item.id === window._currentDetailPostId);
+      if (!current || !current.userId) return;
+      if (!currentUser) {
+        showToast("ログインしてからまとめ買いを依頼してください", "error");
+        return;
+      }
+      if (current.userId === currentUser.uid) {
+        showToast("自分の出品にはまとめ買い依頼できません", "info");
+        return;
+      }
+      if (!(await checkDeviceLock())) return;
+      const { selected, total, mode } = updateBundleRequestTotal();
+      if (!selected.length) {
+        showToast("商品を1つ以上選択してください", "error");
+        return;
+      }
+      const customValue = document.getElementById("bundle-request-custom-price").value.trim();
+      const custom = Number(customValue);
+      if (mode === "custom" && (!customValue || !Number.isFinite(custom) || custom < 0)) {
+        showToast("希望合計金額を入力してください", "error");
+        return;
+      }
+      const requestedTotal = mode === "custom" ? custom : mode === "discount" ? Math.round(total * 0.95) : total;
+      const button = document.getElementById("bundle-request-submit");
+      setBusyButton(button, true, "送信中…");
+      let requestTradeId = null;
+      try {
+        const items = selected.map(post => ({
+          postId: post.id,
+          title: String(post.give || "出品").slice(0, 160),
+          price: Math.max(0, Number(post.price || post.startPrice || post.startingPrice || 0))
+        }));
+        const message = (document.getElementById("bundle-request-message").value || "").trim();
+        const requestText = [
+          "まとめ買い依頼",
+          ...items.map(item => `・${item.title}（${item.price ? "¥" + item.price.toLocaleString() : "交換"}）`),
+          `合計希望金額：¥${requestedTotal.toLocaleString()}（商品合計 ¥${total.toLocaleString()}）`,
+          message
+        ].filter(Boolean).join("\n");
+        const ref = await addDoc(collection(db, "trades"), {
+          kind: current.kind || "trade",
+          isBuy: false,
+          isSell: false,
+          isBundleRequest: true,
+          postId: current.id,
+          postIds: items.map(item => item.postId),
+          bundleItems: items,
+          postGive: items.map(item => item.title).join("、").slice(0, 500),
+          postWant: requestText.slice(0, 1500),
+          postPrice: requestedTotal,
+          ownerId: current.userId,
+          ownerName: current.userName || "",
+          applicantId: currentUser.uid,
+          applicantName: getMyDisplayName(),
+          participants: [current.userId, currentUser.uid],
+          status: "negotiating",
+          agreed: {},
+          shipped: {},
+          received: {},
+          disputed: {},
+          lastMessageAt: serverTimestamp(),
+          lastSenderId: currentUser.uid,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          deviceId: getOrCreateDeviceId()
+        });
+        requestTradeId = ref.id;
+        await addDoc(collection(db, "trades", ref.id, "messages"), {
+          senderId: currentUser.uid,
+          senderName: getMyDisplayName(),
+          text: requestText,
+          createdAt: serverTimestamp(),
+          deviceId: getOrCreateDeviceId()
+        });
+        window.closeBundleRequestModal();
+        window.closeDetailModal();
+        window.openTrade(ref.id);
+        showToast("まとめ買い依頼を送信しました！", "success");
+      } catch (error) {
+        console.error("Bundle request failed:", error);
+        if (requestTradeId) {
+          window.closeBundleRequestModal();
+          window.closeDetailModal();
+          window.openTrade(requestTradeId);
+          showToast("依頼は作成されましたが、チャットへの送信に失敗しました", "error");
+        } else {
+          showToast("まとめ買い依頼を送信できませんでした", "error");
+        }
+      } finally {
+        setBusyButton(button, false);
+      }
     };
 
     function renderDetailRails(p) {
       const sellerEl = document.getElementById("detail-seller-items");
       const relEl = document.getElementById("detail-related");
       if (!sellerEl || !relEl || !p) return;
-      const tile = function (post) {
+      const tile = function (post, withLike = false) {
         const i = allPosts.indexOf(post);
-        const price = Number(post.price || 0) > 0 ? "¥" + Number(post.price).toLocaleString() : "交換";
-        const img = isJpegData(post.thumb) ? `<img src="${post.thumb}" alt="" class="w-full h-full object-cover">` : "";
-        return `<button type="button" onclick="openDetailModal(${i})" class="text-left w-[104px] shrink-0"><div class="aspect-[3/4] bg-[#f3f3f3] overflow-hidden rounded-md">${img}</div><div class="text-[12px] text-gray-900 mt-1">${price}</div></button>`;
+        const priceValue = Number(post.price || post.startPrice || post.startingPrice || 0);
+        const price = priceValue > 0 ? "¥" + priceValue.toLocaleString() : "交換";
+        const img = isJpegData(post.thumb) ? `<img src="${post.thumb}" alt="" style="width:100%;height:100%;object-fit:cover;display:block">` : "";
+        const liked = (userData.likes || []).includes(post.id);
+        return `<div class="relative aspect-square overflow-hidden rounded-xl bg-gray-100">
+          <button type="button" onclick="openDetailModal(${i})" class="absolute inset-0 h-full w-full">${img}</button>
+          ${withLike ? `<button type="button" onclick="event.stopPropagation();window.triggerHeartPop(this);window.toggleDetailLikeFromCard('${escapeHtml(post.id)}')" aria-label="いいね" class="absolute right-1 top-1 z-10 h-7 w-7 rounded-full text-lg text-white drop-shadow">${liked ? "♥" : "♡"}</button>` : ""}
+          <span class="absolute bottom-1 left-1 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-extrabold text-white">${price}</span>
+        </div>`;
       };
-      const others = allPosts.filter(function (x) { return x.userId && x.userId === p.userId && x.id !== p.id; }).slice(0, 8);
-      const similar = allPosts.filter(function (x) { return x.id !== p.id && p.member && x.member === p.member; }).slice(0, 6);
-      sellerEl.innerHTML = others.length ? `<div class="text-[13px] text-gray-500 mb-2">この人のほかの出品</div><div class="flex gap-3 overflow-x-auto pb-1">${others.map(tile).join("")}</div>` : "";
-      relEl.innerHTML = similar.length ? `<div class="text-[15px] text-gray-900 mb-2">似ている出品</div><div class="flex gap-3 overflow-x-auto pb-1">${similar.map(tile).join("")}</div>` : "";
+      const others = allPosts.filter(x => x.userId && x.userId === p.userId && x.id !== p.id && x.status === "active").slice(0, 12);
+      const similar = allPosts.filter(x => x.id !== p.id && (p.member ? x.member === p.member : x.kind === p.kind)).slice(0, 6);
+      sellerEl.innerHTML = `<div class="mb-2 text-[14px] font-bold text-gray-900">この出品者の他の商品</div>
+        <div class="grid grid-cols-4 gap-2">${others.slice(0, 4).map(post => tile(post)).join("")}</div>
+        <button type="button" onclick="openBundleRequestModal()" class="mt-3 w-full rounded-full bg-gray-100 py-3 text-xs font-bold text-gray-800">まとめ買いをお願いする</button>`;
+      const terms = [...new Set([p.groupName, p.member].map(value => String(value || "").trim()).filter(Boolean))].slice(0, 4);
+      const currentIndex = allPosts.indexOf(p);
+      relEl.innerHTML = `<div class="mb-3">
+          <div class="mb-2 text-[14px] font-bold text-gray-900">他の人はこちらも検索</div>
+          <div class="grid grid-cols-2 gap-2">${terms.map(term => `<button type="button" data-related-query="${escapeHtml(term)}" class="flex min-w-0 items-center gap-2 rounded-xl border border-gray-200 bg-white p-2 text-left">
+            <img src="${isJpegData(p.thumb) ? p.thumb : ""}" alt="" class="h-10 w-10 shrink-0 rounded-lg object-cover">
+            <span class="min-w-0"><span class="block truncate text-[11px] font-bold text-gray-800">${escapeHtml(p.groupName || "関連出品")}</span><span class="block truncate text-[10px] text-gray-500">${escapeHtml(term)}</span></span>
+          </button>`).join("")}</div>
+        </div>
+        <div class="text-[14px] font-bold text-gray-900 mb-2">この商品を見ている人におすすめ</div>
+        <div class="grid grid-cols-3 gap-2">${similar.map(post => tile(post, true)).join("")}</div>`;
+      if (!relEl.dataset.relatedBound) {
+        relEl.dataset.relatedBound = "true";
+        relEl.addEventListener("click", event => {
+          const button = event.target.closest("[data-related-query]");
+          if (!button) return;
+          const query = button.dataset.relatedQuery;
+          window.closeDetailModal();
+          window.openSearchPage();
+          const input = document.getElementById("search-page-input");
+          if (input) input.value = query;
+          window.runSearchFromInput();
+        });
+      }
     }
 
     async function loadPostComments(postId) {
@@ -5581,6 +5822,8 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         const rows = snap.docs.map(d => d.data());
         const countEl = document.getElementById("detail-comment-count");
         if (countEl) countEl.textContent = String(rows.length);
+        const headingCount = document.getElementById("detail-comment-heading-count");
+        if (headingCount) headingCount.textContent = String(rows.length);
         el.innerHTML = rows.length
           ? rows.map(c => {
               const img = c.image && isJpegData(c.image)

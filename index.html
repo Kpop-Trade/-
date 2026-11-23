@@ -1345,10 +1345,12 @@
 
   <div id="detail-modal" class="fixed inset-0 bg-[#f5f5f5] hidden z-50 flex flex-col">
     <div class="detail-sheet">
-      <div class="flex items-center gap-2 px-3 h-12 bg-white shrink-0">
-        <button onclick="closeDetailModal()" class="w-8 h-8 text-gray-700 text-lg leading-none" aria-label="戻る">←</button>
-        <h3 id="detail-title" class="flex-1 min-w-0 text-center font-medium text-[15px] text-gray-900 truncate">募集の詳細</h3>
-        <div id="detail-price-head" class="hidden"></div>
+      <div id="detail-header" class="sticky top-0 z-20 flex items-center justify-between gap-2 px-3 h-12 bg-white shrink-0">
+        <button onclick="closeDetailModal()" class="w-9 h-9 rounded-full bg-[#f5f5f5] text-gray-700 text-lg leading-none flex items-center justify-center" aria-label="戻る">←</button>
+        <div id="detail-head-summary" class="pointer-events-none absolute left-1/2 flex min-w-0 max-w-[65%] -translate-x-1/2 items-center gap-2 opacity-0 transition-opacity duration-200">
+          <h3 id="detail-title" class="min-w-0 truncate text-center text-sm font-bold text-gray-900">募集の詳細</h3>
+          <span id="detail-price-head" class="shrink-0 text-xs font-bold text-gray-900"></span>
+        </div>
         <div class="relative w-9 h-9 shrink-0">
           <button id="detail-more-btn" type="button" onclick="toggleDetailMenu(event)" class="w-9 h-9 rounded-full border border-gray-300 bg-white shadow-sm flex items-center justify-center" aria-label="その他">
             <span class="flex flex-col items-center gap-[3px]">
@@ -1364,8 +1366,9 @@
       </div>
       <div class="detail-scroll flex-1 overflow-y-auto pb-6">
         <div class="pb-2">
-          <div id="detail-photo-wrap">
+          <div id="detail-photo-wrap" class="relative overflow-hidden rounded-xl" style="border-radius:12px">
             <div id="detail-photos"></div>
+            <span id="detail-photo-count" class="hidden absolute bottom-3 right-3 z-10 rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-bold text-white"></span>
           </div>
           <div class="px-4 pt-3 pb-2 space-y-3">
             <div class="flex items-center justify-between pt-0.5">
@@ -1383,12 +1386,12 @@
               <span id="detail-comment-count" class="text-[13px] font-medium text-[#333333]">0</span>
             </div>
           </div>
-          <div id="detail-pricecut-pill-wrap"></div>
+          <div id="detail-pricecut-pill-wrap" class="ml-auto"></div>
         </div>
-            <h2 id="detail-item-title" class="text-[19px] font-bold text-[#222222] leading-[1.45] tracking-[-0.01em]"></h2>
+            <h2 id="detail-item-title" class="text-[18px] font-extrabold text-[#222222] leading-[1.45] tracking-[-0.01em]"></h2>
             <div id="detail-condition-box" class="hidden text-[13px] text-[#555555] mt-1.5"><span id="detail-condition"></span></div>
             <div class="flex items-center gap-1 text-[12px] text-[#888888] mt-1"><svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 7v5l3 2"/></svg><span id="detail-time"></span></div>
-            <div id="detail-price-box" class="hidden mt-3 flex items-baseline"><span id="detail-price" class="text-[26px] font-extrabold text-[#222222] tracking-tight leading-none"></span></div>
+            <div id="detail-price-box" class="hidden mt-3 flex items-baseline gap-2"><span id="detail-price" class="text-[24px] font-extrabold text-[#222222] tracking-tight leading-none"></span><span id="detail-price-note" class="text-[11px] text-gray-500"></span></div>
             <div class="text-[13px] text-gray-500">メンバー <span id="detail-member" class="text-gray-800"></span></div>
             <div id="detail-give-box" class="hidden"><span></span><span id="detail-give"></span></div>
             <div id="detail-want-box" class="text-[14px] text-gray-700"><span class="text-gray-400">希望</span> <span id="detail-want"></span></div>
@@ -1397,20 +1400,26 @@
             <div>
               <div class="text-[15px] font-bold text-[#222222] mb-2.5">商品の説明</div>
               <div id="detail-desc-box" class="text-[14px] text-[#222222] whitespace-pre-wrap leading-[1.65]"></div>
+              <button type="button" id="detail-desc-more" onclick="toggleDetailDescription()" class="hidden mt-2 text-xs font-bold text-gray-500">もっと見る</button>
             </div>
-            <button type="button" id="detail-seller-btn" onclick="openSellerProfileFromDetail()" class="w-full flex items-center gap-3 text-left py-2">
-              <img id="detail-user-avatar" src="" alt="" class="w-11 h-11 rounded-full object-cover hidden shrink-0">
-              <div id="detail-user-avatar-placeholder" class="w-11 h-11 rounded-full bg-gray-100 flex items-center justify-center text-sm shrink-0">👤</div>
-              <div class="min-w-0 flex-1">
-                <div class="text-[11px] text-[#888888] leading-none mb-0.5">出品者</div>
-                <div id="detail-user" class="text-[14px] font-bold text-[#222222] truncate"></div>
-                <div id="detail-rating" class="text-[12px] text-gray-400"></div>
-              </div>
-              <span class="text-gray-300 text-lg">›</span>
-            </button>
+            <div class="flex items-center gap-2 py-2">
+              <button type="button" id="detail-seller-btn" onclick="openSellerProfileFromDetail()" class="flex min-w-0 flex-1 items-center gap-3 text-left">
+                <img id="detail-user-avatar" src="" alt="" class="w-11 h-11 rounded-full object-cover hidden shrink-0">
+                <div id="detail-user-avatar-placeholder" class="w-11 h-11 rounded-full bg-gray-100 flex items-center justify-center text-sm shrink-0">👤</div>
+                <div class="min-w-0 flex-1">
+                  <div class="text-[11px] text-[#888888] leading-none mb-0.5">出品者</div>
+                  <div id="detail-user" class="text-[14px] font-bold text-[#222222] truncate"></div>
+                  <div id="detail-rating" class="text-[12px] text-gray-400"></div>
+                </div>
+              </button>
+              <button id="detail-follow-btn" type="button" onclick="toggleSellerFollow()" class="shrink-0 rounded-full border border-gray-300 bg-white px-3 py-2 text-xs font-bold text-gray-700">+ フォロー</button>
+            </div>
             <div id="detail-seller-items" class="text-[13px]"></div>
             <div>
-              <div class="text-[15px] font-bold text-[#222222] mb-3">コメント</div>
+              <div class="mb-3 flex items-center justify-between">
+                <div class="text-[15px] font-bold text-[#222222]">コメント（<span id="detail-comment-heading-count">0</span>）</div>
+                <button type="button" onclick="document.getElementById('detail-comment-input').focus()" class="rounded-full bg-gray-100 px-3.5 py-2 text-xs font-bold text-gray-700">💬 コメントする</button>
+              </div>
               <div id="detail-comments" class="space-y-3 mb-3"></div>
               <form class="flex gap-2 items-center" onsubmit="submitPostComment(event)">
                 <label class="shrink-0 w-10 h-10 rounded-full bg-[#f6f6f7] border border-[#eee] flex items-center justify-center text-[11px] text-gray-500 cursor-pointer">
@@ -1427,7 +1436,26 @@
           </div>
         </div>
       </div>
-      <div id="detail-actions" class="shrink-0"></div>
+      <div id="detail-actions" class="shrink-0 border-t border-gray-200 bg-white px-3 py-2" style="position:sticky;bottom:0;z-index:20;padding-bottom:calc(8px + env(safe-area-inset-bottom))"></div>
+    </div>
+  </div>
+
+  <div id="bundle-request-modal" class="hidden fixed inset-0 z-[90] flex items-end justify-center bg-black/45 sm:items-center sm:p-4" onclick="if(event.target===this)closeBundleRequestModal()">
+    <div class="w-full max-w-lg rounded-t-3xl bg-white p-4 shadow-2xl sm:rounded-3xl" style="max-height:88vh;overflow-y:auto;padding-bottom:calc(16px + env(safe-area-inset-bottom))">
+      <div class="mb-3 flex items-center justify-between">
+        <h3 class="text-base font-extrabold text-gray-900">まとめ買い依頼</h3>
+        <button type="button" onclick="closeBundleRequestModal()" aria-label="閉じる" class="h-9 w-9 rounded-full bg-gray-100 text-xl text-gray-600">×</button>
+      </div>
+      <div id="bundle-request-items" class="max-h-56 space-y-2 overflow-y-auto"></div>
+      <p class="mt-3 text-sm font-bold text-gray-800">選択商品の合計：<span id="bundle-request-total">¥0</span></p>
+      <fieldset class="mt-3 space-y-2 text-sm text-gray-700">
+        <label class="flex items-center gap-2"><input type="radio" name="bundle-request-price-mode" value="same" checked onchange="updateBundleRequestTotal()">そのままの合計金額</label>
+        <label class="flex items-center gap-2"><input type="radio" name="bundle-request-price-mode" value="discount" onchange="updateBundleRequestTotal()">少しお値引き希望</label>
+        <label class="flex items-center gap-2"><input type="radio" name="bundle-request-price-mode" value="custom" onchange="updateBundleRequestTotal()">希望合計金額</label>
+      </fieldset>
+      <input id="bundle-request-custom-price" type="number" min="0" inputmode="numeric" placeholder="希望合計金額（円）" oninput="updateBundleRequestTotal()" class="mt-2 hidden w-full rounded-xl border border-gray-200 px-3 py-2.5 text-base">
+      <textarea id="bundle-request-message" rows="3" maxlength="500" placeholder="出品者へのメッセージ（任意）" class="mt-3 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm"></textarea>
+      <button id="bundle-request-submit" type="button" onclick="sendBundleRequest()" class="mt-3 w-full rounded-full bg-[#ff3b4e] py-3 text-sm font-bold text-white">まとめ買いを依頼する</button>
     </div>
   </div>
 
@@ -1575,7 +1603,7 @@
   </div>
 
   <script src="./js/mycards-binder.js?v=20261121"></script>
-  <script type="module" src="./js/app-main.js?v=1795407845ship1"></script>
+  <script type="module" src="./js/app-main.js?v=1795408413ship1"></script>
 
   <div id="xlogin-help-modal" class="hidden fixed inset-0 z-[10040] modal-backdrop items-end sm:items-center justify-center p-3" style="padding-top: max(12px, env(safe-area-inset-top)); padding-bottom: max(12px, env(safe-area-inset-bottom));" onclick="if(event.target===this) closeGoogleLoginHelp()">
     <div id="xlogin-help-sheet" class="liquid-glass-heavy w-full max-w-sm rounded-[1.75rem] p-5 shadow-2xl border border-white" role="dialog" aria-modal="true" aria-labelledby="xlogin-help-title">
@@ -5110,6 +5138,8 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     window.viewPhoto = function(kind, i) { const arr = kind === "room" ? roomPhotos : detailPhotos; if (isJpegData(arr[i])) { document.getElementById("image-viewer-img").src = arr[i]; document.getElementById("image-viewer").classList.remove("hidden"); } };
     async function loadDetailPhotos(p, index) {
       const el = document.getElementById("detail-photos"); detailPhotos = [];
+      const countBadge = document.getElementById("detail-photo-count");
+      if (countBadge) countBadge.classList.add("hidden");
       if (p.kind === "serial" || !p.photoCount) { el.innerHTML = ""; return; }
       const paint = function (list) {
         if (!list.length) { el.innerHTML = ""; return; }
@@ -5125,15 +5155,24 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
               return `<button type="button" class="bundle-hit ${cls}" style="left:${b.x * 100}%;top:${b.y * 100}%;width:${b.w * 100}%;height:${b.h * 100}%" onclick="event.stopPropagation(); toggleBundleBox(${bi})">${sold || hold || on ? "<span>×</span>" : ""}</button>`;
             }).join("");
             el.style.height = "64vh";
-            return `<div class="shot"><div class="bundle-frame"><img src="${src}" alt="">${hits}</div></div>`;
+            return `<div class="shot" style="flex:0 0 100%;scroll-snap-align:start"><div class="bundle-frame"><img src="${src}" alt="">${hits}</div></div>`;
           }
-          return `<div class="shot"><img src="${src}" alt="" onclick="viewPhoto('detail', ${i})"></div>`;
+          return `<div class="shot" style="flex:0 0 100%;scroll-snap-align:start"><img src="${src}" alt="" style="display:block;width:100%;height:100%;object-fit:contain" onclick="viewPhoto('detail', ${i})"></div>`;
         }).join("");
         if (!(boxes.length > 1)) el.style.height = "";
-        el.innerHTML = `<div class="detail-film">${shots}</div>`;
+        el.innerHTML = `<div class="detail-film" style="display:flex;overflow-x:auto;scroll-snap-type:x mandatory;aspect-ratio:1/1;border-radius:12px">${shots}</div>`;
+        const film = el.querySelector(".detail-film");
+        const updateCount = () => {
+          if (!countBadge) return;
+          const current = Math.min(list.length, Math.round(film.scrollLeft / Math.max(1, film.clientWidth)) + 1);
+          countBadge.textContent = `${current}/${list.length}`;
+          countBadge.classList.toggle("hidden", list.length < 2);
+        };
+        film.addEventListener("scroll", updateCount, { passive: true });
+        updateCount();
       };
       const first = isJpegData(p.thumb) ? p.thumb : "";
-      if (first) paint([first]);
+      if (first) { detailPhotos = [first]; paint(detailPhotos); }
       try { const list = await getPhotos(p.id); if (currentDetailIndex !== index) return; detailPhotos = list; if (list.length) paint(list); }
       catch (e) {}
     }
@@ -5168,21 +5207,24 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     window.openDetailModal = function(index) {
       const p = allPosts[index]; if (!p) return;
       currentDetailIndex = index; currentDetailId = p.id; window._bundlePick = new Set(); const isGroup = p.kind === "group", isBuy = !!p.isBuy;
+      window._currentDetailPostId = p.id;
       let title = "募集の詳細";
       if (isGroup) title = "🛍 共同購入の詳細";
       else if (p.kind === "album") title = "💿 アルバムの詳細";
       else if (p.kind === "dearlit") title = "🎁 DEARLITの詳細";
       else if (isBuy) title = "💳 買取（購入希望）の詳細";
       else if (p.isSell) title = "💰 売却の詳細";
-      document.getElementById("detail-title").innerText = "";
+      const detailTitle = document.getElementById("detail-title");
+      const headSummary = document.getElementById("detail-head-summary");
+      if (detailTitle) detailTitle.innerText = p.give || title;
+      if (headSummary) headSummary.style.opacity = "0";
       const itemTitle = document.getElementById("detail-item-title");
       if (itemTitle) itemTitle.innerText = p.give || title;
       const priceHead = document.getElementById("detail-price-head");
-      if (priceHead) priceHead.innerText = "";
-      if (isGroup || isBuy || p.isSell) {
-        const pay = paymentLabel(p);
-        document.getElementById("detail-price").innerHTML = "¥" + Number(p.price || 0).toLocaleString() + (pay ? `<span style="margin-left:6px;font-size:12px;font-weight:500;color:#666666">${escapeHtml(pay)}</span>` : "");
-      }
+      const priceValue = Number(p.price || p.startPrice || p.startingPrice || 0);
+      if (priceHead) priceHead.innerText = priceValue > 0 ? "¥" + priceValue.toLocaleString() : "交換";
+      document.getElementById("detail-price").innerText = priceValue > 0 ? "¥" + priceValue.toLocaleString() : "交換";
+      document.getElementById("detail-price-note").innerText = priceValue > 0 ? "送料込み" : "";
       document.getElementById("detail-give").innerText = p.give;
       document.getElementById("detail-want").innerText = p.want || "（なし）";
       document.getElementById("detail-member").innerText = p.member || "指定なし";
@@ -5201,15 +5243,27 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       }
       document.getElementById("detail-give-box").querySelector("span").innerText = isGroup ? "商品" : (isBuy ? "求" : "譲");
       document.getElementById("detail-want-box").classList.toggle("hidden", isBuy || isGroup || p.isSell);
-      document.getElementById("detail-price-box").classList.toggle("hidden", !(isBuy || isGroup || p.isSell));
+      document.getElementById("detail-price-box").classList.remove("hidden");
       const condBox = document.getElementById("detail-condition-box");
       if (p.condition && CONDITION_LABEL[p.condition]) {
         condBox.classList.remove("hidden");
         document.getElementById("detail-condition").innerText = String(CONDITION_LABEL[p.condition] || "").split("：").pop();
       } else condBox.classList.add("hidden");
       const descBox = document.getElementById("detail-desc-box");
-      if (p.description) { descBox.classList.remove("hidden"); descBox.innerText = p.description; }
-      else { descBox.classList.add("hidden"); }
+      const descMore = document.getElementById("detail-desc-more");
+      if (p.description) {
+        descBox.classList.remove("hidden");
+        descBox.innerText = p.description;
+        const longDescription = p.description.length > 220;
+        descBox.classList.toggle("line-clamp-4", longDescription);
+        descMore.classList.toggle("hidden", !longDescription);
+        descMore.innerText = "もっと見る";
+        descMore.dataset.expanded = "false";
+      } else {
+        descBox.classList.add("hidden");
+        descMore.classList.add("hidden");
+      }
+      window.updateSellerFollowButton(p.userId);
       const joins = isGroup ? joinsOf(p.id) : []; const target = Number(p.target || 0); const joinCount = isGroup ? Math.max(0, typeof p.joinsCount === "number" ? p.joinsCount : joins.length) : 0; const full = isGroup && target > 0 && joinCount >= target; const closed = isGroup && p.status === "closed"; const isSold = p.status === "traded"; const joined = !!(isGroup && currentUser && joins.some(j => j.id === currentUser.uid));
       let extra = "";
       if (p.kind === "serial" && p.deadline) extra += `<div>有効期限: <b>${escapeHtml(p.deadline)}</b></div>`;
@@ -5256,21 +5310,26 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           const pillWrap = document.getElementById("detail-pricecut-pill-wrap");
       if (pillWrap) {
         if (p.isSell && (!currentUser || p.userId !== currentUser.uid)) {
-          pillWrap.innerHTML = `<button type="button" onclick="proposePriceCutById('${escapeHtml(p.id)}')" class="inline-flex items-center gap-1.5 rounded-full bg-[#f5f5f5] hover:bg-[#ebebeb] active:scale-95 transition px-3.5 py-2 text-[12px] font-bold text-[#333333]"><span class="w-4 h-4 rounded-full border border-[#555555] inline-flex items-center justify-center text-[10px] leading-none">¥</span><span>値下げ依頼</span></button>`;
+          pillWrap.innerHTML = `<button type="button" onclick="proposePriceCutById('${escapeHtml(p.id)}')" class="inline-flex items-center gap-1.5 rounded-full bg-[#f5f5f5] hover:bg-[#ebebeb] active:scale-95 transition px-3.5 py-2 text-[12px] font-bold text-[#333333]"><span class="w-4 h-4 rounded-full border border-[#555555] inline-flex items-center justify-center text-[10px] leading-none">¥</span><span>値下げ・条件相談</span></button>`;
         } else {
           pillWrap.innerHTML = "";
         }
       }
-      const btnLabel = isGroup ? "応募する" : (p.isSell ? "購入へ" : "申し込む");
+      const btnLabel = isGroup ? "応募する" : (p.isSell ? "購入へ" : (isStandardExchangePost(p) ? "交換申請へ" : "申し込む"));
       const onclick = isGroup ? `joinGroup(${index})` : (p.isSell ? `confirmPurchase(${index})` : `applyToPost(${index})`);
       if (p.isSell && (!currentUser || p.userId !== currentUser.uid)) {
-        actions.innerHTML = `<div class="bg-white border-t border-gray-200 px-3 py-2.5 flex items-center gap-2.5"><button type="button" onclick="proposePriceCutById('${escapeHtml(p.id)}')" class="flex-1 h-11 rounded-[6px] border border-[#ff333f] bg-white text-[#ff333f] text-[14px] font-bold active:opacity-80 transition">値下げ依頼</button><button type="button" onclick="${onclick}" class="flex-1 h-11 rounded-[6px] bg-[#ff333f] text-white text-[14px] font-bold shadow-sm active:opacity-90 transition">${btnLabel}</button></div>`;
+        actions.innerHTML = `<div class="px-3 py-2.5"><button type="button" onclick="${onclick}" class="w-full rounded-full bg-[#ff3b4e] py-3 font-bold text-white">${btnLabel}</button></div>`;
       } else {
         const btnGrad = isGroup ? "from-teal-400 to-teal-500" : "from-illit-purple to-illit-accent";
         actions.innerHTML = `<div class="px-3 py-2.5"><button type="button" onclick="${onclick}" class="w-full bg-gradient-to-r ${btnGrad} text-white font-bold py-3 rounded-full shadow-md border border-white/30">${btnLabel}</button></div>`;
       }
         }
       }
+      const primaryActions = actions.innerHTML;
+      actions.innerHTML = `<div class="flex items-center gap-2">
+        <button type="button" onclick="openBundleRequestModal()" class="min-w-0 flex-1 rounded-full border border-[#ff3b4e] bg-white py-3 text-xs font-bold text-[#ff3b4e]">まとめ買い依頼</button>
+        <div class="min-w-0 flex-1">${primaryActions}</div>
+      </div>`;
       const more = document.getElementById("detail-more");
       if (more) {
         let moreHtml = "";
@@ -5284,7 +5343,14 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       const sheet = modal.querySelector(".detail-sheet");
       if (sheet) { sheet.style.transition = "none"; sheet.style.transform = ""; }
       const scroller = modal.querySelector(".detail-scroll");
-      if (scroller) { scroller.scrollTop = 0; scroller.scrollLeft = 0; }
+      if (scroller) {
+        scroller.scrollTop = 0;
+        scroller.scrollLeft = 0;
+        scroller.onscroll = () => {
+          const summary = document.getElementById("detail-head-summary");
+          if (summary) summary.style.opacity = scroller.scrollTop > 120 ? "1" : "0";
+        };
+      }
       modal.classList.remove("hidden"); loadDetailPhotos(p, index); if (p.userId) loadRating(p.userId, index); renderDetailRails(p); loadPostComments(p.id); loadSellOffers(p);
       if (isGroup && currentUser && !joinsFresh[p.id]) {
         joinsFresh[p.id] = true;
@@ -5301,22 +5367,53 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       modal.classList.add("hidden");
       currentDetailIndex = -1;
       currentDetailId = null;
+      window._currentDetailPostId = null;
     };
 
     function renderDetailRails(p) {
       const sellerEl = document.getElementById("detail-seller-items");
       const relEl = document.getElementById("detail-related");
       if (!sellerEl || !relEl || !p) return;
-      const tile = function (post) {
+      const tile = function (post, withLike = false) {
         const i = allPosts.indexOf(post);
-        const price = Number(post.price || 0) > 0 ? "¥" + Number(post.price).toLocaleString() : "交換";
-        const img = isJpegData(post.thumb) ? `<img src="${post.thumb}" alt="" class="w-full h-full object-cover">` : "";
-        return `<button type="button" onclick="openDetailModal(${i})" class="text-left w-[104px] shrink-0"><div class="aspect-[3/4] bg-[#f3f3f3] overflow-hidden rounded-md">${img}</div><div class="text-[12px] text-gray-900 mt-1">${price}</div></button>`;
+        const priceValue = Number(post.price || post.startPrice || post.startingPrice || 0);
+        const price = priceValue > 0 ? "¥" + priceValue.toLocaleString() : "交換";
+        const img = isJpegData(post.thumb) ? `<img src="${post.thumb}" alt="" style="width:100%;height:100%;object-fit:cover;display:block">` : "";
+        const liked = (userData.likes || []).includes(post.id);
+        return `<div class="relative aspect-square overflow-hidden rounded-xl bg-gray-100">
+          <button type="button" onclick="openDetailModal(${i})" class="absolute inset-0 h-full w-full">${img}</button>
+          ${withLike ? `<button type="button" onclick="event.stopPropagation();window.triggerHeartPop(this);window.toggleDetailLikeFromCard('${escapeHtml(post.id)}')" aria-label="いいね" class="absolute right-1 top-1 z-10 h-7 w-7 rounded-full text-lg text-white drop-shadow">${liked ? "♥" : "♡"}</button>` : ""}
+          <span class="absolute bottom-1 left-1 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-extrabold text-white">${price}</span>
+        </div>`;
       };
-      const others = allPosts.filter(function (x) { return x.userId && x.userId === p.userId && x.id !== p.id; }).slice(0, 8);
-      const similar = allPosts.filter(function (x) { return x.id !== p.id && p.member && x.member === p.member; }).slice(0, 6);
-      sellerEl.innerHTML = others.length ? `<div class="text-[13px] text-gray-500 mb-2">この人のほかの出品</div><div class="flex gap-3 overflow-x-auto pb-1">${others.map(tile).join("")}</div>` : "";
-      relEl.innerHTML = similar.length ? `<div class="text-[15px] text-gray-900 mb-2">似ている出品</div><div class="flex gap-3 overflow-x-auto pb-1">${similar.map(tile).join("")}</div>` : "";
+      const others = allPosts.filter(x => x.userId && x.userId === p.userId && x.id !== p.id && x.status === "active").slice(0, 12);
+      const similar = allPosts.filter(x => x.id !== p.id && (p.member ? x.member === p.member : x.kind === p.kind)).slice(0, 6);
+      sellerEl.innerHTML = `<div class="mb-2 text-[14px] font-bold text-gray-900">この出品者の他の商品</div>
+        <div class="grid grid-cols-4 gap-2">${others.slice(0, 4).map(post => tile(post)).join("")}</div>
+        <button type="button" onclick="openBundleRequestModal()" class="mt-3 w-full rounded-full bg-gray-100 py-3 text-xs font-bold text-gray-800">まとめ買いをお願いする</button>`;
+      const terms = [...new Set([p.groupName, p.member].map(value => String(value || "").trim()).filter(Boolean))].slice(0, 4);
+      relEl.innerHTML = `<div class="mb-3">
+          <div class="mb-2 text-[14px] font-bold text-gray-900">他の人はこちらも検索</div>
+          <div class="grid grid-cols-2 gap-2">${terms.map(term => `<button type="button" data-related-query="${escapeHtml(term)}" class="flex min-w-0 items-center gap-2 rounded-xl border border-gray-200 bg-white p-2 text-left">
+            <img src="${isJpegData(p.thumb) ? p.thumb : ""}" alt="" class="h-10 w-10 shrink-0 rounded-lg object-cover">
+            <span class="min-w-0"><span class="block truncate text-[11px] font-bold text-gray-800">${escapeHtml(p.groupName || "関連出品")}</span><span class="block truncate text-[10px] text-gray-500">${escapeHtml(term)}</span></span>
+          </button>`).join("")}</div>
+        </div>
+        <div class="text-[14px] font-bold text-gray-900 mb-2">この商品を見ている人におすすめ</div>
+        <div class="grid grid-cols-3 gap-2">${similar.map(post => tile(post, true)).join("")}</div>`;
+      if (!relEl.dataset.relatedBound) {
+        relEl.dataset.relatedBound = "true";
+        relEl.addEventListener("click", event => {
+          const button = event.target.closest("[data-related-query]");
+          if (!button) return;
+          const query = button.dataset.relatedQuery;
+          window.closeDetailModal();
+          window.openSearchPage();
+          const input = document.getElementById("search-page-input");
+          if (input) input.value = query;
+          window.runSearchFromInput();
+        });
+      }
     }
 
     async function loadPostComments(postId) {
@@ -5331,6 +5428,8 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         const rows = snap.docs.map(d => d.data());
         const countEl = document.getElementById("detail-comment-count");
         if (countEl) countEl.textContent = String(rows.length);
+        const headingCount = document.getElementById("detail-comment-heading-count");
+        if (headingCount) headingCount.textContent = String(rows.length);
         el.innerHTML = rows.length
           ? rows.map(c => {
               const img = c.image && isJpegData(c.image)
