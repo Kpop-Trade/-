@@ -57,6 +57,8 @@
 
 
   <div id="toast-container" class="fixed top-20 left-1/2 -translate-x-1/2 z-[110] space-y-2 w-[92%] max-w-sm pointer-events-none"></div>
+  <input type="checkbox" switch id="iosHapticSwitch" aria-hidden="true" tabindex="-1" style="position:fixed;opacity:0;pointer-events:none;left:-9999px">
+  <label for="iosHapticSwitch" id="iosHapticLabel" aria-hidden="true" style="position:fixed;opacity:0;pointer-events:none;left:-9999px"></label>
 
   <header class="kp-market-header lg-header" style="position:sticky;top:0;z-index:900;background:#ffffff">
     <div class="kp-market-header-inner">
@@ -435,6 +437,22 @@
       </div>
     </section>
   <style>
+    @keyframes heartPop {
+      0% { transform: scale(1); }
+      38% { transform: scale(1.34); }
+      68% { transform: scale(.9); }
+      100% { transform: scale(1); }
+    }
+    @keyframes bellShake {
+      0%, 100% { transform: rotate(0); }
+      18% { transform: rotate(14deg); }
+      36% { transform: rotate(-13deg); }
+      54% { transform: rotate(9deg); }
+      72% { transform: rotate(-6deg); }
+      88% { transform: rotate(3deg); }
+    }
+    .heart-pop { animation: heartPop .42s cubic-bezier(.2, .8, .25, 1); }
+    .bell-shake { transform-origin: 50% 15%; animation: bellShake .6s ease-in-out; }
     @keyframes loginStampPop {
       0% { opacity: 0; transform: translate(-50%, -110%) scale(2.2) rotate(-35deg); }
       70% { opacity: 1; transform: translate(-50%, -45%) scale(.82) rotate(8deg); }
@@ -1315,7 +1333,7 @@
             <div class="flex items-center justify-between pt-0.5">
           <div class="flex items-center gap-4">
             <div class="flex items-center gap-2">
-              <button id="detail-like-btn" onclick="toggleDetailLike()" class="w-11 h-11 rounded-full bg-[#f5f5f5] hover:bg-[#ebebeb] active:scale-95 transition flex items-center justify-center">
+              <button id="detail-like-btn" onclick="window.triggerHeartPop(this); toggleDetailLike()" class="w-11 h-11 rounded-full bg-[#f5f5f5] hover:bg-[#ebebeb] active:scale-95 transition flex items-center justify-center">
                 <span id="detail-like-icon" class="text-[20px] font-normal leading-none"></span>
               </button>
               <span id="detail-like-count" class="text-[13px] font-medium text-[#333333]">0</span>
@@ -1521,7 +1539,7 @@
   </div>
 
   <script src="./js/mycards-binder.js?v=20261121"></script>
-  <script type="module" src="./js/app-main.js?v=1795407196ship1"></script>
+  <script type="module" src="./js/app-main.js?v=1795407682ship1"></script>
 
   <div id="xlogin-help-modal" class="hidden fixed inset-0 z-[10040] modal-backdrop items-end sm:items-center justify-center p-3" style="padding-top: max(12px, env(safe-area-inset-top)); padding-bottom: max(12px, env(safe-area-inset-bottom));" onclick="if(event.target===this) closeGoogleLoginHelp()">
     <div id="xlogin-help-sheet" class="liquid-glass-heavy w-full max-w-sm rounded-[1.75rem] p-5 shadow-2xl border border-white" role="dialog" aria-modal="true" aria-labelledby="xlogin-help-title">
@@ -3610,6 +3628,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     async function doToggleLike(p) {
       if (!currentUser) return /* alert hidden */ console.log("ログインが必要です。");
       if (!p || likeBusy.has(p.id)) return;
+      window.triggerHaptic(15);
       if (!(await checkDeviceLockCached())) return;
       likeBusy.add(p.id);
       try {
@@ -3926,11 +3945,15 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         return /* alert hidden */ console.log("プッシュ通知はHTTPS通信（またはlocalhost）環境でのみ動作します。");
       }
 
-      const perm = await Notification.requestPermission();
+      const permissionRequest = Notification.requestPermission();
+      window.triggerHaptic([15, 40, 25]);
+      const perm = await permissionRequest;
       if (perm !== "granted") {
         markPushPromptAsked();
         return /* alert hidden */ console.log("通知権限が拒否されています。ブラウザの設定から通知を許可してください。");
       }
+      window.triggerHaptic([15, 40, 25]);
+      window.triggerBellShake();
 
       try { 
         await saveToken(); 
@@ -4754,7 +4777,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           <div onclick="openDetailModal(${index})" style="${cardStyle}" class="relative cursor-pointer overflow-hidden rounded-[10px] bg-gray-50 ${dim ? "opacity-60" : ""}">
             <div class="absolute inset-0 overflow-hidden">
               ${photoBlock}
-              <button type="button" onclick="event.stopPropagation(); toggleDetailLikeFromCard('${p.id}')" aria-label="${isLiked ? "いいねを解除" : "いいね"}" class="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center drop-shadow">
+              <button type="button" onclick="event.stopPropagation(); window.triggerHeartPop(this); toggleDetailLikeFromCard('${p.id}')" aria-label="${isLiked ? "いいねを解除" : "いいね"}" class="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center drop-shadow">
                 <svg width="25" height="25" viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M20.8 4.9a5.5 5.5 0 0 0-7.8 0L12 5.9l-1-1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.3a5.5 5.5 0 0 0 0-7.8Z" fill="${isLiked ? "#ec4899" : "rgba(255,255,255,0.08)"}" stroke="#ffffff" stroke-width="1.8" stroke-linejoin="round"/>
                 </svg>
@@ -8827,7 +8850,7 @@ function getAiCardVectors() {
                     <p id="ag-push-required-message" class="text-sm text-gray-700">参加には通知の許可が必要です</p>
             </div>
           </div>
-                <button type="button" onclick="requestAutoGoPushPermission()" class="shrink-0 px-3 py-2 border border-gray-300 text-sm text-gray-900">
+                <button type="button" onclick="requestAutoGoPushPermission(); window.triggerHaptic([15, 40, 25])" class="shrink-0 px-3 py-2 border border-gray-300 text-sm text-gray-900">
             通知をONにする
           </button>
         </div>

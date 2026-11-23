@@ -534,6 +534,52 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     }
     window.showToast = showToast;
 
+    window.triggerHaptic = function(pattern = 15) {
+      if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+        try {
+          navigator.vibrate(pattern);
+          return;
+        } catch (error) {
+          console.debug("Vibration is unavailable:", error);
+        }
+      }
+      try {
+        let input = document.getElementById("iosHapticSwitch");
+        let label = document.getElementById("iosHapticLabel");
+        if (!input) {
+          input = document.createElement("input");
+          input.type = "checkbox";
+          input.id = "iosHapticSwitch";
+          input.setAttribute("switch", "");
+          input.style.cssText = "position:fixed;opacity:0;pointer-events:none;left:-9999px";
+          document.body.appendChild(input);
+        }
+        if (!label) {
+          label = document.createElement("label");
+          label.htmlFor = "iosHapticSwitch";
+          label.id = "iosHapticLabel";
+          label.style.cssText = "position:fixed;opacity:0;pointer-events:none;left:-9999px";
+          document.body.appendChild(label);
+        }
+        label.click();
+      } catch (error) {
+        console.debug("iOS haptic fallback is unavailable:", error);
+      }
+    };
+    window.triggerHeartPop = function(button) {
+      if (!button) return;
+      button.classList.remove("heart-pop");
+      void button.offsetWidth;
+      button.classList.add("heart-pop");
+    };
+    window.triggerBellShake = function() {
+      const icon = document.querySelector("#notif-btn svg");
+      if (!icon) return;
+      icon.classList.remove("bell-shake");
+      void icon.offsetWidth;
+      icon.classList.add("bell-shake");
+    };
+
     function addNotification(text, type = "info", target = null, category = null) {
       if (!currentUser) return;
       const item = { id: "n_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7), text, type, read: false, createdAt: Date.now(), target: target || null };
@@ -2552,6 +2598,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     async function doToggleLike(p) {
       if (!currentUser) return /* alert hidden */ console.log("ログインが必要です。");
       if (!p || likeBusy.has(p.id)) return;
+      window.triggerHaptic(15);
       if (!(await checkDeviceLockCached())) return;
       likeBusy.add(p.id);
       try {
@@ -3093,11 +3140,15 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         return /* alert hidden */ console.log("プッシュ通知はHTTPS通信（またはlocalhost）環境でのみ動作します。");
       }
 
-      const perm = await Notification.requestPermission();
+      const permissionRequest = Notification.requestPermission();
+      window.triggerHaptic([15, 40, 25]);
+      const perm = await permissionRequest;
       if (perm !== "granted") {
         markPushPromptAsked();
         return /* alert hidden */ console.log("通知権限が拒否されています。ブラウザの設定から通知を許可してください。");
       }
+      window.triggerHaptic([15, 40, 25]);
+      window.triggerBellShake();
 
       try { 
         await saveToken(); 
@@ -4631,7 +4682,10 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         return;
       }
       searches.unshift({ query, activeOnly: activeOnly || searchEasyFilter === "active_trade", member: selectedMember, kind: kindFilter, bundle: bundleFilter, sort: sortFilter, easyFilter: searchEasyFilter, savedAt: Date.now() });
-      if (writeSearchStorage(SAVED_SEARCHES_KEY, searches.slice(0, 30))) showToast("検索条件を保存しました", "success");
+      if (writeSearchStorage(SAVED_SEARCHES_KEY, searches.slice(0, 30))) {
+        window.triggerHaptic([15, 40, 25]);
+        showToast("検索条件を保存しました", "success");
+      }
       renderSearchHistory();
     };
     document.getElementById("search-page")?.addEventListener("click", event => {
@@ -4650,7 +4704,10 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         const exists = searches.some(item => item.query.toLowerCase() === query.toLowerCase());
         const next = exists ? searches.filter(item => item.query.toLowerCase() !== query.toLowerCase())
           : [{ query, activeOnly: false, member: "すべて", kind: "all", bundle: "all", sort: "random", easyFilter: "all", savedAt: Date.now() }, ...searches];
-        if (writeSearchStorage(SAVED_SEARCHES_KEY, next.slice(0, 30))) showToast(exists ? "保存した検索を解除しました" : "検索を保存しました", "success");
+        if (writeSearchStorage(SAVED_SEARCHES_KEY, next.slice(0, 30))) {
+          if (!exists) window.triggerHaptic([15, 40, 25]);
+          showToast(exists ? "保存した検索を解除しました" : "検索を保存しました", "success");
+        }
         renderSearchHistory();
       } else if (button.dataset.searchAction === "remove-token") {
         const terms = searchText.trim().split(/\s+/).filter(Boolean);
@@ -4934,7 +4991,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           : `onclick="openDetailModal(${index})"`;
         const likeButtonAttributes = isSearchResults
           ? `data-search-like-id="${escapeHtml(p.id)}"`
-          : `onclick="event.stopPropagation(); toggleDetailLikeFromCard('${p.id}')"`;
+          : `onclick="event.stopPropagation(); window.triggerHeartPop(this); toggleDetailLikeFromCard('${p.id}')"`;
 
         const hasPhoto = p.photoCount && isJpegData(p.thumb);
         const photoBlock = hasPhoto
@@ -5478,6 +5535,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       if (likeButton) {
         event.preventDefault();
         event.stopPropagation();
+        window.triggerHeartPop(likeButton);
         window.toggleSearchResultLike(likeButton.dataset.searchLikeId);
         return;
       }
@@ -13263,6 +13321,7 @@ window.buildAndDownloadCardPackZip = async function() {
       if (!currentUser || !cardId) return;
       const map = { ...(userData.cardWatch || {}) };
       const on = !!map[cardId];
+      if (!on) window.triggerHaptic([15, 40, 25]);
       try {
         if (on) {
           delete map[cardId];
