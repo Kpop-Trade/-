@@ -14500,3 +14500,98 @@ window.applyTradesFilterUI = function() {
     }
   });
 };
+
+// === 初回起動時のプロフィール読み込み失敗防止（即時キャッシュ復元＋自動リトライ＋再購読） ===
+window._profileRetryTimer = null;
+window._lastCachedProfileUid = null;
+
+window.saveLocalProfileCache = function(uid, data) {
+  if (!uid || !data) return;
+  try {
+    const slim = {
+      nickname: data.nickname || "",
+      avatarUrl: data.avatarUrl || "",
+      xUsername: data.xUsername || "",
+      bio: data.bio || "",
+      points: Number(data.points) || 0,
+      favMember: data.favMember || "",
+      myCards: data.myCards || {},
+      updatedAt: Date.now()
+    };
+    localStorage.setItem("illit_profile_cache_" + uid, JSON.stringify(slim));
+  } catch (_) {}
+};
+
+window.restoreLocalProfileCache = function(uid) {
+  if (!uid || window._lastCachedProfileUid === uid) return;
+  try {
+    const raw = localStorage.getItem("illit_profile_cache_" + uid);
+    if (!raw) return;
+    const cached = JSON.parse(raw);
+    if (cached && typeof userData === "object" && userData) {
+      Object.assign(userData, cached);
+      window._lastCachedProfileUid = uid;
+      if (typeof renderHeaderProfile === "function") renderHeaderProfile();
+      if (typeof renderMyPage === "function") renderMyPage();
+      if (typeof renderMyCards === "function") renderMyCards();
+    }
+  } catch (_) {}
+};
+
+window.ensureUserProfileLoaded = async function(uid, attempt = 0) {
+  if (!uid || typeof db === "undefined" || !db) return;
+  window.restoreLocalProfileCache(uid);
+  try {
+    const docRef = db.collection("users").doc(uid);
+    const snap = await docRef.get();
+    if (snap.exists) {
+      const data = snap.data() || {};
+      if (typeof userData === "object" && userData) {
+        Object.assign(userData, data);
+      }
+      window.saveLocalProfileCache(uid, data);
+      if (typeof renderHeaderProfile === "function") renderHeaderProfile();
+      if (typeof renderMyPage === "function") renderMyPage();
+      if (typeof renderMyCards === "function") renderMyCards();
+    }
+    // リアルタイム監視が未接続または切れている場合は張り直す
+    if (!unsubUser) {
+      unsubUser = docRef.onSnapshot(function(s) {
+        if (!s.exists) return;
+        const d = s.data() || {};
+        if (typeof userData === "object" && userData) Object.assign(userData, d);
+        window.saveLocalProfileCache(uid, d);
+        if (typeof renderHeaderProfile === "function") renderHeaderProfile();
+        if (typeof renderMyPage === "function") renderMyPage();
+        if (typeof renderMyCards === "function") renderMyCards();
+      }, function() {
+        unsubUser = null;
+      });
+    }
+  } catch (e) {
+    if (attempt < 4) {
+      clearTimeout(window._profileRetryTimer);
+      window._profileRetryTimer = setTimeout(function() {
+        window.ensureUserProfileLoaded(uid, attempt + 1);
+      }, 700 * (attempt + 1));
+    }
+  }
+};
+
+// Auth復元直後・タブ切替・画面復帰時にプロフィール読み込みを保証
+setTimeout(function() {
+  if (typeof auth !== "undefined" && auth && auth.onAuthStateChanged) {
+    auth.onAuthStateChanged(function(u) {
+      if (u && u.uid) {
+        window.restoreLocalProfileCache(u.uid);
+        window.ensureUserProfileLoaded(u.uid, 0);
+        setTimeout(function() { window.ensureUserProfileLoaded(u.uid, 1); }, 900);
+      }
+    });
+  }
+  document.addEventListener("visibilitychange", function() {
+    if (document.visibilityState === "visible" && typeof currentUser !== "undefined" && currentUser && currentUser.uid) {
+      window.ensureUserProfileLoaded(currentUser.uid, 0);
+    }
+  });
+}, 100);
