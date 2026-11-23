@@ -237,10 +237,10 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         }
       }
     }
-    function postsSkeletonHtml() {
+    function postsSkeletonHtml(gap = 3) {
       return `<div class="posts-status col-span-full w-full" aria-busy="true" aria-label="読み込み中">
-        <div style="display:grid;grid-template-columns:repeat(3, 1fr);grid-auto-flow:row;gap:6px">
-          ${Array.from({ length: 6 }).map((_, index) => `<div class="kp-skel aspect-square ${index === 0 ? "col-span-2 row-span-2" : ""}"></div>`).join("")}
+        <div style="display:grid;grid-template-columns:repeat(3, 1fr);grid-auto-flow:row;gap:${gap}px">
+          ${Array.from({ length: 6 }).map((_, index) => `<div class="kp-skel aspect-square ${index === 0 ? "col-span-2 row-span-2" : ""}" style="border-radius:10px;overflow:hidden"></div>`).join("")}
         </div>
         <p class="text-center text-[12px] text-gray-500 font-medium mt-3">募集一覧を読み込み中...</p>
       </div>`;
@@ -4938,12 +4938,12 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
 
         const hasPhoto = p.photoCount && isJpegData(p.thumb);
         const photoBlock = hasPhoto
-          ? `<img src="${p.thumb}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:12px;overflow:hidden" class="${isSold ? "opacity-50 grayscale" : ""}">`
-          : `<div class="h-full w-full bg-gradient-to-br from-purple-50 to-pink-50"></div>`;
-        const cardStyle = `width:100%;height:100%;aspect-ratio:1/1;display:block;border-radius:12px;overflow:hidden;${cardIndex === 0 ? "grid-column:span 2;grid-row:span 2;" : ""}`;
+          ? `<img src="${p.thumb}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:10px;overflow:hidden" class="${isSold ? "opacity-50 grayscale" : ""}">`
+          : `<div style="width:100%;height:100%;display:block;border-radius:10px;overflow:hidden" class="bg-gradient-to-br from-purple-50 to-pink-50"></div>`;
+        const cardStyle = `margin:0;width:100%;height:100%;aspect-ratio:1/1;object-fit:cover;display:block;border-radius:10px;overflow:hidden;${cardIndex === 0 ? "grid-column:span 2;grid-row:span 2;" : ""}`;
 
         return `
-          <div ${cardAttributes} style="${cardStyle}" class="relative cursor-pointer overflow-hidden rounded-xl bg-gray-50 ${dim ? "opacity-60" : ""}">
+          <div ${cardAttributes} style="${cardStyle}" class="relative cursor-pointer overflow-hidden rounded-[10px] bg-gray-50 ${dim ? "opacity-60" : ""}">
             <div class="absolute inset-0 overflow-hidden">
               ${photoBlock}
               <button type="button" ${likeButtonAttributes} aria-label="${isLiked ? "いいねを解除" : "いいね"}" class="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center drop-shadow">
@@ -4958,7 +4958,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       });
       container.innerHTML = cards.length === 0
           ? (loadingPosts && allPosts.length === 0
-          ? postsSkeletonHtml() + `<div class="posts-status col-span-full text-center pt-1 pb-4"><button type="button" onclick="window._retriedInitialPosts=false; if(window.loadPosts) window.loadPosts(true);" class="text-[12px] text-indigo-600 underline font-bold">再試行する</button></div>`
+          ? postsSkeletonHtml(isSearchResults ? 4 : 3) + `<div class="posts-status col-span-full text-center pt-1 pb-4"><button type="button" onclick="window._retriedInitialPosts=false; if(window.loadPosts) window.loadPosts(true);" class="text-[12px] text-indigo-600 underline font-bold">再試行する</button></div>`
             : imageSearchState
               ? postsEmptyHtml("類似する出品はありません", "別の画像を試すか、画像検索をリセットしてください")
               : postsEmptyHtml("条件に合う募集はありません", "フィルターを外すか、キーワードを変えてみてください"))
