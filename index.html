@@ -662,26 +662,6 @@
 </script>
 
 
-<style id="kp-banner-peek-style">
-#gllit-mercari-carousel-track,
-[data-top-banner-track],
-.gllit-carousel-track {
-  padding-left: 16px !important;
-  padding-right: 16px !important;
-  scroll-padding-left: 16px !important;
-  scroll-snap-type: x mandatory !important;
-}
-#gllit-mercari-carousel-track > *,
-[data-top-banner-track] > *,
-.gllit-carousel-track > * {
-  flex: 0 0 calc(100% - 28px) !important;
-  width: calc(100% - 28px) !important;
-  max-width: calc(100% - 28px) !important;
-  scroll-snap-align: center !important;
-}
-</style>
-
-
 <style id="kp-ptr-style">
 #kp-ptr-indicator {
   position: fixed;
@@ -852,6 +832,52 @@
   document.addEventListener("touchcancel", function() {
     if (!ptrTriggered) resetIndicator();
   }, { passive: true });
+})();
+</script>
+
+
+<style id="kp-banner-peek-style">
+#gllit-mercari-carousel-track,
+[data-top-banner-track],
+.gllit-carousel-track {
+  display: flex !important;
+  flex-direction: row !important;
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+  gap: 10px !important;
+  padding-left: 18px !important;
+  padding-right: 18px !important;
+  scroll-padding-left: 18px !important;
+  scroll-snap-type: x proximity !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+#gllit-mercari-carousel-track > *,
+[data-top-banner-track] > *,
+.gllit-carousel-track > * {
+  flex: 0 0 calc(100% - 36px) !important;
+  width: calc(100% - 36px) !important;
+  min-width: calc(100% - 36px) !important;
+  max-width: calc(100% - 36px) !important;
+  scroll-snap-align: center !important;
+}
+</style>
+<script id="kp-banner-peek-fix">
+(function() {
+  function syncBannerPeek() {
+    const tracks = document.querySelectorAll("#gllit-mercari-carousel-track, [data-top-banner-track], .gllit-carousel-track");
+    tracks.forEach(track => {
+      const parent = track.parentElement;
+      if (parent && getComputedStyle(parent).overflowX === "hidden") {
+        parent.style.overflowX = "visible";
+      }
+      // 2枚目以降に移動したあとや初回描画時に、中央寄せで左右どちらも端が覗くように調整
+      if (track.children.length > 1 && track.scrollLeft > 0 && track.scrollLeft < 18) {
+        track.scrollLeft = 18;
+      }
+    });
+  }
+  setInterval(syncBannerPeek, 1200);
+  window.addEventListener("load", () => setTimeout(syncBannerPeek, 500));
 })();
 </script>
 
@@ -2455,7 +2481,7 @@
   </div>
 
   <script src="./js/mycards-binder.js?v=20261121"></script>
-  <script type="module" src="./js/app-main.js?v=1795436192ship1"></script>
+  <script type="module" src="./js/app-main.js?v=1795436223ship1"></script>
 
   <div id="xlogin-help-modal" class="hidden fixed inset-0 z-[10040] modal-backdrop items-end sm:items-center justify-center p-3" style="padding-top: max(12px, env(safe-area-inset-top)); padding-bottom: max(12px, env(safe-area-inset-bottom));" onclick="if(event.target===this) closeGoogleLoginHelp()">
     <div id="xlogin-help-sheet" class="liquid-glass-heavy w-full max-w-sm rounded-[1.75rem] p-5 shadow-2xl border border-white" role="dialog" aria-modal="true" aria-labelledby="xlogin-help-title">
