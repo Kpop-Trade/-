@@ -1,3 +1,58 @@
+
+// === 広告バナー永続化・リロード消滅防止パッチ ===
+(function() {
+  try {
+    const raw = localStorage.getItem("kp_cached_top_banners");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        window._adminTopBanners = parsed;
+      }
+    }
+  } catch (e) {}
+
+  window._persistAndSyncTopBanners = async function(nextList) {
+    window._adminTopBanners = nextList;
+    try { localStorage.setItem("kp_cached_top_banners", JSON.stringify(nextList)); } catch (e) {}
+    if (typeof window._nativeSaveTopBanners === "function") {
+      await window._nativeSaveTopBanners(nextList);
+    } else {
+      const fsMod = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
+      const appMod = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js");
+      const activeDb = (typeof db !== "undefined" && db) || window.db || fsMod.getFirestore(appMod.getApps()[0]);
+      await fsMod.setDoc(fsMod.doc(activeDb, "siteConfig", "topBanners"), { items: nextList, updatedAt: Date.now() }, { merge: true });
+    }
+  };
+
+  window._reloadTopBannersFromServer = async function() {
+    try {
+      let serverItems = null;
+      if (typeof window._nativeLoadTopBanners === "function") {
+        serverItems = await window._nativeLoadTopBanners();
+      } else {
+        const fsMod = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
+        const appMod = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js");
+        const activeDb = (typeof db !== "undefined" && db) || window.db || fsMod.getFirestore(appMod.getApps()[0]);
+        const snap = await fsMod.getDoc(fsMod.doc(activeDb, "siteConfig", "topBanners"));
+        serverItems = (snap.exists() && Array.isArray(snap.data().items)) ? snap.data().items : [];
+      }
+      if (Array.isArray(serverItems) && serverItems.length > 0) {
+        window._adminTopBanners = serverItems;
+        try { localStorage.setItem("kp_cached_top_banners", JSON.stringify(serverItems)); } catch (e) {}
+      }
+      if (typeof renderGllitMercariCarousel === "function") renderGllitMercariCarousel(window._lastGllitCarouselEvents || []);
+      if (typeof window.renderAdminTopBannerList === "function") window.renderAdminTopBannerList();
+    } catch (e) {
+      console.warn("_reloadTopBannersFromServer:", e);
+    }
+  };
+
+  // 起動後 0.4秒 / 1.5秒 / 3.0秒 のタイミングでサーバーから再取得＆カルーセル再描画を保証
+  setTimeout(window._reloadTopBannersFromServer, 400);
+  setTimeout(window._reloadTopBannersFromServer, 1500);
+  setTimeout(window._reloadTopBannersFromServer, 3000);
+})();
+
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { getFirestore, collection, collectionGroup, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, where, orderBy, limit, startAfter, onSnapshot, serverTimestamp, increment, runTransaction, writeBatch, getCountFromServer, documentId } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -14978,3 +15033,43 @@ if (typeof renderGllitMercariCarousel === "function" && !renderGllitMercariCarou
 window.addEventListener("DOMContentLoaded", function() {
   setTimeout(window._startTopBannerAutoRotate, 800);
 });
+
+window.addAdminTopBanner = async function() {
+  const statusEl = document.getElementById("admin-banner-status");
+  const linkEl = document.getElementById("admin-banner-link");
+  const titleEl = document.getElementById("admin-banner-title");
+  const imageUrl = window._pendingAdminBannerDataUrl || "";
+  if (!imageUrl) { if (statusEl) statusEl.textContent = "先に写真を選択してください"; return; }
+  const link = linkEl ? linkEl.value.trim() : "";
+  const title = titleEl ? titleEl.value.trim() : "";
+  if (statusEl) statusEl.textContent = "保存中...";
+  try {
+    const nextList = [{ id: String(Date.now()), imageUrl, link, title }, ...(window._adminTopBanners || [])];
+    await window._persistAndSyncTopBanners(nextList);
+    window._pendingAdminBannerDataUrl = "";
+    const fileEl = document.getElementById("admin-banner-file");
+    if (fileEl) fileEl.value = "";
+    const wrap = document.getElementById("admin-banner-preview-wrap");
+    if (wrap) wrap.classList.add("hidden");
+    if (linkEl) linkEl.value = "";
+    if (titleEl) titleEl.value = "";
+    if (statusEl) statusEl.textContent = "保存しました！（リロードしても保持されます）";
+    if (typeof window.renderAdminTopBannerList === "function") window.renderAdminTopBannerList();
+    if (typeof renderGllitMercariCarousel === "function") renderGllitMercariCarousel(window._lastGllitCarouselEvents || []);
+  } catch (e) {
+    if (statusEl) statusEl.textContent = "保存失敗: " + (e.message || e);
+  }
+};
+
+window.deleteAdminTopBanner = async function(idx) {
+  const statusEl = document.getElementById("admin-banner-status");
+  try {
+    const nextList = (window._adminTopBanners || []).filter((_, i) => i !== idx);
+    await window._persistAndSyncTopBanners(nextList);
+    if (statusEl) statusEl.textContent = "削除しました";
+    if (typeof window.renderAdminTopBannerList === "function") window.renderAdminTopBannerList();
+    if (typeof renderGllitMercariCarousel === "function") renderGllitMercariCarousel(window._lastGllitCarouselEvents || []);
+  } catch (e) {
+    if (statusEl) statusEl.textContent = "削除失敗: " + (e.message || e);
+  }
+};
