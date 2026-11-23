@@ -626,7 +626,7 @@
     </section>
 
     <section id="gllit-hub" class="w-screen relative left-1/2 -translate-x-1/2 pt-1 pb-2 overflow-hidden">
-        <div id="gllit-carousel-track" class="gllit-mercari-track">
+        <div id="gllit-carousel-track" class="gllit-mercari-track rounded-none">
           <button type="button" onclick="openIllitCalendar()" class="gllit-mercari-card" style="background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 55%,#312e81 100%);">
             <div class="flex items-center justify-between gap-2 mb-1">
               <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-400 text-slate-900">📅 SCHEDULE</span>
@@ -636,7 +636,7 @@
             <div class="text-slate-300 text-xs mt-0.5 truncate">タップしてカレンダー一覧を表示</div>
           </button>
         </div>
-        <div id="gllit-carousel-dots" class="flex justify-center items-center gap-1.5 mt-1.5"></div>
+        <div id="gllit-carousel-dots" class="flex justify-center items-center gap-1.5 mt-1.5 hidden"></div>
         <div class="hidden">
           <div id="gllit-ticker-track"></div>
           <div id="gllit-hub-tasks"></div>
@@ -2071,7 +2071,7 @@
   </div>
 
   <script src="./js/mycards-binder.js?v=20261121"></script>
-  <script type="module" src="./js/app-main.js?v=1795424360ship1"></script>
+  <script type="module" src="./js/app-main.js?v=1795424856ship1"></script>
 
   <div id="xlogin-help-modal" class="hidden fixed inset-0 z-[10040] modal-backdrop items-end sm:items-center justify-center p-3" style="padding-top: max(12px, env(safe-area-inset-top)); padding-bottom: max(12px, env(safe-area-inset-bottom));" onclick="if(event.target===this) closeGoogleLoginHelp()">
     <div id="xlogin-help-sheet" class="liquid-glass-heavy w-full max-w-sm rounded-[1.75rem] p-5 shadow-2xl border border-white" role="dialog" aria-modal="true" aria-labelledby="xlogin-help-title">
