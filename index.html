@@ -836,6 +836,7 @@
 </script>
 
 
+
 <style id="kp-banner-peek-style">
 #gllit-mercari-carousel-track,
 [data-top-banner-track],
@@ -843,13 +844,13 @@
   display: flex !important;
   flex-direction: row !important;
   overflow-x: auto !important;
-  overflow-y: visible !important;
+  overflow-y: hidden !important;
   gap: 10px !important;
-  padding-left: 18px !important;
-  padding-right: 18px !important;
-  scroll-padding-left: 18px !important;
-  scroll-snap-type: x proximity !important;
-  -webkit-overflow-scrolling: touch !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  scroll-snap-type: x mandatory !important;
+  box-sizing: border-box !important;
+  max-width: 100% !important;
 }
 #gllit-mercari-carousel-track > *,
 [data-top-banner-track] > *,
@@ -859,103 +860,90 @@
   min-width: calc(100% - 36px) !important;
   max-width: calc(100% - 36px) !important;
   scroll-snap-align: center !important;
+  box-sizing: border-box !important;
+}
+.kp-banner-ghost-prev,
+.kp-banner-ghost-next {
+  opacity: 0.78;
 }
 </style>
 <script id="kp-banner-peek-fix">
 (function() {
-  function syncBannerPeek() {
+  function setupLeftAndRightPeek() {
     const tracks = document.querySelectorAll("#gllit-mercari-carousel-track, [data-top-banner-track], .gllit-carousel-track");
     tracks.forEach(track => {
       const parent = track.parentElement;
       if (parent && getComputedStyle(parent).overflowX === "hidden") {
         parent.style.overflowX = "visible";
       }
-      // 2枚目以降に移動したあとや初回描画時に、中央寄せで左右どちらも端が覗くように調整
-      if (track.children.length > 1 && track.scrollLeft > 0 && track.scrollLeft < 18) {
-        track.scrollLeft = 18;
+
+      const realSlides = Array.from(track.children).filter(
+        el => !el.classList.contains("kp-banner-ghost-prev") && !el.classList.contains("kp-banner-ghost-next")
+      );
+      if (!realSlides.length) return;
+
+      const countKey = String(realSlides.length);
+      if (track.dataset.kpPeekReady !== countKey) {
+        track.querySelectorAll(".kp-banner-ghost-prev, .kp-banner-ghost-next").forEach(g => g.remove());
+
+        // 左側に「前のバナー（末尾のクローン）」を配置して左端からチラ見せする
+        const prevClone = realSlides[realSlides.length - 1].cloneNode(true);
+        prevClone.classList.add("kp-banner-ghost-prev");
+        prevClone.removeAttribute("id");
+        track.insertBefore(prevClone, realSlides[0]);
+
+        // 右側に「次のバナー（先頭のクローン）」を配置して右端からもチラ見せする
+        const nextClone = realSlides[0].cloneNode(true);
+        nextClone.classList.add("kp-banner-ghost-next");
+        nextClone.removeAttribute("id");
+        track.appendChild(nextClone);
+
+        track.dataset.kpPeekReady = countKey;
+
+        // 初期位置を「1枚目のスライドが中央（＝左右両端に前後のバナーがはみ出して見える位置）」に合わせる
+        requestAnimationFrame(() => {
+          const slideW = realSlides[0].getBoundingClientRect().width || (track.clientWidth - 36);
+          const gap = 10;
+          const centerOffset = (track.clientWidth - slideW) / 2;
+          track.scrollLeft = (slideW + gap) - centerOffset;
+        });
+      }
+
+      // 無限ループ風：左端クローンまでスワイプしたら末尾の本物へ、右端クローンまで行ったら先頭の本物へシームレス移動
+      if (!track.dataset.kpLoopBound) {
+        track.dataset.kpLoopBound = "1";
+        let scrollEndTimer = null;
+        track.addEventListener("scroll", () => {
+          clearTimeout(scrollEndTimer);
+          scrollEndTimer = setTimeout(() => {
+            const reals = Array.from(track.children).filter(
+              el => !el.classList.contains("kp-banner-ghost-prev") && !el.classList.contains("kp-banner-ghost-next")
+            );
+            if (!reals.length) return;
+            const slideW = reals[0].getBoundingClientRect().width || (track.clientWidth - 36);
+            const gap = 10;
+            const step = slideW + gap;
+            const centerOffset = (track.clientWidth - slideW) / 2;
+            const firstPos = step - centerOffset;
+            const lastPos = step * reals.length - centerOffset;
+
+            if (track.scrollLeft < firstPos - step * 0.45) {
+              track.style.scrollBehavior = "auto";
+              track.scrollLeft = lastPos;
+              track.style.scrollBehavior = "";
+            } else if (track.scrollLeft > lastPos + step * 0.45) {
+              track.style.scrollBehavior = "auto";
+              track.scrollLeft = firstPos;
+              track.style.scrollBehavior = "";
+            }
+          }, 120);
+        }, { passive: true });
       }
     });
   }
-  setInterval(syncBannerPeek, 1200);
-  window.addEventListener("load", () => setTimeout(syncBannerPeek, 500));
-})();
-</script>
 
-
-<style id="kp-banner-spin-style">
-@keyframes kpBannerSpinCycle {
-  0% {
-    transform: perspective(900px) rotateY(0deg) scale(1);
-  }
-  45% {
-    transform: perspective(900px) rotateY(180deg) scale(0.95);
-  }
-  100% {
-    transform: perspective(900px) rotateY(360deg) scale(1);
-  }
-}
-.kp-banner-spinning {
-  animation: kpBannerSpinCycle 0.65s cubic-bezier(0.22, 1, 0.36, 1);
-  transform-style: preserve-3d;
-}
-.kp-banner-ghost-next {
-  flex: 0 0 42% !important;
-  width: 42% !important;
-  min-width: 42% !important;
-  max-width: 42% !important;
-  opacity: 0.45;
-  pointer-events: none;
-  user-select: none;
-}
-</style>
-<script id="kp-banner-spin-fix">
-(function() {
-  function getTracks() {
-    return Array.from(document.querySelectorAll("#gllit-mercari-carousel-track, [data-top-banner-track], .gllit-carousel-track"));
-  }
-
-  function ensurePeekIllusion() {
-    getTracks().forEach(track => {
-      const realSlides = Array.from(track.children).filter(el => !el.classList.contains("kp-banner-ghost-next"));
-      if (realSlides.length === 1 && !track.querySelector(".kp-banner-ghost-next")) {
-        const ghost = realSlides[0].cloneNode(true);
-        ghost.classList.add("kp-banner-ghost-next");
-        ghost.removeAttribute("id");
-        track.appendChild(ghost);
-      } else if (realSlides.length > 1) {
-        track.querySelectorAll(".kp-banner-ghost-next").forEach(g => g.remove());
-      }
-    });
-  }
-
-  window.triggerBannerSpinUpdate = function() {
-    ensurePeekIllusion();
-    getTracks().forEach(track => {
-      const slides = Array.from(track.children);
-      if (!slides.length) return;
-      const maxScroll = track.scrollWidth - track.clientWidth;
-      if (maxScroll > 10) {
-        const nextLeft = (track.scrollLeft + track.clientWidth * 0.6 >= maxScroll - 8)
-          ? 0
-          : track.scrollLeft + Math.max(80, track.clientWidth * 0.75);
-        track.scrollTo({ left: nextLeft, behavior: "smooth" });
-      }
-      slides.forEach(slide => {
-        slide.classList.remove("kp-banner-spinning");
-        void slide.offsetWidth;
-        slide.classList.add("kp-banner-spinning");
-        setTimeout(() => slide.classList.remove("kp-banner-spinning"), 700);
-      });
-    });
-  };
-
-  setInterval(ensurePeekIllusion, 1500);
-  setInterval(function() {
-    if (!window._topBannerIsTouching) {
-      window.triggerBannerSpinUpdate();
-    }
-  }, 4200);
-  window.addEventListener("load", () => setTimeout(ensurePeekIllusion, 500));
+  setInterval(setupLeftAndRightPeek, 1000);
+  window.addEventListener("load", () => setTimeout(setupLeftAndRightPeek, 300));
 })();
 </script>
 
@@ -2559,7 +2547,7 @@
   </div>
 
   <script src="./js/mycards-binder.js?v=20261121"></script>
-  <script type="module" src="./js/app-main.js?v=1795440178ship1"></script>
+  <script type="module" src="./js/app-main.js?v=1795440280ship1"></script>
 
   <div id="xlogin-help-modal" class="hidden fixed inset-0 z-[10040] modal-backdrop items-end sm:items-center justify-center p-3" style="padding-top: max(12px, env(safe-area-inset-top)); padding-bottom: max(12px, env(safe-area-inset-bottom));" onclick="if(event.target===this) closeGoogleLoginHelp()">
     <div id="xlogin-help-sheet" class="liquid-glass-heavy w-full max-w-sm rounded-[1.75rem] p-5 shadow-2xl border border-white" role="dialog" aria-modal="true" aria-labelledby="xlogin-help-title">
