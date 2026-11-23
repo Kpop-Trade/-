@@ -661,6 +661,146 @@
 })();
 </script>
 
+
+<style id="kp-ptr-style">
+#kp-ptr-indicator {
+  position: fixed;
+  top: -56px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(147, 51, 234, 0.22);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.14);
+  color: #6b21a8;
+  font-size: 12px;
+  font-weight: 800;
+  transition: top 0.2s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
+  opacity: 0;
+  pointer-events: none;
+}
+#kp-ptr-indicator.kp-ptr-visible {
+  opacity: 1;
+}
+#kp-ptr-spinner {
+  width: 15px;
+  height: 15px;
+  border: 2.2px solid rgba(147, 51, 234, 0.25);
+  border-top-color: #7e22ce;
+  border-radius: 50%;
+  transition: transform 0.12s linear;
+}
+#kp-ptr-indicator.kp-ptr-refreshing #kp-ptr-spinner {
+  animation: kpPtrSpin 0.7s linear infinite;
+}
+@keyframes kpPtrSpin {
+  to { transform: rotate(360deg); }
+}
+</style>
+<script>
+(function() {
+  let ptrStartY = 0;
+  let ptrStartX = 0;
+  let ptrPulling = false;
+  let ptrTriggered = false;
+  let indicator = null;
+  let spinner = null;
+  let label = null;
+
+  function ensureIndicator() {
+    if (indicator) return;
+    indicator = document.createElement("div");
+    indicator.id = "kp-ptr-indicator";
+    indicator.innerHTML = '<span id="kp-ptr-spinner"></span><span id="kp-ptr-label">下に引っ張って更新</span>';
+    document.body.appendChild(indicator);
+    spinner = document.getElementById("kp-ptr-spinner");
+    label = document.getElementById("kp-ptr-label");
+  }
+
+  function hasOpenModal() {
+    return Array.from(document.querySelectorAll(".fixed.inset-0, [id*='modal'], [id*='Modal']")).some(el => {
+      if (el.id === "kp-ptr-indicator") return false;
+      if (el.classList.contains("hidden") || el.style.display === "none") return false;
+      const r = el.getBoundingClientRect();
+      return r.width > 0 && r.height > 0;
+    });
+  }
+
+  document.addEventListener("touchstart", function(e) {
+    if (ptrTriggered || !e.touches || e.touches.length !== 1) return;
+    if (window.scrollY > 5 || hasOpenModal()) {
+      ptrPulling = false;
+      return;
+    }
+    ptrStartY = e.touches[0].clientY;
+    ptrStartX = e.touches[0].clientX;
+    ptrPulling = true;
+  }, { passive: true });
+
+  document.addEventListener("touchmove", function(e) {
+    if (!ptrPulling || ptrTriggered || !e.touches || e.touches.length !== 1) return;
+    if (window.scrollY > 5) {
+      ptrPulling = false;
+      return;
+    }
+    const dy = e.touches[0].clientY - ptrStartY;
+    const dx = Math.abs(e.touches[0].clientX - ptrStartX);
+    if (dy > 12 && dy > dx * 1.4) {
+      ensureIndicator();
+      const clamped = Math.min(dy, 130);
+      const topPos = Math.min(18, -56 + clamped * 0.65);
+      indicator.style.top = topPos + "px";
+      indicator.classList.add("kp-ptr-visible");
+      indicator.classList.remove("kp-ptr-refreshing");
+      if (spinner) spinner.style.transform = "rotate(" + Math.min(360, clamped * 3) + "deg)";
+      if (label) {
+        label.textContent = dy >= 85 ? "離して更新" : "下に引っ張って更新";
+      }
+    }
+  }, { passive: true });
+
+  function resetIndicator() {
+    if (!indicator) return;
+    indicator.classList.remove("kp-ptr-visible", "kp-ptr-refreshing");
+    indicator.style.top = "-56px";
+    if (spinner) spinner.style.transform = "";
+  }
+
+  document.addEventListener("touchend", function(e) {
+    if (!ptrPulling || ptrTriggered) {
+      ptrPulling = false;
+      return;
+    }
+    ptrPulling = false;
+    const changed = e.changedTouches && e.changedTouches[0];
+    const dy = changed ? (changed.clientY - ptrStartY) : 0;
+
+    if (window.scrollY <= 5 && dy >= 85) {
+      ptrTriggered = true;
+      ensureIndicator();
+      indicator.style.top = "18px";
+      indicator.classList.add("kp-ptr-visible", "kp-ptr-refreshing");
+      if (label) label.textContent = "更新中...";
+      setTimeout(function() {
+        window.location.reload();
+      }, 180);
+    } else {
+      resetIndicator();
+    }
+  }, { passive: true });
+
+  document.addEventListener("touchcancel", function() {
+    ptrPulling = false;
+    if (!ptrTriggered) resetIndicator();
+  }, { passive: true });
+})();
+</script>
+
 </head>
 <body class="bg-illit-bg min-h-screen text-gray-800 relative overflow-x-hidden home-tab">
   <div id="app-splash-screen" role="status" aria-label="K-pop Tradeを読み込み中">
@@ -2261,7 +2401,7 @@
   </div>
 
   <script src="./js/mycards-binder.js?v=20261121"></script>
-  <script type="module" src="./js/app-main.js?v=1795435201ship1"></script>
+  <script type="module" src="./js/app-main.js?v=1795435246ship1"></script>
 
   <div id="xlogin-help-modal" class="hidden fixed inset-0 z-[10040] modal-backdrop items-end sm:items-center justify-center p-3" style="padding-top: max(12px, env(safe-area-inset-top)); padding-bottom: max(12px, env(safe-area-inset-bottom));" onclick="if(event.target===this) closeGoogleLoginHelp()">
     <div id="xlogin-help-sheet" class="liquid-glass-heavy w-full max-w-sm rounded-[1.75rem] p-5 shadow-2xl border border-white" role="dialog" aria-modal="true" aria-labelledby="xlogin-help-title">
