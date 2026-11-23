@@ -2105,7 +2105,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
             </div>`;
           }).join("");
         }
-                else if (adminTab === "broadcast") {
+                else if (adminTab === "broadcast") { setTimeout(() => { if (window.loadAdminTopBanners) window.loadAdminTopBanners(); }, 50);
           el.innerHTML = `
             <div class="space-y-4">
               <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-2">
