@@ -5500,7 +5500,7 @@ window.renderHomeThemeSections = function(entries, cardHtmlById) {
           ? `<div class="font-bold text-gray-800 mb-1">次の予定</div>` + upcoming.map(e => {
               const href = e.link && String(e.link).startsWith("http") ? e.link : "";
               return `<div class="py-1.5 border-t border-white/70 first:border-0">
-                <button type="button" onclick="openIllitCalendar()" class="text-left"><span class="text-indigo-700 font-bold">${escapeHtml(String(e.date).slice(5).replace("-", "/"))}</span> ${escapeHtml(e.title || "")}</button>
+                <button type="button" onclick="window.handleCarouselSlideTap(this)" class="text-left"><span class="text-indigo-700 font-bold">${escapeHtml(String(e.date).slice(5).replace("-", "/"))}</span> ${escapeHtml(e.title || "")}</button>
                 ${href ? `<a href="${escapeHtml(href)}" target="_blank" rel="noopener" class="block text-[11px] text-indigo-700 underline">詳細を開く</a>` : ""}
               </div>`;
             }).join("")
@@ -14161,6 +14161,7 @@ function renderGllitMercariCarousel(upcomingList) {
   const track = document.getElementById("gllit-carousel-track");
   const dotsWrap = document.getElementById("gllit-carousel-dots");
   if (!track) return;
+  window._lastGllitCarouselEvents = upcomingList || [];
 
   const gradients = [
     "linear-gradient(135deg, #0f172a 0%, #1e1b4b 55%, #312e81 100%)",
@@ -14169,7 +14170,19 @@ function renderGllitMercariCarousel(upcomingList) {
     "linear-gradient(135deg, #0c4a6e 0%, #1e3a8a 100%)"
   ];
 
-  const items = (upcomingList || []).map((e, idx) => {
+  const photoBanners = (window._adminTopBanners || []).map((b) => ({
+    type: "photo",
+    imageUrl: b.imageUrl || "",
+    badge: b.badge || "📢 PR / お知らせ",
+    subRight: b.link ? "詳細を見る ›" : "",
+    title: b.title || "",
+    desc: b.desc || "",
+    bg: "linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)",
+    link: (b.link || "").trim(),
+    action: ""
+  }));
+
+  const scheduleItems = (upcomingList || []).map((e, idx) => {
     const dateStr = String(e.date || "").slice(5).replace("-", "/");
     return {
       badge: dateStr ? "📅 " + dateStr + (e.time ? " " + e.time : "") : "📅 SCHEDULE",
@@ -14177,9 +14190,11 @@ function renderGllitMercariCarousel(upcomingList) {
       title: e.title || "スケジュール",
       desc: e.detail || e.note || e.place || "タップして予定表を開く",
       bg: gradients[idx % gradients.length],
-      action: "openIllitCalendar()"
+      link: (e.link || "").trim(),
+      action: e.link ? "" : "openIllitCalendar()"
     };
   });
+  const items = [...photoBanners, ...scheduleItems];
 
   if (!items.length) {
     items.push({
@@ -14298,3 +14313,152 @@ function renderGllitMercariCarousel(upcomingList) {
     updateDots(activeIdx);
   }, 3800);
 }
+
+// === 管理者トップ広告バナー（写真＋リンク）管理 ===
+window._adminTopBanners = window._adminTopBanners || [];
+window._pendingAdminBannerDataUrl = "";
+
+window.previewAdminBannerFile = function(input) {
+  const file = input && input.files && input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    const img = new Image();
+    img.onload = function() {
+      const maxW = 800;
+      const scale = img.width > maxW ? (maxW / img.width) : 1;
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const compressed = canvas.toDataURL("image/jpeg", 0.78);
+      window._pendingAdminBannerDataUrl = compressed;
+      const wrap = document.getElementById("admin-banner-preview-wrap");
+      const prev = document.getElementById("admin-banner-preview");
+      if (prev) prev.src = compressed;
+      if (wrap) wrap.classList.remove("hidden");
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+};
+
+window.loadAdminTopBanners = async function() {
+  try {
+    if (typeof db === "undefined" || !db) return;
+    const snap = await db.collection("config").doc("topBanners").get();
+    const list = snap.exists && Array.isArray(snap.data().items) ? snap.data().items : [];
+    window._adminTopBanners = list;
+    window.renderAdminTopBannerList();
+    if (typeof renderGllitMercariCarousel === "function") {
+      renderGllitMercariCarousel(window._lastGllitCarouselEvents || []);
+    }
+  } catch (e) {
+    console.warn("loadAdminTopBanners error:", e);
+  }
+};
+
+window.renderAdminTopBannerList = function() {
+  const wrap = document.getElementById("admin-banner-list");
+  if (!wrap) return;
+  const list = window._adminTopBanners || [];
+  if (!list.length) {
+    wrap.innerHTML = '<div class="text-[11px] text-gray-500 text-center py-1">登録済みの写真広告はありません</div>';
+    return;
+  }
+  wrap.innerHTML = list.map((b, idx) => `
+    <div class="flex items-center gap-2.5 bg-white border border-purple-200 rounded-xl p-2">
+      <img src="${escapeHtml(b.imageUrl || "")}" class="w-16 h-12 object-cover rounded-lg shrink-0 bg-gray-100">
+      <div class="min-w-0 flex-1">
+        <div class="text-xs font-bold text-gray-800 truncate">${escapeHtml(b.title || "（タイトルなし画像バナー）")}</div>
+        <div class="text-[10px] text-purple-700 truncate">${escapeHtml(b.link || "リンクなし")}</div>
+      </div>
+      <button type="button" onclick="window.deleteAdminTopBanner(${idx})" class="px-2.5 py-1 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 text-[11px] font-bold shrink-0">削除</button>
+    </div>
+  `).join("");
+};
+
+window.addAdminTopBanner = async function() {
+  const statusEl = document.getElementById("admin-banner-status");
+  const linkEl = document.getElementById("admin-banner-link");
+  const titleEl = document.getElementById("admin-banner-title");
+  const imageUrl = window._pendingAdminBannerDataUrl || "";
+  if (!imageUrl) {
+    if (statusEl) statusEl.textContent = "先に写真を選択してください";
+    return;
+  }
+  const link = linkEl ? linkEl.value.trim() : "";
+  const title = titleEl ? titleEl.value.trim() : "";
+  if (statusEl) statusEl.textContent = "保存中...";
+  try {
+    const nextList = [{ id: String(Date.now()), imageUrl, link, title }, ...(window._adminTopBanners || [])];
+    await db.collection("config").doc("topBanners").set({ items: nextList, updatedAt: Date.now() }, { merge: true });
+    window._adminTopBanners = nextList;
+    window._pendingAdminBannerDataUrl = "";
+    const fileEl = document.getElementById("admin-banner-file");
+    if (fileEl) fileEl.value = "";
+    const wrap = document.getElementById("admin-banner-preview-wrap");
+    if (wrap) wrap.classList.add("hidden");
+    if (linkEl) linkEl.value = "";
+    if (titleEl) titleEl.value = "";
+    if (statusEl) statusEl.textContent = "登録しました！トップの広告に反映されています";
+    window.renderAdminTopBannerList();
+    if (typeof renderGllitMercariCarousel === "function") {
+      renderGllitMercariCarousel(window._lastGllitCarouselEvents || []);
+    }
+  } catch (e) {
+    if (statusEl) statusEl.textContent = "保存失敗: " + (e.message || e);
+  }
+};
+
+window.deleteAdminTopBanner = async function(idx) {
+  const statusEl = document.getElementById("admin-banner-status");
+  try {
+    const nextList = (window._adminTopBanners || []).filter((_, i) => i !== idx);
+    await db.collection("config").doc("topBanners").set({ items: nextList, updatedAt: Date.now() }, { merge: true });
+    window._adminTopBanners = nextList;
+    if (statusEl) statusEl.textContent = "削除しました";
+    window.renderAdminTopBannerList();
+    if (typeof renderGllitMercariCarousel === "function") {
+      renderGllitMercariCarousel(window._lastGllitCarouselEvents || []);
+    }
+  } catch (e) {
+    if (statusEl) statusEl.textContent = "削除失敗: " + (e.message || e);
+  }
+};
+
+window.handleCarouselSlideTap = function(el) {
+  if (!el) return;
+  const link = (el.getAttribute("data-link") || "").trim();
+  const action = (el.getAttribute("data-action") || "").trim();
+  if (link) {
+    if (link === "#xtrade") {
+      if (typeof window.openXTradeCreateModal === "function") window.openXTradeCreateModal();
+      else { const m = document.getElementById("xtrade-create-modal"); if (m) m.classList.remove("hidden"); }
+    } else if (link === "#autogo" && typeof window.openAutoGoModal === "function") {
+      window.openAutoGoModal();
+    } else {
+      window.location.href = link;
+    }
+    return;
+  }
+  if (action === "openIllitCalendar()" && typeof openIllitCalendar === "function") {
+    openIllitCalendar();
+  }
+};
+
+// 起動時に Firestore の topBanners を購読してカルーセルへ即反映
+setTimeout(function() {
+  if (typeof db !== "undefined" && db && db.collection) {
+    db.collection("config").doc("topBanners").onSnapshot(function(snap) {
+      window._adminTopBanners = (snap.exists && Array.isArray(snap.data().items)) ? snap.data().items : [];
+      if (typeof renderGllitMercariCarousel === "function") {
+        renderGllitMercariCarousel(window._lastGllitCarouselEvents || []);
+      }
+      if (typeof window.renderAdminTopBannerList === "function") {
+        window.renderAdminTopBannerList();
+      }
+    }, function() {});
+  }
+}, 1200);
