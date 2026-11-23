@@ -985,6 +985,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         userData.points = Number(data.totalPoints) || 0;
         userData.loginStamps = Array.isArray(data.loginStamps) ? data.loginStamps : [];
         userData.lastLoginBonusDate = data.lastLoginBonusDate || userData.lastLoginBonusDate;
+        updateBadge();
         document.getElementById("points-balance").textContent = String(userData.points);
         if (data.awarded) {
           showToast(`ログインボーナス +${data.pointsAdded}pt獲得！`, "success");
@@ -1005,6 +1006,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         const { data } = await rewardCalls.claimProfileBonus({});
         userData.points = Number(data.totalPoints);
         userData.profileBonusGranted = userData.profileBonusGranted || data.profileAwarded;
+        updateBadge();
         showToast(data.profileAwarded ? "プロフィール完成ボーナス +30pt！" : "プロフィールを完成するとボーナスを受け取れます", data.profileAwarded ? "success" : "info");
         await window.renderRewards();
       } catch (e) {
@@ -1341,6 +1343,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           loginCalendarData = { ...(loginCalendarData || {}), loginStamps: userData.loginStamps };
         }
         if (!document.getElementById("trades-modal").classList.contains("hidden")) renderTradesList();
+        if (!document.getElementById("todo-modal").classList.contains("hidden")) renderTodoList();
         if (!document.getElementById("wallet-modal").classList.contains("hidden")) renderWallet();
         if (!document.getElementById("notifications-modal").classList.contains("hidden")) renderNotificationsList();
         // 公開プロフィールから配送先PIIを分離し、非公開サブコレクションをローカルへマージ
@@ -6365,6 +6368,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         renderSellTab();
         scheduleHealSoldPosts();
         if (!document.getElementById("trades-modal").classList.contains("hidden")) renderTradesList();
+        if (!document.getElementById("todo-modal").classList.contains("hidden")) renderTodoList();
         if (!document.getElementById("wallet-modal").classList.contains("hidden")) renderWallet();
       }, (err) => {
         console.warn("trades snapshot error:", err?.code || err);
@@ -6372,15 +6376,69 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         if (!document.getElementById("trades-modal").classList.contains("hidden")) renderTradesList();
       });
     }
+    function getTodoTasks() {
+      if (!currentUser) return [];
+      const uid = currentUser.uid;
+      const tasks = [];
+      myTrades.forEach((t) => {
+        const title = t.postGive || "取引";
+        const otherId = t.ownerId === uid ? t.applicantId : t.ownerId;
+        if (t.status === "negotiating" && t.ownerId === uid && t.applicantId !== uid && !flag(t, "agreed", uid)) {
+          tasks.push({ kind: "trade", id: t.id, text: `${title}の交換・購入申請を確認してください` });
+          return;
+        }
+        if (t.status !== "shipping") return;
+        const isMyShipment = t.kind === "group" || (!t.isBuy && !t.isSell) ||
+          (t.isBuy ? t.applicantId === uid : t.ownerId === uid);
+        if (isMyShipment && !flag(t, "shipped", uid)) {
+          tasks.push({ kind: "trade", id: t.id, text: `${title}を発送してください` });
+        } else if (flag(t, "shipped", otherId) && !flag(t, "received", uid)) {
+          tasks.push({ kind: "trade", id: t.id, text: `${title}の受取確認・評価をしてください` });
+        }
+      });
+      const parts = formatJstDateParts();
+      const today = `${parts.year}-${parts.month}-${parts.day}`;
+      if (userData.lastLoginBonusDate !== today) {
+        tasks.push({ kind: "points", text: "本日のログインボーナス（10pt）を受け取る" });
+      }
+      const profile = userData.profile || {};
+      const profileComplete = !!(String(profile.nickname || "").trim() ||
+        (String(profile.name || "").trim() && String(profile.zip || "").trim() && String(profile.address1 || "").trim()));
+      if (!profileComplete) tasks.push({ kind: "profile", text: "プロフィールの未設定項目を入力してください" });
+      else if (!userData.profileBonusGranted) tasks.push({ kind: "points", text: "プロフィール完成ボーナス（30pt）を受け取る" });
+      return tasks;
+    }
     function updateBadge() {
       const unread = myTrades.filter(t => isUnread(t)).length, active = myTrades.filter(t => t.status === "negotiating" || t.status === "shipping").length;
-      const n = unread > 0 ? unread : active; const b1 = document.getElementById("trades-badge"), b2 = document.getElementById("nav-trades-badge");
-      if (b1) { b1.innerText = n; b1.className = "absolute -top-1.5 -right-1.5 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-sm border border-white " + (unread > 0 ? "bg-pink-500" : "bg-gray-400") + (n === 0 ? " hidden" : ""); }
-      if (b2) { b2.innerText = n; b2.className = "absolute top-1 right-2.5 text-white text-[8px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center border border-white " + (unread > 0 ? "bg-pink-500" : "bg-gray-400") + (n === 0 ? " hidden" : ""); }
+      const n = unread > 0 ? unread : active;
+      const todoCount = getTodoTasks().length;
+      const todoBadge = document.getElementById("todo-badge"), navBadge = document.getElementById("nav-trades-badge");
+      if (todoBadge) { todoBadge.innerText = todoCount; todoBadge.classList.toggle("hidden", todoCount === 0); }
+      if (navBadge) { navBadge.innerText = n; navBadge.className = "absolute top-1 right-2.5 text-white text-[8px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center border border-white " + (unread > 0 ? "bg-pink-500" : "bg-gray-400") + (n === 0 ? " hidden" : ""); }
     }
 
     const tradeSecOpen = { active: true, done: true, cancel_other: false, cancel_me: false, cancel_unknown: false };
     window.tradeSecToggle = function(id, open) { tradeSecOpen[id] = !!open; };
+    window.openTodoModal = function() {
+      renderTodoList();
+      document.getElementById("todo-modal").classList.remove("hidden");
+    };
+    window.closeTodoModal = function() { document.getElementById("todo-modal").classList.add("hidden"); };
+    window.renderTodoList = function() {
+      const el = document.getElementById("todo-list");
+      const tasks = getTodoTasks();
+      el.innerHTML = tasks.length
+        ? tasks.map((task) => `<button type="button" data-todo-kind="${task.kind}" ${task.id ? `data-todo-id="${escapeHtml(task.id)}"` : ""} class="w-full rounded-2xl bg-white px-4 py-3 text-left text-sm font-bold text-gray-800 shadow-sm active:scale-[0.99] transition">${escapeHtml(task.text)}<span class="float-right text-gray-300">›</span></button>`).join("")
+        : '<p class="py-8 text-center text-sm text-gray-500">現在やることはありません</p>';
+    };
+    document.getElementById("todo-list").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-todo-kind]");
+      if (!button) return;
+      window.closeTodoModal();
+      if (button.dataset.todoKind === "trade") openTrade(button.dataset.todoId);
+      else if (button.dataset.todoKind === "points") window.openPointsModal();
+      else if (button.dataset.todoKind === "profile") window.openProfileModal("basic");
+    });
     window.openTradesModal = function(section) {
       if (section && section in tradeSecOpen) tradeSecOpen[section] = true;
       renderTradesList(); document.getElementById("trades-modal").classList.remove("hidden");
