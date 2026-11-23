@@ -1,6 +1,6 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { getFirestore, collection, collectionGroup, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, where, orderBy, limit, startAfter, onSnapshot, serverTimestamp, increment, runTransaction, getCountFromServer, documentId } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, collectionGroup, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, where, orderBy, limit, startAfter, onSnapshot, serverTimestamp, increment, runTransaction, writeBatch, getCountFromServer, documentId } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js";
 
 
@@ -585,8 +585,9 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     window.openNotificationsModal = function(tab) {
       if (!currentUser) return /* alert hidden */ console.log("ログインが必要です。");
       if (tab === "all" || tab === "trade" || tab === "notice" || tab === "autogo") notifTab = tab;
-      renderNotificationsList();
       document.getElementById("notifications-modal").classList.remove("hidden");
+      renderNotificationsList();
+      window.markAllNotificationsRead();
     };
     window.setNotifTab = function(tab) {
       if (tab !== "all" && tab !== "trade" && tab !== "notice" && tab !== "autogo") return;
@@ -681,18 +682,36 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     };
     window.markAllNotificationsRead = async function() {
       if (!currentUser) return;
-      const list = (userData.notifications || []).map(n => ({ ...n, read: true }));
-      userData.notifications = list;
+      const uid = currentUser.uid;
+      const originalUnreadIds = new Set([
+        ...(userData.notifications || []),
+        ...(serverNotifs || [])
+      ].filter(n => n.read !== true).map(n => n.id));
+      userData.notifications = (userData.notifications || []).map(n => ({ ...n, read: true }));
       serverNotifs = (serverNotifs || []).map(n => ({ ...n, read: true }));
-      try { await saveUserData({ notifications: list }); } catch(e) {}
-      const unreadRemote = [];
+      updateNotifBadge();
+      renderNotificationsList();
       try {
-        const snap = await getDocs(query(collection(db, "users", currentUser.uid, "notifications"), limit(200)));
-        for (const d of snap.docs) {
-          if (!d.data().read) unreadRemote.push(d.ref);
+        const snap = await getDocs(query(collection(db, "users", uid, "notifications"), limit(200)));
+        const batch = writeBatch(db);
+        let hasWrites = false;
+        if (originalUnreadIds.size) {
+          batch.set(doc(db, "users", uid), { notifications: userData.notifications }, { merge: true });
+          hasWrites = true;
         }
-        await Promise.all(unreadRemote.slice(0, 80).map(ref => updateDoc(ref, { read: true }).catch(() => {})));
-      } catch (e) {}
+        snap.docs.forEach((notification) => {
+          if (notification.data().read !== true) {
+            batch.update(notification.ref, { read: true });
+            hasWrites = true;
+          }
+        });
+        if (hasWrites) await batch.commit();
+      } catch (error) {
+        console.error("Mark all notifications read failed:", error);
+        userData.notifications = (userData.notifications || []).map(n => originalUnreadIds.has(n.id) ? { ...n, read: false } : n);
+        serverNotifs = (serverNotifs || []).map(n => originalUnreadIds.has(n.id) ? { ...n, read: false } : n);
+        showToast("通知を既読にできませんでした", "error");
+      }
       updateNotifBadge();
       renderNotificationsList();
     };

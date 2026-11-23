@@ -1432,7 +1432,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { getFirestore, collection, collectionGroup, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, where, orderBy, limit, startAfter, onSnapshot, serverTimestamp, increment, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, collectionGroup, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, where, orderBy, limit, startAfter, onSnapshot, serverTimestamp, increment, runTransaction, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js";
 
 
@@ -1865,22 +1865,10 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     window.closePwaGuideModal = function() { document.getElementById("pwa-modal").classList.add("hidden"); };
 
     window.openNotificationsModal = function() {
-  if (!currentUser) return /* alert hidden */ console.log("ログインが必要です。");
-  const currentList = Array.isArray(userData.notifications) ? userData.notifications : [];
-  const hasUnread = currentList.some(n => !n.read);
-  if (hasUnread) {
-    const updatedList = currentList.map(n => ({ ...n, read: true }));
-    userData.notifications = updatedList;
-    if (typeof updateNotifBadge === "function") {
-      updateNotifBadge();
-    }
-    if (typeof saveUserData === "function") {
-      saveUserData({ notifications: updatedList }).catch(() => {});
-    }
-  }
-  renderNotificationsList();
-  document.getElementById("notifications-modal").classList.remove("hidden");
-};
+      if (!currentUser) return /* alert hidden */ console.log("ログインが必要です。");
+      document.getElementById("notifications-modal").classList.remove("hidden");
+      window.markAllNotificationsRead();
+    };
     window.closeNotificationsModal = function() { document.getElementById("notifications-modal").classList.add("hidden"); };
     function renderNotificationsList() {
       const el = document.getElementById("notifications-list");
@@ -1937,9 +1925,31 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     };
     window.markAllNotificationsRead = async function() {
       if (!currentUser) return;
-      const list = (userData.notifications || []).map(n => ({ ...n, read: true }));
-      userData.notifications = list;
-      try { await saveUserData({ notifications: list }); } catch(e) {}
+      const uid = currentUser.uid;
+      const originalUnreadIds = new Set((userData.notifications || []).filter(n => n.read !== true).map(n => n.id));
+      userData.notifications = (userData.notifications || []).map(n => ({ ...n, read: true }));
+      updateNotifBadge();
+      renderNotificationsList();
+      try {
+        const snap = await getDocs(query(collection(db, "users", uid, "notifications"), limit(200)));
+        const batch = writeBatch(db);
+        let hasWrites = false;
+        if (originalUnreadIds.size) {
+          batch.set(doc(db, "users", uid), { notifications: userData.notifications }, { merge: true });
+          hasWrites = true;
+        }
+        snap.docs.forEach((notification) => {
+          if (notification.data().read !== true) {
+            batch.update(notification.ref, { read: true });
+            hasWrites = true;
+          }
+        });
+        if (hasWrites) await batch.commit();
+      } catch (error) {
+        console.error("Mark all notifications read failed:", error);
+        userData.notifications = (userData.notifications || []).map(n => originalUnreadIds.has(n.id) ? { ...n, read: false } : n);
+        showToast("通知を既読にできませんでした", "error");
+      }
       updateNotifBadge();
       renderNotificationsList();
     };
