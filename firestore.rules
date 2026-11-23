@@ -270,6 +270,22 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    match /config/{docId} {
+      allow read: if docId == "pointCampaign";
+      allow write: if false;
+    }
+
+    match /raffles/{raffleId} {
+      allow read: if true;
+      allow write: if false;
+
+      match /entries/{entryId} {
+        allow read: if isAdmin() ||
+          (isSignedIn() && resource.data.userId == request.auth.uid);
+        allow write: if false;
+      }
+    }
+
     match /dailyActive/{dayId} {
       allow read: if isAdmin();
       allow create: if isAdmin() || (isSignedIn() && request.resource.data.keys().hasOnly(["count", "updatedAt"]) && request.resource.data.count == 1);
