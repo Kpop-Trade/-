@@ -7433,7 +7433,7 @@ window.renderHomeThemeSections = function(entries, cardHtmlById) {
       const el = document.getElementById("trades-list");
       if (!tradesLoaded) {
         el.innerHTML = `<div class="space-y-3" aria-busy="true" aria-label="取引一覧を読み込み中">
-          ${Array.from({ length: 4 }).map(() => `<div class="kp-skel-card p-3.5 space-y-2"><div class="flex gap-3"><div class="kp-skel w-11 h-11 rounded-full shrink-0"></div><div class="flex-1 space-y-2"><div class="kp-skel h-3" style="width:55%"></div><div class="kp-skel h-2.5" style="width:80%"></div><div class="kp-skel h-2.5" style="width:40%"></div></div></div></div>`).join("")}
+          ${Array.from({ length: 4 }).map(() => `<div class="kp-skel-card p-3.5 space-y-2"><div class="flex items-start gap-3"><div class="kp-skel w-11 h-11 rounded-full shrink-0"></div><div class="flex-1 space-y-2"><div class="kp-skel h-3" style="width:55%"></div><div class="kp-skel h-2.5" style="width:80%"></div><div class="kp-skel h-2.5" style="width:40%"></div></div></div></div>`).join("")}
           <p class="text-center text-[12px] text-gray-500 font-medium pt-1">取引一覧を読み込み中...</p>
         </div>`;
         return;
@@ -7477,9 +7477,9 @@ window.renderHomeThemeSections = function(entries, cardHtmlById) {
         const price = Number(t.postPrice || 0);
         const priceTxt = price > 0 ? "¥" + price.toLocaleString() : "";
         const hint = nextHint(t);
-        return `<button data-trade-id="${escapeHtml(t.id)}" class="w-full text-left rounded-2xl bg-white border border-gray-100 shadow-sm border-l-4 ${accent[t.status] || "border-l-gray-200"} ${unread ? "ring-2 ring-pink-200" : ""} px-3.5 py-3.5 active:scale-[0.99] transition">
+        return `<button data-trade-id="${escapeHtml(t.id)}" data-trade-card-status="${escapeHtml(t.status || "")}" class="w-full text-left rounded-2xl bg-white border border-gray-100 shadow-sm border-l-4 ${accent[t.status] || "border-l-gray-200"} ${unread ? "ring-2 ring-pink-200" : ""} px-3.5 py-3.5 active:scale-[0.99] transition">
             <div class="flex gap-3">
-              <div class="w-11 h-11 rounded-full ${unread ? "bg-pink-100 text-pink-700" : "bg-purple-100 text-purple-800"} flex items-center justify-center text-base font-black shrink-0">${escapeHtml(initial)}</div>
+              <div class="relative w-11 h-11 rounded-full ${unread ? "bg-pink-100 text-pink-700 ring-2 ring-pink-300" : "bg-purple-100 text-purple-800"} flex items-center justify-center text-base font-black shrink-0">${escapeHtml(initial)}${unread ? '<span class="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-pink-500 ring-2 ring-white"></span>' : ""}</div>
               <div class="min-w-0 flex-1">
                 <div class="flex items-center justify-between gap-2">
                   <span class="text-[15px] font-bold text-gray-900 truncate">${escapeHtml(otherName || "相手")}さん</span>
@@ -7489,8 +7489,8 @@ window.renderHomeThemeSections = function(entries, cardHtmlById) {
                   <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-gray-100 text-gray-600">${kindLabel(t)}</span>
                   ${priceTxt ? `<span class="text-[12px] font-bold text-gray-800">${priceTxt}</span>` : ""}
                 </div>
-                <div class="mt-1 text-[13px] text-gray-700 leading-snug line-clamp-2 font-medium">${escapeHtml(t.postGive || "取引")}</div>
-                ${hint ? `<div class="mt-1.5 text-[11px] font-medium ${t.status === "completed" || t.status === "cancelled" ? "text-gray-400" : "text-purple-700"}">${escapeHtml(hint)}</div>` : ""}
+                <div class="mt-1.5 text-[13px] text-gray-800 bg-gray-50 rounded-lg px-2.5 py-1.5 leading-snug line-clamp-1 font-medium border border-gray-100">${escapeHtml(t.postGive || "取引")}</div>
+                ${hint ? `<div class="mt-1.5 inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md ${t.status === "completed" || t.status === "cancelled" ? "bg-gray-100 text-gray-500" : "bg-purple-50 text-purple-700"}">${t.status === "completed" || t.status === "cancelled" ? "✓" : "👉"} ${escapeHtml(hint)}</div>` : ""}
                 <div class="mt-1.5 flex items-center justify-between gap-2 text-[11px] text-gray-400">
                   <span class="flex items-center gap-2">
                     ${unread ? '<span class="inline-flex items-center gap-1 text-pink-600 font-bold"><span class="w-1.5 h-1.5 rounded-full bg-pink-500"></span>新しいメッセージ</span>' : "<span>ルームを開く</span>"}
@@ -14462,3 +14462,41 @@ setTimeout(function() {
     }, function() {});
   }
 }, 1200);
+
+// === 取引一覧ステータスフィルター ===
+window._tradesFilterMode = window._tradesFilterMode || "all";
+window.setTradesFilter = function(mode) {
+  window._tradesFilterMode = mode || "all";
+  window.applyTradesFilterUI();
+};
+window.applyTradesFilterUI = function() {
+  const wrap = document.getElementById("trades-list");
+  if (!wrap) return;
+  const mode = window._tradesFilterMode || "all";
+  const btns = wrap.querySelectorAll("[data-trade-card-status]");
+  let activeCount = 0;
+  let doneCount = 0;
+  btns.forEach(btn => {
+    const st = btn.getAttribute("data-trade-card-status") || "";
+    const isDone = (st === "completed" || st === "cancelled");
+    if (isDone) doneCount++; else activeCount++;
+    if (mode === "all") btn.classList.remove("hidden");
+    else if (mode === "active") btn.classList.toggle("hidden", isDone);
+    else if (mode === "done") btn.classList.toggle("hidden", !isDone);
+  });
+  const totalEl = document.getElementById("tf-count-all");
+  const actEl = document.getElementById("tf-count-active");
+  const doneEl = document.getElementById("tf-count-done");
+  if (totalEl) totalEl.textContent = btns.length;
+  if (actEl) actEl.textContent = activeCount;
+  if (doneEl) doneEl.textContent = doneCount;
+  ["all", "active", "done"].forEach(m => {
+    const tab = document.getElementById("tf-tab-" + m);
+    if (!tab) return;
+    if (m === mode) {
+      tab.className = "flex-1 py-1.5 rounded-lg text-xs font-bold bg-purple-600 text-white shadow-sm transition";
+    } else {
+      tab.className = "flex-1 py-1.5 rounded-lg text-xs font-bold text-gray-600 hover:bg-gray-100 transition";
+    }
+  });
+};
