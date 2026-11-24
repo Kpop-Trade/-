@@ -3251,7 +3251,8 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         const clickAttr = hasTarget ? `onclick="handleNotificationClick('${escapeHtml(n.id)}')" class="cursor-pointer active:scale-[.99] transition"` : "";
         const arrow = hasTarget ? '<span class="text-gray-400 text-sm">›</span>' : "";
         return `<div data-notif-id="${escapeHtml(n.id)}" ${clickAttr} class="liquid-glass-input rounded-xl p-3 ${n.read ? 'opacity-70' : (isAdminNotif ? 'border-red-300 bg-red-50/50' : 'border-pink-200')} ${hasTarget ? 'hover:bg-white/80' : ''}">
-          <div class="flex justify-between items-start gap-2">
+          <div class="flex justify-between items-start gap-2.5">
+            <img src="icon-192.png?v=20261121" onerror="this.onerror=null;this.src='icon-180.png?v=20261121';" alt="アプリ通知アイコン" class="w-8 h-8 rounded-xl shrink-0 object-cover shadow-xs border border-white/80 mt-0.5">
             <p class="text-xs font-medium text-gray-800 leading-relaxed flex-1">${isAdminNotif ? '<span class="text-red-600">[運営]</span> ' : ''}${escapeHtml(n.text)}</p>
             <div class="flex items-center gap-1.5 shrink-0">
               ${!n.read ? '<span class="w-2 h-2 rounded-full bg-pink-500"></span>' : ''}
