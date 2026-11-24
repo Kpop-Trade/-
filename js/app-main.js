@@ -643,12 +643,43 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         console.debug("Haptic audio is unavailable:", error);
       }
     };
-    window.triggerHeartPop = function(button) {
-      if (!button) return;
-      button.classList.remove("heart-pop");
-      void button.offsetWidth;
-      button.classList.add("heart-pop");
-    };
+    window.triggerStrongHeartHaptic = function() {
+  try { if (navigator.vibrate) navigator.vibrate([45, 30, 65]); } catch (e) {}
+  try {
+    let pool = document.getElementById("strong-haptic-pool");
+    if (!pool) {
+      pool = document.createElement("div");
+      pool.id = "strong-haptic-pool";
+      pool.style.cssText = "position:fixed;left:-9999px;top:0;opacity:0.01;pointer-events:none;";
+      for (let i = 0; i < 3; i++) {
+        const lbl = document.createElement("label");
+        const inp = document.createElement("input");
+        inp.type = "checkbox";
+        inp.setAttribute("switch", "");
+        lbl.appendChild(inp);
+        pool.appendChild(lbl);
+      }
+      document.body.appendChild(pool);
+    }
+    const labels = pool.querySelectorAll("label");
+    labels[0]?.click();
+    setTimeout(() => labels[1]?.click(), 55);
+    setTimeout(() => labels[2]?.click(), 115);
+  } catch (e) {}
+};
+window.triggerHeartPop = function(button) {
+  window.triggerStrongHeartHaptic();
+  if (!button) return;
+  button.classList.remove("heart-pop");
+  void button.offsetWidth;
+  button.classList.add("heart-pop");
+  button.animate([
+    { transform: "scale(1)" },
+    { transform: "scale(1.34)", offset: 0.35 },
+    { transform: "scale(0.9)", offset: 0.7 },
+    { transform: "scale(1)" }
+  ], { duration: 360, easing: "cubic-bezier(0.22, 1, 0.36, 1)" });
+};
     window.triggerBellShake = function() {
       const icon = document.querySelector("#notif-btn svg");
       if (!icon) return;
@@ -2724,7 +2755,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       btn.className = liked ? "relative w-11 h-11 overflow-hidden rounded-full bg-pink-500 text-white font-medium text-xs border border-pink-500 transition shadow-md flex items-center justify-center" : "relative w-11 h-11 overflow-hidden rounded-full bg-white/80 text-pink-500 font-medium text-xs border border-white hover:bg-white transition flex items-center justify-center shadow-md";
       const hapticSwitch = btn.querySelector(".haptic-switch-overlay");
       if (hapticSwitch) hapticSwitch.checked = liked;
-      document.getElementById("detail-like-icon").innerText = liked ? "♥" : "♡";
+      document.getElementById("detail-like-icon").innerHTML = liked ? '<svg width="22" height="22" viewBox="0 0 24 24" fill="#ff2d3b"><path d="M12 21C12 21 3 15.3 3 8.7C3 5.8 5.2 3.6 8 3.6C9.7 3.6 11.2 4.5 12 5.8C12.8 4.5 14.3 3.6 16 3.6C18.8 3.6 21 5.8 21 8.7C21 15.3 12 21 12 21Z"/></svg>' : '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#262626" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.5C12 20.5 3.5 15.1 3.5 8.8C3.5 6.1 5.6 4 8.2 4C9.8 4 11.2 4.8 12 6C12.8 4.8 14.2 4 15.8 4C18.4 4 20.5 6.1 20.5 8.8C20.5 15.1 12 20.5 12 20.5Z"/></svg>';
       document.getElementById("detail-like-count").innerText = likesCount;
     }
 
