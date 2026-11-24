@@ -895,6 +895,7 @@
 
 
 
+
 <style id="gllit-peek-banner-fix">
   header.kp-market-header,
   .lg-header {
@@ -915,15 +916,23 @@
   #gllit-hub {
     margin-top: 0px !important;
     padding-top: 0px !important;
+    perspective: 720px !important;
+    background: #0d0d0f !important;
+    overflow: hidden !important;
   }
   #gllit-carousel-track {
     display: flex !important;
     align-items: stretch !important;
-    gap: 8px !important;
+    gap: 0px !important;
     padding: 0 28px 6px 28px !important;
     scroll-padding-inline: 28px !important;
     overflow-x: auto !important;
-    scroll-snap-type: x mandatory !important;
+    scroll-snap-type: none !important;
+    transform-style: preserve-3d !important;
+    scrollbar-width: none !important;
+  }
+  #gllit-carousel-track::-webkit-scrollbar {
+    display: none !important;
   }
   #gllit-carousel-track > .gllit-banner-slide,
   #gllit-carousel-track > .gllit-mercari-card {
@@ -936,7 +945,6 @@
     border-radius: 0px !important;
     background-size: cover !important;
     background-position: center center !important;
-    scroll-snap-align: center !important;
     display: flex !important;
     flex-direction: column !important;
     justify-content: flex-end !important;
@@ -945,13 +953,17 @@
     box-sizing: border-box !important;
     padding: 12px 14px !important;
     text-align: left !important;
+    will-change: transform, filter !important;
+    backface-visibility: hidden !important;
   }
   #gllit-carousel-track > .gllit-banner-slide::after,
   #gllit-carousel-track > .gllit-mercari-card::after {
     content: "" !important;
     position: absolute !important;
     inset: 0 !important;
-    background: linear-gradient(to top, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.22) 26%, rgba(0,0,0,0) 45%) !important;
+    background:
+      linear-gradient(to top, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.22) 26%, rgba(0,0,0,0) 45%),
+      linear-gradient(to right, rgba(0,0,0,0.38) 0%, rgba(0,0,0,0) 14%, rgba(0,0,0,0) 86%, rgba(0,0,0,0.38) 100%) !important;
     pointer-events: none !important;
     z-index: 1 !important;
   }
@@ -971,8 +983,67 @@
     min-width: 100vw !important;
     max-width: 100vw !important;
     flex: 0 0 100vw !important;
+    transform: none !important;
   }
 </style>
+<script id="gllit-cylinder-roll-script">
+(function() {
+  let isUserInteracting = false;
+  let resumeTimer = null;
+
+  function pauseAutoRoll() {
+    isUserInteracting = true;
+    if (resumeTimer) clearTimeout(resumeTimer);
+    resumeTimer = setTimeout(() => { isUserInteracting = false; }, 1600);
+  }
+
+  function tickCylinderRoll() {
+    const track = document.getElementById("gllit-carousel-track");
+    if (track && track.children.length > 1) {
+      if (!track.dataset.rollBound) {
+        track.dataset.rollBound = "1";
+        track.addEventListener("touchstart", pauseAutoRoll, { passive: true });
+        track.addEventListener("touchmove", pauseAutoRoll, { passive: true });
+        track.addEventListener("pointerdown", pauseAutoRoll, { passive: true });
+        track.addEventListener("wheel", pauseAutoRoll, { passive: true });
+      }
+
+      // 東証ティッカー風の常時なめらか自動回転（毎フレーム約0.55px）
+      if (!isUserInteracting) {
+        track.scrollLeft += 0.55;
+        const maxScroll = track.scrollWidth - track.clientWidth;
+        if (maxScroll > 0 && track.scrollLeft >= maxScroll - 2) {
+          track.scrollLeft = 1;
+        }
+      }
+
+      // 円筒（シリンダー）3D湾曲計算
+      const slides = track.children;
+      const trackRect = track.getBoundingClientRect();
+      const centerX = trackRect.left + trackRect.width / 2;
+
+      for (let i = 0; i < slides.length; i++) {
+        const slide = slides[i];
+        const rect = slide.getBoundingClientRect();
+        const slideCenter = rect.left + rect.width / 2;
+        const ratio = Math.max(-1.25, Math.min(1.25, (slideCenter - centerX) / rect.width));
+
+        const angle = ratio * 46;
+        const scale = 1 - Math.min(0.11, Math.abs(ratio) * 0.11);
+        const translateZ = -Math.abs(ratio) * 42;
+        const brightness = 1 - Math.min(0.35, Math.abs(ratio) * 0.35);
+
+        slide.style.transformOrigin = ratio < 0 ? "right center" : "left center";
+        slide.style.transform = `translateZ(${translateZ.toFixed(1)}px) rotateY(${angle.toFixed(2)}deg) scale(${scale.toFixed(4)})`;
+        slide.style.filter = `brightness(${brightness.toFixed(2)})`;
+      }
+    }
+    requestAnimationFrame(tickCylinderRoll);
+  }
+
+  requestAnimationFrame(tickCylinderRoll);
+})();
+</script>
 
 </head>
 <body class="bg-illit-bg min-h-screen text-gray-800 relative overflow-x-hidden home-tab">
