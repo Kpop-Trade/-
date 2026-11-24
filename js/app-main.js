@@ -4784,16 +4784,22 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       searchQuickMode = "";
       renderSearchSuggestions(document.getElementById("search-page-input")?.value || "");
     };
-    function runSearch(query) {
-      const normalized = String(query || "").trim().replace(/\s+/g, " ");
-      if (!normalized) return;
-      searchText = normalized.toLowerCase();
-      searchResultMode = true;
-      searchQuickMode = "";
-      saveSearchToHistory(normalized);
-      renderSearchPageMode();
-      renderPosts();
-    }
+    function renderSearchSkeleton(){const grid=document.getElementById("search-results-grid")||document.getElementById("posts-grid");if(!grid)return;grid.innerHTML='<div class="home-feed-skeleton" aria-busy="true" aria-label="検索中" style="grid-column:1/-1"><div class="home-feed-skeleton-grid is-odd">'+Array.from({length:6},()=>'<div class="kpop-skeleton-box"></div>').join("")+'</div></div>';}
+let searchRenderTimer=null;
+function runSearch(query) {
+  const normalized = String(query || "").trim().replace(/\s+/g, " ");
+  if (!normalized) return;
+  if (typeof window.openSearchPage === "function" && !searchPageOpen) window.openSearchPage();
+  searchText = normalized.toLowerCase();
+  searchResultMode = true;
+  searchQuickMode = "";
+  saveSearchToHistory(normalized);
+  renderSearchPageMode();
+  renderSearchSkeleton();
+  clearTimeout(searchRenderTimer);
+  searchRenderTimer = setTimeout(() => renderPosts(), 380);
+}
+document.addEventListener("DOMContentLoaded",()=>{const mi=document.getElementById("main-search-input");if(mi){const openS=(e)=>{e.preventDefault();mi.blur();if(typeof window.openSearchPage==="function")window.openSearchPage();};mi.addEventListener("click",openS);mi.addEventListener("focus",openS);}});
     window.runSearchFromInput = function() {
       runSearch(document.getElementById("search-page-input")?.value || "");
     };
