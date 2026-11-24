@@ -2257,6 +2257,7 @@ ${currentPoolData.title}
 })();
 
 
+
 /* === Admin Auto-GO Participant Detail Modal === */
 (function() {
   function esc(v) {
@@ -2266,6 +2267,122 @@ ${currentPoolData.title}
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#39;");
+  }
+
+  function fmtDate(val) {
+    if (!val) return "";
+    try {
+      let d = null;
+      if (typeof val.toDate === "function") d = val.toDate();
+      else if (typeof val.seconds === "number") d = new Date(val.seconds * 1000);
+      else if (val instanceof Date) d = val;
+      else if (typeof val === "number" || typeof val === "string") d = new Date(val);
+      if (!d || isNaN(d.getTime())) return String(val);
+      return d.toLocaleString("ja-JP", {
+        year: "numeric", month: "2-digit", day: "2-digit",
+        hour: "2-digit", minute: "2-digit"
+      });
+    } catch (_) {
+      return String(val);
+    }
+  }
+
+  function isImageLike(v) {
+    if (typeof v !== "string") return false;
+    const s = v.trim();
+    if (!s) return false;
+    if (s.startsWith("data:image/")) return true;
+    if (/^https?:///i.test(s) && (/.(png|jpe?g|gif|webp|heic|avif)(?|$)/i.test(s) || s.includes("firebasestorage") || s.includes("cloudinary") || s.includes("imgur") || s.includes("googleusercontent"))) {
+      return true;
+    }
+    return false;
+  }
+
+  function collectAllPhotos(entry, userObj, profile) {
+    const found = [];
+    const seen = new Set();
+    function add(label, url) {
+      if (!url || typeof url !== "string") return;
+      const clean = url.trim();
+      if (!clean || seen.has(clean)) return;
+      if (!clean.startsWith("data:image/") && !/^https?:///i.test(clean)) return;
+      seen.add(clean);
+      found.push({ label, url: clean });
+    }
+
+    // 既存ヘルパー経由の画像
+    if (typeof agImageList === "function") {
+      try {
+        const listObj = agImageList(entry);
+        if (listObj && Array.isArray(listObj.purchase)) {
+          listObj.purchase.forEach((u, i) => add("購入証跡 #" + (i + 1), u));
+        }
+        if (listObj && Array.isArray(listObj.shipping)) {
+          listObj.shipping.forEach((u, i) => add("発送・梱包 #" + (i + 1), u));
+        }
+      } catch (_) {}
+    }
+
+    // プロフィール・ユーザー画像
+    [
+      ["プロフィール画像", profile.avatarUrl],
+      ["プロフィール画像", profile.photoURL],
+      ["プロフィール画像", profile.iconUrl],
+      ["プロフィール画像", userObj.photoURL],
+      ["プロフィール画像", userObj.avatarUrl],
+      ["身分証・確認画像", profile.idImageUrl],
+      ["身分証・確認画像", userObj.idImageUrl]
+    ].forEach(([label, u]) => add(label, u));
+
+    // entry / userObj / profile 内の全プロパティを走査して画像URL / base64 を漏らさず回収
+    const labelMap = {
+      purchaseProofUrl: "購入証跡",
+      purchasePhoto: "購入写真",
+      purchaseImage: "購入画像",
+      purchaseImages: "購入画像",
+      revealPhotoUrl: "開封結果写真",
+      revealPhoto: "開封結果写真",
+      revealImage: "開封結果画像",
+      openedPhoto: "開封結果写真",
+      openedImage: "開封結果画像",
+      cardPhoto: "トレカ写真",
+      cardImage: "トレカ画像",
+      packingPhoto: "梱包写真",
+      packingImage: "梱包画像",
+      shippingProofUrl: "発送証跡",
+      shippingPhoto: "発送写真",
+      shippingImage: "発送画像",
+      receiptPhoto: "レシート・控え写真",
+      receiptImage: "レシート・控え画像",
+      photoUrl: "登録写真",
+      imageUrl: "登録画像",
+      photos: "登録写真",
+      images: "登録画像"
+    };
+
+    function scanObj(obj, prefix) {
+      if (!obj || typeof obj !== "object") return;
+      Object.keys(obj).forEach((k) => {
+        const v = obj[k];
+        const baseLabel = labelMap[k] || (prefix ? prefix + "." + k : k);
+        if (typeof v === "string" && isImageLike(v)) {
+          add(baseLabel, v);
+        } else if (Array.isArray(v)) {
+          v.forEach((item, idx) => {
+            if (typeof item === "string" && isImageLike(item)) {
+              add(baseLabel + " #" + (idx + 1), item);
+            } else if (item && typeof item === "object") {
+              scanObj(item, baseLabel + "[" + idx + "]");
+            }
+          });
+        }
+      });
+    }
+
+    scanObj(entry, "");
+    scanObj(profile, "profile");
+    scanObj(userObj, "user");
+    return found;
   }
 
   function closePersonModal() {
@@ -2294,9 +2411,9 @@ ${currentPoolData.title}
     const statusText = typeof agStatusFull === "function"
       ? agStatusFull(entry)
       : (entry.status || "未登録");
-    const want = entry.wantedMember || entry.targetMember || "-";
-    const pulled = entry.pulledMember || entry.openedCard || "-";
-    const sendTo = entry.sendToName || "-";
+
+    const allPhotos = collectAllPhotos(entry, userObj, profile);
+    const avatar = profile.avatarUrl || profile.photoURL || userObj.photoURL || "";
 
     const addrParts = [
       shipping.zip ? "〒" + shipping.zip : "",
@@ -2307,81 +2424,127 @@ ${currentPoolData.title}
     ].filter(Boolean);
     const addrText = addrParts.length ? addrParts.join(" / ") : (entry.shipToAddress || "未登録");
 
-    const purchaseImgs = [];
-    const shippingImgs = [];
-    if (typeof agImageList === "function") {
-      const listObj = agImageList(entry);
-      if (listObj && Array.isArray(listObj.purchase)) purchaseImgs.push(...listObj.purchase);
-      if (listObj && Array.isArray(listObj.shipping)) shippingImgs.push(...listObj.shipping);
-    }
+    const rows = [
+      ["進行ステータス", statusText],
+      ["内部statusコード", entry.status || "-"],
+      ["希望メンバー", entry.wantedMember || entry.targetMember || "-"],
+      ["開封 / 自引き結果", entry.pulledMember || entry.openedCard || "-"],
+      ["マッチ状態", entry.noMatchResult ? "マッチング対象外" : (entry.matchedWithName || entry.matchedUid || "-")],
+      ["送付先 / 相手", entry.sendToName || entry.sendToUid || "-"],
+      ["受取元 / 相手", entry.receiveFromName || entry.receiveFromUid || "-"],
+      ["購入確認", entry.purchaseConfirmed || entry.purchasedAt ? "確認済み" : "未確認"],
+      ["追跡番号", entry.trackingNumber || "-"],
+      ["配送方法", entry.shippingMethod || "-"],
+      ["参加口数 / 数量", entry.quantity || entry.count || 1],
+      ["ポイント / 決済", entry.paidPoints != null ? entry.paidPoints + " pt" : (entry.paymentMethod || "-")],
+      ["エントリー日時", fmtDate(entry.createdAt || entry.joinedAt) || "-"],
+      ["購入期限 / 完了", fmtDate(entry.purchaseDeadlineAt || entry.purchasedAt) || "-"],
+      ["開封登録日時", fmtDate(entry.revealedAt || entry.openedAt) || "-"],
+      ["マッチング日時", fmtDate(entry.matchedAt) || "-"],
+      ["発送期限 / 完了", fmtDate(entry.shippedAt || entry.shipDeadlineAt) || "-"],
+      ["受取完了日時", fmtDate(entry.receivedAt) || "-"],
+      ["遅延報告", entry.delayReason || (entry.status === "delayed" ? "遅延報告あり" : "-")],
+      ["備考・メモ", entry.note || entry.memo || entry.comment || profile.bio || "-"]
+    ];
+
+    // 未表示の追加フィールドも全抽出
+    const shownKeys = new Set([
+      "uid", "userId", "poolId", "username", "displayName", "status", "wantedMember", "targetMember",
+      "pulledMember", "openedCard", "noMatchResult", "matchedWithName", "matchedUid",
+      "sendToName", "sendToUid", "receiveFromName", "receiveFromUid", "purchaseConfirmed",
+      "purchasedAt", "trackingNumber", "shippingMethod", "quantity", "count", "paidPoints",
+      "paymentMethod", "createdAt", "joinedAt", "purchaseDeadlineAt", "revealedAt", "openedAt",
+      "matchedAt", "shippedAt", "shipDeadlineAt", "receivedAt", "delayReason", "note", "memo",
+      "comment", "shipToAddress", "xId"
+    ]);
+    const extraEntries = Object.keys(entry)
+      .filter((k) => !shownKeys.has(k) && !isImageLike(entry[k]) && !Array.isArray(entry[k]))
+      .map((k) => {
+        const v = entry[k];
+        if (v == null || v === "") return null;
+        if (typeof v === "object") {
+          const ts = fmtDate(v);
+          return [k, ts && ts !== "[object Object]" ? ts : JSON.stringify(v)];
+        }
+        return [k, String(v)];
+      })
+      .filter(Boolean);
 
     const modal = document.createElement("div");
     modal.id = "ag-admin-person-modal";
-    modal.className = "fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/50 p-3 backdrop-blur-[2px]";
+    modal.className = "fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/60 p-2.5 backdrop-blur-[2px]";
     modal.addEventListener("click", (e) => {
       if (e.target === modal) closePersonModal();
     });
 
     modal.innerHTML = `
-      <div class="w-full max-w-md rounded-3xl bg-white p-4 shadow-2xl border border-purple-100 max-h-[88vh] overflow-y-auto space-y-3">
-        <div class="flex items-start justify-between gap-2 border-b border-gray-100 pb-2.5">
-          <div class="min-w-0">
-            <div class="text-[10px] font-bold text-purple-600">${esc(pool.title || "Auto-GO プール")}</div>
-            <div class="flex items-center gap-2 flex-wrap">
-              <h3 class="text-base font-black text-gray-900 truncate">${esc(name)}</h3>
-              ${xId ? `<a href="https://x.com/${encodeURIComponent(xId)}" target="_blank" rel="noopener" class="text-[11px] font-bold text-blue-600 underline">@${esc(xId)}</a>` : ""}
+      <div class="w-full max-w-lg rounded-3xl bg-white p-4 shadow-2xl border border-purple-100 max-h-[90vh] overflow-y-auto space-y-3.5">
+        <div class="flex items-start justify-between gap-2.5 border-b border-gray-100 pb-3">
+          <div class="flex items-center gap-2.5 min-w-0">
+            ${avatar
+              ? `<img src="${esc(avatar)}" alt="アイコン" class="h-12 w-12 rounded-2xl object-cover border border-purple-100 shrink-0">`
+              : `<div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-purple-100 text-base font-black text-purple-800">${esc(String(name).slice(0, 1))}</div>`}
+            <div class="min-w-0">
+              <div class="text-[10px] font-bold text-purple-600 truncate">${esc(pool.title || "Auto-GO プール")}</div>
+              <div class="flex items-center gap-2 flex-wrap">
+                <h3 class="text-base font-black text-gray-900 truncate">${esc(name)}</h3>
+                ${xId ? `<a href="https://x.com/${encodeURIComponent(xId)}" target="_blank" rel="noopener" class="text-[11px] font-bold text-blue-600 underline">@${esc(xId)}</a>` : ""}
+              </div>
+              <div class="text-[10px] text-gray-400 break-all">UID: ${esc(uid || "-")}</div>
+              ${userObj.email ? `<div class="text-[10px] text-gray-500 break-all">Email: ${esc(userObj.email)}</div>` : ""}
             </div>
-            <div class="text-[10px] text-gray-400 break-all">UID: ${esc(uid || "-")}</div>
           </div>
           <button type="button" onclick="window.closeAutoGoPersonModal()" class="shrink-0 rounded-full bg-gray-100 px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-200">
             閉じる
           </button>
         </div>
 
-        <div class="rounded-2xl bg-purple-50/70 p-3 space-y-1.5 text-xs">
-          <div class="flex justify-between gap-2">
-            <span class="text-gray-500 font-bold">進行ステータス</span>
-            <span class="font-black text-purple-900 text-right">${esc(statusText)}</span>
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-black text-gray-800">📸 登録写真・証跡画像（${allPhotos.length}枚）</span>
+            <span class="text-[10px] text-gray-400">タップで拡大表示</span>
           </div>
-          <div class="flex justify-between gap-2">
-            <span class="text-gray-500 font-bold">希望メンバー</span>
-            <span class="font-bold text-gray-800 text-right">${esc(want)}</span>
-          </div>
-          <div class="flex justify-between gap-2">
-            <span class="text-gray-500 font-bold">開封 / 自引き</span>
-            <span class="font-bold text-gray-800 text-right">${esc(pulled)}</span>
-          </div>
-          <div class="flex justify-between gap-2">
-            <span class="text-gray-500 font-bold">送付先 / 相手</span>
-            <span class="font-bold text-gray-800 text-right">${esc(sendTo)}</span>
-          </div>
-          ${entry.trackingNumber ? `
-          <div class="flex justify-between gap-2">
-            <span class="text-gray-500 font-bold">追跡番号</span>
-            <span class="font-bold text-gray-800 text-right">${esc(entry.trackingNumber)}</span>
-          </div>` : ""}
+          ${allPhotos.length ? `
+            <div class="grid grid-cols-2 gap-2.5">
+              ${allPhotos.map((p) => `
+                <a href="${esc(p.url)}" target="_blank" rel="noopener" class="group block overflow-hidden rounded-2xl border border-purple-100 bg-gray-50 shadow-xs">
+                  <img src="${esc(p.url)}" alt="${esc(p.label)}" class="h-32 w-full object-cover transition group-hover:scale-[1.02]">
+                  <div class="px-2 py-1 text-[10px] font-bold text-gray-700 truncate bg-white border-t border-gray-100">${esc(p.label)}</div>
+                </a>
+              `).join("")}
+            </div>
+          ` : `
+            <div class="rounded-2xl border border-dashed border-gray-200 bg-gray-50/70 p-3 text-center text-[11px] text-gray-400">
+              登録されている画像はありません
+            </div>
+          `}
         </div>
 
-        <div class="rounded-2xl border border-gray-100 bg-gray-50/80 p-3 text-xs space-y-1">
-          <div class="text-[11px] font-black text-gray-700">配送先情報</div>
-          <div class="text-gray-700 break-words leading-relaxed">${esc(addrText)}</div>
+        <div class="rounded-2xl border border-amber-200/70 bg-amber-50/60 p-3 text-xs space-y-1">
+          <div class="text-[11px] font-black text-amber-900">📦 配送先・個人情報</div>
+          <div class="text-gray-800 break-words leading-relaxed font-medium">${esc(addrText)}</div>
+          ${shipping.prefecture || shipping.city ? `<div class="text-[10px] text-gray-500">都道府県/市区町村: ${esc((shipping.prefecture || "") + " " + (shipping.city || ""))}</div>` : ""}
         </div>
 
-        ${purchaseImgs.length ? `
-          <div class="space-y-1.5">
-            <div class="text-[11px] font-black text-gray-700">購入証跡画像 (${purchaseImgs.length}枚)</div>
-            <div class="grid grid-cols-2 gap-2">
-              ${purchaseImgs.map((src) => `<a href="${esc(src)}" target="_blank" rel="noopener" class="block overflow-hidden rounded-xl border border-gray-200 bg-gray-100"><img src="${esc(src)}" alt="購入証跡" class="h-28 w-full object-cover"></a>`).join("")}
+        <div class="rounded-2xl bg-purple-50/60 border border-purple-100 p-3 space-y-1.5 text-xs">
+          <div class="text-[11px] font-black text-purple-950 mb-1">📋 取引・ステータス詳細</div>
+          ${rows.map(([k, v]) => `
+            <div class="flex justify-between gap-3 border-b border-purple-100/60 pb-1 last:border-b-0 last:pb-0">
+              <span class="text-gray-500 font-bold shrink-0">${esc(k)}</span>
+              <span class="font-bold text-gray-900 text-right break-all">${esc(v)}</span>
             </div>
-          </div>
-        ` : ""}
+          `).join("")}
+        </div>
 
-        ${shippingImgs.length ? `
-          <div class="space-y-1.5">
-            <div class="text-[11px] font-black text-gray-700">発送・梱包証跡画像 (${shippingImgs.length}枚)</div>
-            <div class="grid grid-cols-2 gap-2">
-              ${shippingImgs.map((src) => `<a href="${esc(src)}" target="_blank" rel="noopener" class="block overflow-hidden rounded-xl border border-gray-200 bg-gray-100"><img src="${esc(src)}" alt="発送証跡" class="h-28 w-full object-cover"></a>`).join("")}
-            </div>
+        ${extraEntries.length ? `
+          <div class="rounded-2xl bg-gray-50 border border-gray-200/80 p-3 space-y-1 text-[11px]">
+            <div class="font-black text-gray-700 mb-1">🔍 その他の全データ項目</div>
+            ${extraEntries.map(([k, v]) => `
+              <div class="flex justify-between gap-2 border-b border-gray-100 pb-1 last:border-b-0">
+                <span class="text-gray-500 font-mono shrink-0">${esc(k)}</span>
+                <span class="text-gray-800 font-medium text-right break-all">${esc(v)}</span>
+              </div>
+            `).join("")}
           </div>
         ` : ""}
 
