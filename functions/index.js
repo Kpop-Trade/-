@@ -2137,9 +2137,7 @@ exports.adminInjectAutoGoDummies = onCall({ timeoutSeconds: 120 }, async (reques
   const poolSnap0 = await poolRef.get();
   if (!poolSnap0.exists) throw new HttpsError("not-found", "pool not found");
   const pool0 = poolSnap0.data();
-  if (!isAutoGoTestPool(pool0)) {
-    throw new HttpsError("failed-precondition", "dummy inject is allowed only on [TEST] pools");
-  }
+  // Production & [TEST] pools both allowed for admin dummy/simulation tools
   if (pool0.entryLocked === true) {
     throw new HttpsError("failed-precondition", "new entries are locked");
   }
@@ -2791,9 +2789,7 @@ exports.adminSimAutoGoDummyRevealPhase = onCall({
   const poolSnap = await poolRef.get();
   if (!poolSnap.exists) throw new HttpsError("not-found", "pool not found");
   const pool = poolSnap.data() || {};
-  if (!isAutoGoTestPool(pool)) {
-    throw new HttpsError("failed-precondition", "dummy reveal sim is allowed only on [TEST] pools");
-  }
+  // Production & [TEST] pools both allowed for admin dummy/simulation tools
   const members = poolMemberList(pool);
   if (!members.length) throw new HttpsError("failed-precondition", "pool has no members");
 
@@ -2912,9 +2908,7 @@ exports.adminRunAutoGoMatch = onCall({
   const poolSnap = await poolRef.get();
   if (!poolSnap.exists) throw new HttpsError("not-found", "pool not found");
   const pool = poolSnap.data() || {};
-  if (!isAutoGoTestPool(pool)) {
-    throw new HttpsError("failed-precondition", "manual match is allowed only on [TEST] pools");
-  }
+  // Production & [TEST] pools both allowed for admin dummy/simulation tools
   const deadlinePassed = !!(pool.revealDeadlineAt && timestampMillis(pool.revealDeadlineAt) <= Date.now());
   const result = await closeAutoGoRevealWindow(poolId, poolRef, pool, {
     finalize: deadlinePassed,

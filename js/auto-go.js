@@ -2658,3 +2658,132 @@ ${currentPoolData.title}
     }
   }, 500);
 })();
+
+
+window.__agAdminOpsHtml = function(p) {
+  if (!p || !p.id) return "";
+  const pid = escapeAutoGoHtml(p.id);
+  const entries = Array.isArray(p.entries) ? p.entries : [];
+  const dummyCount = entries.filter((e) => String(e && (e.uid || e.id) || "").startsWith("dummy_")).length;
+  const isTest = /^\[TEST\]/i.test(String(p.title || "")) || p.isTest === true;
+  return `
+    <div class="mt-2 rounded-xl border ${isTest ? "border-amber-300 bg-amber-50/70" : "border-indigo-200 bg-indigo-50/60"} p-2.5 space-y-2">
+      <div class="flex items-center justify-between gap-2">
+        <span class="text-[10px] font-black ${isTest ? "text-amber-900" : "text-indigo-900"}">
+          🧪 ダミー操作（${isTest ? "テストプール" : "本番プール"} / ダミー ${dummyCount}件）
+        </span>
+        <span class="text-[9px] font-bold text-gray-500">管理者専用</span>
+      </div>
+      <div class="grid grid-cols-3 gap-1.5">
+        <button type="button" onclick="window.runAdminAutoGoDummyInject('${pid}', 1, false)"
+          class="min-h-[36px] rounded-lg bg-indigo-600 text-white text-[10px] font-black px-2 active:scale-[0.98]">
+          +1人 ダミー
+        </button>
+        <button type="button" onclick="window.runAdminAutoGoDummyInject('${pid}', 5, false)"
+          class="min-h-[36px] rounded-lg bg-indigo-600 text-white text-[10px] font-black px-2 active:scale-[0.98]">
+          +5人 ダミー
+        </button>
+        <button type="button" onclick="window.runAdminAutoGoDummyInject('${pid}', 1, true)"
+          class="min-h-[36px] rounded-lg bg-purple-600 text-white text-[10px] font-black px-2 active:scale-[0.98]">
+          成立まで補充
+        </button>
+      </div>
+      <div class="grid grid-cols-3 gap-1.5">
+        <button type="button" onclick="window.runAdminAutoGoSimReceipt('${pid}')"
+          class="min-h-[34px] rounded-lg bg-white border border-indigo-200 text-indigo-800 text-[10px] font-bold px-2 active:scale-[0.98]">
+          ダミー購入完了
+        </button>
+        <button type="button" onclick="window.runAdminAutoGoSimReveal('${pid}')"
+          class="min-h-[34px] rounded-lg bg-white border border-indigo-200 text-indigo-800 text-[10px] font-bold px-2 active:scale-[0.98]">
+          ダミー到着/開封
+        </button>
+        <button type="button" onclick="window.runAdminAutoGoForceClose('${pid}')"
+          class="min-h-[34px] rounded-lg bg-emerald-600 text-white text-[10px] font-black px-2 active:scale-[0.98]">
+          強制成立実行
+        </button>
+      </div>
+      ${dummyCount > 0 ? `
+        <button type="button" onclick="window.runAdminAutoGoPurgeDummies('${pid}')"
+          class="w-full min-h-[32px] rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-[10px] font-bold px-2 active:scale-[0.98]">
+          🧹 このプールのダミー（${dummyCount}件）だけ削除
+        </button>
+      ` : ""}
+    </div>
+  `;
+};
+
+window.runAdminAutoGoDummyInject = async function(poolId, count, fillToMin) {
+  try {
+    if (!refs.functions || typeof refs.httpsCallable !== "function") {
+      throw new Error("Functionsが未初期化です");
+    }
+    if (typeof showToast === "function") showToast("ダミー参加者を投入中...", "info");
+    const fn = refs.httpsCallable(refs.functions, "adminInjectAutoGoDummy");
+    const res = await fn({ poolId, count: Number(count || 1), fillToMin: !!fillToMin });
+    const data = (res && res.data) || {};
+    if (typeof showToast === "function") {
+      showToast(`ダミー ${data.injected ?? count}人 を投入しました（現在 ${data.totalCount ?? "-"}人）`, "success");
+    }
+    if (typeof window.renderAdminAutoGoPanel === "function") await window.renderAdminAutoGoPanel();
+  } catch (err) {
+    console.error(err);
+    if (typeof showToast === "function") showToast("ダミー投入エラー: " + (err?.message || "失敗しました"), "error");
+  }
+};
+
+window.runAdminAutoGoSimReceipt = async function(poolId) {
+  try {
+    const fn = refs.httpsCallable(refs.functions, "adminSimulateAutoGoReceipt");
+    await fn({ poolId, mode: "all" });
+    if (typeof showToast === "function") showToast("ダミーの購入完了を反映しました", "success");
+    if (typeof window.renderAdminAutoGoPanel === "function") await window.renderAdminAutoGoPanel();
+  } catch (err) {
+    console.error(err);
+    if (typeof showToast === "function") showToast("購入シミュエラー: " + (err?.message || "失敗しました"), "error");
+  }
+};
+
+window.runAdminAutoGoSimReveal = async function(poolId) {
+  try {
+    const fn = refs.httpsCallable(refs.functions, "adminSimulateAutoGoReveal");
+    await fn({ poolId, mode: "five_plus", arrived: true, revealed: true, shortCountdown: true });
+    if (typeof showToast === "function") showToast("ダミーの到着・開封を反映しました", "success");
+    if (typeof window.renderAdminAutoGoPanel === "function") await window.renderAdminAutoGoPanel();
+  } catch (err) {
+    console.error(err);
+    if (typeof showToast === "function") showToast("開封シミュエラー: " + (err?.message || "失敗しました"), "error");
+  }
+};
+
+window.runAdminAutoGoForceClose = async function(poolId) {
+  try {
+    const fn = refs.httpsCallable(refs.functions, "adminForceCloseAutoGoReveal");
+    await fn({ poolId });
+    if (typeof showToast === "function") showToast("強制成立・自動割り当てを実行しました！", "success");
+    if (typeof window.renderAdminAutoGoPanel === "function") await window.renderAdminAutoGoPanel();
+  } catch (err) {
+    console.error(err);
+    if (typeof showToast === "function") showToast("強制成立エラー: " + (err?.message || "失敗しました"), "error");
+  }
+};
+
+window.runAdminAutoGoPurgeDummies = async function(poolId) {
+  try {
+    if (typeof showToast === "function") showToast("ダミー参加者のみ削除中...", "info");
+    const snap = await refs.getDocs(refs.collection(refs.db, "auto_go_pools", poolId, "entries"));
+    const dummyDocs = snap.docs.filter((d) => String(d.id || "").startsWith("dummy_"));
+    if (!dummyDocs.length) {
+      if (typeof showToast === "function") showToast("削除対象のダミーがありません", "info");
+      return;
+    }
+    const rmFn = refs.httpsCallable(refs.functions, "adminRemoveAutoGoEntry");
+    for (const d of dummyDocs) {
+      await rmFn({ poolId, uid: d.id });
+    }
+    if (typeof showToast === "function") showToast(`ダミー ${dummyDocs.length}件 を削除しました`, "success");
+    if (typeof window.renderAdminAutoGoPanel === "function") await window.renderAdminAutoGoPanel();
+  } catch (err) {
+    console.error(err);
+    if (typeof showToast === "function") showToast("ダミー削除エラー: " + (err?.message || "失敗しました"), "error");
+  }
+};
