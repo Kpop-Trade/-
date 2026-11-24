@@ -15434,12 +15434,12 @@ window._changeSavedBannerPhoto = function(idx, input) {
     modal.dataset.swipeBound="1";
     const backdrop=document.createElement("div");
     backdrop.id="detail-swipe-backdrop";
-    backdrop.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,0.32);z-index:49;opacity:0;pointer-events:none;transition:opacity .22s ease;display:none;";
+    backdrop.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,0.28);z-index:45;opacity:0;pointer-events:none;transition:opacity .22s ease;display:none;";
     modal.parentNode.insertBefore(backdrop,modal);
     const syncBackdrop=()=>{
       const open=!modal.classList.contains("hidden");
       backdrop.style.display=open?"block":"none";
-      if(open&&!dragging){backdrop.style.opacity="1";modal.style.transform="translateX(0px)";modal.style.boxShadow="-12px 0 32px rgba(0,0,0,0.18)";}
+      if(open&&!dragging){backdrop.style.opacity="0";modal.style.transform="translateX(0px)";modal.style.boxShadow="-12px 0 32px rgba(0,0,0,0.18)";}
     };
     new MutationObserver(syncBackdrop).observe(modal,{attributes:true,attributeFilter:["class"]});
     let startX=0,startY=0,dx=0,dragging=false,locked=false,startTime=0;
@@ -15458,7 +15458,7 @@ window._changeSavedBannerPhoto = function(idx, input) {
       const diffY=Math.abs(t.clientY-startY);
       if(!dragging){
         if(diffY>12&&diffY>Math.abs(diffX)){locked=true;return;}
-        if(diffX>10&&diffX>diffY*1.2){
+        if(diffX>10&&diffX>diffY*1.2){backdrop.style.display="block";backdrop.style.opacity="1";
           dragging=true;
           modal.style.transition="none";
           backdrop.style.transition="none";
@@ -15491,8 +15491,7 @@ window._changeSavedBannerPhoto = function(idx, input) {
       }else{
         modal.style.transform="translateX(0px)";
         modal.style.borderRadius="";
-        backdrop.style.opacity="1";
-        setTimeout(()=>{modal.style.transition="";},240);
+        backdrop.style.opacity="0";setTimeout(()=>{modal.style.transition="";backdrop.style.display="none";},240);
       }
       dragging=false;startX=0;dx=0;
     };
