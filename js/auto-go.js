@@ -2300,7 +2300,7 @@ ${currentPoolData.title}
     const s = v.trim();
     if (!s) return false;
     if (s.startsWith("data:image/")) return true;
-    if (/^https?:///i.test(s) && (/.(png|jpe?g|gif|webp|heic|avif)(?|$)/i.test(s) || s.includes("firebasestorage") || s.includes("cloudinary") || s.includes("imgur") || s.includes("googleusercontent"))) {
+    if (/^https?:\/\//i.test(s) && (/\.(png|jpe?g|gif|webp|heic|avif)(\?|$)/i.test(s) || s.includes("firebasestorage") || s.includes("cloudinary") || s.includes("imgur") || s.includes("googleusercontent"))) {
       return true;
     }
     return false;
@@ -2313,7 +2313,7 @@ ${currentPoolData.title}
       if (!url || typeof url !== "string") return;
       const clean = url.trim();
       if (!clean || seen.has(clean)) return;
-      if (!clean.startsWith("data:image/") && !/^https?:///i.test(clean)) return;
+      if (!clean.startsWith("data:image/") && !/^https?:\/\//i.test(clean)) return;
       seen.add(clean);
       found.push({ label, url: clean });
     }
