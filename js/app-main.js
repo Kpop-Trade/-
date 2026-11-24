@@ -15395,3 +15395,79 @@ window._changeSavedBannerPhoto = function(idx, input) {
     await fsMod.setDoc(fsMod.doc(activeDb, "siteConfig", "topBanners"), { items: cleaned, updatedAt: Date.now() }, { merge: true });
   };
 })();
+
+;(function initDetailSwipeBack(){
+  function setup(){
+    const modal=document.getElementById("detail-modal");
+    if(!modal||modal.dataset.swipeBound)return;
+    modal.dataset.swipeBound="1";
+    const backdrop=document.createElement("div");
+    backdrop.id="detail-swipe-backdrop";
+    backdrop.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,0.32);z-index:49;opacity:0;pointer-events:none;transition:opacity .22s ease;display:none;";
+    modal.parentNode.insertBefore(backdrop,modal);
+    const syncBackdrop=()=>{
+      const open=!modal.classList.contains("hidden");
+      backdrop.style.display=open?"block":"none";
+      if(open&&!dragging){backdrop.style.opacity="1";modal.style.transform="translateX(0px)";modal.style.boxShadow="-12px 0 32px rgba(0,0,0,0.18)";}
+    };
+    new MutationObserver(syncBackdrop).observe(modal,{attributes:true,attributeFilter:["class"]});
+    let startX=0,startY=0,dx=0,dragging=false,locked=false,startTime=0;
+    modal.addEventListener("touchstart",(e)=>{
+      if(e.touches.length!==1||modal.classList.contains("hidden"))return;
+      const t=e.touches[0];
+      const fromEdge=t.clientX<=52;
+      const inCarousel=!!e.target.closest("#detail-image-track,.detail-carousel,[data-carousel]");
+      if(inCarousel&&!fromEdge)return;
+      startX=t.clientX;startY=t.clientY;dx=0;dragging=false;locked=false;startTime=Date.now();
+    },{passive:true});
+    modal.addEventListener("touchmove",(e)=>{
+      if(!startX||locked||modal.classList.contains("hidden"))return;
+      const t=e.touches[0];
+      const diffX=t.clientX-startX;
+      const diffY=Math.abs(t.clientY-startY);
+      if(!dragging){
+        if(diffY>12&&diffY>Math.abs(diffX)){locked=true;return;}
+        if(diffX>10&&diffX>diffY*1.2){
+          dragging=true;
+          modal.style.transition="none";
+          backdrop.style.transition="none";
+          modal.style.borderRadius="20px 0 0 20px";
+        }
+      }
+      if(dragging){
+        dx=Math.max(0,diffX);
+        const progress=Math.min(1,dx/window.innerWidth);
+        modal.style.transform="translateX("+dx+"px)";
+        backdrop.style.opacity=String(Math.max(0,1-progress));
+      }
+    },{passive:true});
+    const finish=()=>{
+      if(!dragging){startX=0;return;}
+      const elapsed=Math.max(1,Date.now()-startTime);
+      const velocity=dx/elapsed;
+      const shouldClose=dx>window.innerWidth*0.28||(dx>45&&velocity>0.45);
+      modal.style.transition="transform .24s cubic-bezier(.22,1,.36,1), border-radius .24s ease";
+      backdrop.style.transition="opacity .24s ease";
+      if(shouldClose){
+        modal.style.transform="translateX(100%)";
+        backdrop.style.opacity="0";
+        setTimeout(()=>{
+          if(typeof window.closeDetailModal==="function")window.closeDetailModal();
+          else modal.classList.add("hidden");
+          modal.style.transition="";modal.style.transform="";modal.style.borderRadius="";
+          backdrop.style.display="none";
+        },230);
+      }else{
+        modal.style.transform="translateX(0px)";
+        modal.style.borderRadius="";
+        backdrop.style.opacity="1";
+        setTimeout(()=>{modal.style.transition="";},240);
+      }
+      dragging=false;startX=0;dx=0;
+    };
+    modal.addEventListener("touchend",finish,{passive:true});
+    modal.addEventListener("touchcancel",finish,{passive:true});
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",setup);
+  else setup();
+})();
