@@ -4017,7 +4017,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           loginCalendarData = { ...(loginCalendarData || {}), loginStamps: userData.loginStamps };
         }
         if (!document.getElementById("trades-modal").classList.contains("hidden")) renderTradesList();
-        if (!document.getElementById("todo-modal").classList.contains("hidden")) renderTodoList();
+        /* todo-modal observer trigger removed to prevent infinite loop */
         if (!document.getElementById("wallet-modal").classList.contains("hidden")) renderWallet();
         if (!document.getElementById("notifications-modal").classList.contains("hidden")) renderNotificationsList();
       }, (err) => console.warn("user snapshot error:", err?.code || err));
@@ -7766,7 +7766,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         renderSellTab();
         scheduleHealSoldPosts();
         if (!document.getElementById("trades-modal").classList.contains("hidden")) renderTradesList();
-        if (!document.getElementById("todo-modal").classList.contains("hidden")) renderTodoList();
+        /* todo-modal observer trigger removed to prevent infinite loop */
         if (!document.getElementById("wallet-modal").classList.contains("hidden")) renderWallet();
       }, (err) => console.warn("trades snapshot error:", err?.code || err));
     }

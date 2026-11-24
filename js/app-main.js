@@ -1527,7 +1527,7 @@ window.triggerHeartPop = function(button) {
           loginCalendarData = { ...(loginCalendarData || {}), loginStamps: userData.loginStamps };
         }
         if (!document.getElementById("trades-modal").classList.contains("hidden")) renderTradesList();
-        if (!document.getElementById("todo-modal").classList.contains("hidden")) renderTodoList();
+        /* todo-modal observer trigger removed to prevent infinite loop */
         if (!document.getElementById("wallet-modal").classList.contains("hidden")) renderWallet();
         if (!document.getElementById("notifications-modal").classList.contains("hidden")) renderNotificationsList();
         // 公開プロフィールから配送先PIIを分離し、非公開サブコレクションをローカルへマージ
@@ -7433,7 +7433,7 @@ window.renderHomeThemeSections = function(entries, cardHtmlById) {
         renderSellTab();
         scheduleHealSoldPosts();
         if (!document.getElementById("trades-modal").classList.contains("hidden")) renderTradesList();
-        if (!document.getElementById("todo-modal").classList.contains("hidden")) renderTodoList();
+        /* todo-modal observer trigger removed to prevent infinite loop */
         if (!document.getElementById("wallet-modal").classList.contains("hidden")) renderWallet();
       }, (err) => {
         console.warn("trades snapshot error:", err?.code || err);
@@ -15760,4 +15760,45 @@ window._changeSavedBannerPhoto = function(idx, input) {
     document.addEventListener("DOMContentLoaded", installAdminTabGuard);
   }
   setInterval(installAdminTabGuard, 500);
+})();
+
+
+/* === Safe Single-Pass Todo Modal & Render Guard === */
+(function() {
+  let rendering = false;
+  function installTodoGuard() {
+    if (typeof window.renderTodoList === "function" && !window.renderTodoList.__locked) {
+      const origRender = window.renderTodoList;
+      const safeRender = function() {
+        if (rendering) return;
+        rendering = true;
+        try {
+          return origRender.apply(this, arguments);
+        } finally {
+          setTimeout(() => { rendering = false; }, 100);
+        }
+      };
+      safeRender.__locked = true;
+      window.renderTodoList = safeRender;
+    }
+    window.openTodoModal = function() {
+      const modal = document.getElementById("todo-modal");
+      if (!modal) return;
+      modal.classList.remove("hidden");
+      modal.style.display = "flex";
+      modal.style.position = "fixed";
+      modal.style.inset = "0";
+      modal.style.zIndex = "99999";
+      modal.style.backgroundColor = "#ffffff";
+      modal.style.pointerEvents = "auto";
+      if (typeof window.renderTodoList === "function") {
+        window.renderTodoList();
+      }
+    };
+  }
+  installTodoGuard();
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", installTodoGuard);
+  }
+  setTimeout(installTodoGuard, 500);
 })();
