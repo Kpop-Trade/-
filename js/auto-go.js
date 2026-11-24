@@ -2075,3 +2075,148 @@ ${currentPoolData.title}
   // ディープリンク（?pool= / ?tab=autogo）は auto-go-home-hero.js 側で処理
   drawFirstChoiceChart(0, 5, 20, 20);
 })();
+
+
+/* === Broadcast URL to All Participants on Recruitment End === */
+(function() {
+  async function broadcastUrlToPoolParticipants(poolId, poolData) {
+    if (!poolId) return;
+    const refs = window.__autoGoRefs || {};
+    const db = refs.db || window.db;
+    if (!db) return;
+
+    const targetUrl = String(
+      (poolData && (poolData.purchaseUrl || poolData.inviteUrl || poolData.url)) || ""
+    ).trim();
+    const poolTitle = String((poolData && (poolData.title || poolData.name)) || "Auto-GO").trim();
+
+    try {
+      // Avoid duplicate broadcast if already marked sent
+      if (poolData && (poolData.urlBroadcastSent === true || poolData.urlBroadcastSentAt)) {
+        return;
+      }
+
+      const updateDocFn = refs.updateDoc || window.updateDoc;
+      const setDocFn = refs.setDoc || window.setDoc;
+      const docFn = refs.doc || window.doc;
+      const collectionFn = refs.collection || window.collection;
+      const getDocsFn = refs.getDocs || window.getDocs;
+      const queryFn = refs.query || window.query;
+      const whereFn = refs.where || window.where;
+      const addDocFn = refs.addDoc || window.addDoc;
+      const ts = refs.serverTimestamp ? refs.serverTimestamp() : new Date();
+
+      if (!docFn || !collectionFn || !getDocsFn) return;
+
+      // Query entries belonging to this pool
+      let snap = null;
+      const entriesCol = collectionFn(db, "autoGoEntries");
+      if (queryFn && whereFn) {
+        try {
+          snap = await getDocsFn(queryFn(entriesCol, whereFn("poolId", "==", poolId)));
+        } catch (_) {}
+      }
+      if (!snap) {
+        try {
+          snap = await getDocsFn(entriesCol);
+        } catch (_) {}
+      }
+
+      const recipientIds = new Set();
+      if (snap && snap.docs) {
+        for (const d of snap.docs) {
+          const data = d.data() || {};
+          if (data.poolId !== poolId) continue;
+          const uid = data.userId || data.uid || data.ownerId;
+          if (uid) recipientIds.add(String(uid));
+
+          const entryPatch = {
+            broadcastUrl: targetUrl,
+            urlDeliveredAt: ts,
+            urlBroadcastStatus: "sent"
+          };
+          if (updateDocFn) {
+            await updateDocFn(d.ref, entryPatch).catch(() => {});
+          } else if (setDocFn) {
+            await setDocFn(d.ref, entryPatch, { merge: true }).catch(() => {});
+          }
+        }
+      }
+
+      // Send in-app notification records to every participant if notifications collection is available
+      if (targetUrl && addDocFn && recipientIds.size > 0) {
+        const notifCol = collectionFn(db, "notifications");
+        for (const uid of recipientIds) {
+          await addDocFn(notifCol, {
+            toUserId: uid,
+            userId: uid,
+            type: "auto_go_url_broadcast",
+            title: "【募集終了】" + poolTitle + " のURLが届きました",
+            message: "募集期間が終了しました。URL: " + targetUrl,
+            url: targetUrl,
+            poolId: poolId,
+            read: false,
+            createdAt: ts
+          }).catch(() => {});
+        }
+      }
+
+      // Mark pool as broadcast-sent so URL is only pushed once at end moment
+      const poolRef = docFn(db, "autoGoPools", poolId);
+      const poolPatch = {
+        urlBroadcastSent: true,
+        urlBroadcastSentAt: ts,
+        broadcastUrl: targetUrl,
+        broadcastRecipientCount: recipientIds.size
+      };
+      if (updateDocFn) {
+        await updateDocFn(poolRef, poolPatch).catch(() => {});
+      } else if (setDocFn) {
+        await setDocFn(poolRef, poolPatch, { merge: true }).catch(() => {});
+      }
+
+      if (typeof window.showToast === "function") {
+        window.showToast(
+          recipientIds.size > 0
+            ? "募集終了と同時に " + recipientIds.size + " 名へURLを一斉送信しました"
+            : "募集を終了しました（送信対象参加者: 0名）",
+          "info"
+        );
+      }
+    } catch (err) {
+      console.warn("URL broadcast on recruitment end error:", err);
+    }
+  }
+
+  function checkExpiredPoolsForBroadcast() {
+    const pools = Array.isArray(window.__autoGoPoolsCache) ? window.__autoGoPoolsCache : [];
+    const now = Date.now();
+    pools.forEach((p) => {
+      if (!p || !p.id) return;
+      if (p.urlBroadcastSent || p.urlBroadcastSentAt) return;
+      const rawEnd = p.recruitmentEndAt || p.endAt || p.deadline || p.closesAt;
+      if (!rawEnd) return;
+      const endMs = typeof rawEnd.toMillis === "function"
+        ? rawEnd.toMillis()
+        : (rawEnd instanceof Date ? rawEnd.getTime() : new Date(rawEnd).getTime());
+      if (endMs && now >= endMs) {
+        broadcastUrlToPoolParticipants(p.id, p);
+      }
+    });
+  }
+
+  if (typeof window.closeAdminAutoGoRecruit === "function" && !window.closeAdminAutoGoRecruit.__urlBroadcastPatched) {
+    const origCloseRecruit = window.closeAdminAutoGoRecruit;
+    const wrappedCloseRecruit = async function(poolId) {
+      const res = await origCloseRecruit.apply(this, arguments);
+      const pools = Array.isArray(window.__autoGoPoolsCache) ? window.__autoGoPoolsCache : [];
+      const poolData = pools.find((x) => x && x.id === poolId) || { id: poolId };
+      await broadcastUrlToPoolParticipants(poolId, poolData);
+      return res;
+    };
+    wrappedCloseRecruit.__urlBroadcastPatched = true;
+    window.closeAdminAutoGoRecruit = wrappedCloseRecruit;
+  }
+
+  setInterval(checkExpiredPoolsForBroadcast, 10000);
+})();
