@@ -897,6 +897,7 @@
 
 
 
+
 <style id="gllit-peek-banner-fix">
   header.kp-market-header,
   .lg-header {
@@ -921,18 +922,22 @@
   #gllit-carousel-track {
     display: flex !important;
     align-items: stretch !important;
-    gap: 8px !important;
-    padding: 0 28px 6px 28px !important;
-    scroll-padding-inline: 28px !important;
+    gap: 6px !important;
+    padding: 0 14px 6px 14px !important;
+    scroll-padding-inline: 14px !important;
     overflow-x: auto !important;
     scroll-snap-type: x mandatory !important;
+    scrollbar-width: none !important;
+  }
+  #gllit-carousel-track::-webkit-scrollbar {
+    display: none !important;
   }
   #gllit-carousel-track > .gllit-banner-slide,
   #gllit-carousel-track > .gllit-mercari-card {
-    width: calc(100vw - 56px) !important;
-    min-width: calc(100vw - 56px) !important;
-    max-width: calc(100vw - 56px) !important;
-    flex: 0 0 calc(100vw - 56px) !important;
+    width: calc(100vw - 28px) !important;
+    min-width: calc(100vw - 28px) !important;
+    max-width: calc(100vw - 28px) !important;
+    flex: 0 0 calc(100vw - 28px) !important;
     height: 262px !important;
     min-height: 262px !important;
     border-radius: 0px !important;
@@ -975,6 +980,116 @@
     flex: 0 0 100vw !important;
   }
 </style>
+<script id="gllit-infinite-loop-script">
+(function() {
+  let isTeleporting = false;
+  let scrollEndTimer = null;
+
+  function setupInfiniteLoop() {
+    const track = document.getElementById("gllit-carousel-track");
+    if (!track) return;
+
+    // すでにクローン済みのスライドを除外してオリジナルを取得
+    const originals = Array.from(track.children).filter(el => !el.dataset.infiniteClone);
+    if (originals.length <= 1) return;
+
+    // オリジナル構成が変わっていなければ再構築しない
+    const sig = originals.map(el => el.outerHTML).join("|");
+    if (track.dataset.infiniteSig === sig) return;
+    track.dataset.infiniteSig = sig;
+
+    // 古いクローン削除
+    Array.from(track.querySelectorAll("[data-infinite-clone]")).forEach(el => el.remove());
+
+    const n = originals.length;
+    // 前後に2枚ずつクローンを配置（peek表示でも端が途切れないように）
+    const pre2 = originals[(n - 2 + n) % n].cloneNode(true);
+    const pre1 = originals[n - 1].cloneNode(true);
+    const post1 = originals[0].cloneNode(true);
+    const post2 = originals[1 % n].cloneNode(true);
+
+    [pre2, pre1, post1, post2].forEach(c => {
+      c.dataset.infiniteClone = "1";
+    });
+
+    track.insertBefore(pre1, originals[0]);
+    track.insertBefore(pre2, pre1);
+    track.appendChild(post1);
+    track.appendChild(post2);
+
+    const stepWidth = () => {
+      const first = track.children[0];
+      return first ? (first.getBoundingClientRect().width + 6) : (window.innerWidth - 22);
+    };
+
+    // 初期位置を本物の1枚目（index 2）へ瞬間移動
+    requestAnimationFrame(() => {
+      track.style.scrollBehavior = "auto";
+      track.scrollLeft = stepWidth() * 2;
+    });
+
+    function checkWrap() {
+      if (isTeleporting) return;
+      const step = stepWidth();
+      if (step <= 0) return;
+      const idx = Math.round(track.scrollLeft / step);
+
+      // 左側のクローン領域（index 0 or 1）に入ったら本物の末尾側へ瞬間ワープ
+      if (idx <= 1) {
+        isTeleporting = true;
+        const prevSnap = track.style.scrollSnapType;
+        track.style.scrollSnapType = "none";
+        track.style.scrollBehavior = "auto";
+        track.scrollLeft += step * n;
+        requestAnimationFrame(() => {
+          track.style.scrollSnapType = prevSnap || "";
+          isTeleporting = false;
+        });
+      }
+      // 右側のクローン領域（index >= n + 2）に入ったら本物の先頭側へ瞬間ワープ
+      else if (idx >= n + 2) {
+        isTeleporting = true;
+        const prevSnap = track.style.scrollSnapType;
+        track.style.scrollSnapType = "none";
+        track.style.scrollBehavior = "auto";
+        track.scrollLeft -= step * n;
+        requestAnimationFrame(() => {
+          track.style.scrollSnapType = prevSnap || "";
+          isTeleporting = false;
+        });
+      }
+    }
+
+    if (!track.dataset.infiniteBound) {
+      track.dataset.infiniteBound = "1";
+      track.addEventListener("scroll", () => {
+        if (scrollEndTimer) clearTimeout(scrollEndTimer);
+        scrollEndTimer = setTimeout(checkWrap, 90);
+      }, { passive: true });
+    }
+  }
+
+  function initObserver() {
+    const track = document.getElementById("gllit-carousel-track");
+    if (track) {
+      setupInfiniteLoop();
+      if (!track.dataset.infiniteObserved) {
+        track.dataset.infiniteObserved = "1";
+        new MutationObserver(() => {
+          if (!isTeleporting) setupInfiniteLoop();
+        }).observe(track, { childList: true });
+      }
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initObserver);
+  } else {
+    initObserver();
+  }
+  setInterval(initObserver, 1000);
+})();
+</script>
 
 </head>
 <body class="bg-illit-bg min-h-screen text-gray-800 relative overflow-x-hidden home-tab">
