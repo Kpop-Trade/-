@@ -16120,3 +16120,73 @@ window._changeSavedBannerPhoto = function(idx, input) {
   }
   setInterval(installSlideHooks, 400);
 })();
+
+
+/* === Global Strong Haptics Booster === */
+(function() {
+  let lastGlobalHaptic = 0;
+
+  window.triggerStrongHeartHaptic = function() {
+    try {
+      if (navigator.vibrate) navigator.vibrate([55, 25, 75]);
+    } catch (e) {}
+    try {
+      let pool = document.getElementById("strong-haptic-pool");
+      if (!pool) {
+        pool = document.createElement("div");
+        pool.id = "strong-haptic-pool";
+        pool.style.cssText = "position:fixed;left:-9999px;top:0;opacity:0.01;pointer-events:none;";
+        for (let i = 0; i < 4; i++) {
+          const lbl = document.createElement("label");
+          const inp = document.createElement("input");
+          inp.type = "checkbox";
+          inp.setAttribute("switch", "");
+          lbl.appendChild(inp);
+          pool.appendChild(lbl);
+        }
+        document.body.appendChild(pool);
+      }
+      const labels = pool.querySelectorAll("label");
+      labels[0]?.click();
+      setTimeout(() => labels[1]?.click(), 22);
+      setTimeout(() => labels[2]?.click(), 50);
+      setTimeout(() => labels[3]?.click(), 85);
+    } catch (e) {}
+  };
+
+  function installStrongHapticOverride() {
+    if (typeof window.triggerHaptic === "function" && !window.triggerHaptic.__boosted) {
+      const origHaptic = window.triggerHaptic;
+      const boosted = function(pattern) {
+        try {
+          if (navigator.vibrate) {
+            navigator.vibrate(Array.isArray(pattern) ? pattern.map(n => Math.max(45, n * 2)) : [50, 25, 65]);
+          }
+        } catch (e) {}
+        if (typeof window.triggerStrongHeartHaptic === "function") {
+          window.triggerStrongHeartHaptic();
+        }
+        try { return origHaptic.apply(this, arguments); } catch (e) {}
+      };
+      boosted.__boosted = true;
+      window.triggerHaptic = boosted;
+    }
+  }
+
+  installStrongHapticOverride();
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", installStrongHapticOverride);
+  }
+  setInterval(installStrongHapticOverride, 500);
+
+  document.addEventListener("pointerdown", function(e) {
+    const target = e.target && e.target.closest ? e.target.closest("button, a, [role='button'], input[type='checkbox'], .header-icon-button, .nav-btn") : null;
+    if (!target) return;
+    const now = Date.now();
+    if (now - lastGlobalHaptic < 90) return;
+    lastGlobalHaptic = now;
+    if (typeof window.triggerStrongHeartHaptic === "function") {
+      window.triggerStrongHeartHaptic();
+    }
+  }, { passive: true, capture: true });
+})();
