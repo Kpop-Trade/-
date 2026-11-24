@@ -21,6 +21,7 @@ window.addEventListener("unhandledrejection", function(event) {
 });
 
 (function() {
+  if (document.getElementById("kp-ptr-style")) return;
   const MAX_PULL = 118;
   const THRESHOLD = 62;
   const HOLD = 54;

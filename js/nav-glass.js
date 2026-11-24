@@ -34,7 +34,7 @@
 (function () {
   const modal = document.getElementById("detail-modal");
   const sheet = modal && modal.firstElementChild;
-  if (!modal || !sheet) return;
+  if (!modal || !sheet || window.__kpDetailSwipe) return;
   let sx = 0, sy = 0, dx = 0, tracking = false;
   modal.addEventListener("touchstart", function (e) {
     if (modal.classList.contains("hidden") || !e.touches || e.touches.length !== 1) return;

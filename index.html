@@ -32,7 +32,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js?v=20261121"></script>
 
   <script src="./js/tailwind-config.js?v=20261121"></script>
-  <link rel="stylesheet" href="./styles.css?v=20261124full1">
+  <link rel="stylesheet" href="./styles.css?v=20261124swipe2">
   <link rel="stylesheet" href="./liquid-glass.css?v=20261121">
   <link rel="stylesheet" href="./mycards-binder.css?v=20261121c">
 
@@ -502,14 +502,31 @@
   animation: kpSlideOutRight 0.22s cubic-bezier(0.22, 1, 0.36, 1) forwards !important;
   will-change: transform;
 }
+#detail-modal {
+  background: transparent !important;
+  z-index: 80 !important;
+  pointer-events: none;
+}
+#detail-modal .detail-sheet {
+  pointer-events: auto;
+  background: #f5f5f5 !important;
+  box-shadow: -18px 0 36px rgba(0, 0, 0, 0.18);
+  min-height: 100%;
+}
+#detail-modal.is-swiping .detail-sheet {
+  border-radius: 22px 0 0 22px;
+  overflow: hidden;
+}
 </style>
 <script>
 (function() {
+  window.__kpDetailSwipe = true;
   const targetKeywords = ["notif", "notice", "todo", "task", "yarukoto", "bell", "inbox", "activity", "alert", "message-box", "oshirase"];
 
   function isSlideTargetModal(el) {
     if (!el || el.nodeType !== 1) return false;
     const id = (el.id || "").toLowerCase();
+    if (id === "detail-modal") return true;
     const textHint = (el.getAttribute("data-modal") || "").toLowerCase();
     if (targetKeywords.some(k => id.includes(k) || textHint.includes(k))) {
       return id.includes("modal") || id.includes("view") || id.includes("panel") || id.includes("drawer") || id.includes("box") || id.includes("list") || el.classList.contains("fixed");
@@ -545,6 +562,7 @@
       sheet.style.transform = "";
       sheet.style.setProperty("--kp-drag-x", "0px");
       delete modal.dataset.kpClosing;
+      modal.classList.remove("is-swiping");
 
       // モーダル内の閉じるボタンがあればクリックして正規の閉じる処理を呼ぶ
       const closeBtn = modal.querySelector("button[onclick*='close'], button[onclick*='Close'], button[onclick*='hide'], button[onclick*='hidden'], button[aria-label*='閉'], button[aria-label*='戻']");
@@ -616,6 +634,7 @@
       // 横方向への移動が縦方向より明確に大きい場合のみスワイプ開始
       if (dx > 14 && Math.abs(dx) > Math.abs(dy) * 1.35) {
         isSwiping = true;
+        activeModal.classList.add("is-swiping");
         activeSheet.classList.remove("kp-slide-in-right-anim");
         activeSheet.style.transition = "none";
       } else if (Math.abs(dy) > 14) {
@@ -642,6 +661,7 @@
         activeSheet.style.transition = "transform 0.2s cubic-bezier(0.22, 1, 0.36, 1)";
         activeSheet.style.transform = "translateX(0px)";
         activeSheet.style.setProperty("--kp-drag-x", "0px");
+        activeModal.classList.remove("is-swiping");
       }
     }
     activeModal = null;
@@ -665,21 +685,20 @@
 <style id="kp-ptr-style">
 #kp-ptr-indicator {
   position: fixed;
-  top: -56px;
+  top: -64px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 9999;
+  width: 52px;
+  height: 52px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid rgba(147, 51, 234, 0.22);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.14);
-  color: #6b21a8;
-  font-size: 12px;
-  font-weight: 800;
+  justify-content: center;
+  padding: 0;
+  border-radius: 50%;
+  background: #fff;
+  border: 0;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.16);
   transition: top 0.2s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
   opacity: 0;
   pointer-events: none;
@@ -687,12 +706,17 @@
 #kp-ptr-indicator.kp-ptr-visible {
   opacity: 1;
 }
+#kp-ptr-label { display: none; }
 #kp-ptr-spinner {
-  width: 15px;
-  height: 15px;
-  border: 2.2px solid rgba(147, 51, 234, 0.25);
-  border-top-color: #7e22ce;
+  width: 22px;
+  height: 22px;
+  border: 0;
   border-radius: 50%;
+  background:
+    linear-gradient(#222, #222) center / 2.4px 100% no-repeat,
+    linear-gradient(#222, #222) center / 100% 2.4px no-repeat,
+    linear-gradient(45deg, transparent 46%, #222 46% 54%, transparent 54%),
+    linear-gradient(-45deg, transparent 46%, #222 46% 54%, transparent 54%);
   transition: transform 0.12s linear;
 }
 #kp-ptr-indicator.kp-ptr-refreshing #kp-ptr-spinner {
@@ -713,7 +737,24 @@
   let spinner = null;
   let label = null;
 
-  const THRESHOLD_DY = 125;
+  let ptrBuzzed = false;
+
+  function buzzStrong() {
+    try { if (navigator.vibrate) navigator.vibrate([22, 40, 28]); } catch (e) {}
+    var sw = document.getElementById("ios-haptic-switch");
+    if (!sw) {
+      sw = document.createElement("input");
+      sw.type = "checkbox";
+      sw.id = "ios-haptic-switch";
+      sw.setAttribute("switch", "");
+      sw.setAttribute("aria-hidden", "true");
+      sw.tabIndex = -1;
+      sw.style.cssText = "position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;pointer-events:none;";
+      document.body.appendChild(sw);
+    }
+    try { sw.click(); } catch (e) {}
+    setTimeout(function () { try { sw.click(); } catch (e) {} }, 40);
+  }
 
   function ensureIndicator() {
     if (indicator) return;
@@ -756,6 +797,7 @@
   function resetIndicator() {
     ptrCandidate = false;
     ptrEngaged = false;
+    ptrBuzzed = false;
     if (!indicator) return;
     indicator.classList.remove("kp-ptr-visible", "kp-ptr-refreshing");
     indicator.style.top = "-56px";
@@ -773,6 +815,7 @@
     ptrStartX = e.touches[0].clientX;
     ptrCandidate = true;
     ptrEngaged = false;
+    ptrBuzzed = false;
   }, { passive: true });
 
   document.addEventListener("touchmove", function(e) {
@@ -802,6 +845,10 @@
       if (spinner) spinner.style.transform = "rotate(" + Math.min(360, clamped * 2.5) + "deg)";
       if (label) {
         label.textContent = dy >= THRESHOLD_DY ? "離して更新" : "下にしっかり引いて更新";
+      }
+      if (dy >= THRESHOLD_DY && !ptrBuzzed) {
+        ptrBuzzed = true;
+        buzzStrong();
       }
     }
   }, { passive: true });
