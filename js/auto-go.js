@@ -1346,11 +1346,19 @@
       if (!recruitEnded) {
         html += '<p class="text-sm text-amber-800 font-bold">募集期間終了と同時に専用購入URLが発行されます</p>';
       } else {
-        html += '<div class="space-y-2"><p class="text-sm text-gray-700">専用購入URLが発行されました</p>';
+        html += '<div class="space-y-3">';
+        html += '<p class="text-sm font-bold text-gray-900">専用購入URLが発行されました</p>';
         if (currentPoolData && currentPoolData.purchaseUrl) {
           html += '<a href="' + escAttr(currentPoolData.purchaseUrl) + '" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-3 py-2 text-xs font-bold text-white">専用購入URLを開く</a>';
         }
-        html += '</div>';
+        html += '<div id="ag-purchase-active-actions" class="space-y-2 rounded-2xl border border-gray-200 bg-white p-3">';
+        html += '<label class="block text-xs font-bold text-gray-800">購入完了スクリーンショット（必須）</label>';
+        html += '<input id="ag-purchase-proof" type="file" accept="image/*" onchange="window.previewAutoGoPurchaseProof && window.previewAutoGoPurchaseProof(this)" class="block w-full text-xs text-gray-700" />';
+        html += '<input id="ag-purchase-proof-camera" type="file" accept="image/*" capture="environment" onchange="window.previewAutoGoPurchaseProof && window.previewAutoGoPurchaseProof(this)" class="hidden" />';
+        html += '<div id="ag-purchase-proof-preview-wrap" class="hidden"><img id="ag-purchase-proof-preview" alt="プレビュー" class="max-h-40 rounded-xl border border-gray-200" /></div>';
+        html += '<input id="ag-purchase-order-note" type="text" placeholder="注文番号（任意）" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-xs" />';
+        html += '<button type="button" onclick="window.markAutoGoPurchased && window.markAutoGoPurchased()" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white">購入を報告</button>';
+        html += '</div></div>';
       }
     } else if (currentEntryData.status === "purchased") {
       html += `<div class="space-y-3">
