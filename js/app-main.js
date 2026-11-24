@@ -14301,7 +14301,9 @@ function renderGllitMercariCarousel(upcomingList) {
     track.parentElement.style.borderRadius = "0px";
   }
 
-  track.style.gap = "0px";
+  track.style.gap = banners.length > 1 ? "10px" : "0px";
+  track.style.padding = banners.length > 1 ? "6px 22px" : "0px";
+  track.style.scrollPaddingInline = "22px";
   track.style.borderRadius = "0px";
   track.style.scrollSnapType = "x mandatory";
   track.style.paddingLeft = "0px";
@@ -14319,8 +14321,7 @@ function renderGllitMercariCarousel(upcomingList) {
       : "background:linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);";
 
     return `<div onclick="window.handleCarouselSlideTap(this)" data-link="${link}" data-action=""
-      style="${bgStyle} border-radius:0px; min-height:176px; height:176px;"
-      class="gllit-banner-slide snap-start shrink-0 w-full relative flex flex-col justify-end p-4 text-white select-none ${link ? "cursor-pointer active:opacity-95" : ""}">
+      style="${bgStyle} border-radius:${banners.length > 1 ? "14px" : "0px"}; min-height:176px; height:176px;" class="gllit-banner-slide snap-center shrink-0 ${banners.length > 1 ? "w-[calc(100%-8px)]" : "w-full"} relative flex flex-col justify-end p-4 text-white select-none ${link ? "cursor-pointer active:opacity-95" : ""}">
       ${hasText ? `<div class="text-sm font-black leading-snug drop-shadow">${title}</div>` : ""}
       ${link ? `<span class="absolute top-2.5 right-2.5 bg-black/55 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5">詳細 ›</span>` : ""}
     </div>`;
@@ -15551,4 +15552,65 @@ window._changeSavedBannerPhoto = function(idx, input) {
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",patch);
   else patch();
   setTimeout(patch,500);
+})();
+
+;(function initPeekBannerLoop() {
+  function attach() {
+    const track = document.getElementById("gllit-carousel-track");
+    if (!track || track.dataset.peekLoopBound) return;
+    track.dataset.peekLoopBound = "1";
+    const rebuildClones = () => {
+      track.querySelectorAll("[data-peek-clone]").forEach(el => el.remove());
+      const slides = Array.from(track.querySelectorAll(".gllit-banner-slide"));
+      if (slides.length <= 1) return;
+      const firstClone = slides[0].cloneNode(true);
+      const lastClone = slides[slides.length - 1].cloneNode(true);
+      firstClone.dataset.peekClone = "1";
+      lastClone.dataset.peekClone = "1";
+      track.insertBefore(lastClone, slides[0]);
+      track.appendChild(firstClone);
+      requestAnimationFrame(() => {
+        const realFirst = track.querySelectorAll(".gllit-banner-slide")[1];
+        if (realFirst) {
+          track.style.scrollBehavior = "auto";
+          track.scrollLeft = realFirst.offsetLeft - (track.clientWidth - realFirst.offsetWidth) / 2;
+          track.style.scrollBehavior = "smooth";
+        }
+      });
+    };
+    let scrollTimer = null;
+    track.addEventListener("scroll", () => {
+      clearTimeout(scrollTimer);
+      scrollTimer = setTimeout(() => {
+        const all = Array.from(track.querySelectorAll(".gllit-banner-slide"));
+        if (all.length <= 3) return;
+        const center = track.scrollLeft + track.clientWidth / 2;
+        let closestIdx = 0, minDist = Infinity;
+        all.forEach((s, i) => {
+          const d = Math.abs((s.offsetLeft + s.offsetWidth / 2) - center);
+          if (d < minDist) { minDist = d; closestIdx = i; }
+        });
+        if (closestIdx === 0) {
+          const target = all[all.length - 2];
+          track.style.scrollBehavior = "auto";
+          track.scrollLeft = target.offsetLeft - (track.clientWidth - target.offsetWidth) / 2;
+          track.style.scrollBehavior = "smooth";
+        } else if (closestIdx === all.length - 1) {
+          const target = all[1];
+          track.style.scrollBehavior = "auto";
+          track.scrollLeft = target.offsetLeft - (track.clientWidth - target.offsetWidth) / 2;
+          track.style.scrollBehavior = "smooth";
+        }
+      }, 90);
+    }, { passive: true });
+    new MutationObserver((muts) => {
+      if (muts.some(m => Array.from(m.addedNodes).some(n => n.nodeType === 1 && !n.dataset?.peekClone))) {
+        rebuildClones();
+      }
+    }).observe(track, { childList: true });
+    rebuildClones();
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", attach);
+  else attach();
+  setTimeout(attach, 600);
 })();
