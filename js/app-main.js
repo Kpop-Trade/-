@@ -14302,8 +14302,8 @@ function renderGllitMercariCarousel(upcomingList) {
   }
 
   track.style.gap = banners.length > 1 ? "10px" : "0px";
-  track.style.padding = banners.length > 1 ? "0px 28px 6px 28px" : "0px";
-  track.style.scrollPaddingInline = "28px";
+  track.style.padding = banners.length > 1 ? "0px 32px 6px 32px" : "0px";
+  track.style.scrollPaddingInline = "32px";
   track.style.borderRadius = "0px";
   track.style.scrollSnapType = "x mandatory";
   track.style.paddingLeft = "0px";
@@ -14321,7 +14321,7 @@ function renderGllitMercariCarousel(upcomingList) {
       : "background:linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);";
 
     return `<div onclick="window.handleCarouselSlideTap(this)" data-link="${link}" data-action=""
-      style="${bgStyle} border-radius:${banners.length > 1 ? "14px" : "0px"}; min-height:208px; height:208px;" class="gllit-banner-slide snap-center shrink-0 ${banners.length > 1 ? "w-[calc(100vw-56px)] max-w-[440px]" : "w-full"} relative flex flex-col justify-end p-4 text-white select-none ${link ? "cursor-pointer active:opacity-95" : ""}">
+      style="${bgStyle} border-radius:${banners.length > 1 ? "14px" : "0px"}; min-height:226px; height:226px; ${banners.length > 1 ? "width:calc(100vw - 64px); min-width:calc(100vw - 64px); max-width:calc(100vw - 64px); flex:0 0 calc(100vw - 64px);" : "width:100%; min-width:100%; flex:0 0 100%;"}" class="gllit-banner-slide snap-center shrink-0"w-[calc(100vw-56px)] max-w-[440px]" : "w-full"} relative flex flex-col justify-end p-4 text-white select-none ${link ? "cursor-pointer active:opacity-95" : ""}">
       ${hasText ? `<div class="text-sm font-black leading-snug drop-shadow">${title}</div>` : ""}
       ${link ? `<span class="absolute top-2.5 right-2.5 bg-black/55 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5">詳細 ›</span>` : ""}
     </div>`;
