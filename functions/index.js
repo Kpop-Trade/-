@@ -327,7 +327,7 @@ async function confirmAutoGoEntry(poolId, uid, poolData, entryRef) {
   });
   if (!confirmed) return;
   // テストプール／ダミーUIDには本番ユーザー向けプッシュを飛ばさない（管理者監査のみ）
-  if (isAutoGoTestPool(poolData) || isAutoGoDummyUid(uid)) {
+  if (isAutoGoDummyUid(uid)) {
     await writeAutoGoAuditLog(poolId, {
       action: "test_confirm_skipped_push",
       uid,
@@ -388,14 +388,62 @@ async function activateAutoGoPool(poolId) {
   await poolRef.update({ status: "active", activatedAt: FV.serverTimestamp() });
 }
 
+async function notifyAutoGoPurchaseUrlToEntries(poolId, poolData) {
+  const entriesSnap = await db.collection("auto_go_pools").doc(poolId).collection("entries").get();
+  await Promise.all(entriesSnap.docs.map(async (entryDoc) => {
+    const uid = entryDoc.id;
+    const entry = entryDoc.data() || {};
+    if (isAutoGoDummyUid(uid)) return;
+    if (!["reserved", "confirmed"].includes(entry.status)) return;
+    await notify(uid, {
+      id: `autogo_purchase_${poolId}`,
+      text: `「${poolData.title || "Auto-GO"}」の募集が終了しました。10時間以内に専用購入URLからアルバムを購入し、購入日時とアルバムが確認できる画面を登録してください。購入URL: ${poolData.purchaseUrl || SITE}`,
+      type: "success",
+      link: { k: "autogo", id: poolId, purchaseUrl: poolData.purchaseUrl || SITE },
+      title: "⚡ Auto-GO専用購入URL発行"
+    });
+  }));
+}
+
+exports.closeAutoGoRecruitmentNow = onCall({ cors: true }, async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "login required");
+  const poolId = String(request.data?.poolId || "").trim();
+  if (!poolId) throw new HttpsError("invalid-argument", "poolId required");
+  const poolRef = db.collection("auto_go_pools").doc(poolId);
+  const snap = await poolRef.get();
+  if (!snap.exists) throw new HttpsError("not-found", "pool not found");
+  const pool = snap.data();
+  if (!isAutoGoRecruitmentEnded(pool, Date.now())) {
+    return { ok: false, reason: "not_ended" };
+  }
+  const minimum = Number(pool.minThreshold || pool.minParticipants || 20);
+  if (["recruiting", "activating"].includes(pool.status) && Number(pool.totalCount || 0) >= minimum) {
+    await poolRef.update({ recruitmentClosedAt: pool.recruitmentClosedAt || FV.serverTimestamp() });
+    await activateAutoGoPool(poolId);
+  }
+  const latestSnap = await poolRef.get();
+  const latestPool = latestSnap.data() || pool;
+  if (latestPool.status === "active") {
+    if (!latestPool.recruitmentClosedAt) {
+      await poolRef.update({ recruitmentClosedAt: FV.serverTimestamp() });
+    }
+    await notifyAutoGoPurchaseUrlToEntries(poolId, latestPool);
+  }
+  return { ok: true };
+});
+
 exports.onAutoGoPoolUpdated = onDocumentUpdated("auto_go_pools/{poolId}", async (event) => {
   const pool = event.data.after.data();
-  const recruitEndAt = timestampMillis(pool.recruitEndAt);
-  if (recruitEndAt && recruitEndAt <= Date.now()) return;
+  if (!pool) return;
   const minimum = Number(pool.minThreshold || pool.minParticipants || 20);
   if (Number(pool.totalCount || 0) >= minimum && ["recruiting", "activating"].includes(pool.status) && isAutoGoRecruitmentEnded(pool)) {
-      await activateAutoGoPool(event.params.poolId);
+    await activateAutoGoPool(event.params.poolId);
+  } else if (pool.status === "active" && isAutoGoRecruitmentEnded(pool)) {
+    if (!pool.recruitmentClosedAt) {
+      await event.data.after.ref.update({ recruitmentClosedAt: FV.serverTimestamp() });
     }
+    await notifyAutoGoPurchaseUrlToEntries(event.params.poolId, pool);
+  }
 });
 
 exports.onAutoGoEntryCreated = onDocumentCreated(
@@ -841,6 +889,7 @@ exports.processAutoGoDeadlines = onSchedule({
     if (pool.status === "active") {
       if (pool.recruitEndAt && timestampMillis(pool.recruitEndAt) <= now && !pool.recruitmentClosedAt) {
         await poolDoc.ref.update({ recruitmentClosedAt: FV.serverTimestamp() });
+      await notifyAutoGoPurchaseUrlToEntries(poolId, pool);
       }
       const matchedEntries = await poolDoc.ref.collection("entries").where("status", "==", "matched").get();
       for (const entryDoc of matchedEntries.docs) {

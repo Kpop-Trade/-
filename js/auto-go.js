@@ -1,3 +1,21 @@
+
+window.__agTriggeredClosePools = window.__agTriggeredClosePools || {};
+window.triggerAutoGoRecruitmentCloseIfNeeded = function(poolId, poolData) {
+  if (!poolId || !poolData) return;
+  if (window.__agTriggeredClosePools[poolId]) return;
+  const endMs = poolData.recruitEndAt ? agTimeMs(poolData.recruitEndAt) : 0;
+  const ended = !!(poolData.recruitmentClosedAt || (endMs > 0 && endMs <= Date.now()));
+  if (!ended) return;
+  if (!["recruiting", "activating", "active"].includes(poolData.status)) return;
+  window.__agTriggeredClosePools[poolId] = true;
+  try {
+    if (typeof firebase !== "undefined" && firebase.functions) {
+      const fn = firebase.app().functions("asia-northeast1").httpsCallable("closeAutoGoRecruitmentNow");
+      fn({ poolId }).catch(() => { delete window.__agTriggeredClosePools[poolId]; });
+    }
+  } catch (_) {}
+};
+
 (function() {
   const PRESET_4 = ["ウォンヒ (Wonhee)", "ミンジュ (Minju)", "モカ (Moka)", "ユナ (Yuna)"];
   const PRESET_5 = ["ウォンヒ (Wonhee)", "ミンジュ (Minju)", "モカ (Moka)", "イロハ (Iroha)", "ユナ (Yuna)"];
@@ -1343,6 +1361,7 @@
         } else if (currentEntryData.status === "confirmed") {
       const endMs = currentPoolData && currentPoolData.recruitEndAt ? agTimeMs(currentPoolData.recruitEndAt) : 0;
       const recruitEnded = !!(currentPoolData && (currentPoolData.recruitmentClosedAt || (endMs > 0 && endMs <= Date.now())));
+      if (recruitEnded && currentPoolId) { window.triggerAutoGoRecruitmentCloseIfNeeded(currentPoolId, currentPoolData); }
       if (!recruitEnded) {
         html += '<p class="text-sm text-amber-800 font-bold">募集期間終了と同時に専用購入URLが発行されます</p>';
       } else {
