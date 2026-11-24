@@ -15802,3 +15802,104 @@ window._changeSavedBannerPhoto = function(idx, input) {
   }
   setTimeout(installTodoGuard, 500);
 })();
+
+
+/* === Swipe-Up to Dismiss In-App Notifications === */
+(function() {
+  function attachSwipeUpDismiss(el) {
+    if (!el || el.__swipeDismissAttached) return;
+    el.__swipeDismissAttached = true;
+    el.style.touchAction = "pan-x";
+    el.style.userSelect = "none";
+    el.style.willChange = "transform, opacity";
+
+    let startY = 0;
+    let startX = 0;
+    let currentDy = 0;
+    let startTime = 0;
+    let dragging = false;
+
+    el.addEventListener("touchstart", (e) => {
+      if (!e.touches || e.touches.length !== 1) return;
+      startY = e.touches[0].clientY;
+      startX = e.touches[0].clientX;
+      currentDy = 0;
+      startTime = Date.now();
+      dragging = true;
+      el.style.transition = "none";
+    }, { passive: true });
+
+    el.addEventListener("touchmove", (e) => {
+      if (!dragging || !e.touches || e.touches.length !== 1) return;
+      const dy = e.touches[0].clientY - startY;
+      const dx = e.touches[0].clientX - startX;
+      // Ignore predominantly horizontal swipes
+      if (Math.abs(dx) > Math.abs(dy) * 1.4 && Math.abs(dy) < 12) return;
+      if (dy < 0) {
+        currentDy = dy;
+        const opacity = Math.max(0.15, 1 + dy / 110);
+        el.style.transform = "translate3d(0, " + dy + "px, 0)";
+        el.style.opacity = String(opacity);
+      } else {
+        // Slight rubber-band resistance if pulled downward
+        currentDy = dy * 0.25;
+        el.style.transform = "translate3d(0, " + currentDy + "px, 0)";
+        el.style.opacity = "1";
+      }
+    }, { passive: true });
+
+    const finishSwipe = () => {
+      if (!dragging) return;
+      dragging = false;
+      const elapsed = Math.max(1, Date.now() - startTime);
+      const velocity = currentDy / elapsed; // negative when swiping up
+      if (currentDy <= -24 || velocity <= -0.35) {
+        el.style.transition = "transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.18s ease";
+        el.style.transform = "translate3d(0, -140%, 0)";
+        el.style.opacity = "0";
+        el.style.pointerEvents = "none";
+        setTimeout(() => {
+          try {
+            if (typeof window.hideInAppNotif === "function" && el.id === "inapp-notif-banner") {
+              window.hideInAppNotif();
+            } else {
+              el.remove();
+            }
+          } catch (_) {
+            try { el.remove(); } catch (__) {}
+          }
+        }, 200);
+      } else {
+        el.style.transition = "transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease";
+        el.style.transform = "translate3d(0, 0, 0)";
+        el.style.opacity = "1";
+      }
+    };
+
+    el.addEventListener("touchend", finishSwipe, { passive: true });
+    el.addEventListener("touchcancel", finishSwipe, { passive: true });
+  }
+
+  function bindContainers() {
+    const toastContainer = document.getElementById("toast-container");
+    if (toastContainer && !toastContainer.__swipeObserved) {
+      toastContainer.__swipeObserved = true;
+      Array.from(toastContainer.children).forEach(attachSwipeUpDismiss);
+      const obs = new MutationObserver((muts) => {
+        muts.forEach((m) => m.addedNodes.forEach((n) => {
+          if (n.nodeType === 1) attachSwipeUpDismiss(n);
+        }));
+      });
+      obs.observe(toastContainer, { childList: true });
+    }
+
+    // Also attach to any fixed top in-app notification banners if present
+    document.querySelectorAll("[id*='notif-banner'], [id*='inapp-notif'], [id*='in-app-notif']").forEach(attachSwipeUpDismiss);
+  }
+
+  bindContainers();
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", bindContainers);
+  }
+  setInterval(bindContainers, 1000);
+})();
