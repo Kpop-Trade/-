@@ -894,15 +894,25 @@
 
 
 
+
 <style id="gllit-peek-banner-fix">
-  #pull-gap {
+  header.kp-market-header,
+  .lg-header {
+    padding-bottom: 6px !important;
+  }
+  main {
+    padding-top: calc(52px + env(safe-area-inset-top, 0px)) !important;
+  }
+  #pull-gap,
+  main > #intro-section:has(> .hidden:only-child) {
     display: none !important;
     height: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
   }
   main.space-y-6 > #gllit-hub,
-  main > #gllit-hub {
+  main > #gllit-hub,
+  #gllit-hub {
     margin-top: 0px !important;
     padding-top: 0px !important;
   }
@@ -921,8 +931,8 @@
     min-width: calc(100vw - 56px) !important;
     max-width: calc(100vw - 56px) !important;
     flex: 0 0 calc(100vw - 56px) !important;
-    height: 246px !important;
-    min-height: 246px !important;
+    height: 262px !important;
+    min-height: 262px !important;
     border-radius: 0px !important;
     background-size: cover !important;
     background-position: center center !important;
