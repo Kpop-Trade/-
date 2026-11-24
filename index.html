@@ -4057,46 +4057,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       switchTab('home');
     };
 
-    window.switchAdminTab = function(tab) {
-      adminTab = tab;
-      adminSearchQuery = "";
-      const tabs = ["reports", "inquiries", "users", "posts", "trades", "stats", "likes", "broadcast", "cards", "logs", "autogo", "rewards"];
-      tabs.forEach((k) => {
-        const el = document.getElementById("admin-tab-" + k);
-        if (el) {
-          if (tab === k) {
-            el.classList.remove("border-transparent", "text-gray-500");
-            el.classList.add("border-illit-darkPurple", "text-illit-darkPurple");
-          } else {
-            el.classList.add("border-transparent", "text-gray-500");
-            el.classList.remove("border-illit-darkPurple", "text-illit-darkPurple");
-          }
-        }
-      });
-
-      const controls = document.getElementById("admin-controls");
-      const rewardsPanel = document.getElementById("admin-rewards-panel");
-      const adminContent = document.getElementById("admin-content");
-      rewardsPanel.classList.toggle("hidden", tab !== "rewards");
-      adminContent.classList.toggle("hidden", tab === "rewards");
-      if (tab === "users" || tab === "posts" || tab === "trades") {
-        controls.innerHTML = `<input type="text" placeholder="名前, UID, またはキーワードで検索..." oninput="adminSearch(this.value)" class="liquid-glass-input w-full rounded-xl p-2.5 text-xs text-gray-800">`;
-        controls.classList.remove("hidden");
-      } else if (tab === "cards") {
-        // アルバムタブはコンテンツ内に描画（外枠の出し入れでレイアウトがズレないように）
-        controls.innerHTML = "";
-        controls.classList.add("hidden");
-      } else {
-        controls.classList.add("hidden");
-        controls.innerHTML = "";
-      }
-
-      if (tab === "rewards") {
-        window.renderAdminRewards();
-        return;
-      }
-      loadAdminData();
-    };
+    /* duplicate switchAdminTab removed */
 
     window.adminSearch = function(v) { adminSearchQuery = String(v || "").trim().toLowerCase(); loadAdminData(); };
 

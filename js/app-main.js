@@ -15726,3 +15726,38 @@ window._changeSavedBannerPhoto = function(idx, input) {
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", applyPatch);
   setTimeout(applyPatch, 800);
 })();
+
+
+/* === Admin Tab Visibility & Auto-GO/Banner Isolation Hook === */
+(function() {
+  function installAdminTabGuard() {
+    if (typeof window.switchAdminTab !== "function" || window.switchAdminTab.__guarded) return;
+    const origSwitch = window.switchAdminTab;
+    const wrapped = function(tab) {
+      const targetTab = tab || "stats";
+      // Hide any Auto-GO or banner injection boxes unless on autogo / broadcast tab
+      const bannerBox = document.getElementById("admin-banner-manager-box");
+      if (bannerBox) {
+        bannerBox.classList.toggle("hidden", targetTab !== "autogo" && targetTab !== "broadcast");
+      }
+      document.querySelectorAll("[id*='autogo'], [id*='auto-go']").forEach(el => {
+        if (el.id && el.id.startsWith("admin-") && el.id !== "admin-tab-autogo") {
+          el.classList.toggle("hidden", targetTab !== "autogo");
+        }
+      });
+      const adminContent = document.getElementById("admin-content");
+      if (adminContent && targetTab !== "rewards" && targetTab !== "autogo") {
+        adminContent.classList.remove("hidden");
+        adminContent.style.display = "";
+      }
+      return origSwitch.apply(this, arguments);
+    };
+    wrapped.__guarded = true;
+    window.switchAdminTab = wrapped;
+  }
+  installAdminTabGuard();
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", installAdminTabGuard);
+  }
+  setInterval(installAdminTabGuard, 500);
+})();
