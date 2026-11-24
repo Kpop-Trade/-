@@ -15736,10 +15736,10 @@ window._changeSavedBannerPhoto = function(idx, input) {
     const wrapped = function(tab) {
       const targetTab = tab || "stats";
       // Hide any Auto-GO or banner injection boxes unless on autogo / broadcast tab
-      const bannerBox = document.getElementById("admin-banner-manager-box");
-      if (bannerBox) {
-        bannerBox.classList.toggle("hidden", targetTab !== "autogo" && targetTab !== "broadcast");
-      }
+      ["admin-top-banner-standalone", "admin-banner-manager-box"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.toggle("hidden", targetTab !== "broadcast");
+      });
       document.querySelectorAll("[id*='autogo'], [id*='auto-go']").forEach(el => {
         if (el.id && el.id.startsWith("admin-") && el.id !== "admin-tab-autogo") {
           el.classList.toggle("hidden", targetTab !== "autogo");
