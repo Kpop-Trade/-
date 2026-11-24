@@ -893,12 +893,18 @@
 
 
 
+
 <style id="gllit-peek-banner-fix">
-  main > #intro-section:has(> .hidden:only-child) {
+  #pull-gap {
     display: none !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
+  main.space-y-6 > #gllit-hub,
   main > #gllit-hub {
     margin-top: 0px !important;
+    padding-top: 0px !important;
   }
   #gllit-carousel-track {
     display: flex !important;
@@ -935,7 +941,7 @@
     content: "" !important;
     position: absolute !important;
     inset: 0 !important;
-    background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.6) 42%, rgba(0,0,0,0) 75%) !important;
+    background: linear-gradient(to top, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.22) 26%, rgba(0,0,0,0) 45%) !important;
     pointer-events: none !important;
     z-index: 1 !important;
   }
@@ -944,7 +950,7 @@
     position: relative !important;
     z-index: 2 !important;
     color: #ffffff !important;
-    text-shadow: 0 1px 4px rgba(0,0,0,0.95) !important;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.95), 0 0 8px rgba(0,0,0,0.75) !important;
   }
   #gllit-carousel-track:has(> :only-child) {
     padding: 0 0 6px 0 !important;
