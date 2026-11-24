@@ -2255,3 +2255,146 @@ ${currentPoolData.title}
     window.submitAutoGoReveal = wrappedReveal;
   }
 })();
+
+
+/* === Admin Auto-GO Participant Detail Modal === */
+(function() {
+  function esc(v) {
+    return String(v == null ? "" : v)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function closePersonModal() {
+    const el = document.getElementById("ag-admin-person-modal");
+    if (el) el.remove();
+  }
+
+  window.closeAutoGoPersonModal = closePersonModal;
+
+  window.openAutoGoPerson = function(poolId, uid) {
+    closePersonModal();
+
+    const cacheMap = window.__agAdminCache || {};
+    const bundle = cacheMap[poolId] || {};
+    const entries = Array.isArray(bundle.entries) ? bundle.entries : [];
+    const users = bundle.users || {};
+    const pool = bundle.pool || {};
+
+    const entry = entries.find((e) => e && String(e.uid || e.userId || "") === String(uid || "")) || {};
+    const userObj = users[uid] || {};
+    const profile = userObj.profile || {};
+    const shipping = userObj._privateShipping || profile.shipping || {};
+
+    const name = profile.nickname || entry.username || entry.displayName || uid || "参加者";
+    const xId = String(profile.xId || profile.twitter || entry.xId || "").replace(/^@+/, "");
+    const statusText = typeof agStatusFull === "function"
+      ? agStatusFull(entry)
+      : (entry.status || "未登録");
+    const want = entry.wantedMember || entry.targetMember || "-";
+    const pulled = entry.pulledMember || entry.openedCard || "-";
+    const sendTo = entry.sendToName || "-";
+
+    const addrParts = [
+      shipping.zip ? "〒" + shipping.zip : "",
+      shipping.address1 || "",
+      shipping.address2 || "",
+      shipping.name ? "宛名: " + shipping.name : "",
+      shipping.phone ? "TEL: " + shipping.phone : ""
+    ].filter(Boolean);
+    const addrText = addrParts.length ? addrParts.join(" / ") : (entry.shipToAddress || "未登録");
+
+    const purchaseImgs = [];
+    const shippingImgs = [];
+    if (typeof agImageList === "function") {
+      const listObj = agImageList(entry);
+      if (listObj && Array.isArray(listObj.purchase)) purchaseImgs.push(...listObj.purchase);
+      if (listObj && Array.isArray(listObj.shipping)) shippingImgs.push(...listObj.shipping);
+    }
+
+    const modal = document.createElement("div");
+    modal.id = "ag-admin-person-modal";
+    modal.className = "fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/50 p-3 backdrop-blur-[2px]";
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) closePersonModal();
+    });
+
+    modal.innerHTML = `
+      <div class="w-full max-w-md rounded-3xl bg-white p-4 shadow-2xl border border-purple-100 max-h-[88vh] overflow-y-auto space-y-3">
+        <div class="flex items-start justify-between gap-2 border-b border-gray-100 pb-2.5">
+          <div class="min-w-0">
+            <div class="text-[10px] font-bold text-purple-600">${esc(pool.title || "Auto-GO プール")}</div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <h3 class="text-base font-black text-gray-900 truncate">${esc(name)}</h3>
+              ${xId ? `<a href="https://x.com/${encodeURIComponent(xId)}" target="_blank" rel="noopener" class="text-[11px] font-bold text-blue-600 underline">@${esc(xId)}</a>` : ""}
+            </div>
+            <div class="text-[10px] text-gray-400 break-all">UID: ${esc(uid || "-")}</div>
+          </div>
+          <button type="button" onclick="window.closeAutoGoPersonModal()" class="shrink-0 rounded-full bg-gray-100 px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-200">
+            閉じる
+          </button>
+        </div>
+
+        <div class="rounded-2xl bg-purple-50/70 p-3 space-y-1.5 text-xs">
+          <div class="flex justify-between gap-2">
+            <span class="text-gray-500 font-bold">進行ステータス</span>
+            <span class="font-black text-purple-900 text-right">${esc(statusText)}</span>
+          </div>
+          <div class="flex justify-between gap-2">
+            <span class="text-gray-500 font-bold">希望メンバー</span>
+            <span class="font-bold text-gray-800 text-right">${esc(want)}</span>
+          </div>
+          <div class="flex justify-between gap-2">
+            <span class="text-gray-500 font-bold">開封 / 自引き</span>
+            <span class="font-bold text-gray-800 text-right">${esc(pulled)}</span>
+          </div>
+          <div class="flex justify-between gap-2">
+            <span class="text-gray-500 font-bold">送付先 / 相手</span>
+            <span class="font-bold text-gray-800 text-right">${esc(sendTo)}</span>
+          </div>
+          ${entry.trackingNumber ? `
+          <div class="flex justify-between gap-2">
+            <span class="text-gray-500 font-bold">追跡番号</span>
+            <span class="font-bold text-gray-800 text-right">${esc(entry.trackingNumber)}</span>
+          </div>` : ""}
+        </div>
+
+        <div class="rounded-2xl border border-gray-100 bg-gray-50/80 p-3 text-xs space-y-1">
+          <div class="text-[11px] font-black text-gray-700">配送先情報</div>
+          <div class="text-gray-700 break-words leading-relaxed">${esc(addrText)}</div>
+        </div>
+
+        ${purchaseImgs.length ? `
+          <div class="space-y-1.5">
+            <div class="text-[11px] font-black text-gray-700">購入証跡画像 (${purchaseImgs.length}枚)</div>
+            <div class="grid grid-cols-2 gap-2">
+              ${purchaseImgs.map((src) => `<a href="${esc(src)}" target="_blank" rel="noopener" class="block overflow-hidden rounded-xl border border-gray-200 bg-gray-100"><img src="${esc(src)}" alt="購入証跡" class="h-28 w-full object-cover"></a>`).join("")}
+            </div>
+          </div>
+        ` : ""}
+
+        ${shippingImgs.length ? `
+          <div class="space-y-1.5">
+            <div class="text-[11px] font-black text-gray-700">発送・梱包証跡画像 (${shippingImgs.length}枚)</div>
+            <div class="grid grid-cols-2 gap-2">
+              ${shippingImgs.map((src) => `<a href="${esc(src)}" target="_blank" rel="noopener" class="block overflow-hidden rounded-xl border border-gray-200 bg-gray-100"><img src="${esc(src)}" alt="発送証跡" class="h-28 w-full object-cover"></a>`).join("")}
+            </div>
+          </div>
+        ` : ""}
+
+        ${typeof window.adminRemoveAutoGoEntry === "function" ? `
+          <div class="pt-1 border-t border-gray-100 flex justify-end">
+            <button type="button" onclick="window.closeAutoGoPersonModal(); window.adminRemoveAutoGoEntry('${esc(poolId)}', '${esc(uid)}');" class="rounded-xl bg-red-50 border border-red-200 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-100">
+              この参加者をプールから除外
+            </button>
+          </div>
+        ` : ""}
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+  };
+})();
