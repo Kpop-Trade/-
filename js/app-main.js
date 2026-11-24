@@ -15983,3 +15983,53 @@ window._changeSavedBannerPhoto = function(idx, input) {
   }
   setTimeout(installSingleBackSearch, 500);
 })();
+
+
+/* === Unify Search Overlay (Disable Duplicate HomeSearch Drawer) === */
+(function() {
+  function closeAnyHomeSearch() {
+    try {
+      if (typeof window.closeHomeSearch === "function") window.closeHomeSearch();
+    } catch (_) {}
+    const hs = document.getElementById("home-search-overlay") || document.getElementById("home-search-dropdown") || document.getElementById("home-search-panel");
+    if (hs) hs.classList.add("hidden");
+    const hist = document.getElementById("home-search-history-section");
+    if (hist && hist.parentElement && hist.parentElement.closest("header")) {
+      hist.parentElement.classList.add("hidden");
+    }
+  }
+
+  function installUnifiedSearch() {
+    // Disable duplicate openHomeSearch so only #search-page opens
+    window.openHomeSearch = function() {
+      closeAnyHomeSearch();
+      if (typeof window.openSearchPage === "function") window.openSearchPage();
+    };
+
+    if (typeof window.openSearchPage === "function" && !window.openSearchPage.__unifiedPatched) {
+      const origOpen = window.openSearchPage;
+      const wrappedOpen = function() {
+        closeAnyHomeSearch();
+        return origOpen.apply(this, arguments);
+      };
+      wrappedOpen.__unifiedPatched = true;
+      window.openSearchPage = wrappedOpen;
+    }
+
+    if (typeof window.closeSearchPage === "function" && !window.closeSearchPage.__unifiedPatched) {
+      const origClose = window.closeSearchPage;
+      const wrappedClose = function() {
+        closeAnyHomeSearch();
+        return origClose.apply(this, arguments);
+      };
+      wrappedClose.__unifiedPatched = true;
+      window.closeSearchPage = wrappedClose;
+    }
+  }
+
+  installUnifiedSearch();
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", installUnifiedSearch);
+  }
+  setTimeout(installUnifiedSearch, 400);
+})();
