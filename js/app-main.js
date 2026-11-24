@@ -15603,3 +15603,96 @@ window._changeSavedBannerPhoto = function(idx, input) {
   else attach();
   setTimeout(attach, 600);
 })();
+
+;(function initSearchBarHeroMorph() {
+  function patch() {
+    if (typeof window.openSearchPage !== "function" || window.openSearchPage._morphPatched) return;
+    const orig = window.openSearchPage;
+    window.openSearchPage = function(...args) {
+      const mainInput = document.getElementById("main-search-input");
+      const srcPill = mainInput ? (mainInput.closest(".rounded-full, .rounded-2xl, .rounded-xl, div") || mainInput) : null;
+      const srcRect = srcPill ? srcPill.getBoundingClientRect() : null;
+      const canAnimate = srcRect && srcRect.width > 60 && srcRect.height > 20 && srcRect.top >= 0 && srcRect.top < window.innerHeight;
+
+      const res = orig.apply(this, args);
+      if (!canAnimate) return res;
+
+      const modalInput = document.getElementById("search-input");
+      const dstPill = modalInput ? (modalInput.closest(".rounded-full, .rounded-2xl, .rounded-xl, div") || modalInput) : null;
+      const pageRoot = modalInput ? (modalInput.closest("[id*='search'][class*='fixed'], .fixed.inset-0") || modalInput.parentElement?.parentElement) : null;
+      if (!dstPill) return res;
+
+      const srcStyle = getComputedStyle(srcPill);
+      const ghost = document.createElement("div");
+      ghost.style.cssText = [
+        "position:fixed",
+        "z-index:9999",
+        "pointer-events:none",
+        "display:flex",
+        "align-items:center",
+        "gap:8px",
+        "padding:0 14px",
+        "box-sizing:border-box",
+        "background:" + (srcStyle.backgroundColor && srcStyle.backgroundColor !== "rgba(0, 0, 0, 0)" ? srcStyle.backgroundColor : "#f3f4f6"),
+        "border:" + (srcStyle.border || "1px solid #e5e7eb"),
+        "border-radius:" + (srcStyle.borderRadius || "9999px"),
+        "box-shadow:0 8px 24px rgba(0,0,0,0.08)",
+        "color:#9ca3af",
+        "font-size:14px",
+        "left:" + srcRect.left + "px",
+        "top:" + srcRect.top + "px",
+        "width:" + srcRect.width + "px",
+        "height:" + srcRect.height + "px",
+        "transition:all .26s cubic-bezier(.22,1,.36,1)"
+      ].join(";");
+
+      const labelText = (mainInput && mainInput.value) ? mainInput.value : "キーワードからさがす";
+      ghost.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5" stroke-linecap="round"/></svg><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></span>';
+      ghost.querySelector("span").textContent = labelText;
+      document.body.appendChild(ghost);
+
+      if (pageRoot) {
+        pageRoot.style.opacity = "0";
+      }
+      dstPill.style.opacity = "0";
+
+      requestAnimationFrame(() => {
+        const dstRect = dstPill.getBoundingClientRect();
+        const dstStyle = getComputedStyle(dstPill);
+        if (dstRect && dstRect.width > 60) {
+          ghost.style.left = dstRect.left + "px";
+          ghost.style.top = dstRect.top + "px";
+          ghost.style.width = dstRect.width + "px";
+          ghost.style.height = dstRect.height + "px";
+          ghost.style.borderRadius = dstStyle.borderRadius || "9999px";
+        }
+        if (pageRoot) {
+          pageRoot.style.transition = "opacity .22s ease";
+          pageRoot.style.opacity = "1";
+        }
+      });
+
+      setTimeout(() => {
+        dstPill.style.transition = "opacity .12s ease";
+        dstPill.style.opacity = "1";
+        ghost.style.opacity = "0";
+      }, 210);
+
+      setTimeout(() => {
+        ghost.remove();
+        dstPill.style.transition = "";
+        dstPill.style.opacity = "";
+        if (pageRoot) {
+          pageRoot.style.transition = "";
+          pageRoot.style.opacity = "";
+        }
+      }, 290);
+
+      return res;
+    };
+    window.openSearchPage._morphPatched = true;
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", patch);
+  else patch();
+  setTimeout(patch, 500);
+})();
