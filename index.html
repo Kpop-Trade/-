@@ -892,7 +892,14 @@
 
 
 
+
 <style id="gllit-peek-banner-fix">
+  main > #intro-section:has(> .hidden:only-child) {
+    display: none !important;
+  }
+  main > #gllit-hub {
+    margin-top: 0px !important;
+  }
   #gllit-carousel-track {
     display: flex !important;
     align-items: stretch !important;
@@ -908,9 +915,11 @@
     min-width: calc(100vw - 56px) !important;
     max-width: calc(100vw - 56px) !important;
     flex: 0 0 calc(100vw - 56px) !important;
-    height: 210px !important;
-    min-height: 210px !important;
+    height: 246px !important;
+    min-height: 246px !important;
     border-radius: 0px !important;
+    background-size: cover !important;
+    background-position: center center !important;
     scroll-snap-align: center !important;
     display: flex !important;
     flex-direction: column !important;
@@ -1102,7 +1111,7 @@
       </div>
     </section>
 
-    <section id="gllit-hub" class="w-screen relative left-1/2 -translate-x-1/2 pt-0 pb-2 overflow-hidden" style="margin-top:-14px;">
+    <section id="gllit-hub" class="w-screen relative left-1/2 -translate-x-1/2 pt-0 pb-2 overflow-hidden" style="margin-top:0px;">
         <div id="gllit-carousel-track" class="gllit-mercari-track rounded-none">
           <button type="button" onclick="openIllitCalendar()" class="gllit-mercari-card" style="background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 55%,#312e81 100%);">
             <div class="flex items-center justify-between gap-2 mb-1">
