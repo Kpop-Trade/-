@@ -15471,3 +15471,54 @@ window._changeSavedBannerPhoto = function(idx, input) {
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",setup);
   else setup();
 })();
+
+;(function initDetailHeroZoom(){
+  let lastTappedImg=null;
+  document.addEventListener("pointerdown",(e)=>{
+    const card=e.target.closest("[onclick*=\"openDetailModal\"],[data-search-post-id],.post-card,.kpop-card");
+    if(!card)return;
+    const img=card.querySelector("img");
+    if(!img||!img.src)return;
+    const r=img.getBoundingClientRect();
+    if(r.width>20&&r.height>20)lastTappedImg={src:img.currentSrc||img.src,rect:r,radius:getComputedStyle(img).borderRadius||"12px",ts:Date.now()};
+  },true);
+  function patch(){
+    if(typeof window.openDetailModal!=="function"||window.openDetailModal._heroPatched)return;
+    const orig=window.openDetailModal;
+    window.openDetailModal=function(...args){
+      const snap=lastTappedImg&&(Date.now()-lastTappedImg.ts<900)?lastTappedImg:null;
+      lastTappedImg=null;
+      const res=orig.apply(this,args);
+      if(!snap)return res;
+      const modal=document.getElementById("detail-modal");
+      if(!modal)return res;
+      modal.style.opacity="0";
+      const ghost=document.createElement("img");
+      ghost.src=snap.src;
+      ghost.style.cssText="position:fixed;z-index:9998;object-fit:cover;pointer-events:none;margin:0;box-shadow:0 16px 40px rgba(0,0,0,0.22);left:"+snap.rect.left+"px;top:"+snap.rect.top+"px;width:"+snap.rect.width+"px;height:"+snap.rect.height+"px;border-radius:"+snap.radius+";transition:all .26s cubic-bezier(.22,1,.36,1);";
+      document.body.appendChild(ghost);
+      requestAnimationFrame(()=>{
+        const targetImg=modal.querySelector("#detail-image-track img, #detail-photos img, img");
+        const tr=targetImg?targetImg.getBoundingClientRect():null;
+        const dest=tr&&tr.width>40?tr:{left:0,top:56,width:window.innerWidth,height:Math.min(window.innerWidth,380)};
+        ghost.style.left=dest.left+"px";
+        ghost.style.top=dest.top+"px";
+        ghost.style.width=dest.width+"px";
+        ghost.style.height=dest.height+"px";
+        ghost.style.borderRadius="0px";
+        modal.style.transition="opacity .22s ease";
+        modal.style.opacity="1";
+      });
+      setTimeout(()=>{
+        ghost.remove();
+        modal.style.transition="";
+        modal.style.opacity="";
+      },270);
+      return res;
+    };
+    window.openDetailModal._heroPatched=true;
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",patch);
+  else patch();
+  setTimeout(patch,500);
+})();
