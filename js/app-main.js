@@ -14720,7 +14720,11 @@ window.enhanceTradesListUI = function() {
 setTimeout(function() {
   const tWrap = document.getElementById("trades-list");
   if (tWrap) {
-    new MutationObserver(function() { window.enhanceTradesListUI(); }).observe(tWrap, { childList: true });
+    new MutationObserver(function() {
+    if (window._enhancingTradesUI) return;
+    window._enhancingTradesUI = true;
+    try { window.enhanceTradesListUI(); } finally { setTimeout(() => { window._enhancingTradesUI = false; }, 120); }
+  }).observe(tWrap, { childList: true });
     window.enhanceTradesListUI();
   }
 }, 500);
@@ -15695,4 +15699,30 @@ window._changeSavedBannerPhoto = function(idx, input) {
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", patch);
   else patch();
   setTimeout(patch, 500);
+})();
+
+;(function safeOpenTodoModalPatch() {
+  function applyPatch() {
+    window.openTodoModal = function() {
+      const modal = document.getElementById("todo-modal");
+      if (!modal) return;
+      modal.classList.remove("hidden");
+      modal.style.display = "flex";
+      modal.style.position = "fixed";
+      modal.style.inset = "0";
+      modal.style.zIndex = "99999";
+      modal.style.backgroundColor = "#ffffff";
+      modal.style.pointerEvents = "auto";
+      requestAnimationFrame(() => {
+        try {
+          if (typeof window.renderTodoList === "function") window.renderTodoList();
+        } catch (err) {
+          console.error("renderTodoList error:", err);
+        }
+      });
+    };
+  }
+  applyPatch();
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", applyPatch);
+  setTimeout(applyPatch, 800);
 })();
