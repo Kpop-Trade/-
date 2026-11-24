@@ -6,6 +6,7 @@
   let allPools = [];
   let currentPoolData = null;
   let currentEntryData = null;
+  let currentUserEntries = [];
   let currentEntries = [];
   let unsubPoolsList = null;
   let unsubPool = null;
@@ -1316,8 +1317,15 @@
       return;
     }
 
+    const activeUserEntries = (currentUserEntries || []).filter((e) => e && e.status !== "cancelled");
+    const hasBlockedEntry = activeUserEntries.some((e) => e.status === "unshipped_penalty");
+    const canAddMoreSlots = !hasBlockedEntry && ["recruiting", "activating", "active"].includes(currentPoolData.status) && !currentPoolData.entryLocked && !currentPoolData.recruitmentClosedAt;
     if (currentEntryData) {
-      entrySec.classList.add("hidden");
+      if (canAddMoreSlots) {
+        entrySec.classList.remove("hidden");
+      } else {
+        entrySec.classList.add("hidden");
+      }
       statusBox.classList.remove("hidden");
         const isActivated = currentPoolData.status === "active";
       let html = `<p class="text-sm text-gray-700">希望メンバー：${currentEntryData.wantedMember}</p>`;
@@ -2560,4 +2568,88 @@ ${currentPoolData.title}
 
     document.body.appendChild(modal);
   };
+})();
+
+
+/* === Multi-Slot Rule (Wonhee 1-slot max, others unlimited) === */
+(function() {
+  function isWonhee(name) {
+    return /ウォンヒ|wonhee/i.test(String(name || ""));
+  }
+  const origCancel = window.cancelAutoGoEntry;
+  window.cancelAutoGoEntry = async function(entryId) {
+    if (!entryId) {
+      if (typeof origCancel === "function") return origCancel();
+      return;
+    }
+    if (!activePoolId || !(await appConfirm("この枠の仮予約をキャンセルしますか？"))) return;
+    try {
+      await window.__autoGoRefs.cancelAutoGoEntry({ poolId: activePoolId, entryId });
+      showToast("予約枠をキャンセルしました。", "success");
+    } catch (error) {
+      console.error("cancelAutoGoEntry error:", error);
+      showToast("キャンセルに失敗しました: " + (error?.message || error), "error");
+    }
+  };
+
+  setInterval(() => {
+    const entrySec = document.getElementById("ag-entry-section") || document.querySelector("[data-ag-entry-section]");
+    const selectEl = document.getElementById("ag-member-select") || document.querySelector("select[id*='member']");
+    const activeMine = (typeof currentUserEntries !== "undefined" ? currentUserEntries : []).filter((e) => e && e.status !== "cancelled");
+    const hasWonhee = activeMine.some((e) => isWonhee(e.wantedMember));
+
+    if (selectEl) {
+      Array.from(selectEl.options || []).forEach((opt) => {
+        if (isWonhee(opt.value) || isWonhee(opt.textContent)) {
+          if (hasWonhee) {
+            opt.disabled = true;
+            if (!opt.textContent.includes("1人1枠まで")) {
+              opt.textContent = opt.value + "（1人1枠まで・予約済）";
+            }
+          } else {
+            opt.disabled = false;
+            opt.textContent = opt.value + "（1人1枠まで）";
+          }
+        } else if (opt.value) {
+          const cnt = activeMine.filter((e) => e.wantedMember === opt.value).length;
+          const base = opt.value;
+          opt.textContent = cnt > 0 ? `${base}（現在${cnt}枠予約中・複数枠OK）` : `${base}（複数枠OK）`;
+        }
+      });
+      if (hasWonhee && isWonhee(selectEl.value)) {
+        const nextOpt = Array.from(selectEl.options).find((o) => o.value && !o.disabled);
+        if (nextOpt) selectEl.value = nextOpt.value;
+      }
+    }
+
+    const statusBox = document.getElementById("ag-status-box");
+    if (statusBox && activeMine.length > 0) {
+      let badgeList = document.getElementById("ag-multi-slot-summary");
+      if (!badgeList) {
+        badgeList = document.createElement("div");
+        badgeList.id = "ag-multi-slot-summary";
+        badgeList.className = "mb-2.5 rounded-2xl border border-purple-200 bg-purple-50/80 p-2.5 space-y-1.5";
+        statusBox.prepend(badgeList);
+      }
+      const poolRecruiting = typeof currentPoolData !== "undefined" && currentPoolData && currentPoolData.status === "recruiting";
+      badgeList.innerHTML = `
+        <div class="flex items-center justify-between text-[11px] font-black text-purple-950">
+          <span>🎟 あなたの確保枠（合計 ${activeMine.length} 枠）</span>
+          <span class="text-[10px] font-bold text-purple-700">※ウォンヒ1枠まで / 他は複数枠OK</span>
+        </div>
+        <div class="space-y-1">
+          ${activeMine.map((slot, idx) => `
+            <div class="flex items-center justify-between gap-2 rounded-xl bg-white px-2.5 py-1.5 text-xs border border-purple-100">
+              <span class="font-bold text-gray-800 truncate">#${idx + 1} ${slot.wantedMember || "-"}（${slot.status === "reserved" ? "仮予約" : slot.status}）</span>
+              ${poolRecruiting && slot.status === "reserved" ? `
+                <button type="button" onclick="cancelAutoGoEntry('${slot.id}')" class="shrink-0 rounded-lg border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-600">
+                  この枠を取消
+                </button>
+              ` : ""}
+            </div>
+          `).join("")}
+        </div>
+      `;
+    }
+  }, 500);
 })();

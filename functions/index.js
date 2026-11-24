@@ -1284,7 +1284,17 @@ exports.reserveAutoGoEntry = onCall(async (request) => {
     throw new HttpsError("failed-precondition", "push notification registration is required");
   }
   const poolRef = db.collection("auto_go_pools").doc(poolId);
-  const entryRef = autoGoEntryRef(poolId, uid);
+  const isWonheeMember = (m) => /ウォンヒ|wonhee/i.test(String(m || ""));
+  const existingUserEntriesSnap = await poolRef.collection("entries").where("uid", "==", uid).get();
+  const activeUserEntries = existingUserEntriesSnap.docs
+    .map((d) => ({ id: d.id, ...(d.data() || {}) }))
+    .filter((e) => e.status !== "cancelled");
+  if (isWonheeMember(wantedMember) && activeUserEntries.some((e) => isWonheeMember(e.wantedMember))) {
+    throw new HttpsError("already-exists", "ウォンヒは1人1枠までです（他のメンバーは同一メンバーで複数枠可能です）");
+  }
+  const hasPrimaryDoc = existingUserEntriesSnap.docs.some((d) => d.id === uid);
+  const entryDocId = hasPrimaryDoc ? `${uid}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}` : uid;
+  const entryRef = poolRef.collection("entries").doc(entryDocId);
   const shippingRef = db.collection("users").doc(uid).collection("private").doc("shipping");
   let assignedMember = wantedMember;
   let assignedRank = 1;
@@ -1296,7 +1306,7 @@ exports.reserveAutoGoEntry = onCall(async (request) => {
       tx.get(shippingRef)
     ]);
     if (!poolSnap.exists) throw new HttpsError("not-found", "pool not found");
-    if (entrySnap.exists) throw new HttpsError("already-exists", "one entry per person is allowed");
+    if (entrySnap.exists) throw new HttpsError("already-exists", "already reserved this slot");
     const user = userSnap.exists ? userSnap.data() : {};
     if (user.autoGoBanned === true) {
       throw new HttpsError("permission-denied", "this account is banned from Auto-GO");
@@ -1338,6 +1348,9 @@ exports.reserveAutoGoEntry = onCall(async (request) => {
     const alloc = allocateAutoGoMember(pool, wantedMember, [wantedMember]);
     assignedMember = alloc.assigned;
     assignedRank = alloc.assignedRank;
+    if (isWonheeMember(assignedMember) && activeUserEntries.some((e) => isWonheeMember(e.wantedMember))) {
+      throw new HttpsError("already-exists", "ウォンヒは1人1枠までです");
+    }
     tx.update(poolRef, {
       totalCount: (Number(pool.totalCount) || 0) + 1,
       memberCounts: alloc.counts,
@@ -1386,11 +1399,22 @@ exports.reserveAutoGoEntry = onCall(async (request) => {
 exports.cancelAutoGoEntry = onCall(async (request) => {
   if (!request.auth) throw new HttpsError("unauthenticated", "login required");
   const poolId = String((request.data || {}).poolId || "");
+  const requestedEntryId = String((request.data || {}).entryId || "");
   if (!/^[\w-]{1,120}$/.test(poolId)) throw new HttpsError("invalid-argument", "invalid pool");
   const poolRef = db.collection("auto_go_pools").doc(poolId);
-  const entryRef = autoGoEntryRef(poolId, request.auth.uid);
+  let entryRef = requestedEntryId ? poolRef.collection("entries").doc(requestedEntryId) : autoGoEntryRef(poolId, request.auth.uid);
+  if (!requestedEntryId) {
+    const userEntriesSnap = await poolRef.collection("entries").where("uid", "==", request.auth.uid).get();
+    const reservedDocs = userEntriesSnap.docs.filter((d) => (d.data() || {}).status === "reserved");
+    if (reservedDocs.length > 0) {
+      entryRef = reservedDocs[reservedDocs.length - 1].ref;
+    }
+  }
   await db.runTransaction(async (tx) => {
     const [poolSnap, entrySnap] = await Promise.all([tx.get(poolRef), tx.get(entryRef)]);
+    if (entrySnap.exists && String((entrySnap.data() || {}).uid || "") !== request.auth.uid) {
+      throw new HttpsError("permission-denied", "cannot cancel another user's entry");
+    }
     if (!poolSnap.exists || !entrySnap.exists || entrySnap.data().status !== "reserved") {
       throw new HttpsError("failed-precondition", "only unconfirmed entries can be cancelled");
     }
