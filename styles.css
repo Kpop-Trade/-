@@ -1128,18 +1128,17 @@ html, body {
 
 
 /* === Mercari-style Top Banner Carousel (#gllit-hub) === */
-/* 中央バナーの左右に隣のバナーが少し覗く */
 #gllit-hub {
   overflow: hidden;
 }
 .gllit-mercari-track {
-  --kp-banner-gap: 8px;
-  --kp-banner-peek: 22px;
   display: flex;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
-  gap: var(--kp-banner-gap);
-  padding: 2px 0;
+  gap: 0;
+  padding: 0;
+  margin: 0;
+  width: 100%;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }
@@ -1148,20 +1147,20 @@ html, body {
 }
 .gllit-mercari-card,
 #gllit-carousel-track > .gllit-banner-slide {
-  flex: 0 0 calc(100% - (var(--kp-banner-peek) + var(--kp-banner-gap)) * 2);
-  width: calc(100% - (var(--kp-banner-peek) + var(--kp-banner-gap)) * 2);
-  max-width: none;
-  border-radius: 12px;
+  flex: 0 0 100%;
+  width: 100%;
+  min-width: 100%;
+  max-width: 100%;
+  border-radius: 0;
   padding: 14px 16px;
   text-align: left;
-  scroll-snap-align: center;
+  scroll-snap-align: start;
   scroll-snap-stop: always;
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.14);
-  transition: transform 0.15s ease;
+  box-shadow: none;
   overflow: hidden;
   box-sizing: border-box;
 }
 .gllit-mercari-card:active,
 #gllit-carousel-track > .gllit-banner-slide:active {
-  transform: scale(0.985);
+  transform: none;
 }

@@ -32,7 +32,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js?v=20261121"></script>
 
   <script src="./js/tailwind-config.js?v=20261121"></script>
-  <link rel="stylesheet" href="./styles.css?v=20261124peek2">
+  <link rel="stylesheet" href="./styles.css?v=20261124full1">
   <link rel="stylesheet" href="./liquid-glass.css?v=20261121">
   <link rel="stylesheet" href="./mycards-binder.css?v=20261121c">
 
@@ -839,155 +839,54 @@
 
 
 
-<style id="kp-banner-peek-style">
-#gllit-hub { overflow: hidden !important; }
+<style id="kp-banner-full-style">
 #gllit-carousel-track.gllit-mercari-track {
-  --kp-banner-gap: 8px;
-  --kp-banner-peek: 22px;
   display: flex !important;
-  flex-direction: row !important;
   flex-wrap: nowrap !important;
-  overflow-x: auto !important;
-  overflow-y: hidden !important;
-  gap: var(--kp-banner-gap) !important;
-  padding-left: 0 !important;
-  padding-right: 0 !important;
-  margin-left: 0 !important;
-  margin-right: 0 !important;
+  gap: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
   width: 100% !important;
   max-width: 100% !important;
+  overflow-x: auto !important;
   scroll-snap-type: x mandatory !important;
-  box-sizing: border-box !important;
-  -webkit-overflow-scrolling: touch !important;
   scrollbar-width: none !important;
 }
 #gllit-carousel-track.gllit-mercari-track::-webkit-scrollbar { display: none !important; }
 #gllit-carousel-track.gllit-mercari-track > * {
-  flex: 0 0 calc(100% - (var(--kp-banner-peek, 22px) + var(--kp-banner-gap, 8px)) * 2) !important;
-  width: calc(100% - (var(--kp-banner-peek, 22px) + var(--kp-banner-gap, 8px)) * 2) !important;
-  min-width: calc(100% - (var(--kp-banner-peek, 22px) + var(--kp-banner-gap, 8px)) * 2) !important;
-  max-width: none !important;
-  scroll-snap-align: center !important;
-  scroll-snap-stop: always !important;
+  flex: 0 0 100% !important;
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
+  scroll-snap-align: start !important;
+  border-radius: 0 !important;
   box-sizing: border-box !important;
 }
 </style>
-<script id="kp-banner-peek-fix">
+<script id="kp-banner-full-fix">
 (function() {
-  function trackEl() {
-    return document.getElementById("gllit-carousel-track");
-  }
-  function reals(track) {
-    return Array.from(track.children).filter(function(el) {
-      return !el.classList.contains("kp-banner-ghost-prev") && !el.classList.contains("kp-banner-ghost-next");
+  function applyFullWidth() {
+    const track = document.getElementById("gllit-carousel-track");
+    if (!track) return;
+    track.querySelectorAll(".kp-banner-ghost-prev, .kp-banner-ghost-next").forEach(function(g) { g.remove(); });
+    track.style.gap = "0px";
+    track.style.paddingLeft = "0px";
+    track.style.paddingRight = "0px";
+    track.style.marginLeft = "0px";
+    track.style.marginRight = "0px";
+    track.style.width = "100%";
+    Array.from(track.children).forEach(function(el) {
+      el.style.flex = "0 0 100%";
+      el.style.width = "100%";
+      el.style.minWidth = "100%";
+      el.style.maxWidth = "100%";
+      el.style.scrollSnapAlign = "start";
     });
   }
-  function metrics(track) {
-    const slide = track.children[0];
-    if (!slide) return null;
-    const sw = slide.getBoundingClientRect().width;
-    if (sw < 80) return null;
-    const gap = parseFloat(getComputedStyle(track).columnGap || getComputedStyle(track).gap) || 8;
-    const centerOffset = (track.clientWidth - sw) / 2;
-    return { sw: sw, gap: gap, step: sw + gap, centerOffset: centerOffset };
-  }
-  function firstPos(m) { return m.step - m.centerOffset; }
-  function lastPos(m, count) { return m.step * count - m.centerOffset; }
-
-  window.kpLayoutBannerPeek = function(force) {
-    const track = trackEl();
-    if (!track) return;
-    const slides = reals(track);
-    if (!slides.length) return;
-
-    const key = String(slides.length);
-    const hasPrev = Boolean(track.querySelector(".kp-banner-ghost-prev"));
-    const hasNext = Boolean(track.querySelector(".kp-banner-ghost-next"));
-    if (force || !hasPrev || !hasNext || track.dataset.kpPeekReady !== key) {
-      track.querySelectorAll(".kp-banner-ghost-prev, .kp-banner-ghost-next").forEach(function(g) { g.remove(); });
-      const current = reals(track);
-      if (!current.length) return;
-      const prevClone = current[current.length - 1].cloneNode(true);
-      prevClone.classList.add("kp-banner-ghost-prev");
-      prevClone.removeAttribute("id");
-      prevClone.setAttribute("aria-hidden", "true");
-      track.insertBefore(prevClone, current[0]);
-      const nextClone = current[0].cloneNode(true);
-      nextClone.classList.add("kp-banner-ghost-next");
-      nextClone.removeAttribute("id");
-      nextClone.setAttribute("aria-hidden", "true");
-      track.appendChild(nextClone);
-      track.dataset.kpPeekReady = key;
-      delete track.dataset.kpPeekCentered;
-    }
-
-    const m = metrics(track);
-    if (!m) return;
-    const target = firstPos(m);
-    if (!track.dataset.kpUserTouching && (!track.dataset.kpPeekCentered || force)) {
-      track.style.scrollBehavior = "auto";
-      track.scrollLeft = target;
-      track.style.scrollBehavior = "";
-      track.dataset.kpPeekCentered = "1";
-    }
-  };
-
-  window.kpAdvanceBannerPeek = function() {
-    const track = trackEl();
-    if (!track || track.dataset.kpUserTouching || window._topBannerIsTouching) return;
-    const slides = reals(track);
-    if (slides.length < 2) return;
-    const m = metrics(track);
-    if (!m) return;
-    const start = firstPos(m);
-    const end = lastPos(m, slides.length);
-    let next = track.scrollLeft + m.step;
-    if (next > end + m.step * 0.35) next = start;
-    track.scrollTo({ left: next, behavior: "smooth" });
-  };
-
-  function bind(track) {
-    if (!track || track.dataset.kpLoopBound) return;
-    track.dataset.kpLoopBound = "1";
-    track.addEventListener("touchstart", function() { track.dataset.kpUserTouching = "1"; }, { passive: true });
-    track.addEventListener("touchend", function() {
-      setTimeout(function() { delete track.dataset.kpUserTouching; }, 420);
-    }, { passive: true });
-    track.addEventListener("pointerdown", function() { track.dataset.kpUserTouching = "1"; });
-    track.addEventListener("pointerup", function() {
-      setTimeout(function() { delete track.dataset.kpUserTouching; }, 420);
-    });
-    var timer = null;
-    track.addEventListener("scroll", function() {
-      clearTimeout(timer);
-      timer = setTimeout(function() {
-        const slides = reals(track);
-        if (!slides.length) return;
-        const m = metrics(track);
-        if (!m) return;
-        const start = firstPos(m);
-        const end = lastPos(m, slides.length);
-        if (track.scrollLeft < start - m.step * 0.45) {
-          track.style.scrollBehavior = "auto";
-          track.scrollLeft = end;
-          track.style.scrollBehavior = "";
-        } else if (track.scrollLeft > end + m.step * 0.45) {
-          track.style.scrollBehavior = "auto";
-          track.scrollLeft = start;
-          track.style.scrollBehavior = "";
-        }
-      }, 140);
-    }, { passive: true });
-  }
-
-  function tick() {
-    const track = trackEl();
-    if (!track) return;
-    bind(track);
-    window.kpLayoutBannerPeek(false);
-  }
-  setInterval(tick, 700);
-  window.addEventListener("load", function() { setTimeout(tick, 80); });
+  window.kpLayoutBannerPeek = applyFullWidth;
+  window.kpAdvanceBannerPeek = null;
+  setInterval(applyFullWidth, 800);
+  window.addEventListener("load", function() { setTimeout(applyFullWidth, 50); });
 })();
 </script>
 
@@ -2591,7 +2490,7 @@
   </div>
 
   <script src="./js/mycards-binder.js?v=20261121"></script>
-  <script type="module" src="./js/app-main.js?v=20261124peek2"></script>
+  <script type="module" src="./js/app-main.js?v=20261124full1"></script>
 
   <div id="xlogin-help-modal" class="hidden fixed inset-0 z-[10040] modal-backdrop items-end sm:items-center justify-center p-3" style="padding-top: max(12px, env(safe-area-inset-top)); padding-bottom: max(12px, env(safe-area-inset-bottom));" onclick="if(event.target===this) closeGoogleLoginHelp()">
     <div id="xlogin-help-sheet" class="liquid-glass-heavy w-full max-w-sm rounded-[1.75rem] p-5 shadow-2xl border border-white" role="dialog" aria-modal="true" aria-labelledby="xlogin-help-title">
