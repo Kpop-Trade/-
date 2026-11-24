@@ -7454,11 +7454,14 @@ window.renderHomeThemeSections = function(entries, cardHtmlById) {
     const tradeSecOpen = { active: true, done: true, cancel_other: false, cancel_me: false, cancel_unknown: false };
     window.tradeSecToggle = function(id, open) { tradeSecOpen[id] = !!open; };
     window.openTodoModal = function() {
-      renderTodoList();
-      const modal = document.getElementById("todo-modal");
-      modal.classList.remove("hidden");
-      modal.style.display = "flex";
-    };
+  try { renderTodoList(); } catch (e) { console.error(e); }
+  const modal = document.getElementById("todo-modal");
+  if (!modal) return;
+  modal.classList.remove("hidden");
+  modal.style.zIndex = "9999";
+  modal.style.pointerEvents = "auto";
+  modal.style.display = "flex";
+};
     window.closeTodoModal = function() {
       const modal = document.getElementById("todo-modal");
       modal.classList.add("hidden");
