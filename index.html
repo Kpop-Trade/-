@@ -568,10 +568,15 @@
     sheet.classList.add("kp-slide-in-right-anim");
   }
 
+  let __slideGuard = false;
   const mo = new MutationObserver((mutations) => {
+    if (__slideGuard) return;
     for (const m of mutations) {
       if (m.type === "attributes" && (m.attributeName === "class" || m.attributeName === "style")) {
-        triggerSlideIfTarget(m.target);
+        if (m.target && m.target.id !== "todo-modal" && !m.target.closest?.("#todo-modal")) {
+      __slideGuard = true;
+      try { triggerSlideIfTarget(m.target); } finally { setTimeout(() => { __slideGuard = false; }, 50); }
+    }
       } else if (m.type === "childList" && m.addedNodes && m.addedNodes.length) {
         m.addedNodes.forEach(node => {
           if (node.nodeType === 1) {
