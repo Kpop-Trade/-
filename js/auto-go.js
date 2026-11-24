@@ -1341,48 +1341,18 @@
         } else if (currentEntryData.status === "reserved") {
           html += `<p class="text-sm text-gray-700">開催成立待ち</p>`;
         } else if (currentEntryData.status === "confirmed") {
-        html += `<div class="space-y-2">
-          <p class="text-sm text-gray-700">専用購入URLが発行されました</p>
-          <div id="ag-purchase-deadline-box" class="py-2 text-center">
-                <p class="text-xs text-gray-600">購入期限</p>
-                <p id="ag-purchase-countdown" class="text-sm font-black text-rose-600 tracking-wider mt-0.5">計算中...</p>
-              </div>
-              <div id="ag-purchase-active-actions" class="space-y-3">
-                <a href="${currentPoolData.purchaseUrl || '#'}" target="_blank" rel="noopener" class="block border border-gray-300 text-center text-sm text-gray-900 py-2.5 rounded-xl font-bold">公式ショップで購入</a>
-                <div class="rounded-xl border border-amber-200 bg-amber-50 p-3 text-[11px] text-amber-950 space-y-1 leading-relaxed">
-                  <p class="font-black text-amber-900">購入証明に必要なもの</p>
-                  <p>・購入日時が画面に写っていること</p>
-                  <p>・アルバム名（商品名）が確認できること</p>
-                  <p>・注文完了／購入履歴など、自分の注文だと分かる画面</p>
-                </div>
-                <div class="space-y-1.5">
-                  <p class="text-sm font-bold text-gray-800">購入証明の画像</p>
-                  <div class="grid grid-cols-2 gap-2">
-                    <label class="flex items-center justify-center min-h-[44px] rounded-xl border border-gray-300 bg-white text-[12px] font-bold text-gray-800 active:scale-[0.99]">
-                      📁 アルバムから選ぶ
-                      <input id="ag-purchase-proof" type="file" accept="image/*" onchange="previewAutoGoPurchaseProof(this)" class="hidden">
-                    </label>
-                    <label class="flex items-center justify-center min-h-[44px] rounded-xl border border-purple-200 bg-purple-50 text-[12px] font-bold text-purple-800 active:scale-[0.99]">
-                      📷 写真を撮る
-                      <input id="ag-purchase-proof-camera" type="file" accept="image/*" capture="environment" onchange="previewAutoGoPurchaseProof(this)" class="hidden">
-                    </label>
-                  </div>
-                  <p class="text-[10px] text-gray-500">スクショは「アルバムから選ぶ」がおすすめです</p>
-                </div>
-                <div id="ag-purchase-proof-preview-wrap" class="${window.__agPurchaseProofPreview ? "" : "hidden"} rounded-2xl border border-pink-100 bg-gray-50 overflow-hidden">
-                  <img id="ag-purchase-proof-preview" src="${window.__agPurchaseProofPreview || ""}" alt="購入証明プレビュー" class="w-full max-h-[70vh] object-contain bg-black/5">
-                  <p class="text-[10px] text-center text-gray-500 py-1.5">選択中の写真プレビュー</p>
-                </div>
-                <label class="block text-[12px] text-gray-700">注文番号（任意）
-                  <input id="ag-purchase-order-note" type="text" maxlength="120" placeholder="例: 注文番号・受付番号" value="${escapeAutoGoHtml(window.__agPurchaseOrderNote || "")}" oninput="window.__agPurchaseOrderNote=this.value" class="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-900">
-                </label>
-                <button type="button" onclick="markAutoGoPurchased()" class="w-full min-h-[48px] rounded-full bg-gradient-to-r from-pink-500 to-rose-500 text-white text-sm font-black shadow-md active:scale-[0.99]">購入を報告</button>
-              </div>
-              <div id="ag-purchase-expired-msg" class="hidden py-2 text-center">
-                <p class="text-sm text-gray-700">購入期限切れ</p>
-              </div>
-        </div>`;
-      } else if (currentEntryData.status === "purchased") {
+      const endMs = currentPoolData && currentPoolData.recruitEndAt ? agTimeMs(currentPoolData.recruitEndAt) : 0;
+      const recruitEnded = !!(currentPoolData && (currentPoolData.recruitmentClosedAt || (endMs > 0 && endMs <= Date.now())));
+      if (!recruitEnded) {
+        html += '<p class="text-sm text-amber-800 font-bold">募集期間終了と同時に専用購入URLが発行されます</p>';
+      } else {
+        html += '<div class="space-y-2"><p class="text-sm text-gray-700">専用購入URLが発行されました</p>';
+        if (currentPoolData && currentPoolData.purchaseUrl) {
+          html += '<a href="' + escAttr(currentPoolData.purchaseUrl) + '" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-3 py-2 text-xs font-bold text-white">専用購入URLを開く</a>';
+        }
+        html += '</div>';
+      }
+    } else if (currentEntryData.status === "purchased") {
       html += `<div class="space-y-3">
         <div class="flex items-center justify-between px-1 text-[11px] font-bold">
           <span class="flex items-center gap-1 text-emerald-600"><span class="inline-flex h-4 w-4 items-center justify-center rounded-full bg-emerald-100 text-[10px]">✓</span>購入完了</span>

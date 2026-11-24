@@ -345,6 +345,17 @@ async function confirmAutoGoEntry(poolId, uid, poolData, entryRef) {
   });
 }
 
+
+function isAutoGoRecruitmentEnded(pool, nowMs = Date.now()) {
+  if (!pool) return false;
+  if (pool.recruitmentClosedAt) return true;
+  if (pool.recruitEndAt) {
+    const endMs = timestampMillis(pool.recruitEndAt);
+    if (endMs > 0 && endMs <= nowMs) return true;
+  }
+  return false;
+}
+
 async function activateAutoGoPool(poolId) {
   const poolRef = db.collection("auto_go_pools").doc(poolId);
   const now = Date.now();
@@ -382,9 +393,9 @@ exports.onAutoGoPoolUpdated = onDocumentUpdated("auto_go_pools/{poolId}", async 
   const recruitEndAt = timestampMillis(pool.recruitEndAt);
   if (recruitEndAt && recruitEndAt <= Date.now()) return;
   const minimum = Number(pool.minThreshold || pool.minParticipants || 20);
-  if (Number(pool.totalCount || 0) >= minimum && ["recruiting", "activating"].includes(pool.status)) {
-    await activateAutoGoPool(event.params.poolId);
-  }
+  if (Number(pool.totalCount || 0) >= minimum && ["recruiting", "activating"].includes(pool.status) && isAutoGoRecruitmentEnded(pool)) {
+      await activateAutoGoPool(event.params.poolId);
+    }
 });
 
 exports.onAutoGoEntryCreated = onDocumentCreated(
@@ -420,7 +431,7 @@ exports.onAutoGoEntryCreated = onDocumentCreated(
       });
       return;
     }
-    if (pool.status === "active" || pool.status === "activating") {
+    if ((pool.status === "active" || pool.status === "activating") && isAutoGoRecruitmentEnded(pool)) {
       await confirmAutoGoEntry(event.params.poolId, event.params.uid, pool, event.data.ref);
     }
   }
@@ -801,8 +812,13 @@ exports.processAutoGoDeadlines = onSchedule({
     const pool = poolDoc.data();
     const poolId = poolDoc.id;
     const minimum = Number(pool.minThreshold || pool.minParticipants || 20);
-    if (pool.status === "recruiting" && Number(pool.totalCount || 0) >= minimum) {
-      await activateAutoGoPool(poolId);
+    if (pool.status === "recruiting" && isAutoGoRecruitmentEnded(pool, now)) {
+      if (Number(pool.totalCount || 0) >= minimum) {
+        await poolDoc.ref.update({ recruitmentClosedAt: pool.recruitmentClosedAt || FV.serverTimestamp() });
+        await activateAutoGoPool(poolId);
+      } else {
+        await poolDoc.ref.update({ status: "cancelled", cancelledAt: FV.serverTimestamp() });
+      }
     } else if (pool.status === "recruiting" && pool.recruitEndAt && timestampMillis(pool.recruitEndAt) <= now) {
       await poolDoc.ref.update({ status: "cancelled", cancelledAt: FV.serverTimestamp() });
       const entries = await poolDoc.ref.collection("entries").get();
@@ -2339,6 +2355,12 @@ exports.adminForceCancelAutoGoPool = onCall({ timeoutSeconds: 120 }, async (requ
     forceCancelledBy: request.auth.uid,
     forceCancelReason: reason
   });
+      const _agCloseSnap1 = await poolRef.get();
+      const _agClosePool1 = _agCloseSnap1.exists ? _agCloseSnap1.data() : null;
+      const _agCloseMin1 = Number((_agClosePool1 && (_agClosePool1.minThreshold || _agClosePool1.minParticipants)) || 20);
+      if (_agClosePool1 && Number(_agClosePool1.totalCount || 0) >= _agCloseMin1 && ["recruiting", "activating", "active"].includes(_agClosePool1.status)) {
+        await activateAutoGoPool(poolId);
+      }
 
   const entries = await poolRef.collection("entries").get();
   const bw = db.bulkWriter();
