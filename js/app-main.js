@@ -16033,3 +16033,90 @@ window._changeSavedBannerPhoto = function(idx, input) {
   }
   setTimeout(installUnifiedSearch, 400);
 })();
+
+
+/* === Smooth Right-to-Left Slide Transition for Notifications & Todo Modals === */
+(function() {
+  function animateSlideOpen(el) {
+    if (!el) return;
+    clearTimeout(el._kpCloseTimer);
+    el.classList.add("kp-slide-page");
+    el.classList.remove("hidden");
+    if (el.id === "todo-modal") {
+      el.style.display = "flex";
+      el.style.position = "fixed";
+      el.style.inset = "0";
+    }
+    el.style.transition = "none";
+    el.style.transform = "translate3d(100%, 0, 0)";
+    void el.offsetWidth;
+    requestAnimationFrame(() => {
+      el.style.transition = "transform 0.34s cubic-bezier(0.22, 1, 0.36, 1)";
+      el.style.transform = "translate3d(0, 0, 0)";
+    });
+  }
+
+  function animateSlideClose(el, afterFn) {
+    if (!el) { if (afterFn) afterFn(); return; }
+    clearTimeout(el._kpCloseTimer);
+    el.classList.add("kp-slide-page");
+    el.style.transition = "transform 0.28s cubic-bezier(0.32, 0.72, 0, 1)";
+    el.style.transform = "translate3d(100%, 0, 0)";
+    el._kpCloseTimer = setTimeout(() => {
+      el.classList.add("hidden");
+      if (el.id === "todo-modal") el.style.display = "none";
+      el.style.transform = "";
+      if (afterFn) afterFn();
+    }, 290);
+  }
+
+  function installSlideHooks() {
+    if (typeof window.openNotificationsModal === "function" && !window.openNotificationsModal.__slideWrapped) {
+      const origOpenNotif = window.openNotificationsModal;
+      const wrappedOpenNotif = function() {
+        const res = origOpenNotif.apply(this, arguments);
+        animateSlideOpen(document.getElementById("notifications-modal"));
+        return res;
+      };
+      wrappedOpenNotif.__slideWrapped = true;
+      window.openNotificationsModal = wrappedOpenNotif;
+    }
+
+    if (typeof window.closeNotificationsModal === "function" && !window.closeNotificationsModal.__slideWrapped) {
+      const origCloseNotif = window.closeNotificationsModal;
+      const wrappedCloseNotif = function() {
+        const el = document.getElementById("notifications-modal");
+        animateSlideClose(el, () => origCloseNotif.apply(this, arguments));
+      };
+      wrappedCloseNotif.__slideWrapped = true;
+      window.closeNotificationsModal = wrappedCloseNotif;
+    }
+
+    if (typeof window.openTodoModal === "function" && !window.openTodoModal.__slideWrapped) {
+      const origOpenTodo = window.openTodoModal;
+      const wrappedOpenTodo = function() {
+        const res = origOpenTodo.apply(this, arguments);
+        animateSlideOpen(document.getElementById("todo-modal"));
+        return res;
+      };
+      wrappedOpenTodo.__slideWrapped = true;
+      window.openTodoModal = wrappedOpenTodo;
+    }
+
+    if (typeof window.closeTodoModal === "function" && !window.closeTodoModal.__slideWrapped) {
+      const origCloseTodo = window.closeTodoModal;
+      const wrappedCloseTodo = function() {
+        const el = document.getElementById("todo-modal");
+        animateSlideClose(el, () => origCloseTodo.apply(this, arguments));
+      };
+      wrappedCloseTodo.__slideWrapped = true;
+      window.closeTodoModal = wrappedCloseTodo;
+    }
+  }
+
+  installSlideHooks();
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", installSlideHooks);
+  }
+  setInterval(installSlideHooks, 400);
+})();
