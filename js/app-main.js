@@ -14302,7 +14302,7 @@ function renderGllitMercariCarousel(upcomingList) {
   }
 
   track.style.gap = banners.length > 1 ? "10px" : "0px";
-  track.style.padding = banners.length > 1 ? "0px 32px 6px 32px" : "0px";
+  track.style.padding = banners.length > 1 ? "0px 28px 6px 28px" : "0px 12px 6px 12px";
   track.style.scrollPaddingInline = "32px";
   track.style.borderRadius = "0px";
   track.style.scrollSnapType = "x mandatory";

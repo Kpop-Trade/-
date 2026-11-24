@@ -890,6 +890,46 @@
 })();
 </script>
 
+
+<style id="gllit-peek-banner-fix">
+  #gllit-carousel-track {
+    display: flex !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+    padding: 0 28px 6px 28px !important;
+    scroll-padding-inline: 28px !important;
+    overflow-x: auto !important;
+    scroll-snap-type: x mandatory !important;
+  }
+  #gllit-carousel-track > .gllit-banner-slide,
+  #gllit-carousel-track > .gllit-mercari-card {
+    width: calc(100vw - 56px) !important;
+    min-width: calc(100vw - 56px) !important;
+    max-width: calc(100vw - 56px) !important;
+    flex: 0 0 calc(100vw - 56px) !important;
+    height: 210px !important;
+    min-height: 210px !important;
+    border-radius: 14px !important;
+    scroll-snap-align: center !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: flex-end !important;
+    position: relative !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+  }
+  #gllit-carousel-track:has(> :only-child) {
+    padding: 0 12px 6px 12px !important;
+  }
+  #gllit-carousel-track:has(> :only-child) > .gllit-banner-slide,
+  #gllit-carousel-track:has(> :only-child) > .gllit-mercari-card {
+    width: calc(100vw - 24px) !important;
+    min-width: calc(100vw - 24px) !important;
+    max-width: calc(100vw - 24px) !important;
+    flex: 0 0 calc(100vw - 24px) !important;
+  }
+</style>
+
 </head>
 <body class="bg-illit-bg min-h-screen text-gray-800 relative overflow-x-hidden home-tab">
   <div id="app-splash-screen" role="status" aria-label="K-pop Tradeを読み込み中">
@@ -1043,7 +1083,7 @@
       </div>
     </section>
 
-    <section id="gllit-hub" class="w-screen relative left-1/2 -translate-x-1/2 pt-0 pb-2 overflow-hidden" style="margin-top:-22px;">
+    <section id="gllit-hub" class="w-screen relative left-1/2 -translate-x-1/2 pt-0 pb-2 overflow-hidden" style="margin-top:-14px;">
         <div id="gllit-carousel-track" class="gllit-mercari-track rounded-none">
           <button type="button" onclick="openIllitCalendar()" class="gllit-mercari-card" style="background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 55%,#312e81 100%);">
             <div class="flex items-center justify-between gap-2 mb-1">
