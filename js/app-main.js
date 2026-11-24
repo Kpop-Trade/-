@@ -15608,7 +15608,7 @@ window._changeSavedBannerPhoto = function(idx, input) {
   setTimeout(attach, 600);
 })();
 
-;(function initSearchBarHeroMorph() {
+;(function initSearchBarHeroMorph() { return; /* disabled overlapping ghost overlay */
   function patch() {
     if (typeof window.openSearchPage !== "function" || window.openSearchPage._morphPatched) return;
     const orig = window.openSearchPage;
@@ -15902,4 +15902,84 @@ window._changeSavedBannerPhoto = function(idx, input) {
     document.addEventListener("DOMContentLoaded", bindContainers);
   }
   setInterval(bindContainers, 1000);
+})();
+
+
+/* === Fix Search Bar Overlap & Single-Back Navigation === */
+(function() {
+  function cleanSearchMorphArtifacts() {
+    document.querySelectorAll("div[style*='z-index:9999'][style*='pointer-events:none']").forEach((el) => {
+      if (el.textContent && el.textContent.includes("キーワード")) el.remove();
+    });
+    const input = document.getElementById("search-page-input");
+    if (input) {
+      let p = input.parentElement;
+      while (p && p !== document.body) {
+        if (p.style && p.style.opacity === "0") p.style.opacity = "1";
+        p = p.parentElement;
+      }
+    }
+  }
+
+  function installSingleBackSearch() {
+    cleanSearchMorphArtifacts();
+
+    // Wrap runSearch so searching does not push an extra duplicate history entry
+    if (typeof window.runSearch === "function" && !window.runSearch.__singleHistoryPatched) {
+      const origRunSearch = window.runSearch;
+      const wrappedRunSearch = function() {
+        const origPush = history.pushState;
+        history.pushState = function() { /* suppress extra search-result history entry */ };
+        try {
+          return origRunSearch.apply(this, arguments);
+        } finally {
+          history.pushState = origPush;
+        }
+      };
+      wrappedRunSearch.__singleHistoryPatched = true;
+      window.runSearch = wrappedRunSearch;
+    }
+
+    // Wrap openSearchPage so opening when already open doesn't push duplicate history
+    if (typeof window.openSearchPage === "function" && !window.openSearchPage.__singleOpenPatched) {
+      const origOpenSearch = window.openSearchPage;
+      const wrappedOpenSearch = function() {
+        cleanSearchMorphArtifacts();
+        const page = document.getElementById("search-page");
+        const alreadyOpen = page && !page.classList.contains("hidden");
+        const origPush = history.pushState;
+        if (alreadyOpen) {
+          history.pushState = function() {};
+        }
+        try {
+          return origOpenSearch.apply(this, arguments);
+        } finally {
+          history.pushState = origPush;
+          setTimeout(cleanSearchMorphArtifacts, 30);
+        }
+      };
+      wrappedOpenSearch.__singleOpenPatched = true;
+      window.openSearchPage = wrappedOpenSearch;
+    }
+
+    // Ensure the back button inside #search-page always closes search page in 1 tap
+    const searchPage = document.getElementById("search-page");
+    if (searchPage && !searchPage.__singleBackBound) {
+      searchPage.__singleBackBound = true;
+      searchPage.addEventListener("click", (e) => {
+        const backBtn = e.target.closest("button[aria-label*='戻る'], button[onclick*='closeSearchPage'], button[onclick*='searchBack'], #search-back-btn");
+        if (backBtn && typeof window.closeSearchPage === "function") {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          window.closeSearchPage();
+        }
+      }, true);
+    }
+  }
+
+  installSingleBackSearch();
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", installSingleBackSearch);
+  }
+  setTimeout(installSingleBackSearch, 500);
 })();
