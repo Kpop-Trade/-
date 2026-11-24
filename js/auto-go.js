@@ -1375,23 +1375,92 @@
               </div>
         </div>`;
       } else if (currentEntryData.status === "purchased") {
-        html += `<div class="space-y-2">
-          <p class="text-sm text-gray-700">アルバム到着を報告してください</p>
-          <button onclick="markAutoGoAlbumArrived()" class="w-full border border-gray-300 text-sm text-gray-900 py-2">到着を報告</button>
-          <button onclick="reportAutoGoDelay()" class="w-full text-sm text-gray-600 py-2">遅延を報告</button>
-        </div>`;
-      } else if (currentEntryData.status === "arrived") {
-        html += `<div class="space-y-2">
-          <p class="text-sm text-gray-700">開封結果を登録してください</p>
-          <select id="ag-pulled-select" class="w-full border border-gray-300 rounded-lg p-2 text-xs">
+      html += `<div class="space-y-3">
+        <div class="flex items-center justify-between px-1 text-[11px] font-bold">
+          <span class="flex items-center gap-1 text-emerald-600"><span class="inline-flex h-4 w-4 items-center justify-center rounded-full bg-emerald-100 text-[10px]">✓</span>購入完了</span>
+          <span class="h-[2px] flex-1 mx-2 bg-pink-200 rounded-full"></span>
+          <span class="flex items-center gap-1 text-pink-600"><span class="inline-flex h-4 w-4 items-center justify-center rounded-full bg-pink-500 text-white text-[10px]">2</span>到着報告</span>
+          <span class="h-[2px] flex-1 mx-2 bg-gray-200 rounded-full"></span>
+          <span class="flex items-center gap-1 text-gray-400"><span class="inline-flex h-4 w-4 items-center justify-center rounded-full bg-gray-100 text-gray-500 text-[10px]">3</span>開封登録</span>
+        </div>
+
+        <div class="rounded-2xl border border-pink-100 bg-gradient-to-br from-pink-50/80 via-white to-rose-50/60 p-3.5 shadow-sm">
+          <div class="flex items-start gap-2.5">
+            <div class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-pink-100 text-pink-600">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+            </div>
+            <div class="min-w-0 flex-1">
+              <p class="text-[13px] font-black text-gray-900">アルバムの到着を確認してください</p>
+              <p class="mt-0.5 text-[11px] leading-relaxed text-gray-600">手元に届いたら下のボタンから到着を報告し、そのままトレカの開封結果を登録できます。</p>
+            </div>
+          </div>
+
+          <button type="button" onclick="markAutoGoAlbumArrived()" class="mt-3 flex w-full min-h-[48px] items-center justify-center gap-2 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 px-4 text-sm font-black text-white shadow-md transition active:scale-[0.99]">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+            <span>到着を報告する</span>
+          </button>
+        </div>
+
+        <button type="button" onclick="reportAutoGoDelay()" class="flex w-full items-center justify-between rounded-2xl border border-amber-200/80 bg-amber-50/60 px-3.5 py-2.5 text-left transition active:scale-[0.99]">
+          <div class="flex items-center gap-2.5">
+            <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </span>
+            <div>
+              <div class="text-xs font-bold text-amber-900">配送遅延・未着を報告</div>
+              <div class="text-[10px] text-amber-700/80">発送が遅れている・まだ届かない場合はこちら</div>
+            </div>
+          </div>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 text-amber-600"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
+      </div>`;
+    } else if (currentEntryData.status === "arrived") {
+      html += `<div class="space-y-3">
+        <div class="flex items-center justify-between px-1 text-[11px] font-bold">
+          <span class="flex items-center gap-1 text-emerald-600"><span class="inline-flex h-4 w-4 items-center justify-center rounded-full bg-emerald-100 text-[10px]">✓</span>購入完了</span>
+          <span class="h-[2px] flex-1 mx-2 bg-emerald-300 rounded-full"></span>
+          <span class="flex items-center gap-1 text-emerald-600"><span class="inline-flex h-4 w-4 items-center justify-center rounded-full bg-emerald-100 text-[10px]">✓</span>到着済</span>
+          <span class="h-[2px] flex-1 mx-2 bg-pink-200 rounded-full"></span>
+          <span class="flex items-center gap-1 text-pink-600"><span class="inline-flex h-4 w-4 items-center justify-center rounded-full bg-pink-500 text-white text-[10px]">3</span>開封登録</span>
+        </div>
+
+        <div class="rounded-2xl border border-pink-100 bg-gradient-to-br from-pink-50/80 via-white to-rose-50/60 p-3.5 shadow-sm space-y-2.5">
+          <div>
+            <p class="text-[13px] font-black text-gray-900">開封結果を登録してください</p>
+            <p class="mt-0.5 text-[11px] text-gray-600">実際に引いたメンバーを選ぶと自動マッチングが始まります。</p>
+          </div>
+          <select id="ag-pulled-select" class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-xs font-bold text-gray-800 shadow-xs outline-none focus:border-pink-400">
             <option value="">実際に引いたメンバーを選択...</option>
             ${getActiveMembers().map(m => `<option value="${m}">${m}</option>`).join("")}
           </select>
-          <button onclick="submitAutoGoReveal()" class="w-full border border-gray-300 text-sm text-gray-900 py-2">開封結果を登録</button>
-          <button onclick="reportAutoGoDelay()" class="w-full text-sm text-gray-600 py-2">遅延を報告</button>
-        </div>`;
-      } else if (currentEntryData.status === "delayed") {
-        html += `<p class="text-sm text-gray-700">遅延を報告済み</p>`;
+          <button type="button" onclick="submitAutoGoReveal()" class="flex w-full min-h-[48px] items-center justify-center gap-2 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 px-4 text-sm font-black text-white shadow-md transition active:scale-[0.99]">
+            <span>開封結果を登録する</span>
+          </button>
+        </div>
+
+        <button type="button" onclick="reportAutoGoDelay()" class="flex w-full items-center justify-between rounded-2xl border border-amber-200/80 bg-amber-50/60 px-3.5 py-2.5 text-left transition active:scale-[0.99]">
+          <div class="flex items-center gap-2.5">
+            <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </span>
+            <div>
+              <div class="text-xs font-bold text-amber-900">配送遅延・未着を報告</div>
+              <div class="text-[10px] text-amber-700/80">一部の到着が遅れている場合はこちら</div>
+            </div>
+          </div>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 text-amber-600"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
+      </div>`;
+    } else if (currentEntryData.status === "delayed") {
+      html += `<div class="flex items-center gap-2.5 rounded-2xl border border-amber-200 bg-amber-50/80 px-3.5 py-3">
+        <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </span>
+        <div>
+          <p class="text-xs font-black text-amber-900">配送遅延を報告済みです</p>
+          <p class="text-[11px] text-amber-700">運営・グループメンバーに遅延ステータスが共有されています。</p>
+        </div>
+      </div>`;
       } else if (currentEntryData.status === "self_pulled") {
         html += `<p class="text-sm text-gray-700">開封結果を登録済み（自引き）</p>`;
       } else if (currentEntryData.status === "waiting_match") {
