@@ -1462,7 +1462,22 @@
         </div>
       </div>`;
       } else if (currentEntryData.status === "self_pulled") {
-        html += `<p class="text-sm text-gray-700">開封結果を登録済み（自引き）</p>`;
+      const pulledLabel = currentEntryData.openedCard || currentEntryData.pulledMember || "";
+      html += `<div class="rounded-2xl border border-pink-200 bg-gradient-to-br from-pink-50 via-rose-50/70 to-amber-50/70 p-4 shadow-sm">
+        <div class="flex items-start gap-3">
+          <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-pink-500 to-rose-500 text-lg text-white shadow-sm">
+            🎉
+          </div>
+          <div class="min-w-0 flex-1">
+            <div class="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-black text-emerald-700">
+              <span>✓</span>
+              <span>自引き達成・取引完了</span>
+            </div>
+            <p class="mt-1.5 text-sm font-black leading-snug text-gray-900">おめでとうございます🎉　取引は完了です！！</p>
+            <p class="mt-1 text-xs leading-relaxed text-gray-600">${pulledLabel ? `「${pulledLabel}」を自引きしました！` : "ご希望のメンバーを自引きしました！"}追加の発送やマッチング手続きは不要です。</p>
+          </div>
+        </div>
+      </div>`;
       } else if (currentEntryData.status === "waiting_match") {
         html += `<p class="text-sm text-gray-700">開封結果を登録済み · マッチング待ち</p>`;
       } else if (currentEntryData.status === "matched") {
@@ -2219,4 +2234,24 @@ ${currentPoolData.title}
   }
 
   setInterval(checkExpiredPoolsForBroadcast, 10000);
+})();
+
+
+/* === Congratulatory Toast on Self-Pull Complete === */
+(function() {
+  if (typeof window.submitAutoGoReveal === "function" && !window.submitAutoGoReveal.__selfPullCongratsPatched) {
+    const origReveal = window.submitAutoGoReveal;
+    const wrappedReveal = async function() {
+      const res = await origReveal.apply(this, arguments);
+      setTimeout(() => {
+        const text = document.body ? document.body.innerText : "";
+        if (text.includes("おめでとうございます🎉　取引は完了です！！") && typeof window.showToast === "function") {
+          window.showToast("おめでとうございます🎉　取引は完了です！！", "success");
+        }
+      }, 250);
+      return res;
+    };
+    wrappedReveal.__selfPullCongratsPatched = true;
+    window.submitAutoGoReveal = wrappedReveal;
+  }
 })();
