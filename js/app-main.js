@@ -14261,8 +14261,9 @@ function renderGllitMercariCarousel(upcomingList) {
     track.parentElement.style.borderRadius = "0px";
   }
 
-  track.style.gap = "0px";
+  track.style.gap = "";
   track.style.borderRadius = "0px";
+  track.style.scrollSnapType = "x mandatory";
 
   track.innerHTML = banners.map((b) => {
     const img = escapeHtml(b.imageUrl || "");
@@ -14277,11 +14278,16 @@ function renderGllitMercariCarousel(upcomingList) {
 
     return `<div onclick="window.handleCarouselSlideTap(this)" data-link="${link}" data-action=""
       style="${bgStyle} border-radius:0px; min-height:176px; height:176px;"
-      class="snap-start shrink-0 w-full relative flex flex-col justify-end p-4 text-white select-none ${link ? "cursor-pointer active:opacity-95" : ""}">
+      class="gllit-banner-slide snap-center shrink-0 relative flex flex-col justify-end p-4 text-white select-none ${link ? "cursor-pointer active:opacity-95" : ""}">
       ${hasText ? `<div class="text-sm font-black leading-snug drop-shadow">${title}</div>` : ""}
       ${link ? `<span class="absolute top-2.5 right-2.5 bg-black/55 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5">詳細 ›</span>` : ""}
     </div>`;
   }).join("");
+
+  if (typeof window.kpLayoutBannerPeek === "function") {
+    window.kpLayoutBannerPeek(true);
+    requestAnimationFrame(function() { window.kpLayoutBannerPeek(true); });
+  }
 }
 
 // === 管理者トップ広告バナー（写真＋リンク）管理 ===
@@ -15288,6 +15294,8 @@ window._changeSavedBannerPhoto = function(idx, input) {
 // === トップ広告バナー自動ループ回転（確実版） ===
 (function() {
   function findBannerTrack() {
+    const real = document.getElementById("gllit-carousel-track");
+    if (real) return real;
     const byId = document.getElementById("gllit-mercari-carousel-track");
     if (byId) return byId;
     const candidates = Array.from(document.querySelectorAll("div, ul, section"));
@@ -15304,6 +15312,10 @@ window._changeSavedBannerPhoto = function(idx, input) {
 
   function stepBannerCarousel() {
     if (window._topBannerIsTouching) return;
+    if (typeof window.kpAdvanceBannerPeek === "function") {
+      window.kpAdvanceBannerPeek();
+      return;
+    }
     const track = findBannerTrack();
     if (!track) return;
     const maxScroll = track.scrollWidth - track.clientWidth;
