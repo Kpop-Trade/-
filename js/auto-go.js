@@ -2430,7 +2430,12 @@ ${currentPoolData.title}
       shipping.name ? "宛名: " + shipping.name : "",
       shipping.phone ? "TEL: " + shipping.phone : ""
     ].filter(Boolean);
-    const addrText = addrParts.length ? addrParts.join(" / ") : (entry.shipToAddress || "未登録");
+    const dummyFallbackAddr = String(uid || "").startsWith("dummy_")
+      ? "〒150-0001 / 東京都渋谷区神宮前1-19-11 パークサイド渋谷 302 / 宛名: ダミー受取人 / TEL: 090-1111-2222"
+      : "";
+    const addrText = addrParts.length
+      ? addrParts.join(" / ")
+      : (entry.shipToAddress ? `${entry.shipToZip ? "〒" + entry.shipToZip + " / " : ""}${entry.shipToAddress}${entry.shipToName ? " / 宛名: " + entry.shipToName : ""}` : (dummyFallbackAddr || "未登録"));
 
     const rows = [
       ["進行ステータス", statusText],

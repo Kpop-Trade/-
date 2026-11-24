@@ -210,6 +210,29 @@ function isAutoGoDummyUid(uid) {
   return typeof uid === "string" && uid.startsWith("dummy_");
 }
 
+function buildAutoGoDummyAddress(seq) {
+  const presets = [
+    { zip: "150-0001", prefecture: "東京都", city: "渋谷区", address1: "東京都渋谷区神宮前1-19-11", address2: "パークサイド渋谷 302", name: "山田 花子", phone: "090-1111-2222" },
+    { zip: "530-0001", prefecture: "大阪府", city: "大阪市北区", address1: "大阪府大阪市北区梅田3-1-3", address2: "グランフロントレジデンス 805", name: "佐藤 美咲", phone: "080-2222-3333" },
+    { zip: "460-0008", prefecture: "愛知県", city: "名古屋市中区", address1: "愛知県名古屋市中区栄3-15-33", address2: "栄セントラルハイツ 401", name: "鈴木 結衣", phone: "090-3333-4444" },
+    { zip: "810-0001", prefecture: "福岡県", city: "福岡市中央区", address1: "福岡県福岡市中央区天神2-11-1", address2: "天神タワーマンション 1204", name: "高橋 陽菜", phone: "080-4444-5555" },
+    { zip: "220-0011", prefecture: "神奈川県", city: "横浜市西区", address1: "神奈川県横浜市西区高島2-18-1", address2: "ベイサイドコート 506", name: "伊藤 凛", phone: "090-5555-6666" },
+    { zip: "060-0005", prefecture: "北海道", city: "札幌市中央区", address1: "北海道札幌市中央区北5条西2-5", address2: "ステラレジデンス 702", name: "渡辺 葵", phone: "080-6666-7777" }
+  ];
+  const n = Math.max(1, Number(seq) || 1);
+  const p = presets[(n - 1) % presets.length];
+  return {
+    zip: p.zip,
+    prefecture: p.prefecture,
+    city: p.city,
+    address1: p.address1,
+    address2: p.address2,
+    name: `${p.name}（ダミー#${n}）`,
+    phone: p.phone,
+    fullAddress: `${p.address1} ${p.address2}`
+  };
+}
+
 async function writeAutoGoAuditLog(poolId, entry) {
   if (!poolId || !entry) return;
   const payload = {
@@ -2158,6 +2181,32 @@ exports.adminInjectAutoGoDummies = onCall({ timeoutSeconds: 120 }, async (reques
           memberCaps: alloc.caps,
           targetParticipants: alloc.targetParticipants
         });
+        const dummyAddr = buildAutoGoDummyAddress(entrySeq);
+        const dummyUserRef = db.collection("users").doc(dummyUid);
+        const dummyShipRef = dummyUserRef.collection("private").doc("shipping");
+        tx.set(dummyUserRef, {
+          isDummy: true,
+          profile: {
+            nickname: `ダミー参加者#${entrySeq}`,
+            xId: `dummy_${entrySeq}`,
+            zip: dummyAddr.zip,
+            address1: dummyAddr.address1,
+            address2: dummyAddr.address2,
+            name: dummyAddr.name,
+            phone: dummyAddr.phone
+          },
+          updatedAt: FV.serverTimestamp()
+        }, { merge: true });
+        tx.set(dummyShipRef, {
+          zip: dummyAddr.zip,
+          prefecture: dummyAddr.prefecture,
+          city: dummyAddr.city,
+          address1: dummyAddr.address1,
+          address2: dummyAddr.address2,
+          name: dummyAddr.name,
+          phone: dummyAddr.phone,
+          updatedAt: FV.serverTimestamp()
+        }, { merge: true });
         tx.create(entryRef, {
           uid: dummyUid,
           isDummy: true,
@@ -2170,6 +2219,10 @@ exports.adminInjectAutoGoDummies = onCall({ timeoutSeconds: 120 }, async (reques
           consentAt: FV.serverTimestamp(),
           userName: `ダミー参加者#${entrySeq}`,
           xId: `dummy_${entrySeq}`,
+          shipToZip: dummyAddr.zip,
+          shipToAddress: dummyAddr.fullAddress,
+          shipToName: dummyAddr.name,
+          shipToPhone: dummyAddr.phone,
           createdAt: FV.serverTimestamp(),
           injectedBy: request.auth.uid
         });
