@@ -3228,7 +3228,8 @@ window.triggerHeartPop = function(button) {
     async function saveToken() {
       let reg;
       try {
-        reg = await navigator.serviceWorker.register("./firebase-messaging-sw.js");
+        await navigator.serviceWorker.register("./firebase-messaging-sw.js");
+    reg = await navigator.serviceWorker.ready;
       } catch (swErr) {
         console.error("Service Worker 登録エラー:", swErr);
         throw new Error("「/firebase-messaging-sw.js」が読み込めません。ルート直下に配置されているか確認してください。");
@@ -3290,7 +3291,7 @@ window.triggerHeartPop = function(button) {
         renderSellTab(); showToast("通知をオンにしました！", "success");
       } catch(e){ 
         console.error("プッシュ通知設定エラー:", e);
-        /* alert hidden */ console.log("設定失敗: " + (e.message || e)); 
+        showToast("通知設定失敗: " + (e.message || e), "error"); 
       }
     };
 
