@@ -16276,3 +16276,105 @@ window._changeSavedBannerPhoto = function(idx, input) {
   }
   setInterval(installSearchSwitchTabHook, 400);
 })();
+
+
+/* === Guaranteed Slide-In/Out Observer & Wrapper for Notifications (#notifications-modal) & Todo (#todo-modal) === */
+(function() {
+  function runSlideIn(el) {
+    if (!el || el._kpSlidingOpen) return;
+    el._kpSlidingOpen = true;
+    clearTimeout(el._kpCloseTimer);
+    el.classList.add("kp-slide-page");
+    el.classList.remove("hidden");
+    if (el.id === "todo-modal") {
+      el.style.display = "flex";
+      el.style.position = "fixed";
+      el.style.inset = "0";
+    }
+    el.style.transition = "none";
+    el.style.transform = "translate3d(100%, 0, 0)";
+    void el.offsetWidth;
+    requestAnimationFrame(() => {
+      el.style.transition = "transform 0.34s cubic-bezier(0.22, 1, 0.36, 1)";
+      el.style.transform = "translate3d(0, 0, 0)";
+      setTimeout(() => { el._kpSlidingOpen = false; }, 360);
+    });
+  }
+
+  function runSlideOut(el, done) {
+    if (!el) { if (done) done(); return; }
+    clearTimeout(el._kpCloseTimer);
+    el._kpSlidingOpen = false;
+    el.classList.add("kp-slide-page");
+    el.style.transition = "transform 0.28s cubic-bezier(0.32, 0.72, 0, 1)";
+    el.style.transform = "translate3d(100%, 0, 0)";
+    el._kpCloseTimer = setTimeout(() => {
+      el.classList.add("hidden");
+      if (el.id === "todo-modal") el.style.display = "none";
+      el.style.transform = "";
+      if (done) done();
+    }, 290);
+  }
+
+  function bindAll() {
+    if (typeof window.openNotificationsModal === "function" && !window.openNotificationsModal.__kpSlide2) {
+      const orig = window.openNotificationsModal;
+      const fn = function() {
+        const res = orig.apply(this, arguments);
+        runSlideIn(document.getElementById("notifications-modal"));
+        return res;
+      };
+      fn.__kpSlide2 = true;
+      window.openNotificationsModal = fn;
+    }
+    if (typeof window.closeNotificationsModal === "function" && !window.closeNotificationsModal.__kpSlide2) {
+      const orig = window.closeNotificationsModal;
+      const fn = function() {
+        const el = document.getElementById("notifications-modal");
+        runSlideOut(el, () => orig.apply(this, arguments));
+      };
+      fn.__kpSlide2 = true;
+      window.closeNotificationsModal = fn;
+    }
+    if (typeof window.openTodoModal === "function" && !window.openTodoModal.__kpSlide2) {
+      const orig = window.openTodoModal;
+      const fn = function() {
+        const res = orig.apply(this, arguments);
+        runSlideIn(document.getElementById("todo-modal"));
+        return res;
+      };
+      fn.__kpSlide2 = true;
+      window.openTodoModal = fn;
+    }
+    if (typeof window.closeTodoModal === "function" && !window.closeTodoModal.__kpSlide2) {
+      const orig = window.closeTodoModal;
+      const fn = function() {
+        const el = document.getElementById("todo-modal");
+        runSlideOut(el, () => orig.apply(this, arguments));
+      };
+      fn.__kpSlide2 = true;
+      window.closeTodoModal = fn;
+    }
+
+    ["notifications-modal", "todo-modal"].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el || el.__kpMutObserved) return;
+      el.__kpMutObserved = true;
+      let wasHidden = el.classList.contains("hidden") || el.style.display === "none";
+      const obs = new MutationObserver(() => {
+        const isHidden = el.classList.contains("hidden") || el.style.display === "none";
+        if (wasHidden && !isHidden) {
+          runSlideIn(el);
+        }
+        wasHidden = isHidden;
+      });
+      obs.observe(el, { attributes: true, attributeFilter: ["class", "style"] });
+    });
+  }
+
+  bindAll();
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", bindAll);
+  }
+  setInterval(bindAll, 300);
+})();
