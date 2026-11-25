@@ -96,13 +96,20 @@ async function push(uid, title, body, link) {
     : String(body).slice(0, 200);
   const res = await admin.messaging().sendEachForMulticast({
     tokens,
+    notification: {
+      title: String(title),
+      body: pushBody.slice(0, 200)
+    },
     data: {
       title: String(title),
       body: pushBody.slice(0, 200),
       url,
       tag: link && link.id ? String(link.id) : "general"
     },
-    webpush: { headers: { Urgency: "high" } }
+    webpush: {
+      headers: { Urgency: "high" },
+      fcmOptions: { link: url }
+    }
   });
   // 無効になったトークンを掃除
   await Promise.all(res.responses.map((r, i) =>
@@ -3033,8 +3040,9 @@ exports.adminBroadcast = onCall({ timeoutSeconds: 300, memory: "512MiB" }, async
   for (let i = 0; i < tokens.length; i += 500) {
     await admin.messaging().sendEachForMulticast({
       tokens: tokens.slice(i, i + 500),
-      data: { title: "運営からのお知らせ", body: message, url: SITE, tag: "admin" },
-      webpush: { headers: { Urgency: "high" } }
+      notification: { title: "運営からのお知らせ", body: String(message).slice(0, 200) },
+      data: { title: "運営からのお知らせ", body: String(message).slice(0, 200), url: SITE, tag: "admin" },
+      webpush: { headers: { Urgency: "high" }, fcmOptions: { link: SITE } }
     }).catch(() => {});
   }
   return { count: users.size };
