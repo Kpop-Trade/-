@@ -2784,3 +2784,115 @@ window.runAdminAutoGoPurgeDummies = async function(poolId) {
     if (typeof showToast === "function") showToast("ダミー削除エラー: " + (err?.message || "失敗しました"), "error");
   }
 };
+
+
+/* === Separate Recruitment vs Reserved Views & Transition After Booking === */
+(function() {
+  window.__agViewMode = window.__agViewMode || "recruit"; // "recruit" | "reserved"
+
+  window.switchAutoGoView = function(mode, withSlide = true) {
+    window.__agViewMode = mode === "reserved" ? "reserved" : "recruit";
+    const entrySec = document.getElementById("ag-entry-section");
+    const statusBox = document.getElementById("ag-my-status-box");
+    const tabRecruit = document.getElementById("ag-subtab-recruit");
+    const tabReserved = document.getElementById("ag-subtab-reserved");
+
+    if (tabRecruit && tabReserved) {
+      if (window.__agViewMode === "reserved") {
+        tabReserved.className = "flex-1 py-2 rounded-full text-xs font-black bg-gray-900 text-white shadow-sm transition";
+        tabRecruit.className = "flex-1 py-2 rounded-full text-xs font-bold text-gray-600 hover:text-gray-900 transition";
+      } else {
+        tabRecruit.className = "flex-1 py-2 rounded-full text-xs font-black bg-gray-900 text-white shadow-sm transition";
+        tabReserved.className = "flex-1 py-2 rounded-full text-xs font-bold text-gray-600 hover:text-gray-900 transition";
+      }
+    }
+
+    if (window.__agViewMode === "reserved") {
+      if (entrySec) entrySec.classList.add("hidden");
+      if (statusBox) {
+        statusBox.classList.remove("hidden");
+        if (withSlide) {
+          statusBox.style.transition = "none";
+          statusBox.style.transform = "translate3d(28px, 0, 0)";
+          statusBox.style.opacity = "0";
+          void statusBox.offsetWidth;
+          requestAnimationFrame(() => {
+            statusBox.style.transition = "transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.25s ease";
+            statusBox.style.transform = "translate3d(0, 0, 0)";
+            statusBox.style.opacity = "1";
+          });
+        }
+      }
+    } else {
+      if (statusBox) statusBox.classList.add("hidden");
+      if (entrySec) {
+        entrySec.classList.remove("hidden");
+        if (withSlide) {
+          entrySec.style.transition = "none";
+          entrySec.style.transform = "translate3d(-28px, 0, 0)";
+          entrySec.style.opacity = "0";
+          void entrySec.offsetWidth;
+          requestAnimationFrame(() => {
+            entrySec.style.transition = "transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.25s ease";
+            entrySec.style.transform = "translate3d(0, 0, 0)";
+            entrySec.style.opacity = "1";
+          });
+        }
+      }
+    }
+  };
+
+  function ensureAutoGoSubTabs() {
+    const entrySec = document.getElementById("ag-entry-section");
+    const statusBox = document.getElementById("ag-my-status-box");
+    if (!entrySec || !statusBox) return;
+    const parent = entrySec.parentElement;
+    if (!parent) return;
+
+    const hasReservation = statusBox.innerHTML.trim().length > 0 && !statusBox.innerHTML.includes("新規エントリーが一時停止") && !statusBox.innerHTML.includes("テスト環境です");
+    let switcher = document.getElementById("ag-view-switcher");
+
+    if (hasReservation) {
+      if (!switcher) {
+        switcher = document.createElement("div");
+        switcher.id = "ag-view-switcher";
+        switcher.className = "flex items-center gap-1.5 p-1 rounded-full bg-gray-100 border border-gray-200 mb-3";
+        switcher.innerHTML = `
+          <button type="button" id="ag-subtab-recruit" onclick="window.switchAutoGoView('recruit', true)" class="flex-1 py-2 rounded-full text-xs font-bold text-gray-600 transition">募集・エントリー</button>
+          <button type="button" id="ag-subtab-reserved" onclick="window.switchAutoGoView('reserved', true)" class="flex-1 py-2 rounded-full text-xs font-black bg-gray-900 text-white shadow-sm transition">予約済み・進行状況</button>
+        `;
+        parent.insertBefore(switcher, statusBox.compareDocumentPosition(entrySec) & Node.DOCUMENT_POSITION_FOLLOWING ? statusBox : entrySec);
+      }
+      switcher.classList.remove("hidden");
+      window.switchAutoGoView(window.__agViewMode, false);
+    } else {
+      if (switcher) switcher.classList.add("hidden");
+      window.__agViewMode = "recruit";
+      entrySec.classList.remove("hidden");
+      statusBox.classList.add("hidden");
+    }
+  }
+
+  // 予約完了モーダルが出た瞬間、自動で「予約済み・進行状況」画面へ遷移
+  const bodyObserver = new MutationObserver(() => {
+    const doneModal = document.getElementById("ag-reserve-done-modal");
+    if (doneModal && !doneModal.__transitionHandled) {
+      doneModal.__transitionHandled = true;
+      window.__agViewMode = "reserved";
+      ensureAutoGoSubTabs();
+      window.switchAutoGoView("reserved", true);
+      const container = document.getElementById("auto-go-modal") || document.scrollingElement;
+      if (container && container.scrollTo) container.scrollTo({ top: 0, behavior: "smooth" });
+    }
+    ensureAutoGoSubTabs();
+  });
+
+  if (document.body) {
+    bodyObserver.observe(document.body, { childList: true, subtree: true });
+  } else {
+    document.addEventListener("DOMContentLoaded", () => {
+      bodyObserver.observe(document.body, { childList: true, subtree: true });
+    });
+  }
+  setInterval(ensureAutoGoSubTabs, 350);
+})();
