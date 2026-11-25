@@ -16190,3 +16190,89 @@ window._changeSavedBannerPhoto = function(idx, input) {
     }
   }, { passive: true, capture: true });
 })();
+
+
+/* === Search Page Bottom Nav & Swipe Navigation === */
+(function() {
+  const TAB_ORDER = ["home", "post", "mycards", "mypage"];
+
+  function getActiveTab() {
+    if (document.getElementById("nav-post")?.classList.contains("active") || document.getElementById("nav-post")?.classList.contains("text-black")) return "post";
+    if (document.getElementById("nav-mycards")?.classList.contains("active") || document.getElementById("nav-mycards")?.classList.contains("text-black")) return "mycards";
+    if (document.getElementById("nav-mypage")?.classList.contains("active") || document.getElementById("nav-mypage")?.classList.contains("text-black")) return "mypage";
+    return "home";
+  }
+
+  function installSearchSwitchTabHook() {
+    if (typeof window.switchTab === "function" && !window.switchTab.__searchCloseWrapped) {
+      const origSwitchTab = window.switchTab;
+      const wrapped = function(tab) {
+        const sp = document.getElementById("search-page");
+        if (sp && !sp.classList.contains("hidden") && typeof window.closeSearchPage === "function") {
+          window.closeSearchPage();
+        }
+        return origSwitchTab.apply(this, arguments);
+      };
+      wrapped.__searchCloseWrapped = true;
+      window.switchTab = wrapped;
+    }
+
+    const nav = document.querySelector(".lg-nav");
+    if (nav && !nav.__searchNavBound) {
+      nav.__searchNavBound = true;
+      nav.style.zIndex = "1100";
+      nav.addEventListener("click", function(e) {
+        const btn = e.target && e.target.closest ? e.target.closest("button[id^='nav-']") : null;
+        if (!btn) return;
+        const sp = document.getElementById("search-page");
+        if (sp && !sp.classList.contains("hidden") && typeof window.closeSearchPage === "function") {
+          window.closeSearchPage();
+        }
+      }, true);
+    }
+
+    const sp = document.getElementById("search-page");
+    if (sp && !sp.__swipeNavBound) {
+      sp.__swipeNavBound = true;
+      let startX = 0;
+      let startY = 0;
+      let tracking = false;
+
+      sp.addEventListener("touchstart", function(e) {
+        if (!e.touches || e.touches.length !== 1) return;
+        const tag = (e.target && e.target.tagName) || "";
+        if (tag === "INPUT" || tag === "TEXTAREA") return;
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        tracking = true;
+      }, { passive: true });
+
+      sp.addEventListener("touchend", function(e) {
+        if (!tracking || !e.changedTouches || !e.changedTouches.length) return;
+        tracking = false;
+        const dx = e.changedTouches[0].clientX - startX;
+        const dy = e.changedTouches[0].clientY - startY;
+        if (Math.abs(dx) < 68 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
+
+        const cur = getActiveTab();
+        const idx = TAB_ORDER.indexOf(cur);
+        if (dx < 0) {
+          const nextTab = TAB_ORDER[Math.min(TAB_ORDER.length - 1, (idx >= 0 ? idx : 0) + 1)];
+          if (typeof window.closeSearchPage === "function") window.closeSearchPage();
+          if (typeof window.switchTab === "function") window.switchTab(nextTab);
+        } else {
+          if (typeof window.closeSearchPage === "function") window.closeSearchPage();
+          if (idx > 0 && typeof window.switchTab === "function") {
+            window.switchTab(TAB_ORDER[idx - 1]);
+          }
+        }
+      }, { passive: true });
+    }
+  }
+
+  installSearchSwitchTabHook();
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", installSearchSwitchTabHook);
+  }
+  setInterval(installSearchSwitchTabHook, 400);
+})();
