@@ -847,7 +847,7 @@ async function closeAutoGoRevealWindow(poolId, poolRef, poolData, options) {
 }
 
 exports.processAutoGoDeadlines = onSchedule({
-  schedule: "every 5 minutes",
+  schedule: "every 1 minutes",
   timeoutSeconds: 540,
   memory: "512MiB",
   maxInstances: 1
@@ -864,6 +864,8 @@ exports.processAutoGoDeadlines = onSchedule({
       if (Number(pool.totalCount || 0) >= minimum) {
         await poolDoc.ref.update({ recruitmentClosedAt: pool.recruitmentClosedAt || FV.serverTimestamp() });
         await activateAutoGoPool(poolId);
+      const freshPool = (await poolDoc.ref.get()).data() || pool;
+      await notifyAutoGoPurchaseUrlToEntries(poolId, freshPool);
       } else {
         await poolDoc.ref.update({ status: "cancelled", cancelledAt: FV.serverTimestamp() });
       }
