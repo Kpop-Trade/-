@@ -1,5 +1,18 @@
 
-window.__agTriggeredClosePools = window.__agTriggeredClosePools || {};
+(function() {
+  const PRESET_4 = ["ウォンヒ (Wonhee)", "ミンジュ (Minju)", "モカ (Moka)", "ユナ (Yuna)"];
+  const PRESET_5 = ["ウォンヒ (Wonhee)", "ミンジュ (Minju)", "モカ (Moka)", "イロハ (Iroha)", "ユナ (Yuna)"];
+
+  let activePoolId = new URLSearchParams(location.search).get("pool") || "";
+  let allPools = [];
+  let currentPoolData = null;
+  let currentEntryData = null;
+  let currentUserEntries = [];
+  let currentEntries = [];
+  let unsubPoolsList = null;
+  let unsubPool = null;
+
+  window.__agTriggeredClosePools = window.__agTriggeredClosePools || {};
 window.triggerAutoGoRecruitmentCloseIfNeeded = function(poolId, poolData) {
   if (!poolId || !poolData) return;
   if (window.__agTriggeredClosePools[poolId]) return;
@@ -16,18 +29,6 @@ window.triggerAutoGoRecruitmentCloseIfNeeded = function(poolId, poolData) {
   } catch (_) {}
 };
 
-(function() {
-  const PRESET_4 = ["ウォンヒ (Wonhee)", "ミンジュ (Minju)", "モカ (Moka)", "ユナ (Yuna)"];
-  const PRESET_5 = ["ウォンヒ (Wonhee)", "ミンジュ (Minju)", "モカ (Moka)", "イロハ (Iroha)", "ユナ (Yuna)"];
-
-  let activePoolId = new URLSearchParams(location.search).get("pool") || "";
-  let allPools = [];
-  let currentPoolData = null;
-  let currentEntryData = null;
-  let currentUserEntries = [];
-  let currentEntries = [];
-  let unsubPoolsList = null;
-  let unsubPool = null;
   let unsubEntry = null;
   let unsubEntries = null;
   let subscribedPoolId = "";
