@@ -3038,12 +3038,16 @@ exports.adminBroadcast = onCall({ timeoutSeconds: 300, memory: "512MiB" }, async
   // プッシュ（全トークン）
   const tokens = [...new Set((await db.collectionGroup("tokens").get()).docs.map((d) => d.id))];
   for (let i = 0; i < tokens.length; i += 500) {
-    await admin.messaging().sendEachForMulticast({
+    const resp = await admin.messaging().sendEachForMulticast({
       tokens: tokens.slice(i, i + 500),
-      notification: { title: "運営からのお知らせ", body: String(message).slice(0, 200) },
       data: { title: "運営からのお知らせ", body: String(message).slice(0, 200), url: SITE, tag: "admin" },
-      webpush: { headers: { Urgency: "high" }, fcmOptions: { link: SITE } }
-    }).catch(() => {});
+      webpush: { headers: { Urgency: "high" } }
+    });
+    console.log("adminBroadcast push result:", JSON.stringify({
+      successCount: resp.successCount,
+      failureCount: resp.failureCount,
+      errors: resp.responses.filter(r => !r.success).map(r => ({ code: r.error?.code, msg: r.error?.message }))
+    }));
   }
   return { count: users.size };
 });
