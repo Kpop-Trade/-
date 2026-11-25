@@ -1366,7 +1366,7 @@ window.triggerAutoGoRecruitmentCloseIfNeeded = function(poolId, poolData) {
         } else {
           const endMs = currentPoolData && currentPoolData.recruitEndAt ? agTimeMs(currentPoolData.recruitEndAt) : 0;
           const recruitEnded = !!(currentPoolData && (currentPoolData.recruitmentClosedAt || (endMs > 0 && endMs <= Date.now())));
-          if (recruitEnded && currentPoolId) { window.triggerAutoGoRecruitmentCloseIfNeeded(currentPoolId, currentPoolData); }
+          if (recruitEnded && activePoolId) { window.triggerAutoGoRecruitmentCloseIfNeeded(activePoolId, currentPoolData); }
           if (!recruitEnded) {
             html += "<p class=\"text-sm text-amber-800 font-bold\">募集期間終了と同時に専用購入URLが発行されます</p>";
           } else {
