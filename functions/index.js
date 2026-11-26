@@ -96,10 +96,6 @@ async function push(uid, title, body, link) {
     : String(body).slice(0, 200);
   const res = await admin.messaging().sendEachForMulticast({
     tokens,
-    notification: {
-      title: String(title),
-      body: pushBody.slice(0, 200)
-    },
     data: {
       title: String(title),
       body: pushBody.slice(0, 200),
@@ -107,8 +103,7 @@ async function push(uid, title, body, link) {
       tag: link && link.id ? String(link.id) : "general"
     },
     webpush: {
-      headers: { Urgency: "high" },
-      fcmOptions: { link: url }
+      headers: { Urgency: "high" }
     }
   });
   // 無効になったトークンを掃除

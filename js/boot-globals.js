@@ -1,4 +1,3 @@
-if("serviceWorker"in navigator){navigator.serviceWorker.getRegistrations().then(r=>r.forEach(w=>w.unregister()));}
   window.currentUser = typeof currentUser !== "undefined" ? currentUser : null; window.currentUser = currentUser;
   window.currentUserProfile = typeof currentUserProfile !== "undefined" ? currentUserProfile : null; window.currentUserProfile = currentUserProfile;
   if (typeof db !== "undefined") window.db = db;
