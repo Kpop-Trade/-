@@ -81,7 +81,8 @@
       setDoublePointDates: httpsCallable(getFunctions(app, "asia-northeast1"), "setDoublePointDates"),
       adminToggleDoublePoint: httpsCallable(getFunctions(app, "asia-northeast1"), "adminToggleDoublePoint"),
       adminCreatePresentCampaign: httpsCallable(getFunctions(app, "asia-northeast1"), "adminCreatePresentCampaign"),
-      adminUploadPresentCampaignImage: httpsCallable(getFunctions(app, "asia-northeast1"), "adminUploadPresentCampaignImage", { timeout: 120000 })
+      adminUploadPresentCampaignImage: httpsCallable(getFunctions(app, "asia-northeast1"), "adminUploadPresentCampaignImage", { timeout: 120000 }),
+      sendTestPush: httpsCallable(getFunctions(app, "asia-northeast1"), "sendTestPush")
     };
 window.__autoGoRefs = {
   app, auth,
@@ -3225,19 +3226,49 @@ window.triggerHeartPop = function(button) {
       status.innerText = on ? "この端末：通知オン ✅" : "この端末：通知オフ";
     }
 
+    function showPushError(message) {
+      const status = document.getElementById("push-status");
+      if (status) status.textContent = `通知設定エラー：${message}`;
+      showToast(message, "error");
+    }
+
+    function pushEnvironmentError() {
+      if (!("Notification" in window) || !("serviceWorker" in navigator)) {
+        return "このブラウザはプッシュ通知に対応していません。";
+      }
+      if (location.protocol !== "https:" && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") {
+        return "プッシュ通知はHTTPS通信（またはlocalhost）環境でのみ動作します。";
+      }
+      const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+        (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+      const isStandalone = navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches;
+      if (isIOS && !isStandalone) {
+        return "iPhone/iPad ではホーム画面に追加した PWA から通知を有効にしてください。";
+      }
+      return "";
+    }
+
     async function saveToken() {
+      const environmentError = pushEnvironmentError();
+      if (environmentError) throw new Error(environmentError);
+
       let reg;
       try {
-        await navigator.serviceWorker.register("./firebase-messaging-sw.js");
-    reg = await navigator.serviceWorker.ready;
+        reg = await navigator.serviceWorker.register("./firebase-messaging-sw.js");
+        await navigator.serviceWorker.ready;
       } catch (swErr) {
         console.error("Service Worker 登録エラー:", swErr);
-        throw new Error("「/firebase-messaging-sw.js」が読み込めません。ルート直下に配置されているか確認してください。");
+        throw new Error(`Service Worker を登録できません（${swErr && swErr.message || swErr}）。firebase-messaging-sw.js がサイトのルートから HTTPS で取得できるか確認してください。`);
       }
 
       const options = { serviceWorkerRegistration: reg, vapidKey: VAPID_KEY };
-
-      const token = await getToken(getMessaging(app), options);
+      let token;
+      try {
+        token = await getToken(getMessaging(app), options);
+      } catch (error) {
+        console.error("FCMトークン取得エラー:", { code: error.code, message: error.message, error });
+        throw new Error(describePushError(error));
+      }
       if (!token) throw new Error("通知トークンの取得に失敗しました。");
 
       await setDoc(doc(db, "users", currentUser.uid, "tokens", token), { 
@@ -3251,6 +3282,23 @@ window.triggerHeartPop = function(button) {
       }, { merge: true });
       localStorage.setItem(pushStorageKey(), token);
       bindForegroundPush();
+    }
+
+    function describePushError(error) {
+      const code = String(error && error.code || "");
+      if (code.includes("permission-blocked") || ("Notification" in window && Notification.permission === "denied")) {
+        return "通知権限が拒否されています。ブラウザまたは端末の設定で通知を許可してください。";
+      }
+      if (code.includes("invalid-vapid-key")) {
+        return "VAPIDキーが無効です。Firebase Console の Web Push 証明書と設定値を確認してください。";
+      }
+      if (code.includes("failed-service-worker-registration") || code.includes("service-worker")) {
+        return "Service Worker を登録できません。firebase-messaging-sw.js がサイトのルートから HTTPS で取得できるか確認してください。";
+      }
+      if (code.includes("unsupported-browser")) {
+        return "このブラウザは FCM Web Push に対応していません。iOS はホーム画面に追加した PWA でお試しください。";
+      }
+      return `FCMトークンを取得できませんでした (${code || "unknown"}): ${error && error.message || error}`;
     }
 
     // アプリを開いている間はOSの通知が出ないため、トーストで知らせる
@@ -3269,18 +3317,30 @@ window.triggerHeartPop = function(button) {
     window.enablePush = async function(skipHaptic = false) {
       if (!skipHaptic) window.triggerHaptic();
       if (!currentUser || !("Notification" in window) || !("serviceWorker" in navigator)) {
-        return /* alert hidden */ console.log("お使いのブラウザはプッシュ通知に対応していません。");
+        showPushError("このブラウザはプッシュ通知に対応していません。");
+        return;
       }
 
-      if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
-        return /* alert hidden */ console.log("プッシュ通知はHTTPS通信（またはlocalhost）環境でのみ動作します。");
+      const environmentError = pushEnvironmentError();
+      if (environmentError) {
+        showPushError(environmentError);
+        return;
       }
 
-      const permissionRequest = Notification.requestPermission();
-      const perm = await permissionRequest;
+      let perm;
+      try {
+        perm = await Notification.requestPermission();
+      } catch (error) {
+        console.error("通知権限リクエスト失敗:", error);
+        showPushError("通知権限を確認できませんでした: " + (error.message || error));
+        return;
+      }
       if (perm !== "granted") {
         markPushPromptAsked();
-        return /* alert hidden */ console.log("通知権限が拒否されています。ブラウザの設定から通知を許可してください。");
+        showPushError(perm === "denied"
+          ? "通知権限が拒否されています。ブラウザまたは端末の設定で通知を許可してください。"
+          : "通知権限が許可されませんでした。");
+        return;
       }
       window.triggerBellShake();
 
@@ -3291,7 +3351,51 @@ window.triggerHeartPop = function(button) {
         renderSellTab(); showToast("通知をオンにしました！", "success");
       } catch(e){ 
         console.error("プッシュ通知設定エラー:", e);
-        showToast("通知設定失敗: " + (e.message || e), "error"); 
+        showPushError(e.message || "通知を有効にできませんでした。");
+      }
+    };
+
+    window.sendTestPush = async function() {
+      const status = document.getElementById("push-test-status");
+      const setStatus = (message) => { if (status) status.textContent = message; };
+      if (!currentUser) {
+        setStatus("ログインしてからお試しください。");
+        return;
+      }
+      if (!("Notification" in window) || Notification.permission !== "granted") {
+        setStatus("先に「この端末で通知をオンにする」を実行してください。");
+        return;
+      }
+      const environmentError = pushEnvironmentError();
+      if (environmentError) {
+        setStatus(environmentError);
+        return;
+      }
+      const button = document.getElementById("push-test-btn");
+      if (button) button.disabled = true;
+      setStatus("テスト通知を送信しています…");
+      try {
+        await saveToken();
+        const result = await rewardCalls.sendTestPush();
+        const { successCount = 0, failureCount = 0 } = result.data || {};
+        if (!successCount) {
+          throw new Error("FCMへの送信に失敗しました。Functions ログと登録トークンを確認してください。");
+        }
+        setStatus(`FCM送信成功（成功 ${successCount} / 失敗 ${failureCount}）。アプリを閉じるかバックグラウンドにして受信を確認してください。`);
+      } catch (error) {
+        console.error("テスト通知送信エラー:", { code: error.code, message: error.message, error });
+        const details = error.details && typeof error.details === "object" ? error.details : {};
+        let message = error.message || "テスト通知を送信できませんでした。";
+        if (String(error.code || "").includes("not-found")) {
+          message = "sendTestPush Cloud Function が見つかりません。asia-northeast1 へのデプロイを確認してください。";
+        } else if (details.tokenCount === 0) {
+          message = "FCMトークンが登録されていません。通知をオンにしてから再試行してください。";
+        } else if (Array.isArray(details.errors) && details.errors.length) {
+          message += `（FCMエラー: ${details.errors.join(", ")}）`;
+        }
+        setStatus(`${error.code ? `[${error.code}] ` : ""}${message}`);
+      } finally {
+        if (button) button.disabled = false;
       }
     };
 
@@ -3690,7 +3794,12 @@ window.triggerHeartPop = function(button) {
         subscribeUserData(); subscribeTrades(); subscribeSuspension();
         if (typeof loadPosts === "function") loadPosts(true);
         setTimeout(() => { if (typeof updateUserAvatar === "function") updateUserAvatar(); }, 800);
-        if ("Notification" in window && Notification.permission === "granted" && localStorage.getItem(pushStorageKey())) saveToken().catch(()=>{});
+        if ("Notification" in window && Notification.permission === "granted" && localStorage.getItem(pushStorageKey())) {
+          saveToken().catch((error) => {
+            console.error("FCMトークン再取得エラー:", error);
+            showPushError(error.message || "通知トークンを更新できませんでした。");
+          });
+        }
         // ログイン済みでも未同意なら同意ボタン必須（X経由でもログイン後は必須）
         setTimeout(function() {
           if (typeof window.hasAgreedTerms === "function" && !window.hasAgreedTerms() &&

@@ -2089,6 +2089,8 @@
           <p id="push-status" class="text-[11px] text-gray-600 mb-2 font-medium"></p>
           <button id="push-on-btn" type="button" class="relative w-full overflow-hidden bg-purple-100/80 backdrop-blur border border-purple-200 text-illit-darkPurple font-medium py-2.5 rounded-full hover:bg-purple-200 transition shadow-sm">🔔 この端末で通知をオンにする<input type="checkbox" switch class="haptic-switch-overlay" aria-label="この端末で通知をオンにする" onclick="event.stopPropagation()" onchange="event.stopPropagation(); if(this.checked) { this.checked = false; window.enablePush(); }"></button>
           <button id="push-off-btn" onclick="disablePush()" class="hidden w-full bg-white/60 border border-white text-gray-600 font-medium py-2.5 rounded-full hover:bg-white transition shadow-sm">通知をオフにする</button>
+          <button id="push-test-btn" type="button" onclick="window.sendTestPush()" class="w-full bg-white border border-purple-200 text-illit-darkPurple font-medium py-2.5 rounded-full hover:bg-purple-50 transition">テスト通知を送信</button>
+          <p id="push-test-status" role="status" aria-live="polite" class="text-[11px] text-gray-600"></p>
         </div>
       </div>
       <div id="profile-section-block" class="space-y-3 text-xs md:text-sm hidden">
@@ -2703,7 +2705,7 @@
   </div>
 
   <script src="./js/mycards-binder.js?v=20261121"></script>
-  <script type="module" src="./js/app-main.js?v=20261124full1"></script>
+  <script type="module" src="./js/app-main.js?v=20261126pushfix1"></script>
 
   <div id="xlogin-help-modal" class="hidden fixed inset-0 z-[10040] modal-backdrop items-end sm:items-center justify-center p-3" style="padding-top: max(12px, env(safe-area-inset-top)); padding-bottom: max(12px, env(safe-area-inset-bottom));" onclick="if(event.target===this) closeGoogleLoginHelp()">
     <div id="xlogin-help-sheet" class="liquid-glass-heavy w-full max-w-sm rounded-[1.75rem] p-5 shadow-2xl border border-white" role="dialog" aria-modal="true" aria-labelledby="xlogin-help-title">
@@ -2751,7 +2753,8 @@
       setDoublePointDates: httpsCallable(getFunctions(app, "asia-northeast1"), "setDoublePointDates"),
       adminToggleDoublePoint: httpsCallable(getFunctions(app, "asia-northeast1"), "adminToggleDoublePoint"),
       adminCreatePresentCampaign: httpsCallable(getFunctions(app, "asia-northeast1"), "adminCreatePresentCampaign"),
-      adminUploadPresentCampaignImage: httpsCallable(getFunctions(app, "asia-northeast1"), "adminUploadPresentCampaignImage", { timeout: 120000 })
+      adminUploadPresentCampaignImage: httpsCallable(getFunctions(app, "asia-northeast1"), "adminUploadPresentCampaignImage", { timeout: 120000 }),
+      sendTestPush: httpsCallable(getFunctions(app, "asia-northeast1"), "sendTestPush")
     };
 window.__autoGoRefs = {
   app, auth,
@@ -2824,34 +2827,6 @@ window.__autoGoRefs = {
       if (items && items.length) applyBanners(items);
     });
   })();
-
-
-  window._nativeLoadTopBanners = async function() {
-    const snap = await getDoc(doc(db, "siteConfig", "topBanners"));
-    return (snap.exists() && Array.isArray(snap.data().items)) ? snap.data().items : [];
-  };
-  try {
-    onSnapshot(doc(db, "siteConfig", "topBanners"), (snap) => {
-      window._adminTopBanners = (snap.exists() && Array.isArray(snap.data().items)) ? snap.data().items : [];
-      if (typeof renderGllitMercariCarousel === "function") renderGllitMercariCarousel(window._lastGllitCarouselEvents || []);
-      if (typeof window.renderAdminTopBannerList === "function") window.renderAdminTopBannerList();
-    });
-  } catch (e) {}
-
-
-  };
-  window._nativeLoadTopBanners = async function() {
-    const snap = await getDoc(doc(db, "siteConfig", "topBanners"));
-    return (snap.exists() && Array.isArray(snap.data().items)) ? snap.data().items : [];
-  };
-  try {
-    onSnapshot(doc(db, "siteConfig", "topBanners"), (snap) => {
-      window._adminTopBanners = (snap.exists() && Array.isArray(snap.data().items)) ? snap.data().items : [];
-      if (typeof renderGllitMercariCarousel === "function") renderGllitMercariCarousel(window._lastGllitCarouselEvents || []);
-      if (typeof window.renderAdminTopBannerList === "function") window.renderAdminTopBannerList();
-    });
-  } catch (e) { console.warn("topBanners snapshot:", e); }
-
   window._globalFirestoreModular = { db, doc, getDoc, setDoc, onSnapshot };
   window._modularTopBannerHelpers = { doc, getDoc, setDoc, onSnapshot };
     window.db = db;
@@ -3958,21 +3933,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
 
     async function loadSiteAnnouncement() {
       try {
-        const snap = await window._modularTopBannerHelpers = { doc, getDoc, setDoc, onSnapshot };
-                if (typeof window.loadAdminTopBanners === "function") window.loadAdminTopBanners();
-                
-  };
-  window._nativeLoadTopBanners = async function() {
-    const snap = await getDoc(doc(db, "siteConfig", "topBanners"));
-    return (snap.exists() && Array.isArray(snap.data().items)) ? snap.data().items : [];
-  };
-  onSnapshot(doc(db, "siteConfig", "topBanners"), (snap) => {
-    window._adminTopBanners = (snap.exists() && Array.isArray(snap.data().items)) ? snap.data().items : [];
-    if (typeof renderGllitMercariCarousel === "function") renderGllitMercariCarousel(window._lastGllitCarouselEvents || []);
-    if (typeof window.renderAdminTopBannerList === "function") window.renderAdminTopBannerList();
-  });
-  
-                getDoc(doc(db, "siteConfig", "announcement"));
+        const snap = await getDoc(doc(db, "siteConfig", "announcement"));
         const box = document.getElementById("site-announcement");
         const textEl = document.getElementById("site-announcement-text");
         if (!box || !textEl) return;
@@ -4600,35 +4561,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       const active = !!document.getElementById("admin-announce-active")?.checked;
       const st = document.getElementById("admin-announce-status");
       try {
-        
-  };
-  window._nativeLoadTopBanners = async function() {
-    const snap = await getDoc(doc(db, "siteConfig", "topBanners"));
-    return (snap.exists() && Array.isArray(snap.data().items)) ? snap.data().items : [];
-  };
-  try {
-    onSnapshot(doc(db, "siteConfig", "topBanners"), (snap) => {
-      window._adminTopBanners = (snap.exists() && Array.isArray(snap.data().items)) ? snap.data().items : [];
-      if (typeof renderGllitMercariCarousel === "function") renderGllitMercariCarousel(window._lastGllitCarouselEvents || []);
-      if (typeof window.renderAdminTopBannerList === "function") window.renderAdminTopBannerList();
-    });
-  } catch (e) {}
-
-    
-  };
-  window._nativeLoadTopBanners = async function() {
-    const snap = await getDoc(doc(db, "siteConfig", "topBanners"));
-    return (snap.exists() && Array.isArray(snap.data().items)) ? snap.data().items : [];
-  };
-  try {
-    onSnapshot(doc(db, "siteConfig", "topBanners"), (snap) => {
-      window._adminTopBanners = (snap.exists() && Array.isArray(snap.data().items)) ? snap.data().items : [];
-      if (typeof renderGllitMercariCarousel === "function") renderGllitMercariCarousel(window._lastGllitCarouselEvents || []);
-      if (typeof window.renderAdminTopBannerList === "function") window.renderAdminTopBannerList();
-    });
-  } catch (e) {}
-
-    await setDoc(doc(db, "siteConfig", "announcement"), { text: t, active: active && !!t, updatedAt: serverTimestamp(), updatedBy: currentUser.uid }, { merge: true });
+        await setDoc(doc(db, "siteConfig", "announcement"), { text: t, active: active && !!t, updatedAt: serverTimestamp(), updatedBy: currentUser.uid }, { merge: true });
         await logAdminAction("announce_save", "siteConfig/announcement", (active ? "ON: " : "OFF: ") + t.slice(0, 60));
         await loadSiteAnnouncement();
         if (st) st.textContent = "保存しました";
@@ -5172,19 +5105,50 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       status.innerText = on ? "この端末：通知オン ✅" : "この端末：通知オフ";
     }
 
+    function showPushError(message) {
+      const status = document.getElementById("push-status");
+      if (status) status.textContent = `通知設定エラー：${message}`;
+      showToast(message, "error");
+    }
+
+    function pushEnvironmentError() {
+      if (!("Notification" in window) || !("serviceWorker" in navigator)) {
+        return "このブラウザはプッシュ通知に対応していません。";
+      }
+      if (location.protocol !== "https:" && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") {
+        return "プッシュ通知はHTTPS通信（またはlocalhost）環境でのみ動作します。";
+      }
+      const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+        (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+      const isStandalone = navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches;
+      if (isIOS && !isStandalone) {
+        return "iPhone/iPad ではホーム画面に追加した PWA から通知を有効にしてください。";
+      }
+      return "";
+    }
+
     async function saveToken() {
+      const environmentError = pushEnvironmentError();
+      if (environmentError) throw new Error(environmentError);
+
       let reg;
       try {
         reg = await navigator.serviceWorker.register("./firebase-messaging-sw.js");
         reg = await navigator.serviceWorker.ready;
       } catch (swErr) {
         console.error("Service Worker 登録エラー:", swErr);
-        throw new Error("「/firebase-messaging-sw.js」が読み込めません。ルート直下に配置されているか確認してください。");
+        throw new Error(`Service Worker を登録できません（${swErr && swErr.message || swErr}）。firebase-messaging-sw.js がサイトのルートから HTTPS で取得できるか確認してください。`);
       }
 
       const options = { serviceWorkerRegistration: reg, vapidKey: VAPID_KEY };
 
-      const token = await getToken(getMessaging(app), options);
+      let token;
+      try {
+        token = await getToken(getMessaging(app), options);
+      } catch (error) {
+        console.error("FCMトークン取得エラー:", { code: error.code, message: error.message, error });
+        throw new Error(describePushError(error));
+      }
       if (!token) throw new Error("通知トークンの取得に失敗しました。");
 
       await setDoc(doc(db, "users", currentUser.uid, "tokens", token), { 
@@ -5198,6 +5162,23 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       }, { merge: true });
       localStorage.setItem(pushStorageKey(), token);
       bindForegroundPush();
+    }
+
+    function describePushError(error) {
+      const code = String(error && error.code || "");
+      if (code.includes("permission-blocked") || ("Notification" in window && Notification.permission === "denied")) {
+        return "通知権限が拒否されています。ブラウザまたは端末の設定で通知を許可してください。";
+      }
+      if (code.includes("invalid-vapid-key")) {
+        return "VAPIDキーが無効です。Firebase Console の Web Push 証明書と設定値を確認してください。";
+      }
+      if (code.includes("failed-service-worker-registration") || code.includes("service-worker")) {
+        return "Service Worker を登録できません。firebase-messaging-sw.js がサイトのルートから HTTPS で取得できるか確認してください。";
+      }
+      if (code.includes("unsupported-browser")) {
+        return "このブラウザは FCM Web Push に対応していません。iOS はホーム画面に追加した PWA でお試しください。";
+      }
+      return `FCMトークンを取得できませんでした (${code || "unknown"}): ${error && error.message || error}`;
     }
 
     // アプリを開いている間はOSの通知が出ないため、トーストで知らせる
@@ -5216,18 +5197,37 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     window.enablePush = async function(skipHaptic = false) {
       if (!skipHaptic) window.triggerHaptic();
       if (!currentUser || !("Notification" in window) || !("serviceWorker" in navigator)) {
-        return /* alert hidden */ console.log("お使いのブラウザはプッシュ通知に対応していません。");
+        showToast("このブラウザはプッシュ通知に対応していません。", "error");
+        return;
       }
 
       if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
-        return /* alert hidden */ console.log("プッシュ通知はHTTPS通信（またはlocalhost）環境でのみ動作します。");
+        showToast("プッシュ通知はHTTPS通信（またはlocalhost）環境でのみ動作します。", "error");
+        return;
       }
 
-      const permissionRequest = Notification.requestPermission();
-      const perm = await permissionRequest;
+      const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+        (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+      const isStandalone = navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches;
+      if (isIOS && !isStandalone) {
+        showToast("iPhone/iPad ではホーム画面に追加した PWA から通知を有効にしてください。", "error");
+        return;
+      }
+
+      let perm;
+      try {
+        perm = await Notification.requestPermission();
+      } catch (error) {
+        console.error("通知権限リクエスト失敗:", error);
+        showToast("通知権限を確認できませんでした: " + (error.message || error), "error");
+        return;
+      }
       if (perm !== "granted") {
         markPushPromptAsked();
-        return /* alert hidden */ console.log("通知権限が拒否されています。ブラウザの設定から通知を許可してください。");
+        showToast(perm === "denied"
+          ? "通知権限が拒否されています。ブラウザまたは端末の設定で通知を許可してください。"
+          : "通知権限が許可されませんでした。", "error");
+        return;
       }
       window.triggerBellShake();
 
@@ -5238,7 +5238,51 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         renderSellTab(); showToast("通知をオンにしました！", "success");
       } catch(e){ 
         console.error("プッシュ通知設定エラー:", e);
-        /* alert hidden */ console.log("設定失敗: " + (e.message || e)); 
+        showPushError(e.message || "通知を有効にできませんでした。");
+      }
+    };
+
+    window.sendTestPush = async function() {
+      const status = document.getElementById("push-test-status");
+      const setStatus = (message) => { if (status) status.textContent = message; };
+      if (!currentUser) {
+        setStatus("ログインしてからお試しください。");
+        return;
+      }
+      if (!("Notification" in window) || Notification.permission !== "granted") {
+        setStatus("先に「この端末で通知をオンにする」を実行してください。");
+        return;
+      }
+      const environmentError = pushEnvironmentError();
+      if (environmentError) {
+        setStatus(environmentError);
+        return;
+      }
+      const button = document.getElementById("push-test-btn");
+      if (button) button.disabled = true;
+      setStatus("テスト通知を送信しています…");
+      try {
+        await saveToken();
+        const result = await rewardCalls.sendTestPush();
+        const { successCount = 0, failureCount = 0 } = result.data || {};
+        if (!successCount) {
+          throw new Error("FCMへの送信に失敗しました。Functions ログと登録トークンを確認してください。");
+        }
+        setStatus(`FCM送信成功（成功 ${successCount} / 失敗 ${failureCount}）。アプリを閉じるかバックグラウンドにして受信を確認してください。`);
+      } catch (error) {
+        console.error("テスト通知送信エラー:", { code: error.code, message: error.message, error });
+        const details = error.details && typeof error.details === "object" ? error.details : {};
+        let message = error.message || "テスト通知を送信できませんでした。";
+        if (String(error.code || "").includes("not-found")) {
+          message = "sendTestPush Cloud Function が見つかりません。asia-northeast1 へのデプロイを確認してください。";
+        } else if (details.tokenCount === 0) {
+          message = "FCMトークンが登録されていません。通知をオンにしてから再試行してください。";
+        } else if (Array.isArray(details.errors) && details.errors.length) {
+          message += `（FCMエラー: ${details.errors.join(", ")}）`;
+        }
+        setStatus(`${error.code ? `[${error.code}] ` : ""}${message}`);
+      } finally {
+        if (button) button.disabled = false;
       }
     };
 
@@ -5353,7 +5397,12 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         subscribeUserData(); subscribeTrades(); subscribeSuspension();
         if (typeof loadPosts === "function") { loadingPosts = false; loadPosts(true); }
         setTimeout(() => { if (typeof updateUserAvatar === "function") updateUserAvatar(); }, 800);
-        if ("Notification" in window && Notification.permission === "granted" && localStorage.getItem(pushStorageKey())) saveToken().catch(()=>{});
+        if ("Notification" in window && Notification.permission === "granted" && localStorage.getItem(pushStorageKey())) {
+          saveToken().catch((error) => {
+            console.error("FCMトークン再取得エラー:", error);
+            showPushError(error.message || "通知トークンを更新できませんでした。");
+          });
+        }
         // ログイン済み・規約同意済みなら初回のみ通知オン確認
         if (typeof maybeShowPushPrompt === "function") maybeShowPushPrompt();
       } else {
@@ -10061,49 +10110,11 @@ function getAiCardVectors() {
     </div>
   </div>
 
-<script src="./js/global-error-handler.js?v=20261121">
-  window.__KP_MODULAR_READY = true;
-  try {
-    if (typeof db !== "undefined") window.db = db;
-    window._globalFirestoreModular = {
-      db: typeof db !== "undefined" ? db : window.db,
-      doc: typeof doc !== "undefined" ? doc : null,
-      getDoc: typeof getDoc !== "undefined" ? getDoc : null,
-      setDoc: typeof setDoc !== "undefined" ? setDoc : null,
-      onSnapshot: typeof onSnapshot !== "undefined" ? onSnapshot : null
-    };
-    window._modularTopBannerHelpers = window._globalFirestoreModular;
-  } catch (e) { console.warn("modular expose:", e); }
+      `;
+    }
+  </script>
 
-
-  };
-  window._nativeLoadTopBanners = async function() {
-    const snap = await getDoc(doc(db, "siteConfig", "topBanners"));
-    return (snap.exists() && Array.isArray(snap.data().items)) ? snap.data().items : [];
-  };
-  try {
-    onSnapshot(doc(db, "siteConfig", "topBanners"), (snap) => {
-      window._adminTopBanners = (snap.exists() && Array.isArray(snap.data().items)) ? snap.data().items : [];
-      if (typeof renderGllitMercariCarousel === "function") renderGllitMercariCarousel(window._lastGllitCarouselEvents || []);
-      if (typeof window.renderAdminTopBannerList === "function") window.renderAdminTopBannerList();
-    });
-  } catch (e) {}
-
-
-  };
-  window._nativeLoadTopBanners = async function() {
-    const snap = await getDoc(doc(db, "siteConfig", "topBanners"));
-    return (snap.exists() && Array.isArray(snap.data().items)) ? snap.data().items : [];
-  };
-  try {
-    onSnapshot(doc(db, "siteConfig", "topBanners"), (snap) => {
-      window._adminTopBanners = (snap.exists() && Array.isArray(snap.data().items)) ? snap.data().items : [];
-      if (typeof renderGllitMercariCarousel === "function") renderGllitMercariCarousel(window._lastGllitCarouselEvents || []);
-      if (typeof window.renderAdminTopBannerList === "function") window.renderAdminTopBannerList();
-    });
-  } catch (e) { console.warn("topBanners snapshot:", e); }
-
-</script>
+<script src="./js/global-error-handler.js?v=20261121"></script>
 
 
 <div id="illit-calendar-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">

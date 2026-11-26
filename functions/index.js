@@ -83,7 +83,7 @@ async function mirrorInbox(uid, item) {
 async function push(uid, title, body, link) {
   const snap = await db.collection("users").doc(uid).collection("tokens").get();
   const tokens = snap.docs.map((d) => d.id);
-  if (!tokens.length) return;
+  if (!tokens.length) return { tokenCount: 0, successCount: 0, failureCount: 0, errors: [] };
   const url = link && link.url
     ? String(link.url)
     : link && link.k === "trade"
@@ -110,7 +110,53 @@ async function push(uid, title, body, link) {
   await Promise.all(res.responses.map((r, i) =>
     (!r.success && /not-registered|invalid-registration|invalid-argument/.test((r.error && r.error.code) || ""))
       ? snap.docs[i].ref.delete() : null));
+  if (res.failureCount) {
+    console.warn("FCM push delivery failures:", res.responses
+      .filter((response) => !response.success)
+      .map((response) => response.error && response.error.code));
+  }
+  return {
+    tokenCount: tokens.length,
+    successCount: res.successCount,
+    failureCount: res.failureCount,
+    errors: res.responses.filter((response) => !response.success)
+      .map((response) => response.error && response.error.code)
+  };
 }
+
+exports.sendTestPush = onCall(async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "login required");
+  console.info("FCM test push started");
+  const result = await push(
+    request.auth.uid,
+    "テスト通知",
+    "FCM のテスト通知です。受信できています。",
+    { url: SITE }
+  );
+  if (!result.successCount) {
+    console.error("FCM test push failed:", {
+      tokenCount: result.tokenCount,
+      failureCount: result.failureCount,
+      errors: result.errors
+    });
+    const message = result.tokenCount === 0
+      ? "No FCM tokens are registered for this account"
+      : "FCM could not deliver the test notification";
+    throw new HttpsError("failed-precondition", message, {
+      reason: result.tokenCount === 0 ? "no-tokens" : "delivery-failed",
+      tokenCount: result.tokenCount,
+      failureCount: result.failureCount,
+      errors: result.errors
+    });
+  }
+  console.info("FCM test push completed", {
+    tokenCount: result.tokenCount,
+    successCount: result.successCount,
+    failureCount: result.failureCount,
+    errors: result.errors
+  });
+  return result;
+});
 
 // アプリ内通知（サブコレクション）＋必要なら通知欄へコピー＋プッシュ
 async function notify(uid, { id, text, type = "info", link = null, title = "ILLIT Trade" }) {
