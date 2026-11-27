@@ -2089,7 +2089,7 @@
           <p id="push-status" class="text-[11px] text-gray-600 mb-2 font-medium"></p>
           <button id="push-on-btn" type="button" class="relative w-full overflow-hidden bg-purple-100/80 backdrop-blur border border-purple-200 text-illit-darkPurple font-medium py-2.5 rounded-full hover:bg-purple-200 transition shadow-sm">🔔 この端末で通知をオンにする<input type="checkbox" switch class="haptic-switch-overlay" aria-label="この端末で通知をオンにする" onclick="event.stopPropagation()" onchange="event.stopPropagation(); if(this.checked) { this.checked = false; window.enablePush(); }"></button>
           <button id="push-off-btn" onclick="disablePush()" class="hidden w-full bg-white/60 border border-white text-gray-600 font-medium py-2.5 rounded-full hover:bg-white transition shadow-sm">通知をオフにする</button>
-          <button id="push-test-btn" type="button" onclick="window.sendTestPush()" class="w-full bg-white border border-purple-200 text-illit-darkPurple font-medium py-2.5 rounded-full hover:bg-purple-50 transition">テスト通知を送信</button>
+          <button id="push-test-btn" type="button" onclick="window.sendTestPush()" class="hidden w-full bg-white border border-purple-200 text-illit-darkPurple font-medium py-2.5 rounded-full hover:bg-purple-50 transition">テスト通知を送信</button>
           <p id="push-test-status" role="status" aria-live="polite" class="text-[11px] text-gray-600"></p>
         </div>
       </div>
@@ -2705,7 +2705,7 @@
   </div>
 
   <script src="./js/mycards-binder.js?v=20261121"></script>
-  <script type="module" src="./js/app-main.js?v=20261126pushfix1"></script>
+  <script type="module" src="./js/app-main.js?v=20261127autogotodo2"></script>
 
   <div id="xlogin-help-modal" class="hidden fixed inset-0 z-[10040] modal-backdrop items-end sm:items-center justify-center p-3" style="padding-top: max(12px, env(safe-area-inset-top)); padding-bottom: max(12px, env(safe-area-inset-bottom));" onclick="if(event.target===this) closeGoogleLoginHelp()">
     <div id="xlogin-help-sheet" class="liquid-glass-heavy w-full max-w-sm rounded-[1.75rem] p-5 shadow-2xl border border-white" role="dialog" aria-modal="true" aria-labelledby="xlogin-help-title">
@@ -2932,7 +2932,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     let currentUser = null, allPosts = [], unsubPosts = null, selectedMember = "すべて", kindFilter = "all", sortFilter = "random", bundleFilter = "all", searchText = "", activeOnly = false, currentDetailIndex = -1; window.currentUser = currentUser; window.currentUser = currentUser; window.currentUser = currentUser;
     let pendingPostId = new URLSearchParams(location.search).get("post");
     let postMode = "exchange", postPhotos = [], processingPhotos = false, submittingPost = false, submittingGroup = false, detailPhotos = [], roomPhotos = [], roomPhotosFor = null;
-    let myTrades = [], unsubTrades = null, groupJoins = {}, unsubJoins = null, currentTrade = null, roomMessages = [], unsubRoom = null, unsubMsgs = null;
+    let myTrades = [], myAutoGoEntries = [], unsubTrades = null, unsubAutoGoEntries = null, groupJoins = {}, unsubJoins = null, currentTrade = null, roomMessages = [], unsubRoom = null, unsubMsgs = null;
     let reviewState = { tradeId: null, done: null }, selectedRating = 0, sendingImage = false, roomBoxKey = null, userData = { profile: {}, blocked: [], likes: [], reads: {}, notifications: [], cancelHistory: [], myCards: {}, collectionPublic: false, customCards: [], cardWatch: {}, points: 0, pointHistory: [], inviteCode: "", loginStamps: [], lastLoginBonusDate: "", registrationBonusGranted: false, profileBonusGranted: false, referredBy: "" };
     let unsubUser = null, editingPostId = null, migratingLocal = false, photoCache = {};
     let pendingProfilePhoto = null;
@@ -5245,6 +5245,10 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     window.sendTestPush = async function() {
       const status = document.getElementById("push-test-status");
       const setStatus = (message) => { if (status) status.textContent = message; };
+      if (!isAdmin()) {
+        setStatus("テスト通知の送信は管理者のみ利用できます。");
+        return;
+      }
       if (!currentUser) {
         setStatus("ログインしてからお試しください。");
         return;
@@ -5369,6 +5373,8 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
 
     onAuthStateChanged(auth, (user) => {
       currentUser = user; window.currentUser = currentUser; window.currentUser = currentUser; window.currentUser = currentUser;
+      const pushTestButton = document.getElementById("push-test-btn");
+      if (pushTestButton) pushTestButton.classList.toggle("hidden", !isAdmin());
       const loginBtn = document.getElementById("login-btn"), userProfile = document.getElementById("user-profile");
       if (user) {
         if (dailyBonusRequestUid !== user.uid) {
@@ -5394,7 +5400,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         loginBtn.classList.add("hidden"); userProfile.classList.remove("hidden");
         document.getElementById("user-name").innerText = getMyDisplayName();
         updateUserAvatar();
-        subscribeUserData(); subscribeTrades(); subscribeSuspension();
+        subscribeUserData(); subscribeTrades(); subscribeAutoGoEntries(); subscribeSuspension();
         if (typeof loadPosts === "function") { loadingPosts = false; loadPosts(true); }
         setTimeout(() => { if (typeof updateUserAvatar === "function") updateUserAvatar(); }, 800);
         if ("Notification" in window && Notification.permission === "granted" && localStorage.getItem(pushStorageKey())) {
@@ -5413,12 +5419,12 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         const adminBtn = document.getElementById("admin-panel-btn");
         if (adminBtn) adminBtn.classList.add("hidden");
         loginBtn.classList.remove("hidden"); userProfile.classList.remove("hidden");
-        if (unsubTrades) unsubTrades(); if (unsubUser) unsubUser(); unsubTrades=null; unsubUser=null;
+        if (unsubTrades) unsubTrades(); if (unsubAutoGoEntries) unsubAutoGoEntries(); if (unsubUser) unsubUser(); unsubTrades=null; unsubAutoGoEntries=null; unsubUser=null;
         tradesLoaded = false;
         if (typeof loadPosts === "function" && allPosts.length === 0) { loadingPosts = false; loadPosts(true); }
         if (unsubSusp) { unsubSusp(); unsubSusp = null; }
         document.getElementById("suspended-modal").classList.add("hidden");
-        userData = { profile: {}, blocked: [], likes: [], reads: {}, notifications: [], cancelHistory: [], myCards: {}, collectionPublic: false, customCards: [], cardWatch: {}, points: 0, pointHistory: [], inviteCode: "", loginStamps: [], lastLoginBonusDate: "", registrationBonusGranted: false, profileBonusGranted: false, referredBy: "" }; myTrades = []; updateBadge(); updateNotifBadge();
+        userData = { profile: {}, blocked: [], likes: [], reads: {}, notifications: [], cancelHistory: [], myCards: {}, collectionPublic: false, customCards: [], cardWatch: {}, points: 0, pointHistory: [], inviteCode: "", loginStamps: [], lastLoginBonusDate: "", registrationBonusGranted: false, profileBonusGranted: false, referredBy: "" }; myTrades = []; myAutoGoEntries = []; updateBadge(); updateNotifBadge();
         window.renderRewards();
         prevUnreadCount = -1; prevTradeCountAsOwner = -1;
         updateUserAvatar();
@@ -7835,6 +7841,20 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         if (!document.getElementById("wallet-modal").classList.contains("hidden")) renderWallet();
       }, (err) => console.warn("trades snapshot error:", err?.code || err));
     }
+    function subscribeAutoGoEntries() {
+      if (unsubAutoGoEntries) unsubAutoGoEntries();
+      myAutoGoEntries = [];
+      const entriesQuery = query(collectionGroup(db, "entries"), where("uid", "==", currentUser.uid));
+      unsubAutoGoEntries = onSnapshot(entriesQuery, (snap) => {
+        myAutoGoEntries = snap.docs.map((entryDoc) => ({
+          id: entryDoc.id,
+          poolId: entryDoc.ref.parent.parent && entryDoc.ref.parent.parent.id,
+          ...entryDoc.data()
+        }));
+        updateBadge();
+        if (!document.getElementById("todo-modal").classList.contains("hidden")) renderTodoList();
+      }, (err) => console.warn("Auto-GO entries snapshot error:", err?.code || err));
+    }
     function getTodoTasks() {
       if (!currentUser) return [];
       const uid = currentUser.uid;
@@ -7854,6 +7874,27 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         } else if (flag(t, "shipped", otherId) && !flag(t, "received", uid)) {
           tasks.push({ kind: "trade", id: t.id, text: `${title}の受取確認・評価をしてください` });
         }
+      });
+      myAutoGoEntries.forEach((entry) => {
+        if (entry.id !== uid || !entry.poolId || entry.isDummy === true || entry.status === "cancelled") return;
+        const member = entry.wantedMember ? `「${entry.wantedMember}」` : "";
+        let text = "";
+        if (entry.status === "reserved") {
+          text = `Auto-GO ${member}の予約状況を確認してください`;
+        } else if (entry.status === "confirmed") {
+          text = `Auto-GO ${member}の購入を報告してください`;
+        } else if (entry.status === "purchased") {
+          text = `Auto-GO ${member}のアルバム到着を報告してください`;
+        } else if (entry.status === "arrived") {
+          text = `Auto-GO ${member}の開封結果を登録してください`;
+        } else if (entry.status === "matched" && !entry.noMatchResult) {
+          if (entry.shipToAddress && !entry.shippedDone && !entry.shippedAt) {
+            text = `Auto-GO ${member}のトレカを発送してください`;
+          } else if ((entry.shippedDone || entry.shippedAt) && !entry.receivedDone) {
+            text = `Auto-GO ${member}のトレカ受取を報告してください`;
+          }
+        }
+        if (text) tasks.push({ kind: "autogo", poolId: entry.poolId, id: entry.id, text });
       });
       const parts = formatJstDateParts();
       const today = `${parts.year}-${parts.month}-${parts.day}`;
@@ -7898,7 +7939,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       if (tasks.length) {
         el.style.display = "block";
         el.style.padding = "12px 14px 80px";
-        el.innerHTML = tasks.map((task) => `<button type="button" data-todo-kind="${task.kind}" ${task.id ? `data-todo-id="${escapeHtml(task.id)}"` : ""} class="w-full rounded-2xl bg-white px-4 py-3 text-left text-sm font-bold text-gray-800 shadow-sm active:scale-[0.99] transition">${escapeHtml(task.text)}<span class="float-right text-gray-300">›</span></button>`).join("");
+        el.innerHTML = tasks.map((task) => `<button type="button" data-todo-kind="${task.kind}" ${task.id ? `data-todo-id="${escapeHtml(task.id)}"` : ""} ${task.poolId ? `data-todo-pool-id="${escapeHtml(task.poolId)}"` : ""} class="w-full rounded-2xl bg-white px-4 py-3 text-left text-sm font-bold text-gray-800 shadow-sm active:scale-[0.99] transition">${escapeHtml(task.text)}<span class="float-right text-gray-300">›</span></button>`).join("");
         return;
       }
       el.style.display = "flex";
@@ -7921,6 +7962,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       if (!button) return;
       window.closeTodoModal();
       if (button.dataset.todoKind === "trade") openTrade(button.dataset.todoId);
+      else if (button.dataset.todoKind === "autogo") window.openAutoGoModal(button.dataset.todoPoolId);
       else if (button.dataset.todoKind === "points") window.openPointsModal();
       else if (button.dataset.todoKind === "profile") window.openProfileModal("basic");
     });
@@ -10431,7 +10473,7 @@ function getAiCardVectors() {
 </div>
 
 <script src="./js/auto-go-home-hero.js?v=1795418710herofix1"></script>
-<script src="./js/auto-go.js?v=20261122terms1"></script>
+<script src="./js/auto-go.js?v=20261127reservation1"></script>
 <script src="./js/auto-go-admin-sim.js?v=20261122ship1"></script>
 
 
@@ -10551,7 +10593,7 @@ function getAiCardVectors() {
 <script src="./js/x-trade-share.js?v=20261121"></script>
 
 
-<script src="./js/auto-go-push.js?v=20261121"></script>
+<script src="./js/auto-go-push.js?v=20261127tokenfix"></script>
 
 
 <script src="./js/auto-go-timers.js?v=20261121"></script>

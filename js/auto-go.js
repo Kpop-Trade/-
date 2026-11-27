@@ -1600,7 +1600,7 @@ window.triggerAutoGoRecruitmentCloseIfNeeded = function(poolId, poolData) {
             <p class="text-[15px] font-black text-gray-900 truncate">${escapeAutoGoHtml(m)}</p>
             <p class="text-[11px] text-gray-500 mt-0.5">残り <span class="font-bold text-gray-800">${rem}</span> / ${cap} 枠 · ${escapeAutoGoHtml(priceHint)}</p>
           </div>
-          <button type="button" onclick="reserveAutoGoMember('${safeName}')" data-unavailable="${unavailable}" ${unavailable ? "disabled" : ""}
+          <button type="button" onclick="reserveAutoGoMember('${safeName}', this)" data-unavailable="${unavailable}" ${unavailable ? "disabled" : ""}
             class="shrink-0 min-h-[44px] px-4 py-2.5 rounded-full text-[13px] font-black transition touch-manipulation ${
               unavailable
                 ? "bg-gray-200 text-gray-400 cursor-not-allowed"
@@ -1639,7 +1639,39 @@ window.triggerAutoGoRecruitmentCloseIfNeeded = function(poolId, poolData) {
     });
   };
 
-  window.reserveAutoGoMember = async function(memberName) {
+  let autoGoReservationInFlight = false;
+  window.reserveAutoGoMember = async function(memberName, clickedButton) {
+    if (autoGoReservationInFlight) return;
+    autoGoReservationInFlight = true;
+    const buttons = Array.from(document.querySelectorAll("#ag-member-grid button[onclick*='reserveAutoGoMember']"));
+    const buttonStates = buttons.map((button) => ({
+      button,
+      disabled: button.disabled,
+      html: button.innerHTML,
+      ariaBusy: button.getAttribute("aria-busy")
+    }));
+    buttons.forEach((button) => {
+      button.disabled = true;
+      if (button === clickedButton) {
+        button.textContent = "予約中...";
+        button.setAttribute("aria-busy", "true");
+      }
+    });
+    try {
+      await submitAutoGoMemberReservation(memberName);
+    } finally {
+      autoGoReservationInFlight = false;
+      buttonStates.forEach(({ button, disabled, html, ariaBusy }) => {
+        if (!button.isConnected) return;
+        button.disabled = disabled;
+        button.innerHTML = html;
+        if (ariaBusy === null) button.removeAttribute("aria-busy");
+        else button.setAttribute("aria-busy", ariaBusy);
+      });
+    }
+  };
+
+  async function submitAutoGoMemberReservation(memberName) {
     const rulesOk = document.getElementById("ag-rules-consent")?.checked === true;
     const shipOk = document.getElementById("ag-auto-ship-consent")?.checked === true;
     if (!rulesOk || !shipOk) {
@@ -1737,10 +1769,14 @@ window.triggerAutoGoRecruitmentCloseIfNeeded = function(poolId, poolData) {
         : window.confirm(confirmMsg);
       if (!agreed) return;
 
+      const reservationId = window.crypto?.randomUUID
+        ? window.crypto.randomUUID()
+        : `${Date.now()}_${Math.random().toString(36).slice(2)}`;
       await refs.reserveAutoGoEntry({
         poolId: activePoolId,
         wantedMember: memberName,
-        consent: true
+        consent: true,
+        reservationId
       });
       showToast("予約完了！希望メンバー「" + memberName + "」で仮予約しました", "success");
       try {
@@ -1753,7 +1789,7 @@ window.triggerAutoGoRecruitmentCloseIfNeeded = function(poolId, poolData) {
           <h3 class="text-base font-black text-gray-900">予約完了</h3>
           <p class="text-sm text-gray-700">希望メンバー：<strong>${escapeAutoGoHtml(memberName)}</strong></p>
           <p class="text-xs text-gray-600">${escapeAutoGoHtml(priceLine)}</p>
-          <p class="text-[11px] text-gray-500">予約内容をプッシュ通知でもお送りしました。最低人数に達すると企画が成立します。</p>
+          <p class="text-[11px] text-gray-500">予約内容の通知をお送りします。最低人数に達すると企画が成立します。</p>
           <button type="button" class="w-full py-2.5 rounded-full bg-gradient-to-r from-purple-600 to-pink-500 text-white text-sm font-bold" onclick="document.getElementById('ag-reserve-done-modal')?.remove()">閉じる</button>
         </div>`;
         overlay.onclick = (ev) => { if (ev.target === overlay) overlay.remove(); };

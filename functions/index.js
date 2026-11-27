@@ -126,6 +126,7 @@ async function push(uid, title, body, link) {
 
 exports.sendTestPush = onCall(async (request) => {
   if (!request.auth) throw new HttpsError("unauthenticated", "login required");
+  assertAdmin(request);
   console.info("FCM test push started");
   const result = await push(
     request.auth.uid,
@@ -171,7 +172,20 @@ async function notify(uid, { id, text, type = "info", link = null, title = "ILLI
   if (shouldMirror) {
     await mirrorInbox(uid, { id: id || ref.id, text, type, link, title, category }).catch((e) => console.warn("inbox mirror", e));
   }
-  await push(uid, title, text, link).catch((e) => console.warn("push error", e));
+  try {
+    const result = await push(uid, title, text, link);
+    if (!result.successCount) {
+      console.warn("FCM push was not delivered", {
+        uid,
+        title,
+        tokenCount: result.tokenCount,
+        failureCount: result.failureCount,
+        errors: result.errors
+      });
+    }
+  } catch (e) {
+    console.warn("push error", e);
+  }
 }
 
 const autoGoEntryRef = (poolId, uid) =>
@@ -432,25 +446,8 @@ async function activateAutoGoPool(poolId) {
   const poolData = poolSnap.data();
   const entries = await poolRef.collection("entries").where("status", "==", "reserved").get();
   await Promise.all(entries.docs.map((entry) =>
-    confirmAutoGoEntry(poolId, entry.id, poolData, entry.ref)));
+    confirmAutoGoEntry(poolId, String(entry.data().uid || entry.id), poolData, entry.ref)));
   await poolRef.update({ status: "active", activatedAt: FV.serverTimestamp() });
-}
-
-async function notifyAutoGoPurchaseUrlToEntries(poolId, poolData) {
-  const entriesSnap = await db.collection("auto_go_pools").doc(poolId).collection("entries").get();
-  await Promise.all(entriesSnap.docs.map(async (entryDoc) => {
-    const uid = entryDoc.id;
-    const entry = entryDoc.data() || {};
-    if (isAutoGoDummyUid(uid)) return;
-    if (!["reserved", "confirmed"].includes(entry.status)) return;
-    await notify(uid, {
-      id: `autogo_purchase_${poolId}`,
-      text: `「${poolData.title || "Auto-GO"}」の募集が終了しました。10時間以内に専用購入URLからアルバムを購入し、購入日時とアルバムが確認できる画面を登録してください。購入URL: ${poolData.purchaseUrl || SITE}`,
-      type: "success",
-      link: { k: "autogo", id: poolId, purchaseUrl: poolData.purchaseUrl || SITE },
-      title: "⚡ Auto-GO専用購入URL発行"
-    });
-  }));
 }
 
 exports.closeAutoGoRecruitmentNow = onCall({ cors: true }, async (request) => {
@@ -475,7 +472,6 @@ exports.closeAutoGoRecruitmentNow = onCall({ cors: true }, async (request) => {
     if (!latestPool.recruitmentClosedAt) {
       await poolRef.update({ recruitmentClosedAt: FV.serverTimestamp() });
     }
-    await notifyAutoGoPurchaseUrlToEntries(poolId, latestPool);
   }
   return { ok: true };
 });
@@ -490,7 +486,17 @@ exports.onAutoGoPoolUpdated = onDocumentUpdated("auto_go_pools/{poolId}", async 
     if (!pool.recruitmentClosedAt) {
       await event.data.after.ref.update({ recruitmentClosedAt: FV.serverTimestamp() });
     }
-    await notifyAutoGoPurchaseUrlToEntries(event.params.poolId, pool);
+    const reservedEntries = await event.data.after.ref.collection("entries")
+      .where("status", "==", "reserved").get();
+    await Promise.all(reservedEntries.docs.map((entryDoc) => {
+      const entry = entryDoc.data() || {};
+      return confirmAutoGoEntry(
+        event.params.poolId,
+        String(entry.uid || entryDoc.id),
+        pool,
+        entryDoc.ref
+      );
+    }));
   }
 });
 
@@ -501,6 +507,8 @@ exports.onAutoGoEntryCreated = onDocumentCreated(
     const poolSnap = await poolRef.get();
     if (!poolSnap.exists) return;
     const pool = poolSnap.data();
+    const entry = event.data.data() || {};
+    const uid = String(entry.uid || event.params.uid);
     const recruitEndAt = timestampMillis(pool.recruitEndAt);
     if (pool.recruitmentClosedAt || (recruitEndAt && recruitEndAt <= Date.now())) {
       const entryRef = event.data.ref;
@@ -518,7 +526,7 @@ exports.onAutoGoEntryCreated = onDocumentCreated(
         tx.update(entryRef, { status: "cancelled", cancellationReason: "recruitment_closed" });
         return true;
       });
-      if (cancelled) await notify(event.params.uid, {
+      if (cancelled) await notify(uid, {
         id: `autogo_closed_${event.params.poolId}`,
         text: `「${pool.title || "Auto-GO"}」は募集期間が終了したため、新規申し込みを受け付けていません。`,
         type: "info",
@@ -527,8 +535,21 @@ exports.onAutoGoEntryCreated = onDocumentCreated(
       });
       return;
     }
+    if (entry.status === "reserved" && !isAutoGoTestPool(pool) && !isAutoGoDummyUid(uid)) {
+      const priceYen = Number(pool.albumPrice || pool.purchasePrice || 0);
+      const priceText = priceYen > 0
+        ? `金額の目安: ¥${priceYen.toLocaleString("ja-JP")}（後で自身で購入）`
+        : "金額はショップの掲載価格です（後で自身で購入）";
+      await notify(uid, {
+        id: `autogo_reserved_${event.params.poolId}_${event.params.uid}`,
+        text: `「${pool.title || "Auto-GO"}」に仮予約しました。希望メンバー: ${entry.wantedMember || "未設定"}。${priceText}。最低人数に達すると企画成立し、購入URLが届きます。`,
+        type: "success",
+        link: { k: "autogo", id: event.params.poolId },
+        title: "✅ Auto-GO予約完了"
+      });
+    }
     if ((pool.status === "active" || pool.status === "activating") && isAutoGoRecruitmentEnded(pool)) {
-      await confirmAutoGoEntry(event.params.poolId, event.params.uid, pool, event.data.ref);
+      await confirmAutoGoEntry(event.params.poolId, uid, pool, event.data.ref);
     }
   }
 );
@@ -547,13 +568,15 @@ exports.onAutoGoArrivalOrRevealRegistered = onDocumentUpdated(
     const poolSnap = await poolRef.get();
     const pool = poolSnap.exists ? poolSnap.data() : {};
     const members = await poolRef.collection("entries").get();
-    await Promise.all(members.docs.filter((entry) => entry.data().status !== "cancelled").map((entry) => notify(entry.id, {
-      id: `autogo_reveal_${event.params.poolId}`,
-      text: `「${pool.title || "Auto-GO"}」の開封結果登録期間が始まりました。期限は4日後です。自引きの場合も必ず登録してください。`,
-      type: "info",
-      link: { k: "autogo", id: event.params.poolId },
-      title: "📦 Auto-GO開封結果の登録開始"
-    })));
+    await Promise.all(members.docs
+      .filter((entry) => entry.data().status !== "cancelled")
+      .map((entry) => notify(String(entry.data().uid || entry.id), {
+        id: `autogo_reveal_${event.params.poolId}`,
+        text: `「${pool.title || "Auto-GO"}」の開封結果登録期間が始まりました。期限は4日後です。自引きの場合も必ず登録してください。`,
+        type: "info",
+        link: { k: "autogo", id: event.params.poolId },
+        title: "📦 Auto-GO開封結果の登録開始"
+      })));
   }
 );
 
@@ -794,6 +817,7 @@ async function closeAutoGoRevealWindow(poolId, poolRef, poolData, options) {
       const shipToAddress = [receiverAddress.address1, receiverAddress.address2].filter(Boolean).join(" ");
       updates.push({
         ref: autoGoEntryRef(poolId, sender.id),
+        uid: String(sender.uid || sender.id),
         data: {
           status: "matched",
           noMatchResult: FV.delete(),
@@ -818,6 +842,7 @@ async function closeAutoGoRevealWindow(poolId, poolRef, poolData, options) {
     if (!used.has(candidate.id)) {
       updates.push({
         ref: autoGoEntryRef(poolId, candidate.id),
+        uid: String(candidate.uid || candidate.id),
         data: autoGoNoMatchData()
       });
     }
@@ -826,6 +851,7 @@ async function closeAutoGoRevealWindow(poolId, poolRef, poolData, options) {
     const entry = blocked[i];
     updates.push({
       ref: autoGoEntryRef(poolId, entry.id),
+      uid: String(entry.uid || entry.id),
       data: autoGoNoMatchData()
     });
   }
@@ -836,6 +862,7 @@ async function closeAutoGoRevealWindow(poolId, poolRef, poolData, options) {
       for (const entry of unregistered.docs) {
         updates.push({
           ref: entry.ref,
+          uid: String(entry.data().uid || entry.id),
           data: { status: "cancelled", penalty: true, penaltyReason: "reveal_not_registered", cancelledAt: FV.serverTimestamp() }
         });
       }
@@ -856,14 +883,15 @@ async function closeAutoGoRevealWindow(poolId, poolRef, poolData, options) {
   }
 
   await Promise.all(updates
-    .filter(({ data, ref }) => data.penalty && !isAutoGoDummyUid(ref.id))
-    .map(({ ref }) => recordAutoGoPenalty(ref.id, poolId)));
-  await Promise.all(updates.map(({ ref, data }) => {
-    if (isAutoGoDummyUid(ref.id)) {
+    .filter(({ data, uid }) => data.penalty && !isAutoGoDummyUid(uid))
+    .map(({ uid }) => recordAutoGoPenalty(uid, poolId)));
+  await Promise.all(updates.map(({ ref, uid, data }) => {
+    const recipientUid = uid || ref.id;
+    if (isAutoGoDummyUid(recipientUid)) {
       return Promise.resolve();
     }
     if (data.status === "matched") {
-      return notify(ref.id, {
+      return notify(recipientUid, {
         id: `autogo_match_${poolId}`,
         text: data.noMatchResult === true
           ? `「${poolData.title || "Auto-GO"}」の自動マッチングが完了しました。今回は交換対象外となりました。`
@@ -873,7 +901,7 @@ async function closeAutoGoRevealWindow(poolId, poolRef, poolData, options) {
         title: "⚡ Auto-GO自動マッチング完了"
       });
     }
-    return notify(ref.id, {
+    return notify(recipientUid, {
       id: `autogo_penalty_${poolId}`,
       text: `「${poolData.title || "Auto-GO"}」の開封結果が期限内に登録されなかったため、参加枠がキャンセルされました。`,
       type: "admin",
@@ -912,26 +940,26 @@ exports.processAutoGoDeadlines = onSchedule({
       if (Number(pool.totalCount || 0) >= minimum) {
         await poolDoc.ref.update({ recruitmentClosedAt: pool.recruitmentClosedAt || FV.serverTimestamp() });
         await activateAutoGoPool(poolId);
-      const freshPool = (await poolDoc.ref.get()).data() || pool;
-      await notifyAutoGoPurchaseUrlToEntries(poolId, freshPool);
       } else {
         await poolDoc.ref.update({ status: "cancelled", cancelledAt: FV.serverTimestamp() });
+        const entries = await poolDoc.ref.collection("entries").get();
+        const writer = db.bulkWriter();
+        entries.docs.forEach((entry) => {
+          if (entry.data().status !== "cancelled") {
+            writer.update(entry.ref, { status: "cancelled", cancellationReason: "minimum_not_reached" });
+          }
+        });
+        await writer.close();
+        await Promise.all(entries.docs
+          .filter((entry) => entry.data().status !== "cancelled")
+          .map((entry) => notify(entry.data().uid || entry.id, {
+            id: `autogo_cancelled_${poolId}`,
+            text: `「${pool.title || "Auto-GO"}」は募集終了までに最低${minimum}人に達しなかったため中止となりました。`,
+            type: "info",
+            link: { k: "autogo", id: poolId },
+            title: "Auto-GO募集終了"
+          })));
       }
-    } else if (pool.status === "recruiting" && pool.recruitEndAt && timestampMillis(pool.recruitEndAt) <= now) {
-      await poolDoc.ref.update({ status: "cancelled", cancelledAt: FV.serverTimestamp() });
-      const entries = await poolDoc.ref.collection("entries").get();
-      const writer = db.bulkWriter();
-      entries.docs.forEach((entry) => {
-        writer.update(entry.ref, { status: "cancelled", cancellationReason: "minimum_not_reached" });
-      });
-      await writer.close();
-      await Promise.all(entries.docs.map((entry) => notify(entry.id, {
-        id: `autogo_cancelled_${poolId}`,
-        text: `「${pool.title || "Auto-GO"}」は募集終了までに最低20人に達しなかったため中止となりました。`,
-        type: "info",
-        link: { k: "autogo", id: poolId },
-        title: "Auto-GO募集終了"
-      })));
     } else if (pool.status === "activating") {
       await activateAutoGoPool(poolId);
     }
@@ -939,15 +967,15 @@ exports.processAutoGoDeadlines = onSchedule({
     if (pool.status === "active") {
       if (pool.recruitEndAt && timestampMillis(pool.recruitEndAt) <= now && !pool.recruitmentClosedAt) {
         await poolDoc.ref.update({ recruitmentClosedAt: FV.serverTimestamp() });
-      await notifyAutoGoPurchaseUrlToEntries(poolId, pool);
       }
       const matchedEntries = await poolDoc.ref.collection("entries").where("status", "==", "matched").get();
       for (const entryDoc of matchedEntries.docs) {
         const entry = entryDoc.data();
-        if (isAutoGoDummyUid(entryDoc.id) || entry.isDummy === true) continue;
+        const uid = String(entry.uid || entryDoc.id);
+        if (isAutoGoDummyUid(uid) || entry.isDummy === true) continue;
         if (entry.noMatchResult || !entry.shipToAddress || entry.shippedAt ||
             !entry.matchedAt || timestampMillis(entry.matchedAt) > now - 72 * 60 * 60 * 1000) continue;
-        const userRef = db.collection("users").doc(entryDoc.id);
+        const userRef = db.collection("users").doc(uid);
         const penalized = await db.runTransaction(async (tx) => {
           const [currentEntry, userSnap] = await Promise.all([
             tx.get(entryDoc.ref),
@@ -978,15 +1006,15 @@ exports.processAutoGoDeadlines = onSchedule({
           return true;
         });
         if (penalized) {
-          const notice = `Auto-GO「${pool.title || poolId}」でマッチング後72時間以内に発送伝票が登録されなかった参加者（UID: ${entryDoc.id}）を自動除外し、永久参加停止にしました。`;
+          const notice = `Auto-GO「${pool.title || poolId}」でマッチング後72時間以内に発送伝票が登録されなかった参加者（UID: ${uid}）を自動除外し、永久参加停止にしました。`;
           await Promise.all(ADMIN_UIDS.map((adminUid) => notify(adminUid, {
-            id: `autogo_unshipped_${poolId}_${entryDoc.id}`,
+            id: `autogo_unshipped_${poolId}_${uid}`,
             text: notice,
             type: "admin",
             link: { k: "autogo", id: poolId },
             title: "⚠️ Auto-GO未発送・永久参加停止"
           })));
-          await notify(entryDoc.id, {
+          await notify(uid, {
             id: `autogo_unshipped_${poolId}`,
             text: "マッチング後72時間以内に発送伝票が登録されなかったため、Auto-GOへの参加を停止しました。",
             type: "admin",
@@ -998,7 +1026,8 @@ exports.processAutoGoDeadlines = onSchedule({
       const entries = await poolDoc.ref.collection("entries").where("status", "==", "confirmed").get();
       for (const entry of entries.docs) {
         const entryData = entry.data() || {};
-        if (isAutoGoDummyUid(entry.id) || entryData.isDummy === true) continue;
+        const uid = String(entryData.uid || entry.id);
+        if (isAutoGoDummyUid(uid) || entryData.isDummy === true) continue;
         if (!entryData.purchaseDeadlineAt || timestampMillis(entryData.purchaseDeadlineAt) > now) continue;
         const expired = await db.runTransaction(async (tx) => {
           const current = await tx.get(entry.ref);
@@ -1013,8 +1042,8 @@ exports.processAutoGoDeadlines = onSchedule({
           return true;
         });
         if (expired) {
-          await recordAutoGoPenalty(entry.id, poolId);
-          await notify(entry.id, {
+          await recordAutoGoPenalty(uid, poolId);
+          await notify(uid, {
             id: `autogo_purchase_expired_${poolId}`,
             text: `「${pool.title || "Auto-GO"}」の購入登録が10時間以内に完了しなかったため、参加枠がキャンセルされました。ペナルティが記録されました。`,
             type: "admin",
@@ -1135,13 +1164,24 @@ async function applyAutoGoPurchaseRegistration(poolId, uid, orderNote) {
 /** registerAutoGoReceipt と同じ受取完了更新（任意 UID） */
 async function applyAutoGoReceiptRegistration(poolId, uid) {
   const entryRef = autoGoEntryRef(poolId, uid);
+  let senderUid = "";
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(entryRef);
     if (!snap.exists || snap.data().status !== "matched") {
       throw new HttpsError("failed-precondition", "entry is not matched");
     }
+    senderUid = String(snap.data().receiveFromUid || "");
     tx.update(entryRef, { receivedDone: true, receivedAt: FV.serverTimestamp() });
   });
+  if (senderUid && senderUid !== uid) {
+    await notify(senderUid, {
+      id: `autogo_received_${poolId}_${uid}`,
+      text: `Auto-GO「${poolId}」のトレカが相手に受け取られました。`,
+      type: "success",
+      link: { k: "autogo", id: poolId },
+      title: "✅ Auto-GO受取完了"
+    });
+  }
 }
 
 /** registerAutoGoArrival と同じ到着報告（任意 UID） */
@@ -1405,23 +1445,18 @@ exports.reserveAutoGoEntry = onCall(async (request) => {
   if (initialUserSnap.exists && initialUserSnap.data().autoGoBanned === true) {
     throw new HttpsError("permission-denied", "this account is banned from Auto-GO");
   }
-  const initialUser = initialUserSnap.exists ? initialUserSnap.data() : {};
-  const savedTokens = initialUser.fcmTokens;
-  let hasFcmToken = Boolean(
-    String(initialUser.fcmToken || "").trim() ||
-    (typeof savedTokens === "string" && savedTokens.trim()) ||
-    (Array.isArray(savedTokens) && savedTokens.some((token) => String(token || "").trim())) ||
-    (savedTokens && typeof savedTokens === "object" && !Array.isArray(savedTokens) &&
-      Object.values(savedTokens).some((token) => String(token || "").trim()))
-  );
-  if (!hasFcmToken) {
-    const tokenSnap = await db.collection("users").doc(uid).collection("tokens").limit(1).get();
-    hasFcmToken = !tokenSnap.empty;
-  }
-  if (!hasFcmToken) {
+  const tokenSnap = await db.collection("users").doc(uid).collection("tokens").limit(1).get();
+  if (tokenSnap.empty) {
     throw new HttpsError("failed-precondition", "push notification registration is required");
   }
   const poolRef = db.collection("auto_go_pools").doc(poolId);
+  const reservationId = String((request.data || {}).reservationId || "");
+  if (reservationId && !/^[A-Za-z0-9_-]{16,80}$/.test(reservationId)) {
+    throw new HttpsError("invalid-argument", "invalid reservation id");
+  }
+  const reservationRef = reservationId
+    ? poolRef.collection("reservationRequests").doc(`${uid}_${reservationId}`)
+    : null;
   const isWonheeMember = (m) => /ウォンヒ|wonhee/i.test(String(m || ""));
   const existingUserEntriesSnap = await poolRef.collection("entries").where("uid", "==", uid).get();
   const activeUserEntries = existingUserEntriesSnap.docs
@@ -1436,14 +1471,23 @@ exports.reserveAutoGoEntry = onCall(async (request) => {
   const shippingRef = db.collection("users").doc(uid).collection("private").doc("shipping");
   let assignedMember = wantedMember;
   let assignedRank = 1;
+  let duplicateRequest = false;
+  let poolForResponse = {};
   await db.runTransaction(async (tx) => {
-    const [poolSnap, entrySnap, userSnap, privateShipSnap] = await Promise.all([
+    const [poolSnap, entrySnap, userSnap, privateShipSnap, reservationSnap] = await Promise.all([
       tx.get(poolRef),
       tx.get(entryRef),
       tx.get(db.collection("users").doc(uid)),
-      tx.get(shippingRef)
+      tx.get(shippingRef),
+      reservationRef ? tx.get(reservationRef) : Promise.resolve(null)
     ]);
     if (!poolSnap.exists) throw new HttpsError("not-found", "pool not found");
+    poolForResponse = poolSnap.data();
+    if (reservationSnap && reservationSnap.exists) {
+      duplicateRequest = true;
+      assignedMember = reservationSnap.data().wantedMember || wantedMember;
+      return;
+    }
     if (entrySnap.exists) throw new HttpsError("already-exists", "already reserved this slot");
     const user = userSnap.exists ? userSnap.data() : {};
     if (user.autoGoBanned === true) {
@@ -1507,9 +1551,18 @@ exports.reserveAutoGoEntry = onCall(async (request) => {
       xId,
       createdAt: FV.serverTimestamp()
     });
+    if (reservationRef) {
+      tx.create(reservationRef, {
+        entryId: entryRef.id,
+        wantedMember: assignedMember,
+        createdAt: FV.serverTimestamp()
+      });
+    }
   });
-  const poolSnap = await poolRef.get();
-  const pool = poolSnap.exists ? poolSnap.data() : {};
+  if (duplicateRequest) {
+    return { ok: true, wantedMember: assignedMember, deduplicated: true };
+  }
+  const pool = poolForResponse;
   if (isAutoGoTestPool(pool)) {
     await writeAutoGoAuditLog(poolId, {
       action: "reserve_test_pool",
@@ -1521,16 +1574,6 @@ exports.reserveAutoGoEntry = onCall(async (request) => {
     return { ok: true, wantedMember: assignedMember, albumPrice: null, test: true };
   }
   const priceYen = Number(pool.albumPrice || pool.purchasePrice || 0);
-  const priceText = priceYen > 0
-    ? `金額の目安: ¥${priceYen.toLocaleString("ja-JP")}（後で自身で購入）`
-    : "金額はショップの掲載価格です（後で自身で購入）";
-  await notify(uid, {
-    id: `autogo_reserved_${poolId}_${uid}`,
-    text: `「${pool.title || "Auto-GO"}」に仮予約しました。希望メンバー: ${assignedMember}。${priceText}。最低人数に達すると企画成立し、購入URLが届きます。`,
-    type: "success",
-    link: { k: "autogo", id: poolId },
-    title: "✅ Auto-GO予約完了"
-  });
   return { ok: true, wantedMember: assignedMember, albumPrice: priceYen || null };
 });
 

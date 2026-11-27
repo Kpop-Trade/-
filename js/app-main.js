@@ -319,7 +319,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         <p class="text-[12px] text-gray-500 mt-1.5 leading-relaxed">${hint || "条件を変えるか、右下の出品から投稿してみましょう"}</p>
       </div>`;
     }
-    let myTrades = [], unsubTrades = null, groupJoins = {}, unsubJoins = null, currentTrade = null, roomMessages = [], unsubRoom = null, unsubMsgs = null, unsubTradeShipping = null, roomTradeShipping = {};
+    let myTrades = [], myAutoGoEntries = [], unsubTrades = null, unsubAutoGoEntries = null, groupJoins = {}, unsubJoins = null, currentTrade = null, roomMessages = [], unsubRoom = null, unsubMsgs = null, unsubTradeShipping = null, roomTradeShipping = {};
     let reviewState = { tradeId: null, done: null }, selectedRating = 0, sendingImage = false, roomBoxKey = null, userData = { profile: {}, blocked: [], likes: [], reads: {}, notifications: [], cancelHistory: [], myCards: {}, collectionPublic: false, customCards: [], cardWatch: {}, points: 0, pointHistory: [], inviteCode: "", loginStamps: [], lastLoginBonusDate: "", registrationBonusGranted: false, profileBonusGranted: false, referredBy: "" };
     let loginCalendarData = null;
     let dailyBonusRequestUid = null;
@@ -3791,7 +3791,7 @@ window.triggerHeartPop = function(button) {
         loginBtn.classList.add("hidden"); userProfile.classList.remove("hidden");
         document.getElementById("user-name").innerText = getMyDisplayName();
         updateUserAvatar();
-        subscribeUserData(); subscribeTrades(); subscribeSuspension();
+        subscribeUserData(); subscribeTrades(); subscribeAutoGoEntries(); subscribeSuspension();
         if (typeof loadPosts === "function") loadPosts(true);
         setTimeout(() => { if (typeof updateUserAvatar === "function") updateUserAvatar(); }, 800);
         if ("Notification" in window && Notification.permission === "granted" && localStorage.getItem(pushStorageKey())) {
@@ -3838,12 +3838,12 @@ window.triggerHeartPop = function(button) {
         const adminBtn = document.getElementById("admin-panel-btn");
         if (adminBtn) adminBtn.classList.add("hidden");
         loginBtn.classList.remove("hidden"); userProfile.classList.remove("hidden");
-        if (unsubTrades) unsubTrades(); if (unsubUser) unsubUser(); if (unsubNotifs) unsubNotifs(); unsubTrades=null; unsubUser=null; unsubNotifs=null; serverNotifs = [];
+        if (unsubTrades) unsubTrades(); if (unsubAutoGoEntries) unsubAutoGoEntries(); if (unsubUser) unsubUser(); if (unsubNotifs) unsubNotifs(); unsubTrades=null; unsubAutoGoEntries=null; unsubUser=null; unsubNotifs=null; serverNotifs = [];
         tradesLoaded = false;
         if (typeof loadPosts === "function" && allPosts.length === 0) loadPosts(true);
         if (unsubSusp) { unsubSusp(); unsubSusp = null; }
         document.getElementById("suspended-modal").classList.add("hidden");
-        userData = { profile: {}, blocked: [], likes: [], reads: {}, notifications: [], cancelHistory: [], myCards: {}, collectionPublic: false, customCards: [], cardWatch: {}, points: 0, pointHistory: [], inviteCode: "", loginStamps: [], lastLoginBonusDate: "", registrationBonusGranted: false, profileBonusGranted: false, referredBy: "" }; myTrades = []; updateUserAvatar(); updateBadge(); updateNotifBadge();
+        userData = { profile: {}, blocked: [], likes: [], reads: {}, notifications: [], cancelHistory: [], myCards: {}, collectionPublic: false, customCards: [], cardWatch: {}, points: 0, pointHistory: [], inviteCode: "", loginStamps: [], lastLoginBonusDate: "", registrationBonusGranted: false, profileBonusGranted: false, referredBy: "" }; myTrades = []; myAutoGoEntries = []; updateUserAvatar(); updateBadge(); updateNotifBadge();
         window.renderRewards();
         prevUnreadCount = -1; prevTradeCountAsOwner = -1;
         window._tradeWatchReady = false;
@@ -7551,6 +7551,20 @@ window.renderHomeThemeSections = function(entries, cardHtmlById) {
         if (!document.getElementById("trades-modal").classList.contains("hidden")) renderTradesList();
       });
     }
+    function subscribeAutoGoEntries() {
+      if (unsubAutoGoEntries) unsubAutoGoEntries();
+      myAutoGoEntries = [];
+      const entriesQuery = query(collectionGroup(db, "entries"), where("uid", "==", currentUser.uid));
+      unsubAutoGoEntries = onSnapshot(entriesQuery, (snap) => {
+        myAutoGoEntries = snap.docs.map((entryDoc) => ({
+          id: entryDoc.id,
+          poolId: entryDoc.ref.parent.parent && entryDoc.ref.parent.parent.id,
+          ...entryDoc.data()
+        }));
+        updateBadge();
+        if (!document.getElementById("todo-modal").classList.contains("hidden")) renderTodoList();
+      }, (err) => console.warn("Auto-GO entries snapshot error:", err?.code || err));
+    }
     function getTodoTasks() {
       if (!currentUser) return [];
       const uid = currentUser.uid;
@@ -7570,6 +7584,27 @@ window.renderHomeThemeSections = function(entries, cardHtmlById) {
         } else if (flag(t, "shipped", otherId) && !flag(t, "received", uid)) {
           tasks.push({ kind: "trade", id: t.id, text: `${title}の受取確認・評価をしてください` });
         }
+      });
+      myAutoGoEntries.forEach((entry) => {
+        if (entry.uid !== uid || !entry.poolId || entry.isDummy === true || entry.status === "cancelled") return;
+        const member = entry.wantedMember ? `「${entry.wantedMember}」` : "";
+        let text = "";
+        if (entry.status === "reserved") {
+          text = `Auto-GO ${member}の予約状況を確認してください`;
+        } else if (entry.status === "confirmed") {
+          text = `Auto-GO ${member}の購入を報告してください`;
+        } else if (entry.status === "purchased") {
+          text = `Auto-GO ${member}のアルバム到着を報告してください`;
+        } else if (entry.status === "arrived") {
+          text = `Auto-GO ${member}の開封結果を登録してください`;
+        } else if (entry.status === "matched" && !entry.noMatchResult) {
+          if (entry.shipToAddress && !entry.shippedDone && !entry.shippedAt) {
+            text = `Auto-GO ${member}のトレカを発送してください`;
+          } else if ((entry.shippedDone || entry.shippedAt) && !entry.receivedDone) {
+            text = `Auto-GO ${member}のトレカ受取を報告してください`;
+          }
+        }
+        if (text) tasks.push({ kind: "autogo", poolId: entry.poolId, id: entry.id, text });
       });
       const parts = formatJstDateParts();
       const today = `${parts.year}-${parts.month}-${parts.day}`;
@@ -7614,7 +7649,7 @@ window.renderHomeThemeSections = function(entries, cardHtmlById) {
       if (tasks.length) {
         el.style.display = "block";
         el.style.padding = "12px 14px 80px";
-        el.innerHTML = tasks.map((task) => `<button type="button" data-todo-kind="${task.kind}" ${task.id ? `data-todo-id="${escapeHtml(task.id)}"` : ""} class="w-full rounded-2xl bg-white px-4 py-3 text-left text-sm font-bold text-gray-800 shadow-sm active:scale-[0.99] transition">${escapeHtml(task.text)}<span class="float-right text-gray-300">›</span></button>`).join("");
+        el.innerHTML = tasks.map((task) => `<button type="button" data-todo-kind="${task.kind}" ${task.id ? `data-todo-id="${escapeHtml(task.id)}"` : ""} ${task.poolId ? `data-todo-pool-id="${escapeHtml(task.poolId)}"` : ""} class="w-full rounded-2xl bg-white px-4 py-3 text-left text-sm font-bold text-gray-800 shadow-sm active:scale-[0.99] transition">${escapeHtml(task.text)}<span class="float-right text-gray-300">›</span></button>`).join("");
         return;
       }
       el.style.display = "flex";
@@ -7637,6 +7672,7 @@ window.renderHomeThemeSections = function(entries, cardHtmlById) {
       if (!button) return;
       window.closeTodoModal();
       if (button.dataset.todoKind === "trade") openTrade(button.dataset.todoId);
+      else if (button.dataset.todoKind === "autogo") window.openAutoGoModal(button.dataset.todoPoolId);
       else if (button.dataset.todoKind === "points") window.openPointsModal();
       else if (button.dataset.todoKind === "profile") window.openProfileModal("basic");
     });

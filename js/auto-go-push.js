@@ -11,13 +11,7 @@
 
   window.isAutoGoPushReady = function() {
     const granted = (typeof Notification !== "undefined" && Notification.permission === "granted");
-    if (!granted) return false;
-    if (agLocalPushToken()) return true;
-    try {
-      const ud = window.userData || {};
-      if (String(ud.fcmToken || "").trim()) return true;
-    } catch (e) {}
-    return false;
+    return granted && !!agLocalPushToken();
   };
 
   window.syncAutoGoPushBanner = function() {
