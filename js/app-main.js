@@ -319,7 +319,9 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         <p class="text-[12px] text-gray-500 mt-1.5 leading-relaxed">${hint || "条件を変えるか、右下の出品から投稿してみましょう"}</p>
       </div>`;
     }
-    let myTrades = [], myAutoGoEntries = [], unsubTrades = null, unsubAutoGoEntries = null, groupJoins = {}, unsubJoins = null, currentTrade = null, roomMessages = [], unsubRoom = null, unsubMsgs = null, unsubTradeShipping = null, roomTradeShipping = {};
+    let myTrades = [], myAutoGoEntries = [], myOwnedPosts = [], myAutoGoPools = {}, myTradeShipping = {}, myTodoReviews = {};
+    let unsubTrades = null, unsubAutoGoEntries = null, unsubOwnedPosts = null, unsubTodoTradeShipping = {}, unsubTodoReviews = {}, unsubTodoAutoGoPools = {}, todoRefreshTimer = null;
+    let groupJoins = {}, unsubJoins = null, currentTrade = null, roomMessages = [], unsubRoom = null, unsubMsgs = null, unsubTradeShipping = null, roomTradeShipping = {};
     let reviewState = { tradeId: null, done: null }, selectedRating = 0, sendingImage = false, roomBoxKey = null, userData = { profile: {}, blocked: [], likes: [], reads: {}, notifications: [], cancelHistory: [], myCards: {}, collectionPublic: false, customCards: [], cardWatch: {}, points: 0, pointHistory: [], inviteCode: "", loginStamps: [], lastLoginBonusDate: "", registrationBonusGranted: false, profileBonusGranted: false, referredBy: "" };
     let loginCalendarData = null;
     let dailyBonusRequestUid = null;
@@ -374,7 +376,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     function isExpired(p) { return !!(p && p.deadline && p.deadline < todayStr()); }
     const JPEG_DATA_RE = /^data:image\/jpeg;base64,[A-Za-z0-9+\/=]+$/;
     function isJpegData(s) { return typeof s === "string" && s.length < 1000000 && JPEG_DATA_RE.test(s); }
-    function isPayTrade(t) { return !!(t && (t.isBuy || t.isSell || t.kind === "group")); }
+    function isPayTrade(t) { return !!(t && (t.isBuy || t.isSell || t.kind === "group" || t.isBundleRequest)); }
     function joinsOf(postId) { return groupJoins[postId] || []; }
     function needsCondition(kind) { return kind === "card" || kind === "album" || kind === "dearlit"; }
 
@@ -1528,7 +1530,7 @@ window.triggerHeartPop = function(button) {
           loginCalendarData = { ...(loginCalendarData || {}), loginStamps: userData.loginStamps };
         }
         if (!document.getElementById("trades-modal").classList.contains("hidden")) renderTradesList();
-        /* todo-modal observer trigger removed to prevent infinite loop */
+        renderTodoListIfOpen();
         if (!document.getElementById("wallet-modal").classList.contains("hidden")) renderWallet();
         if (!document.getElementById("notifications-modal").classList.contains("hidden")) renderNotificationsList();
         // 公開プロフィールから配送先PIIを分離し、非公開サブコレクションをローカルへマージ
@@ -1538,6 +1540,8 @@ window.triggerHeartPop = function(button) {
             userData.profile = cleaned;
             const shipping = await loadPrivateShipping(currentUser.uid);
             mergeShippingIntoLocalProfile(shipping);
+            updateBadge();
+            renderTodoListIfOpen();
             if (!document.getElementById("mypage-section").classList.contains("hidden")) window.renderRewards();
           } catch (e) {
             console.warn("private shipping hydrate:", e?.code || e);
@@ -3068,6 +3072,8 @@ window.triggerHeartPop = function(button) {
         document.getElementById("user-name").innerText = getMyDisplayName();
         updateUserAvatar();
       }
+      updateBadge();
+      renderTodoListIfOpen();
       if (currentTrade) { renderRoomAddressBox(); renderRoomPayPayBox(); }
     };
     function getMyProfile() { return currentUser && userData.profile && Object.keys(userData.profile).length ? userData.profile : null; }
@@ -3112,6 +3118,8 @@ window.triggerHeartPop = function(button) {
           createdAt: serverTimestamp()
         });
         renderRoomAddressBox();
+        updateBadge();
+        renderTodoListIfOpen();
         showToast("配送先を相手と共有しました", "success");
       } catch (e) {
         console.error(e);
@@ -3838,7 +3846,7 @@ window.triggerHeartPop = function(button) {
         const adminBtn = document.getElementById("admin-panel-btn");
         if (adminBtn) adminBtn.classList.add("hidden");
         loginBtn.classList.remove("hidden"); userProfile.classList.remove("hidden");
-        if (unsubTrades) unsubTrades(); if (unsubAutoGoEntries) unsubAutoGoEntries(); if (unsubUser) unsubUser(); if (unsubNotifs) unsubNotifs(); unsubTrades=null; unsubAutoGoEntries=null; unsubUser=null; unsubNotifs=null; serverNotifs = [];
+        if (unsubTrades) unsubTrades(); if (unsubAutoGoEntries) unsubAutoGoEntries(); if (unsubUser) unsubUser(); if (unsubNotifs) unsubNotifs(); stopTodoSubscriptions(); unsubTrades=null; unsubAutoGoEntries=null; unsubUser=null; unsubNotifs=null; serverNotifs = [];
         tradesLoaded = false;
         if (typeof loadPosts === "function" && allPosts.length === 0) loadPosts(true);
         if (unsubSusp) { unsubSusp(); unsubSusp = null; }
@@ -7508,6 +7516,7 @@ window.renderHomeThemeSections = function(entries, cardHtmlById) {
 
     function subscribeTrades() {
       if (unsubTrades) unsubTrades();
+      subscribeTodoOwnedPosts();
       tradesLoaded = false;
       window._tradeWatchReady = false;
       window._tradeWatch = {};
@@ -7517,6 +7526,7 @@ window.renderHomeThemeSections = function(entries, cardHtmlById) {
         const lastAct = t => Math.max(tsValue(t.updatedAt), tsMillis(t.lastMessageAt));
         myTrades.sort((a, b) => lastAct(b) - lastAct(a));
         const unread = myTrades.filter(t => isUnread(t)).length;
+        syncTodoTradeSubscriptions();
         const fromCache = !!(snap.metadata && snap.metadata.fromCache);
         if (!window._tradeWatchReady) {
           if (!fromCache) {
@@ -7543,7 +7553,7 @@ window.renderHomeThemeSections = function(entries, cardHtmlById) {
         renderSellTab();
         scheduleHealSoldPosts();
         if (!document.getElementById("trades-modal").classList.contains("hidden")) renderTradesList();
-        /* todo-modal observer trigger removed to prevent infinite loop */
+        renderTodoListIfOpen();
         if (!document.getElementById("wallet-modal").classList.contains("hidden")) renderWallet();
       }, (err) => {
         console.warn("trades snapshot error:", err?.code || err);
@@ -7561,61 +7571,241 @@ window.renderHomeThemeSections = function(entries, cardHtmlById) {
           poolId: entryDoc.ref.parent.parent && entryDoc.ref.parent.parent.id,
           ...entryDoc.data()
         }));
+        syncTodoAutoGoPoolSubscriptions();
         updateBadge();
-        if (!document.getElementById("todo-modal").classList.contains("hidden")) renderTodoList();
+        renderTodoListIfOpen();
       }, (err) => console.warn("Auto-GO entries snapshot error:", err?.code || err));
+    }
+    function renderTodoListIfOpen() {
+      const modal = document.getElementById("todo-modal");
+      if (modal && !modal.classList.contains("hidden") && typeof window.renderTodoList === "function") {
+        window.renderTodoList();
+      }
+    }
+    function subscribeTodoOwnedPosts() {
+      if (unsubOwnedPosts) unsubOwnedPosts();
+      myOwnedPosts = [];
+      if (!currentUser) return;
+      unsubOwnedPosts = onSnapshot(query(collection(db, "posts"), where("userId", "==", currentUser.uid)), (snap) => {
+        myOwnedPosts = snap.docs.map((postDoc) => ({ id: postDoc.id, ...postDoc.data() }));
+        updateBadge();
+        renderTodoListIfOpen();
+      }, (err) => console.warn("Todo owned-post snapshot error:", err?.code || err));
+    }
+    function syncTodoTradeSubscriptions() {
+      const uid = currentUser && currentUser.uid;
+      const shippingIds = new Set(myTrades.filter((trade) => trade.status === "shipping").map((trade) => trade.id));
+      Object.keys(unsubTodoTradeShipping).forEach((tradeId) => {
+        if (!shippingIds.has(tradeId)) {
+          unsubTodoTradeShipping[tradeId]();
+          delete unsubTodoTradeShipping[tradeId];
+          delete myTradeShipping[tradeId];
+        }
+      });
+      shippingIds.forEach((tradeId) => {
+        if (unsubTodoTradeShipping[tradeId]) return;
+        unsubTodoTradeShipping[tradeId] = onSnapshot(doc(db, "trades", tradeId, "shipping", uid), (snap) => {
+          myTradeShipping[tradeId] = snap.exists() ? (snap.data() || {}) : {};
+          updateBadge();
+          renderTodoListIfOpen();
+        }, (err) => console.warn("Todo trade shipping snapshot error:", err?.code || err));
+      });
+
+      const reviewTrades = myTrades.filter((trade) => trade.status !== "cancelled" &&
+        (trade.status === "completed" || trade.status === "done" || flag(trade, "received", uid))
+      );
+      const reviewIds = new Set(reviewTrades.map((trade) => trade.id));
+      Object.keys(unsubTodoReviews).forEach((tradeId) => {
+        if (!reviewIds.has(tradeId)) {
+          unsubTodoReviews[tradeId]();
+          delete unsubTodoReviews[tradeId];
+          delete myTodoReviews[tradeId];
+        }
+      });
+      reviewIds.forEach((tradeId) => {
+        if (unsubTodoReviews[tradeId]) return;
+        unsubTodoReviews[tradeId] = onSnapshot(doc(db, "reviews", tradeId + "_" + uid), (snap) => {
+          myTodoReviews[tradeId] = snap.exists();
+          updateBadge();
+          renderTodoListIfOpen();
+        }, (err) => console.warn("Todo review snapshot error:", err?.code || err));
+      });
+    }
+    function syncTodoAutoGoPoolSubscriptions() {
+      const poolIds = new Set(myAutoGoEntries.map((entry) => entry.poolId).filter(Boolean));
+      Object.keys(unsubTodoAutoGoPools).forEach((poolId) => {
+        if (!poolIds.has(poolId)) {
+          unsubTodoAutoGoPools[poolId]();
+          delete unsubTodoAutoGoPools[poolId];
+          delete myAutoGoPools[poolId];
+        }
+      });
+      poolIds.forEach((poolId) => {
+        if (unsubTodoAutoGoPools[poolId]) return;
+        unsubTodoAutoGoPools[poolId] = onSnapshot(doc(db, "auto_go_pools", poolId), (snap) => {
+          myAutoGoPools[poolId] = snap.exists() ? (snap.data() || {}) : {};
+          updateBadge();
+          renderTodoListIfOpen();
+        }, (err) => console.warn("Todo Auto-GO pool snapshot error:", err?.code || err));
+      });
+    }
+    function stopTodoSubscriptions() {
+      if (unsubOwnedPosts) { unsubOwnedPosts(); unsubOwnedPosts = null; }
+      [unsubTodoTradeShipping, unsubTodoReviews, unsubTodoAutoGoPools].forEach((subscriptions) => {
+        Object.values(subscriptions).forEach((unsubscribe) => unsubscribe());
+      });
+      unsubTodoTradeShipping = {};
+      unsubTodoReviews = {};
+      unsubTodoAutoGoPools = {};
+      myOwnedPosts = [];
+      myTradeShipping = {};
+      myTodoReviews = {};
+      myAutoGoPools = {};
+      if (todoRefreshTimer) { clearTimeout(todoRefreshTimer); todoRefreshTimer = null; }
+    }
+    function todoDeadlineInfo(value) {
+      if (value == null || value === "") return { label: "期限設定なし", at: 0 };
+      let at = 0;
+      if (value && typeof value.toMillis === "function") at = value.toMillis();
+      else if (value instanceof Date) at = value.getTime();
+      else if (typeof value === "number") at = value;
+      else if (typeof value === "string") {
+        const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value);
+        at = Date.parse(dateOnly ? value + "T23:59:59+09:00" : value);
+      } else if (typeof value === "object" && Number.isFinite(value._seconds)) {
+        at = value._seconds * 1000;
+      }
+      if (!Number.isFinite(at) || at <= 0) return { label: "期限設定なし", at: 0 };
+      const label = new Intl.DateTimeFormat("ja-JP", {
+        timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit",
+        hour: "2-digit", minute: "2-digit"
+      }).format(new Date(at));
+      return { label: `${at <= Date.now() ? "期限超過" : "期限"}: ${label}`, at };
     }
     function getTodoTasks() {
       if (!currentUser) return [];
       const uid = currentUser.uid;
       const tasks = [];
+      const addTask = (kind, text, item, deadline, extra) => {
+        const due = todoDeadlineInfo(deadline);
+        tasks.push({ kind, text, item: item || "", deadlineLabel: due.label, deadlineAt: due.at, ...(extra || {}) });
+      };
       myTrades.forEach((t) => {
-        const title = t.postGive || "取引";
+        const title = tradeItemLabel(t);
         const otherId = t.ownerId === uid ? t.applicantId : t.ownerId;
-        if (t.status === "negotiating" && t.ownerId === uid && t.applicantId !== uid && !flag(t, "agreed", uid)) {
-          tasks.push({ kind: "trade", id: t.id, text: `${title}の交換・購入申請を確認してください` });
-          return;
+        if (t.status === "negotiating" && t.ownerId === uid && t.applicantId !== uid &&
+            !flag(t, "agreed", uid) &&
+            (isStandardExchangeTrade(t) || (t.isBundle && Array.isArray(t.bundleIndexes) && t.bundleIndexes.length) || t.isBundleRequest)) {
+          addTask("trade", "交換・購入の申請内容を確認して承認してください", title, null, { id: t.id });
         }
-        if (t.status !== "shipping") return;
-        const isMyShipment = t.kind === "group" || (!t.isBuy && !t.isSell) ||
-          (t.isBuy ? t.applicantId === uid : t.ownerId === uid);
-        if (isMyShipment && !flag(t, "shipped", uid)) {
-          tasks.push({ kind: "trade", id: t.id, text: `${title}を発送してください` });
-        } else if (flag(t, "shipped", otherId) && !flag(t, "received", uid)) {
-          tasks.push({ kind: "trade", id: t.id, text: `${title}の受取確認・評価をしてください` });
+        if ((t.status === "negotiating" || t.status === "shipping") && isUnread(t)) {
+          addTask("trade", "取引メッセージを確認して返信してください", title, null, { id: t.id });
         }
-      });
-      myAutoGoEntries.forEach((entry) => {
-        if (entry.uid !== uid || !entry.poolId || entry.isDummy === true || entry.status === "cancelled") return;
-        const member = entry.wantedMember ? `「${entry.wantedMember}」` : "";
-        let text = "";
-        if (entry.status === "reserved") {
-          text = `Auto-GO ${member}の予約状況を確認してください`;
-        } else if (entry.status === "confirmed") {
-          text = `Auto-GO ${member}の購入を報告してください`;
-        } else if (entry.status === "purchased") {
-          text = `Auto-GO ${member}のアルバム到着を報告してください`;
-        } else if (entry.status === "arrived") {
-          text = `Auto-GO ${member}の開封結果を登録してください`;
-        } else if (entry.status === "matched" && !entry.noMatchResult) {
-          if (entry.shipToAddress && !entry.shippedDone && !entry.shippedAt) {
-            text = `Auto-GO ${member}のトレカを発送してください`;
-          } else if ((entry.shippedDone || entry.shippedAt) && !entry.receivedDone) {
-            text = `Auto-GO ${member}のトレカ受取を報告してください`;
+        if (t.status === "shipping") {
+          if (t.cancelRequest && t.cancelRequest.by && t.cancelRequest.by !== uid) {
+            addTask("trade", "取引のキャンセル申請を確認して同意するか判断してください", title, null, { id: t.id });
+          }
+          const payFlow = isPayTrade(t);
+          const payerId = t.kind === "group" || t.isSell || t.isBundleRequest
+            ? t.applicantId
+            : (t.isBuy ? t.ownerId : "");
+          const sellerId = payerId === t.ownerId ? t.applicantId : t.ownerId;
+          const isExchange = !payFlow;
+          if (payFlow && payerId === uid && !flag(t, "shipped", uid)) {
+            addTask("trade", "支払い・入金を済ませて取引ルームで報告してください", title, null, { id: t.id });
+          }
+          if (((payFlow && sellerId === uid) || isExchange) && !flag(t, "shipped", uid)) {
+            const createdAt = t.createdAt ? todoDeadlineInfo(t.createdAt).at : 0;
+            const due = t.isSell && t.ownerId === uid && createdAt
+              ? createdAt + 72 * 60 * 60 * 1000
+              : null;
+            addTask("trade", "取引ルームで発送完了を報告してください", title, due, { id: t.id });
+          }
+          if (flag(t, "shipped", otherId) && !flag(t, "received", uid)) {
+            addTask("trade", "商品の受取を確認して完了報告してください", title, null, { id: t.id });
+          }
+          const shipping = myTradeShipping[t.id] || {};
+          const needsAddress = isExchange || (payFlow && payerId === uid);
+          if (needsAddress && !shipping.sharedAt) {
+            addTask("trade", "配送先を登録して取引相手に共有してください", title, null, { id: t.id });
+          }
+          const profile = userData.profile || {};
+          const receiverId = t.isBuy ? t.applicantId : t.ownerId;
+          if (payFlow && !usesAzukariPayment(t) && receiverId === uid && !String(profile.paypay || "").trim()) {
+            addTask("profile", "PayPayの受取情報を登録してください", title, null, { section: "paypay" });
           }
         }
-        if (text) tasks.push({ kind: "autogo", poolId: entry.poolId, id: entry.id, text });
+        if (t.status !== "cancelled" && (t.status === "completed" || t.status === "done" || flag(t, "received", uid)) &&
+            myTodoReviews[t.id] !== true) {
+          addTask("trade", "取引相手を評価して取引を完了してください", title, null, { id: t.id });
+        }
       });
       const parts = formatJstDateParts();
       const today = `${parts.year}-${parts.month}-${parts.day}`;
+      myOwnedPosts.forEach((post) => {
+        if (post.kind !== "group" || post.userId !== uid || post.status !== "active" || !post.deadline) return;
+        const full = Number(post.target || 0) > 0 && Number(post.joinsCount || 0) >= Number(post.target || 0);
+        if (post.deadline <= today || full) {
+          addTask("post", full ? "共同購入の募集を締め切ってください" : "共同購入の募集締切を確認してください",
+            post.give || "共同購入", post.deadline, { id: post.id });
+        }
+      });
+      myAutoGoEntries.forEach((entry) => {
+        if (entry.uid !== uid || !entry.poolId || entry.isDummy === true) return;
+        const pool = myAutoGoPools[entry.poolId] || {};
+        if (entry.status === "cancelled" || entry.status === "unshipped_penalty" || pool.status === "cancelled") return;
+        const item = pool.title || entry.poolTitle || "Auto-GOのアルバム";
+        const member = entry.wantedMember ? `「${entry.wantedMember}」` : "";
+        if (entry.status === "confirmed") {
+          const deadline = entry.purchaseDeadlineAt || pool.purchaseDeadlineAt;
+          const due = todoDeadlineInfo(deadline);
+          if (!due.at || due.at > Date.now()) {
+            addTask("autogo", `Auto-GO ${member}の購入と入金を報告してください`, item, deadline, { poolId: entry.poolId, id: entry.id });
+          }
+        } else if (entry.status === "purchased") {
+          addTask("autogo", `Auto-GO ${member}のアルバム到着を報告してください`, item, null, { poolId: entry.poolId, id: entry.id });
+        } else if (entry.status === "arrived") {
+          const deadline = pool.revealDeadlineAt || entry.revealDeadlineAt;
+          const due = todoDeadlineInfo(deadline);
+          if (!due.at || due.at > Date.now()) {
+            addTask("autogo", `Auto-GO ${member}の開封結果を登録してください`, item, deadline, { poolId: entry.poolId, id: entry.id });
+          }
+        }
+        if (entry.status === "waiting_match" || entry.status === "arrived") {
+          const shipping = getMyShipping();
+          if (!shipping.name || !shipping.zip || !shipping.address1) {
+            addTask("profile", "Auto-GOのマッチング用配送先を登録してください", item,
+              pool.revealDeadlineAt || entry.revealDeadlineAt, { section: "address" });
+          }
+        }
+        if (entry.status === "matched" && !entry.noMatchResult) {
+          if (entry.shipToAddress && !entry.shippedDone && !entry.shippedAt && !entry.receivedDone) {
+            const deadline = entry.shipDeadlineAt || entry.shippingDeadlineAt ||
+              (entry.matchedAt ? todoDeadlineInfo(entry.matchedAt).at + 72 * 60 * 60 * 1000 : null);
+            addTask("autogo", `Auto-GO ${member}のトレカを発送してください`, item, deadline, { poolId: entry.poolId, id: entry.id });
+          } else if ((entry.shippedDone || entry.shippedAt) && !entry.receivedDone) {
+            addTask("autogo", `Auto-GO ${member}のトレカ受取を報告してください`, item, null, { poolId: entry.poolId, id: entry.id });
+          }
+        }
+      });
       if (userData.lastLoginBonusDate !== today) {
-        tasks.push({ kind: "points", text: "本日のログインボーナス（10pt）を受け取る" });
+        addTask("points", "本日のログインボーナス（10pt）を受け取る", "", null);
       }
       const profile = userData.profile || {};
       const profileComplete = !!(String(profile.nickname || "").trim() ||
         (String(profile.name || "").trim() && String(profile.zip || "").trim() && String(profile.address1 || "").trim()));
-      if (!profileComplete) tasks.push({ kind: "profile", text: "プロフィールの未設定項目を入力してください" });
-      else if (!userData.profileBonusGranted) tasks.push({ kind: "points", text: "プロフィール完成ボーナス（30pt）を受け取る" });
+      if (!profileComplete) addTask("profile", "プロフィールの未設定項目を入力してください", "", null, { section: "basic" });
+      else if (!userData.profileBonusGranted) addTask("points", "プロフィール完成ボーナス（30pt）を受け取る", "", null);
+      if (todoRefreshTimer) { clearTimeout(todoRefreshTimer); todoRefreshTimer = null; }
+      const nextDeadline = tasks.reduce((next, task) =>
+        task.deadlineAt > Date.now() && (!next || task.deadlineAt < next) ? task.deadlineAt : next, 0);
+      if (nextDeadline) {
+        todoRefreshTimer = setTimeout(() => {
+          todoRefreshTimer = null;
+          updateBadge();
+          renderTodoListIfOpen();
+        }, Math.min(nextDeadline - Date.now() + 1000, 2147483647));
+      }
       return tasks;
     }
     function updateBadge() {
@@ -7649,7 +7839,7 @@ window.renderHomeThemeSections = function(entries, cardHtmlById) {
       if (tasks.length) {
         el.style.display = "block";
         el.style.padding = "12px 14px 80px";
-        el.innerHTML = tasks.map((task) => `<button type="button" data-todo-kind="${task.kind}" ${task.id ? `data-todo-id="${escapeHtml(task.id)}"` : ""} ${task.poolId ? `data-todo-pool-id="${escapeHtml(task.poolId)}"` : ""} class="w-full rounded-2xl bg-white px-4 py-3 text-left text-sm font-bold text-gray-800 shadow-sm active:scale-[0.99] transition">${escapeHtml(task.text)}<span class="float-right text-gray-300">›</span></button>`).join("");
+        el.innerHTML = tasks.map((task) => `<button type="button" data-todo-kind="${task.kind}" ${task.id ? `data-todo-id="${escapeHtml(task.id)}"` : ""} ${task.poolId ? `data-todo-pool-id="${escapeHtml(task.poolId)}"` : ""} ${task.section ? `data-todo-section="${escapeHtml(task.section)}"` : ""} class="relative w-full rounded-2xl bg-white px-4 py-3 text-left text-sm font-bold text-gray-800 shadow-sm active:scale-[0.99] transition"><span class="block pr-5">${escapeHtml(task.text)}</span>${task.item ? `<span class="mt-1 block text-xs font-medium text-gray-500">対象: ${escapeHtml(task.item)}</span>` : ""}<span class="mt-1 block text-[11px] font-medium text-gray-400">${escapeHtml(task.deadlineLabel)}</span><span class="absolute right-4 top-4 text-gray-300">›</span></button>`).join("");
         return;
       }
       el.style.display = "flex";
@@ -7667,15 +7857,42 @@ window.renderHomeThemeSections = function(entries, cardHtmlById) {
         <p style="margin:0 0 10px;font-size:16px;font-weight:700;color:#555555">現在、やることリストはありません</p>
         <p style="margin:0;max-width:280px;font-size:13px;line-height:1.6;color:#888888">ここでは、取引上でやることが表示されます（例：発送してください）</p>`;
     };
-    document.getElementById("todo-list").addEventListener("click", (event) => {
-      const button = event.target.closest("[data-todo-kind]");
-      if (!button) return;
-      window.closeTodoModal();
-      if (button.dataset.todoKind === "trade") openTrade(button.dataset.todoId);
-      else if (button.dataset.todoKind === "autogo") window.openAutoGoModal(button.dataset.todoPoolId);
-      else if (button.dataset.todoKind === "points") window.openPointsModal();
-      else if (button.dataset.todoKind === "profile") window.openProfileModal("basic");
-    });
+    window.openTodoPost = async function(postId) {
+      if (!postId) return;
+      let index = allPosts.findIndex((post) => post.id === postId);
+      try {
+        const snap = await getDoc(doc(db, "posts", postId));
+        if (!snap.exists()) {
+          showToast("募集情報が見つかりませんでした", "error");
+          return;
+        }
+        const post = { id: snap.id, ...snap.data() };
+        if (index < 0) {
+          allPosts.unshift(post);
+          index = 0;
+        } else {
+          allPosts[index] = post;
+        }
+      } catch (error) {
+        console.error("Todo post navigation failed:", error);
+        showToast("募集情報を開けませんでした", "error");
+        return;
+      }
+      openDetailModal(index);
+    };
+    if (!window.__todoClickHandlerInstalled) {
+      window.__todoClickHandlerInstalled = true;
+      document.getElementById("todo-list").addEventListener("click", (event) => {
+        const button = event.target.closest("[data-todo-kind]");
+        if (!button) return;
+        window.closeTodoModal();
+        if (button.dataset.todoKind === "trade") window.openTrade(button.dataset.todoId);
+        else if (button.dataset.todoKind === "autogo") window.openAutoGoModal(button.dataset.todoPoolId);
+        else if (button.dataset.todoKind === "post") window.openTodoPost(button.dataset.todoId);
+        else if (button.dataset.todoKind === "points") window.openPointsModal();
+        else if (button.dataset.todoKind === "profile") window.openProfileModal(button.dataset.todoSection || "basic");
+      });
+    }
     window.openTradesModal = function(section) {
       if (section && section in tradeSecOpen) tradeSecOpen[section] = true;
       renderTradesList(); document.getElementById("trades-modal").classList.remove("hidden");
@@ -8510,6 +8727,9 @@ window.openAzukariApp = function() {
           await clearTradeShippingDocs(trade.id);
         }
         reviewState = { tradeId: trade.id, done: true };
+        myTodoReviews[trade.id] = true;
+        updateBadge();
+        renderTodoListIfOpen();
         const host = document.getElementById("room-review-slot");
         if (host) {
           host.removeAttribute("data-review-key");

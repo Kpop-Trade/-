@@ -1495,7 +1495,7 @@ window.triggerAutoGoRecruitmentCloseIfNeeded = function(poolId, poolData) {
       } else if (currentEntryData.status === "matched") {
         // 取引進捗ステップ判定（1:申込済, 2:開封登録済, 3:発送指令済, 4:発送/受取完了）
           const stageText = currentEntryData.receivedDone ? "取引完了"
-            : currentEntryData.shippedDone ? "発送済み・受取報告待ち"
+            : (currentEntryData.shippedDone || currentEntryData.shippedAt) ? "発送済み・受取報告待ち"
             : currentEntryData.shipToAddress ? "発送してください"
             : currentEntryData.noMatchResult ? "マッチング対象外"
             : currentEntryData.openedCard ? "開封結果登録済み"
@@ -1528,7 +1528,7 @@ window.triggerAutoGoRecruitmentCloseIfNeeded = function(poolId, poolData) {
               </div>
               <button type="button" onclick="copyAutoGoDestination()" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-bold text-gray-900">📋 宛先をコピー</button>
               <div class="grid grid-cols-2 gap-1.5 pt-1">
-                ${currentEntryData.shippedDone
+                ${(currentEntryData.shippedDone || currentEntryData.shippedAt)
                   ? `<div class="text-center text-[11px] text-gray-600 py-2">発送完了</div>`
                   : `<div class="col-span-2 space-y-1"><label class="block text-[10px] text-gray-700">追跡番号（必須・ハイフンなし半角数字）
                       <input id="ag-shipping-tracking" type="text" inputmode="numeric" pattern="[0-9]{10,}" minlength="10" maxlength="30" required autocomplete="off" placeholder="例: 12345678901" class="block w-full mt-1 rounded border border-gray-300 px-2 py-1.5 text-xs text-gray-900">
@@ -1548,7 +1548,7 @@ window.triggerAutoGoRecruitmentCloseIfNeeded = function(poolId, poolData) {
                 }
                 ${currentEntryData.receivedDone
                   ? `<div class="text-center text-[11px] text-gray-600 py-2">受取完了</div>`
-                  : `<button type="button" onclick="markAutoGoReceived()" class="${currentEntryData.shippedDone ? "" : "hidden"} border border-gray-300 text-gray-900 text-[11px] font-medium py-2">受取を報告</button>`
+                  : `<button type="button" onclick="markAutoGoReceived()" class="${currentEntryData.shippedDone || currentEntryData.shippedAt ? "" : "hidden"} border border-gray-300 text-gray-900 text-[11px] font-medium py-2">受取を報告</button>`
                 }
               </div>
             </div>`;
