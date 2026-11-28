@@ -205,10 +205,11 @@ getRedirectResult(auth)
       const targetType = n.target && n.target.type;
       const blob = String((n.type || "") + " " + (n.title || "") + " " + (n.text || ""));
       if (linkK === "autogo" || targetType === "autogo" || /auto[\s_-]?go|group[\s_-]?buy|共同\s*購入/i.test(blob)) return "autogo";
+      if (n.category === "campaign" || /キャンペーン|campaign/i.test(blob)) return "campaign";
       if (n.category === "trade" || n.category === "notice" || n.category === "autogo") return n.category;
       if (n.type === "admin" || n.type === "card_list") return "notice";
       if (linkK === "trade" || targetType === "trade" || n.type === "trade") return "trade";
-      if (/申し込み|発送完了|発送・|合意|取引が|メッセージ/.test(blob)) return "trade";
+      if (/申し込み|発送完了|発送・|合意|取引が|メッセージ|コメント/.test(blob)) return "trade";
       return "notice";
     }
     function trimNotifications(list) {
@@ -714,13 +715,17 @@ window.triggerHeartPop = function(button) {
     }
 
     function paintNotifTabs() {
+      const all = inboxNotifications();
       document.querySelectorAll("[data-notif-tab]").forEach(btn => {
         const tab = btn.dataset.notifTab;
         const on = tab === notifTab;
-        btn.style.border = on ? "1.5px solid #2b7de9" : "1px solid #dddddd";
-        btn.style.background = on ? "#f0f7ff" : "#ffffff";
-        btn.style.color = on ? "#1a5fb4" : "#555555";
-        btn.style.fontWeight = on ? "700" : "400";
+        const filtered = tab === "all" ? all : all.filter(n => tab === "notice"
+          ? ["notice", "trade"].includes(notifCategory(n))
+          : notifCategory(n) === tab);
+        const unread = filtered.some(n => !n.read);
+        btn.classList.toggle("is-active", on);
+        const dot = btn.querySelector("[data-notif-unread]");
+        if (dot) dot.classList.toggle("is-visible", unread);
         btn.setAttribute("aria-selected", String(on));
       });
     }
@@ -736,13 +741,12 @@ window.triggerHeartPop = function(button) {
 
     window.openNotificationsModal = function(tab) {
       if (!currentUser) return /* alert hidden */ console.log("ログインが必要です。");
-      if (tab === "all" || tab === "autogo") notifTab = tab;
+      if (["all", "notice", "autogo", "campaign"].includes(tab)) notifTab = tab;
       document.getElementById("notifications-modal").classList.remove("hidden");
       renderNotificationsList();
-      window.markAllNotificationsRead();
     };
     window.setNotifTab = function(tab) {
-      if (tab !== "all" && tab !== "autogo") return;
+      if (!["all", "notice", "autogo", "campaign"].includes(tab)) return;
       notifTab = tab;
       renderNotificationsList();
     };
@@ -752,13 +756,17 @@ window.triggerHeartPop = function(button) {
       if (!el) return;
       const all = inboxNotifications();
       paintNotifTabs();
-      const list = notifTab === "all" ? all : all.filter(n => notifCategory(n) === notifTab);
+      const list = notifTab === "all" ? all : all.filter(n => notifTab === "notice"
+        ? ["notice", "trade"].includes(notifCategory(n))
+        : notifCategory(n) === notifTab);
       const emptyCopy = {
         all: "通知はありません",
-        autogo: "Auto-GOの通知はありません"
+        notice: "あなた宛のお知らせはありません",
+        autogo: "Auto-GOの通知はありません",
+        campaign: "キャンペーンのお知らせはありません"
       };
       if (list.length === 0) {
-        el.innerHTML = '<p class="text-xs text-gray-500 text-center py-8 font-medium bg-white/30 rounded-xl">' + emptyCopy[notifTab] + '</p>';
+        el.innerHTML = '<p class="notifications-empty">' + emptyCopy[notifTab] + '</p>';
         return;
       }
       el.innerHTML = list.map(n => {
@@ -771,31 +779,34 @@ window.triggerHeartPop = function(button) {
           : age < 30 * 24 * 60 * 60 * 1000 ? Math.floor(age / (24 * 60 * 60 * 1000)) + "日前"
           : Math.floor(age / (30 * 24 * 60 * 60 * 1000)) + "ヶ月前";
         const purchaseUrl = safeHttpUrl(n.purchaseUrl || (n.link && n.link.purchaseUrl));
-        const hasTarget = (n.target && n.target.type && n.target.id) || cat === "autogo";
-        const isPeerNotification = cat === "trade" || /like|いいね|取引|相手/i.test(String((n.type || "") + " " + (n.title || "") + " " + (n.text || "")));
+        const target = n.target || (n.link && n.link.k ? { type: n.link.k, id: n.link.id } : null);
+        const hasTarget = (target && target.type && target.id) || cat === "autogo";
+        const isPeerNotification = cat === "trade" || /like|いいね|取引|相手|コメント/i.test(String((n.type || "") + " " + (n.title || "") + " " + (n.text || "")));
         const rawImage = (isPeerNotification ? [n.thumb, n.thumbnail, n.image, n.photo, n.userPhoto, n.senderPhoto] : []).find(value =>
           typeof value === "string" && (isJpegData(value) || safeHttpUrl(value))
         );
         const imageSrc = rawImage ? (isJpegData(rawImage) ? rawImage : safeHttpUrl(rawImage)) : "";
         const icon = imageSrc
-          ? `<img src="${escapeHtml(imageSrc)}" alt="" class="w-10 h-10 rounded-full object-cover shrink-0">`
-          : `<div class="w-10 h-10 rounded-full bg-[#f7efff] flex items-center justify-center shrink-0" aria-hidden="true">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <rect x="5.5" y="3.5" width="13" height="17" rx="2.5" fill="#eadcff" stroke="#c6a7ef"/>
-                <rect x="8" y="6" width="8" height="5" rx="1" fill="#ffd7e6"/>
-                <path d="M8.5 14.5h7M8.5 17h5" stroke="#a77bd5" stroke-width="1.3" stroke-linecap="round"/>
-                <path d="m16.5 4 1.4 1.4" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
-              </svg>
-            </div>`;
-        const urlBtn = purchaseUrl ? `<a href="${escapeHtml(purchaseUrl)}" target="_blank" rel="noopener" data-notif-url="1" class="mt-2 inline-flex items-center justify-center px-3 py-1.5 rounded-full bg-purple-600 text-white text-[11px] font-bold">購入URLを開く</a>` : "";
-        return `<div data-notif-id="${escapeHtml(n.id)}" class="flex items-center gap-3 bg-white px-4 py-3 border-b border-[#f0f0f0] ${hasTarget ? "cursor-pointer" : ""}">
-          ${icon}
-          <div class="flex-1 min-w-0">
-            <p class="text-[13.5px] text-[#222222] leading-[1.45]">${escapeHtml(n.text || n.title || "")}</p>
-            <div class="text-[11.5px] text-[#888888] mt-0.5">${timeStr}</div>
+          ? `<img src="${escapeHtml(imageSrc)}" alt="" class="notif-icon-image is-thumbnail">`
+          : `<img src="./icon-192.png?v=20261121" alt="" class="notif-icon-image is-app-icon">`;
+        const blob = String((n.type || "") + " " + (n.title || "") + " " + (n.text || ""));
+        const badge = /auto[\s_-]?go|共同\s*購入/i.test(blob) ? "⚡"
+          : /like|いいね/i.test(blob) ? "♥"
+          : cat === "trade" ? "💬" : "";
+        const badgeClass = badge === "♥" ? "is-like" : badge === "⚡" ? "is-autogo" : "is-trade";
+        const urlBtn = purchaseUrl ? `<a href="${escapeHtml(purchaseUrl)}" target="_blank" rel="noopener" data-notif-url="1" class="notifications-purchase-link">購入URLを開く</a>` : "";
+        return `<div data-notif-id="${escapeHtml(n.id)}" class="notification-row" role="button" tabindex="0" aria-label="${escapeHtml(n.text || n.title || "お知らせ")}">
+          <span class="notification-icon-wrap">
+            ${icon}
+            ${!n.read ? '<span class="notification-unread-dot" aria-label="未読"></span>' : ""}
+            ${badge ? `<span class="notification-type-badge ${badgeClass}" aria-hidden="true">${badge}</span>` : ""}
+          </span>
+          <span class="notification-copy">
+            <span class="notification-text">${escapeHtml(n.text || n.title || "")}</span>
+            <span class="notification-time">${timeStr}</span>
             ${urlBtn}
-          </div>
-          <span class="text-[#cccccc] text-xl leading-none shrink-0" aria-hidden="true">&gt;</span>
+          </span>
+          <span class="notification-chevron" aria-hidden="true">&gt;</span>
         </div>`;
       }).join("");
     }
@@ -813,23 +824,28 @@ window.triggerHeartPop = function(button) {
         updateDoc(doc(db, "users", currentUser.uid, "notifications", n.id), { read: true }).catch(() => {});
       }
       updateNotifBadge();
+      renderNotificationsList();
     }
     window.handleNotificationClick = async function(notifId) {
       const n = inboxNotifications().find(x => x.id === notifId);
       if (!n) return;
       await markOneNotificationRead(n);
-      closeNotificationsModal();
       const cat = notifCategory(n);
       const t = n.target || (n.link && n.link.k ? { type: n.link.k === "autogo" ? "autogo" : n.link.k, id: n.link.id } : null);
       if (cat === "autogo" || (t && t.type === "autogo")) {
         const poolId = (t && t.id) || (n.link && n.link.id) || "";
-        if (poolId && typeof openAutoGoModal === "function") openAutoGoModal(poolId);
+        if (poolId && typeof openAutoGoModal === "function") {
+          closeNotificationsModal();
+          openAutoGoModal(poolId);
+        }
         return;
       }
       if (!t || !t.type) return;
       if (t.type === "trade" && t.id) {
+        closeNotificationsModal();
         openTrade(t.id);
       } else if (t.type === "post" && t.id) {
+        closeNotificationsModal();
         let i = allPosts.findIndex(x => x.id === t.id);
         if (i < 0) {
           try {
@@ -880,6 +896,14 @@ window.triggerHeartPop = function(button) {
       if (e.target.closest("[data-notif-url]")) return;
       const card = e.target.closest("[data-notif-id]");
       if (!card) return;
+      handleNotificationClick(card.dataset.notifId);
+    });
+    document.getElementById("notifications-list")?.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      if (e.target.closest("[data-notif-url]")) return;
+      const card = e.target.closest("[data-notif-id]");
+      if (!card) return;
+      e.preventDefault();
       handleNotificationClick(card.dataset.notifId);
     });
 

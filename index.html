@@ -32,7 +32,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js?v=20261121"></script>
 
   <script src="./js/tailwind-config.js?v=20261121"></script>
-  <link rel="stylesheet" href="./styles.css?v=20261124full1">
+  <link rel="stylesheet" href="./styles.css?v=20261128notif1">
   <link rel="stylesheet" href="./liquid-glass.css?v=20261121">
   <link rel="stylesheet" href="./mycards-binder.css?v=20261121c">
 
@@ -1102,6 +1102,8 @@
   #todo-modal.kp-slide-page {
     will-change: transform;
     transition: transform 0.34s cubic-bezier(0.22, 1, 0.36, 1) !important;
+  }
+  #todo-modal.kp-slide-page {
     box-shadow: -8px 0 28px rgba(0, 0, 0, 0.08);
   }
 </style>
@@ -1983,23 +1985,22 @@
   </div>
 
   <!-- 通知一覧 -->
-  <div id="notifications-modal" class="fixed inset-0 bg-white hidden z-[70] flex flex-col">
-    <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white shrink-0">
-      <div class="font-black text-base text-gray-900">🔔 通知一覧</div>
-      <button type="button" onclick="window.closeNotificationsModal ? window.closeNotificationsModal() : document.getElementById('notifications-modal').classList.add('hidden')" class="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-700 text-lg font-bold" aria-label="閉じる">✕</button>
-    </div>
-    <div class="w-full max-w-md h-full mx-auto flex flex-col bg-white">
-      <header class="relative h-14 shrink-0 flex items-center justify-center bg-white border-b border-[#eeeeee]">
-        <button type="button" onclick="closeNotificationsModal()" aria-label="戻る" class="absolute left-4 w-9 h-9 rounded-full bg-[#f3f3f3] text-[#555555] text-lg flex items-center justify-center">←</button>
-        <h3 class="text-base font-bold text-[#222222]">お知らせ</h3>
+  <div id="notifications-modal" class="fixed inset-0 bg-white hidden z-[70] flex flex-col" role="dialog" aria-modal="true" aria-labelledby="notifications-title">
+    <div class="notifications-page">
+      <header class="notifications-header">
+        <button type="button" onclick="closeNotificationsModal()" aria-label="戻る" class="notifications-back">←</button>
+        <h3 id="notifications-title">お知らせ</h3>
+        <button type="button" onclick="markAllNotificationsRead()" class="notifications-mark-all">すべて既読</button>
       </header>
-      <div class="px-4 py-3 shrink-0">
-        <div id="notif-tabs" class="flex gap-2" role="tablist">
-          <button type="button" data-notif-tab="all" onclick="setNotifTab('all')" class="notif-tab px-4 py-2 rounded-full text-xs font-bold border">すべて</button>
-          <button type="button" data-notif-tab="autogo" onclick="setNotifTab('autogo')" class="notif-tab px-4 py-2 rounded-full text-xs font-bold border">Auto-GO</button>
+      <div class="notifications-filter">
+        <div id="notif-tabs" class="notifications-tabs" role="tablist" aria-label="お知らせの種類">
+          <button type="button" data-notif-tab="all" onclick="setNotifTab('all')" class="notif-tab" role="tab">すべて<span class="notif-tab-unread" data-notif-unread aria-hidden="true"></span></button>
+          <button type="button" data-notif-tab="notice" onclick="setNotifTab('notice')" class="notif-tab" role="tab">あなた宛<span class="notif-tab-unread" data-notif-unread aria-hidden="true"></span></button>
+          <button type="button" data-notif-tab="autogo" onclick="setNotifTab('autogo')" class="notif-tab" role="tab">Auto-GO<span class="notif-tab-unread" data-notif-unread aria-hidden="true"></span></button>
+          <button type="button" data-notif-tab="campaign" onclick="setNotifTab('campaign')" class="notif-tab" role="tab">キャンペーン<span class="notif-tab-unread" data-notif-unread aria-hidden="true"></span></button>
         </div>
       </div>
-      <div id="notifications-list" class="flex-1 overflow-y-auto bg-white"></div>
+      <div id="notifications-list" class="notifications-list"></div>
     </div>
   </div>
 
@@ -2705,7 +2706,7 @@
   </div>
 
   <script src="./js/mycards-binder.js?v=20261121"></script>
-  <script type="module" src="./js/app-main.js?v=20261127todo4"></script>
+  <script type="module" src="./js/app-main.js?v=20261128notif1"></script>
 
   <div id="xlogin-help-modal" class="hidden fixed inset-0 z-[10040] modal-backdrop items-end sm:items-center justify-center p-3" style="padding-top: max(12px, env(safe-area-inset-top)); padding-bottom: max(12px, env(safe-area-inset-bottom));" onclick="if(event.target===this) closeGoogleLoginHelp()">
     <div id="xlogin-help-sheet" class="liquid-glass-heavy w-full max-w-sm rounded-[1.75rem] p-5 shadow-2xl border border-white" role="dialog" aria-modal="true" aria-labelledby="xlogin-help-title">
