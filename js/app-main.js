@@ -7634,6 +7634,7 @@ window.renderHomeThemeSections = function(entries, cardHtmlById) {
         if (!currentUser || currentUser.uid !== uid) return;
         const entries = new Map();
         (todoAutoGoEntriesByPool[poolId]?.queryEntries || []).forEach((entry) => entries.set(entry.id, entry));
+        (todoAutoGoEntriesByPool[poolId]?.hostEntries || []).forEach((entry) => entries.set(entry.id, entry));
         const primaryEntry = todoAutoGoEntriesByPool[poolId]?.primaryEntry;
         if (primaryEntry) entries.set(primaryEntry.id, primaryEntry);
         todoAutoGoEntriesByPool[poolId].entries = Array.from(entries.values());
@@ -7657,7 +7658,7 @@ window.renderHomeThemeSections = function(entries, cardHtmlById) {
           myAutoGoPools[poolId] = poolDoc.data() || {};
           if (unsubTodoAutoGoEntries[poolId]) return;
 
-          todoAutoGoEntriesByPool[poolId] = { queryEntries: [], primaryEntry: null, entries: [] };
+          todoAutoGoEntriesByPool[poolId] = { queryEntries: [], primaryEntry: null, hostEntries: [], entries: [] };
           const entriesQuery = query(
             collection(db, "auto_go_pools", poolId, "entries"),
             where("uid", "==", uid)
@@ -7667,6 +7668,7 @@ window.renderHomeThemeSections = function(entries, cardHtmlById) {
             todoAutoGoEntriesByPool[poolId].queryEntries = entriesSnap.docs.map((entryDoc) => ({
               ...entryDoc.data(),
               id: entryDoc.id,
+              uid: entryDoc.data().uid || entryDoc.id,
               poolId
             }));
             refreshEntries(poolId);
@@ -7679,7 +7681,21 @@ window.renderHomeThemeSections = function(entries, cardHtmlById) {
               : null;
             refreshEntries(poolId);
           }, (err) => console.warn("Todo Auto-GO primary entry snapshot error:", poolId, err?.code || err));
-          unsubTodoAutoGoEntries[poolId] = [queryUnsubscribe, primaryUnsubscribe];
+          const subscriptions = [queryUnsubscribe, primaryUnsubscribe];
+          if (poolDoc.data()?.createdBy === uid) {
+            const hostUnsubscribe = onSnapshot(collection(db, "auto_go_pools", poolId, "entries"), (entriesSnap) => {
+              if (!currentUser || currentUser.uid !== uid || !todoAutoGoEntriesByPool[poolId]) return;
+              todoAutoGoEntriesByPool[poolId].hostEntries = entriesSnap.docs.map((entryDoc) => ({
+                ...entryDoc.data(),
+                id: entryDoc.id,
+                uid: entryDoc.data().uid || entryDoc.id,
+                poolId
+              }));
+              refreshEntries(poolId);
+            }, (err) => console.warn("Todo Auto-GO host entries snapshot error:", poolId, err?.code || err));
+            subscriptions.push(hostUnsubscribe);
+          }
+          unsubTodoAutoGoEntries[poolId] = subscriptions;
         });
         updateBadge();
         renderTodoListIfOpen();
@@ -7857,7 +7873,7 @@ window.renderHomeThemeSections = function(entries, cardHtmlById) {
         if (entryStatus === "confirmed") {
           const deadline = entry.purchaseDeadlineAt || pool.purchaseDeadlineAt;
           addTask("autogo", `Auto-GO ${member}の購入と入金を報告してください`, item, deadline, { poolId: entry.poolId, id: entry.id });
-        } else if (entryStatus === "purchased") {
+        } else if (entryStatus === "purchased" || entryStatus === "delayed") {
           addTask("autogo", `Auto-GO ${member}のアルバム到着を報告してください`, item, null, { poolId: entry.poolId, id: entry.id });
         } else if (entryStatus === "arrived") {
           const deadline = pool.revealDeadlineAt || entry.revealDeadlineAt;
@@ -7879,6 +7895,27 @@ window.renderHomeThemeSections = function(entries, cardHtmlById) {
             addTask("autogo", `Auto-GO ${member}のトレカ受取を報告してください`, item, null, { poolId: entry.poolId, id: entry.id });
           }
         }
+      });
+      Object.entries(myAutoGoPools).forEach(([poolId, pool]) => {
+        if (pool.createdBy !== uid || ["cancelled", "canceled"].includes(String(pool.status || "").toLowerCase())) return;
+        const entries = myAutoGoEntries.filter((entry) =>
+          entry.poolId === poolId && entry.uid !== uid && entry.isDummy !== true &&
+          !["cancelled", "canceled", "unshipped_penalty"].includes(String(entry.status || "").toLowerCase())
+        );
+        const pending = [
+          ["confirmed", "購入報告状況"],
+          ["purchased", "到着報告状況"],
+          ["delayed", "到着報告状況"],
+          ["arrived", "開封結果の登録状況"],
+          ["waiting_match", "マッチング状況"]
+        ];
+        pending.forEach(([status, action]) => {
+          const count = entries.filter((entry) => String(entry.status || "").toLowerCase() === status).length;
+          if (count) {
+            const item = pool.title || "Auto-GOの企画";
+            addTask("autogo", `主催者：参加者${count}人の${action}を確認してください`, item, null, { poolId, id: poolId });
+          }
+        });
       });
       if (userData.lastLoginBonusDate !== today) {
         addTask("points", "本日のログインボーナス（10pt）を受け取る", "", null);

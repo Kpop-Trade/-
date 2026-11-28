@@ -2707,7 +2707,7 @@
   </div>
 
   <script src="./js/mycards-binder.js?v=20261121"></script>
-  <script type="module" src="./js/app-main.js?v=20261128autogotodo1"></script>
+  <script type="module" src="./js/app-main.js?v=20261128autogofix1"></script>
 
   <div id="xlogin-help-modal" class="hidden fixed inset-0 z-[10040] modal-backdrop items-end sm:items-center justify-center p-3" style="padding-top: max(12px, env(safe-area-inset-top)); padding-bottom: max(12px, env(safe-area-inset-bottom));" onclick="if(event.target===this) closeGoogleLoginHelp()">
     <div id="xlogin-help-sheet" class="liquid-glass-heavy w-full max-w-sm rounded-[1.75rem] p-5 shadow-2xl border border-white" role="dialog" aria-modal="true" aria-labelledby="xlogin-help-title">
@@ -2932,6 +2932,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     };
 
     let currentUser = null, allPosts = [], unsubPosts = null, selectedMember = "すべて", kindFilter = "all", sortFilter = "random", bundleFilter = "all", searchText = "", activeOnly = false, currentDetailIndex = -1; window.currentUser = currentUser; window.currentUser = currentUser; window.currentUser = currentUser;
+    let autoGoDeepLinkHandled = false;
     let pendingPostId = new URLSearchParams(location.search).get("post");
     let postMode = "exchange", postPhotos = [], processingPhotos = false, submittingPost = false, submittingGroup = false, detailPhotos = [], roomPhotos = [], roomPhotosFor = null;
     let myTrades = [], myAutoGoEntries = [], myOwnedPosts = [], myAutoGoPools = {}, myTradeShipping = {}, myTodoReviews = {};
@@ -5413,6 +5414,19 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
 
     onAuthStateChanged(auth, (user) => {
       currentUser = user; window.currentUser = currentUser; window.currentUser = currentUser; window.currentUser = currentUser;
+      if (!autoGoDeepLinkHandled) {
+        const params = new URLSearchParams(location.search);
+        const goId = params.get("goId");
+        if (params.get("tab") === "autogo" && goId) {
+          autoGoDeepLinkHandled = true;
+          if (typeof window.switchTab === "function") window.switchTab("home");
+          if (typeof window.openAutoGoModal === "function") window.openAutoGoModal(goId);
+          const cleanUrl = new URL(location.href);
+          cleanUrl.searchParams.delete("tab");
+          cleanUrl.searchParams.delete("goId");
+          history.replaceState(history.state, "", cleanUrl);
+        }
+      }
       const pushTestButton = document.getElementById("push-test-btn");
       if (pushTestButton) pushTestButton.classList.toggle("hidden", !isAdmin());
       const loginBtn = document.getElementById("login-btn"), userProfile = document.getElementById("user-profile");
@@ -10720,7 +10734,7 @@ function getAiCardVectors() {
 </div>
 
 <script src="./js/auto-go-home-hero.js?v=1795418710herofix1"></script>
-<script src="./js/auto-go.js?v=20261127todo2"></script>
+<script src="./js/auto-go.js?v=20261128autogofix1"></script>
 <script src="./js/auto-go-admin-sim.js?v=20261122ship1"></script>
 
 

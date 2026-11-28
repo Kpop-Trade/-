@@ -89,7 +89,7 @@ async function push(uid, title, body, link) {
     : link && link.k === "trade"
       ? SITE + "?trade=" + link.id
       : link && link.k === "autogo"
-        ? SITE + "?pool=" + encodeURIComponent(link.id)
+        ? SITE + "?tab=autogo&goId=" + encodeURIComponent(link.id)
         : SITE;
   const pushBody = link && link.purchaseUrl
     ? `購入URL: ${String(link.purchaseUrl)}（10時間以内に購入登録してください）`
@@ -100,6 +100,9 @@ async function push(uid, title, body, link) {
       title: String(title),
       body: pushBody.slice(0, 200),
       url,
+      ...(link && link.k === "autogo" && link.id
+        ? { type: "auto_go", goId: String(link.id) }
+        : {}),
       tag: link && link.id ? String(link.id) : "general"
     },
     webpush: {
@@ -1224,10 +1227,14 @@ async function applyAutoGoArrivalRegistration(poolId, uid) {
   const entryRef = autoGoEntryRef(poolId, uid);
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(entryRef);
-    if (!snap.exists || snap.data().status !== "purchased") {
+    if (!snap.exists || !["purchased", "delayed"].includes(snap.data().status)) {
       throw new HttpsError("failed-precondition", "purchase must be registered before arrival");
     }
-    tx.update(entryRef, { status: "arrived", albumReceivedAt: FV.serverTimestamp() });
+    tx.update(entryRef, {
+      status: "arrived",
+      isDelayed: false,
+      albumReceivedAt: FV.serverTimestamp()
+    });
   });
 }
 
@@ -1682,9 +1689,10 @@ exports.registerAutoGoDelay = onCall(async (request) => {
       throw new HttpsError("failed-precondition", "delay cannot be reported for this entry");
     }
     tx.update(entryRef, {
-      status: "delayed",
+      isDelayed: true,
       delayReason: reason,
-      delayReportedAt: FV.serverTimestamp()
+      delayReportedAt: FV.serverTimestamp(),
+      delayedAt: FV.serverTimestamp()
     });
   });
   await Promise.all(ADMIN_UIDS.map((adminUid) => notify(adminUid, {

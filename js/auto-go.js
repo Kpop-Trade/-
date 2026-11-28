@@ -3,7 +3,9 @@
   const PRESET_4 = ["ウォンヒ (Wonhee)", "ミンジュ (Minju)", "モカ (Moka)", "ユナ (Yuna)"];
   const PRESET_5 = ["ウォンヒ (Wonhee)", "ミンジュ (Minju)", "モカ (Moka)", "イロハ (Iroha)", "ユナ (Yuna)"];
 
-  let activePoolId = new URLSearchParams(location.search).get("pool") || "";
+  const initialAutoGoParams = new URLSearchParams(location.search);
+  let activePoolId = initialAutoGoParams.get("goId") || initialAutoGoParams.get("pool") || "";
+  let requestedPoolId = initialAutoGoParams.get("goId") || initialAutoGoParams.get("pool") || "";
   let allPools = [];
   let currentPoolData = null;
   let currentEntryData = null;
@@ -11,6 +13,7 @@
   let currentEntries = [];
   let unsubPoolsList = null;
   let unsubPool = null;
+  let purchaseSubmitting = false;
 
   window.__agTriggeredClosePools = window.__agTriggeredClosePools || {};
 window.triggerAutoGoRecruitmentCloseIfNeeded = function(poolId, poolData) {
@@ -1022,6 +1025,7 @@ window.triggerAutoGoRecruitmentCloseIfNeeded = function(poolId, poolData) {
     const gridEl = document.getElementById("ag-member-grid");
     if (window.__pendingAutoGoPoolId) {
       activePoolId = window.__pendingAutoGoPoolId;
+      requestedPoolId = window.__pendingAutoGoPoolId;
       window.__pendingAutoGoPoolId = "";
     }
     if (!window.__autoGoRefs) {
@@ -1094,7 +1098,9 @@ window.triggerAutoGoRecruitmentCloseIfNeeded = function(poolId, poolData) {
         try { window.__renderAutoGoHomeHero(allPools); } catch (heroErr) { console.warn(heroErr); }
       }
       const stillVisible = allPools.some(function(p) { return p.id === activePoolId; });
-      if (!activePoolId || !stillVisible) {
+      if (requestedPoolId && activePoolId === requestedPoolId) {
+        await selectAutoGoPool(requestedPoolId);
+      } else if (!activePoolId || !stillVisible) {
         if (allPools.length > 0) await selectAutoGoPool(allPools[0].id);
         else {
           if (titleEl) titleEl.textContent = "まだ開催中のプールがありません";
@@ -1125,7 +1131,8 @@ window.triggerAutoGoRecruitmentCloseIfNeeded = function(poolId, poolData) {
         try { window.__renderAutoGoHomeHero(allPools); } catch (heroErr) { console.warn(heroErr); }
       }
       const stillVisible = allPools.some(function(pool) { return pool.id === activePoolId; });
-      if (!activePoolId || (!stillVisible && allPools.length > 0)) {
+      if ((!activePoolId || (!stillVisible && allPools.length > 0)) &&
+          !(requestedPoolId && activePoolId === requestedPoolId)) {
         if (allPools.length > 0) {
           // 未選択時だけ切替。毎回 select し直さない
           if (subscribedPoolId !== allPools[0].id) await selectAutoGoPool(allPools[0].id);
@@ -1169,6 +1176,7 @@ window.triggerAutoGoRecruitmentCloseIfNeeded = function(poolId, poolData) {
 
   window.selectAutoGoPool = async function(poolId) {
     if (!poolId || !window.__autoGoRefs) return;
+    if (requestedPoolId && poolId !== requestedPoolId) requestedPoolId = "";
     // 同じプールを再購読し直すと購入報告画面が一瞬消えて待ちが発生するためスキップ
     if (poolId === subscribedPoolId && currentPoolData && (unsubPool || unsubEntry)) {
       activePoolId = poolId;
@@ -1205,6 +1213,11 @@ window.triggerAutoGoRecruitmentCloseIfNeeded = function(poolId, poolData) {
       if (seq !== selectPoolSeq || activePoolId !== poolId) return;
       if (snaps[0].exists()) {
         currentPoolData = snaps[0].data();
+      } else {
+        const titleEl = document.getElementById("ag-pool-title");
+        const descEl = document.getElementById("ag-pool-desc");
+        if (titleEl) titleEl.textContent = "Auto-GOの企画が見つかりませんでした";
+        if (descEl) descEl.textContent = "通知の対象となった企画は削除されたか、現在アクセスできません。";
       }
       if (user && snaps[1]) {
         currentEntryData = snaps[1].exists() ? snaps[1].data() : null;
@@ -1225,7 +1238,9 @@ window.triggerAutoGoRecruitmentCloseIfNeeded = function(poolId, poolData) {
     if (user) {
       unsubEntry = onSnapshot(doc(db, "auto_go_pools", poolId, "entries", user.uid), (snap) => {
         if (activePoolId !== poolId) return;
-        currentEntryData = snap.exists() ? snap.data() : null;
+        const nextEntry = snap.exists() ? snap.data() : null;
+        if (purchaseSubmitting && currentEntryData?.status === "purchased" && nextEntry?.status === "confirmed") return;
+        currentEntryData = nextEntry;
         window.__agCurrentEntryData = currentEntryData;
         renderAutoGoUI();
       });
@@ -1348,6 +1363,9 @@ window.triggerAutoGoRecruitmentCloseIfNeeded = function(poolId, poolData) {
       statusBox.classList.remove("hidden");
         const isActivated = currentPoolData.status === "active";
       let html = `<p class="text-sm text-gray-700">希望メンバー：${currentEntryData.wantedMember}</p>`;
+        if (currentEntryData.isDelayed === true) {
+          html += `<p class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold text-amber-900">遅延中${currentEntryData.delayReason ? `：${escapeAutoGoHtml(currentEntryData.delayReason)}` : ""}</p>`;
+        }
 
       if (currentEntryData.status === "cancelled") {
         html += `<p class="text-sm text-gray-700">予約はキャンセル済み${currentEntryData.penalty ? "（ペナルティ記録済み）" : ""}</p>`;
@@ -1382,7 +1400,7 @@ window.triggerAutoGoRecruitmentCloseIfNeeded = function(poolId, poolData) {
             html += "<input id=\"ag-purchase-proof-camera\" type=\"file\" accept=\"image/*\" capture=\"environment\" onchange=\"window.previewAutoGoPurchaseProof && window.previewAutoGoPurchaseProof(this)\" class=\"hidden\" />";
             html += "<div id=\"ag-purchase-proof-preview-wrap\" class=\"hidden\"><img id=\"ag-purchase-proof-preview\" alt=\"プレビュー\" class=\"max-h-40 rounded-xl border border-gray-200\" /></div>";
             html += "<input id=\"ag-purchase-order-note\" type=\"text\" placeholder=\"注文番号（任意）\" class=\"w-full rounded-xl border border-gray-300 px-3 py-2 text-xs\" />";
-            html += "<button type=\"button\" onclick=\"window.markAutoGoPurchased && window.markAutoGoPurchased()\" class=\"w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white\">購入を報告</button>";
+            html += `<button type="button" onclick="window.markAutoGoPurchased && window.markAutoGoPurchased()" ${purchaseSubmitting ? "disabled" : ""} class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white disabled:opacity-60">${purchaseSubmitting ? "送信中..." : "購入を報告"}</button>`;
             html += "</div></div>";
           }
         }
@@ -1470,8 +1488,9 @@ window.triggerAutoGoRecruitmentCloseIfNeeded = function(poolId, poolData) {
         </span>
         <div>
           <p class="text-xs font-black text-amber-900">配送遅延を報告済みです</p>
-          <p class="text-[11px] text-amber-700">運営・グループメンバーに遅延ステータスが共有されています。</p>
+          <p class="text-[11px] text-amber-700">${escapeAutoGoHtml(currentEntryData.delayReason || "運営・グループメンバーに遅延報告が共有されています。")}</p>
         </div>
+        <button type="button" onclick="markAutoGoAlbumArrived()" class="w-full min-h-[48px] rounded-full bg-gradient-to-r from-pink-500 to-rose-500 px-4 text-sm font-black text-white shadow-md">到着を報告する</button>
       </div>`;
       } else if (currentEntryData.status === "self_pulled") {
       const pulledLabel = currentEntryData.openedCard || currentEntryData.pulledMember || "";
@@ -1932,6 +1951,7 @@ window.triggerAutoGoRecruitmentCloseIfNeeded = function(poolId, poolData) {
   };
 
   window.markAutoGoPurchased = async function() {
+    if (purchaseSubmitting) return;
     const input = document.getElementById("ag-purchase-proof");
     const cameraInput = document.getElementById("ag-purchase-proof-camera");
     const file = input?.files?.[0] || cameraInput?.files?.[0] || window.__agPurchaseProofFile;
@@ -1939,6 +1959,13 @@ window.triggerAutoGoRecruitmentCloseIfNeeded = function(poolId, poolData) {
       showToast("購入日時とアルバムが見えるスクリーンショットを選択してください", "error");
       return;
     }
+    purchaseSubmitting = true;
+    const btn = document.querySelector("#ag-purchase-active-actions button[onclick*=\"markAutoGoPurchased\"]");
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "確認中...";
+    }
+    let previousEntry = null;
     const orderNote = String(
       document.getElementById("ag-purchase-order-note")?.value ||
       window.__agPurchaseOrderNote ||
@@ -1951,15 +1978,28 @@ window.triggerAutoGoRecruitmentCloseIfNeeded = function(poolId, poolData) {
       "□ 自分の注文完了／購入履歴画面ですか？\n" +
       (orderNote ? `□ 注文番号: ${orderNote}\n` : "□ 注文番号: （未入力・任意）\n") +
       "\n内容に問題なければ「報告する」を押してください。";
-    const agreed = typeof window.appConfirm === "function"
-      ? await window.appConfirm(confirmMsg, "報告する", false)
-      : window.confirm(confirmMsg);
-    if (!agreed) return;
-
-    const btn = document.querySelector("#ag-purchase-active-actions button[onclick*=\"markAutoGoPurchased\"]");
-    if (btn) {
-      btn.disabled = true;
-      btn.textContent = "送信中...";
+    let agreed;
+    try {
+      agreed = typeof window.appConfirm === "function"
+        ? await window.appConfirm(confirmMsg, "報告する", false)
+        : window.confirm(confirmMsg);
+    } catch (error) {
+      purchaseSubmitting = false;
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "購入を報告";
+      }
+      console.error("Auto-GO purchase confirmation failed:", error);
+      showToast("購入報告の確認に失敗しました", "error");
+      return;
+    }
+    if (!agreed) {
+      purchaseSubmitting = false;
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "購入を報告";
+      }
+      return;
     }
     try {
       const refs = window.__autoGoRefs;
@@ -1967,6 +2007,11 @@ window.triggerAutoGoRecruitmentCloseIfNeeded = function(poolId, poolData) {
         throw new Error("Auto-GOの準備中です。数秒後にもう一度お試しください。");
       }
       if (!activePoolId) throw new Error("企画が選択されていません。画面を開き直してください。");
+      if (!currentEntryData) throw new Error("予約データが見つかりません。画面を開き直してください。");
+      previousEntry = { ...currentEntryData };
+      currentEntryData = { ...currentEntryData, status: "purchased", orderNote, purchasedAt: new Date() };
+      window.__agCurrentEntryData = currentEntryData;
+      renderAutoGoUI();
       const dataUrl = await readAutoGoEvidence(file);
       await refs.uploadAutoGoEvidence({ poolId: activePoolId, kind: "purchase", dataUrl });
       await refs.registerAutoGoPurchase({ poolId: activePoolId, orderNote });
@@ -1978,16 +2023,22 @@ window.triggerAutoGoRecruitmentCloseIfNeeded = function(poolId, poolData) {
         window.__agPurchaseProofObjectUrl = "";
       }
       showToast("購入スクリーンショットを登録しました", "success");
-      window.openAutoGoModal(activePoolId);
     } catch (error) {
       console.error("markAutoGoPurchased error:", error);
+      if (previousEntry) {
+        currentEntryData = previousEntry;
+        window.__agCurrentEntryData = currentEntryData;
+        renderAutoGoUI();
+      }
       const friendly = formatAutoGoCallableError(error);
       showToast("購入報告エラー: " + friendly, "error");
       alert("購入報告エラー: " + friendly);
     } finally {
-      if (btn) {
-        btn.disabled = false;
-        btn.textContent = "購入を報告";
+      purchaseSubmitting = false;
+      const currentButton = document.querySelector("#ag-purchase-active-actions button[onclick*=\"markAutoGoPurchased\"]");
+      if (currentButton) {
+        currentButton.disabled = false;
+        currentButton.textContent = "購入を報告";
       }
     }
   };

@@ -23,11 +23,16 @@ self.addEventListener('push', (event) => {
       : {};
   const fcmOptions = payload.fcmOptions || payload.webpush?.fcmOptions || payload.webpush?.fcm_options || {};
   const rawUrl = data.url || data.link || data.click_action || notification.click_action || fcmOptions.link || './';
+  const notificationData = {
+    url: String(rawUrl),
+    ...(data.type ? { type: String(data.type) } : {}),
+    ...(data.goId ? { goId: String(data.goId) } : {})
+  };
   const title = String(notification.title || data.title || 'ILLIT Trade');
   const options = {
     body: String(notification.body || data.body || '新しい通知があります'),
     icon: String(notification.icon || data.icon || './icon-192.png'),
-    data: { url: String(rawUrl) }
+    data: notificationData
   };
   if (notification.image || data.image) options.image = notification.image || data.image;
   if (notification.tag || data.tag) options.tag = notification.tag || data.tag;
@@ -37,7 +42,13 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  let url = new URL((event.notification.data && event.notification.data.url) || './', self.location.href);
+  const notificationData = event.notification.data || {};
+  let url = new URL(notificationData.url || './', self.location.href);
+  if (notificationData.type === 'auto_go' && notificationData.goId) {
+    url = new URL('./', self.location.href);
+    url.searchParams.set('tab', 'autogo');
+    url.searchParams.set('goId', notificationData.goId);
+  }
   if (url.origin !== self.location.origin) url = new URL('./', self.location.href);
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
