@@ -160,7 +160,7 @@ exports.sendTestPush = onCall(async (request) => {
 });
 
 // アプリ内通知（サブコレクション）＋必要なら通知欄へコピー＋プッシュ
-async function notify(uid, { id, text, type = "info", link = null, title = "ILLIT Trade", once = false, guardTradeId = null }) {
+async function notify(uid, { id, text, type = "info", link = null, title = "ILLIT Trade", once = false, guardTradeId = null, sentFlag = null }) {
   if (!uid || isAutoGoDummyUid(uid)) return;
   const category = inboxCategory({ type, link, text, title });
   const col = db.collection("users").doc(uid).collection("notifications");
@@ -175,7 +175,27 @@ async function notify(uid, { id, text, type = "info", link = null, title = "ILLI
         guardTradeId ? tx.get(db.collection("trades").doc(guardTradeId)) : Promise.resolve(null)
       ]);
       if (existing.exists) return false;
-      if (guardTradeId && (!tradeSnap.exists || !isActiveTradeStatus(tradeSnap.data().status))) return false;
+      if (guardTradeId) {
+        if (!tradeSnap.exists || !isActiveTradeStatus(tradeSnap.data().status)) return false;
+        const trade = tradeSnap.data();
+        if (sentFlag && (
+          trade[sentFlag] === true ||
+          trade.isSell !== true ||
+          trade.isBuy === true ||
+          trade.ownerId !== uid ||
+          !trade.applicantId ||
+          trade.applicantId === uid ||
+          trade.cancelRequest ||
+          trade.cancelledBy ||
+          trade.adminCancelled
+        )) return false;
+        if (sentFlag) {
+          tx.update(db.collection("trades").doc(guardTradeId), {
+            [sentFlag]: true,
+            [`${sentFlag}At`]: FV.serverTimestamp()
+          });
+        }
+      }
       tx.create(ref, notification);
       return true;
     });
@@ -1768,9 +1788,23 @@ exports.onTradeCreated = onDocumentCreated("trades/{tradeId}", async (event) => 
   if (!tradeSnap.exists) return;
   const t = tradeSnap.data();
   if (!isActiveTradeStatus(t.status)) return;
+  const isPurchaseRequest = t.isSell === true && t.isBuy !== true;
+  if (isPurchaseRequest && (
+    !t.ownerId ||
+    !t.applicantId ||
+    t.ownerId === t.applicantId ||
+    t.cancelRequest ||
+    t.cancelledBy ||
+    t.adminCancelled
+  )) return;
   const copy = tradePushCopy(t);
   await notify(t.ownerId, {
-    ...(t.isSell ? { id: `purchase_request_${tradeId}`, once: true, guardTradeId: tradeId } : {}),
+    ...(isPurchaseRequest ? {
+      id: `purchase_request_${tradeId}`,
+      once: true,
+      guardTradeId: tradeId,
+      sentFlag: "purchaseNotificationSent"
+    } : {}),
     text: copy.text,
     type: "success",
     link: { k: "trade", id: tradeId },

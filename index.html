@@ -2707,7 +2707,7 @@
   </div>
 
   <script src="./js/mycards-binder.js?v=20261121"></script>
-  <script type="module" src="./js/app-main.js?v=20261128notif1"></script>
+  <script type="module" src="./js/app-main.js?v=20261128purchaseguard1"></script>
 
   <div id="xlogin-help-modal" class="hidden fixed inset-0 z-[10040] modal-backdrop items-end sm:items-center justify-center p-3" style="padding-top: max(12px, env(safe-area-inset-top)); padding-bottom: max(12px, env(safe-area-inset-bottom));" onclick="if(event.target===this) closeGoogleLoginHelp()">
     <div id="xlogin-help-sheet" class="liquid-glass-heavy w-full max-w-sm rounded-[1.75rem] p-5 shadow-2xl border border-white" role="dialog" aria-modal="true" aria-labelledby="xlogin-help-title">
@@ -7860,17 +7860,11 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           window._tradeMsgAt = {};
           myTrades.forEach(t => { window._tradeMsgAt[t.id] = tsMillis(t.lastMessageAt); });
         } else {
-          const apps = myTrades.filter(t => t.ownerId === currentUser.uid && !window._seenTradeIds.has(t.id));
           const msgs = myTrades.filter(t => window._seenTradeIds.has(t.id) && isUnread(t) && tsMillis(t.lastMessageAt) > (window._tradeMsgAt[t.id] || 0));
-          if (apps.length) {
-            showToast("📥 購入申請が来ました！", "success");
-            addNotification("購入申請が来ました", "success", { type: "trade", id: apps[0].id });
-          }
           if (msgs.length) {
             showToast("💬 新しいメッセージがあります！", "info");
             addNotification("新しいメッセージが届きました", "info", { type: "trade", id: msgs[0].id });
           }
-          apps.forEach(t => window._seenTradeIds.add(t.id));
           myTrades.forEach(t => window._seenTradeIds.add(t.id));
           myTrades.forEach(t => { window._tradeMsgAt[t.id] = tsMillis(t.lastMessageAt); });
         }

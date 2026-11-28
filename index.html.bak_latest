@@ -5601,17 +5601,11 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           window._tradeMsgAt = {};
           myTrades.forEach(t => { window._tradeMsgAt[t.id] = tsMillis(t.lastMessageAt); });
         } else {
-          const apps = myTrades.filter(t => t.ownerId === currentUser.uid && !window._seenTradeIds.has(t.id));
           const msgs = myTrades.filter(t => window._seenTradeIds.has(t.id) && isUnread(t) && tsMillis(t.lastMessageAt) > (window._tradeMsgAt[t.id] || 0));
-          if (apps.length) {
-            showToast("📥 購入申請が来ました！", "success");
-            addNotification("購入申請が来ました", "success", { type: "trade", id: apps[0].id });
-          }
           if (msgs.length) {
             showToast("💬 新しいメッセージがあります！", "info");
             addNotification("新しいメッセージが届きました", "info", { type: "trade", id: msgs[0].id });
           }
-          apps.forEach(t => window._seenTradeIds.add(t.id));
           myTrades.forEach(t => window._seenTradeIds.add(t.id));
           myTrades.forEach(t => { window._tradeMsgAt[t.id] = tsMillis(t.lastMessageAt); });
         }

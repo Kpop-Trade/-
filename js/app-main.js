@@ -7583,8 +7583,16 @@ window.renderHomeThemeSections = function(entries, cardHtmlById) {
           myTrades.forEach(t => {
             const prev = window._tradeWatch[t.id];
             if (!prev) {
-              if (t.ownerId === currentUser.uid && t.applicantId !== currentUser.uid) {
-                announceTrade(tradeRequestCopy(t), t.id, t.isSell ? "purchase_request_" + t.id : null);
+              if (t.ownerId === currentUser.uid &&
+                  t.applicantId &&
+                  t.applicantId !== currentUser.uid &&
+                  t.isSell === true &&
+                  t.isBuy !== true &&
+                  !t.purchaseNotificationSent &&
+                  !t.cancelRequest &&
+                  !t.cancelledBy &&
+                  !t.adminCancelled) {
+                announceTrade(tradeRequestCopy(t), t.id, "purchase_request_" + t.id);
               }
             } else {
               announceTrade(tradeUpdateCopy(t, prev), t.id);
