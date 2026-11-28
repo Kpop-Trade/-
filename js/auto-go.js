@@ -2078,7 +2078,9 @@ window.markAutoGoAlbumArrived = async function() {
     window.openAutoGoModal(activePoolId);
   } catch (error) {
     console.error("markAutoGoAlbumArrived error:", error);
-    alert("到着報告に失敗しました: " + (error?.message || error));
+    const code = error?.code || "unknown";
+    const message = error?.message || String(error);
+    alert(`到着報告に失敗しました [${code}]: ${message}`);
   }
 };
 

@@ -1233,7 +1233,8 @@ async function applyAutoGoArrivalRegistration(poolId, uid) {
     const entry = snap.data() || {};
     if (entry.status === "arrived") return;
     const hasPurchaseRegistration = entry.status === "purchased" ||
-      ((entry.status === "delayed" || entry.isDelayed === true) &&
+      entry.status === "delayed" ||
+      (entry.isDelayed === true &&
         (!!entry.purchasedAt || entry.purchaseConfirmed === true ||
           !!entry.purchaseConfirmedAt || !!entry.purchaseProofUrl ||
           !!entry.purchaseProofSavedAt));

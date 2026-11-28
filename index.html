@@ -7949,19 +7949,19 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
               poolId
             }));
             refreshEntries(poolId);
-          }, (err) => console.warn("Auto-GO user entries snapshot error:", poolId, err?.code || err));
+          }, (err) => console.error("Auto-GO user entries snapshot error:", poolId, err?.code, err?.message, err));
           const primaryUnsubscribe = onSnapshot(doc(db, "auto_go_pools", poolId, "entries", uid), (entrySnap) => {
             if (!currentUser || currentUser.uid !== uid || !todoAutoGoEntriesByPool[poolId]) return;
             todoAutoGoEntriesByPool[poolId].primaryEntry = entrySnap.exists()
               ? { ...(entrySnap.data() || {}), id: entrySnap.id, poolId, uid }
               : null;
             refreshEntries(poolId);
-          }, (err) => console.warn("Auto-GO primary entry snapshot error:", poolId, err?.code || err));
+          }, (err) => console.error("Auto-GO primary entry snapshot error:", poolId, err?.code, err?.message, err));
           unsubTodoAutoGoEntries[poolId] = [queryUnsubscribe, primaryUnsubscribe];
         });
         updateBadge();
         renderTodoListIfOpen();
-      }, (err) => console.warn("Auto-GO pools snapshot error:", err?.code || err));
+      }, (err) => console.error("Auto-GO pools snapshot error:", err?.code, err?.message, err));
     }
     function renderTodoListIfOpen() {
       const modal = document.getElementById("todo-modal");
@@ -8122,32 +8122,33 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       myAutoGoEntries.forEach((entry) => {
         if (entry.uid !== uid || !entry.poolId || entry.isDummy === true) return;
         const pool = myAutoGoPools[entry.poolId] || {};
-        if (entry.status === "cancelled" || entry.status === "unshipped_penalty" || pool.status === "cancelled") return;
+        const entryStatus = String(entry.status || "").toLowerCase();
+        const poolStatus = String(pool.status || "").toLowerCase();
+        if (["cancelled", "unshipped_penalty"].includes(entryStatus) || poolStatus === "cancelled") return;
         const item = pool.title || entry.poolTitle || "Auto-GOのアルバム";
         const member = entry.wantedMember ? `「${entry.wantedMember}」` : "";
-        if (entry.status === "confirmed") {
+        if (entryStatus === "reserved") {
+          addTask("autogo", `Auto-GO ${member}の成立状況を確認してください`, item, null, { poolId: entry.poolId, id: entry.id });
+        } else if (entryStatus === "confirmed") {
           const deadline = entry.purchaseDeadlineAt || pool.purchaseDeadlineAt;
-          const due = todoDeadlineInfo(deadline);
-          if (!due.at || due.at > Date.now()) {
-            addTask("autogo", `Auto-GO ${member}の購入と入金を報告してください`, item, deadline, { poolId: entry.poolId, id: entry.id });
-          }
-        } else if (entry.status === "purchased" || entry.status === "delayed") {
+          addTask("autogo", `Auto-GO ${member}の購入と入金を報告してください`, item, deadline, { poolId: entry.poolId, id: entry.id });
+        } else if (entryStatus === "purchased" || entryStatus === "delayed") {
           addTask("autogo", `Auto-GO ${member}のアルバム到着を報告してください`, item, null, { poolId: entry.poolId, id: entry.id });
-        } else if (entry.status === "arrived") {
+        } else if (entryStatus === "arrived") {
           const deadline = pool.revealDeadlineAt || entry.revealDeadlineAt;
           const due = todoDeadlineInfo(deadline);
           if (!due.at || due.at > Date.now()) {
             addTask("autogo", `Auto-GO ${member}の開封結果を登録してください`, item, deadline, { poolId: entry.poolId, id: entry.id });
           }
         }
-        if (entry.status === "waiting_match" || entry.status === "arrived") {
+        if (entryStatus === "waiting_match" || entryStatus === "arrived") {
           const shipping = typeof window.getMyShipping === "function" ? window.getMyShipping() : (userData.profile || {});
           if (!shipping.name || !shipping.zip || !shipping.address1) {
             addTask("profile", "Auto-GOのマッチング用配送先を登録してください", item,
               pool.revealDeadlineAt || entry.revealDeadlineAt, { section: "address" });
           }
         }
-        if (entry.status === "matched" && !entry.noMatchResult) {
+        if (entryStatus === "matched" && !entry.noMatchResult) {
           if (entry.shipToAddress && !entry.shippedDone && !entry.shippedAt && !entry.receivedDone) {
             const deadline = entry.shipDeadlineAt || entry.shippingDeadlineAt ||
               (entry.matchedAt ? todoDeadlineInfo(entry.matchedAt).at + 72 * 60 * 60 * 1000 : null);
@@ -8158,7 +8159,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         }
       });
       Object.entries(myAutoGoPools).forEach(([poolId, pool]) => {
-        if (pool.createdBy !== uid || !["active", "activating"].includes(String(pool.status || "").toLowerCase()) ||
+        if (pool.createdBy !== uid || !["recruiting", "active", "activating"].includes(String(pool.status || "").toLowerCase()) ||
             Number(pool.totalCount) <= 0) return;
         addTask("autogo", "主催者：Auto-GOの参加者状況を確認してください",
           pool.title || "Auto-GOの企画", null, { poolId, id: poolId });
