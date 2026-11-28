@@ -2936,7 +2936,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     let pendingPostId = new URLSearchParams(location.search).get("post");
     let postMode = "exchange", postPhotos = [], processingPhotos = false, submittingPost = false, submittingGroup = false, detailPhotos = [], roomPhotos = [], roomPhotosFor = null;
     let myTrades = [], myAutoGoEntries = [], myOwnedPosts = [], myAutoGoPools = {}, myTradeShipping = {}, myTodoReviews = {};
-    let unsubTrades = null, unsubAutoGoEntries = null, unsubOwnedPosts = null, unsubTodoTradeShipping = {}, unsubTodoReviews = {}, unsubTodoAutoGoPools = {}, todoRefreshTimer = null;
+    let unsubTrades = null, unsubAutoGoEntries = null, unsubOwnedPosts = null, unsubTodoTradeShipping = {}, unsubTodoReviews = {}, unsubTodoAutoGoEntries = {}, todoAutoGoEntriesByPool = {}, unsubTodoAutoGoPoolsList = null, todoRefreshTimer = null;
     let groupJoins = {}, unsubJoins = null, currentTrade = null, roomMessages = [], unsubRoom = null, unsubMsgs = null;
     let reviewState = { tradeId: null, done: null }, selectedRating = 0, sendingImage = false, roomBoxKey = null, userData = { profile: {}, blocked: [], likes: [], reads: {}, notifications: [], cancelHistory: [], myCards: {}, collectionPublic: false, customCards: [], cardWatch: {}, points: 0, pointHistory: [], inviteCode: "", loginStamps: [], lastLoginBonusDate: "", registrationBonusGranted: false, profileBonusGranted: false, referredBy: "" };
     let unsubUser = null, editingPostId = null, migratingLocal = false, photoCache = {};
@@ -7894,17 +7894,74 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
     function subscribeAutoGoEntries() {
       if (unsubAutoGoEntries) unsubAutoGoEntries();
       myAutoGoEntries = [];
-      const entriesQuery = query(collectionGroup(db, "entries"), where("uid", "==", currentUser.uid));
-      unsubAutoGoEntries = onSnapshot(entriesQuery, (snap) => {
-        myAutoGoEntries = snap.docs.map((entryDoc) => ({
-          id: entryDoc.id,
-          poolId: entryDoc.ref.parent.parent && entryDoc.ref.parent.parent.id,
-          ...entryDoc.data()
-        }));
-        syncTodoAutoGoPoolSubscriptions();
+      const uid = currentUser.uid;
+      const stopSubscriptions = () => {
+        if (unsubTodoAutoGoPoolsList) {
+          unsubTodoAutoGoPoolsList();
+          unsubTodoAutoGoPoolsList = null;
+        }
+        Object.values(unsubTodoAutoGoEntries).forEach((subscriptions) => {
+          subscriptions.forEach((unsubscribe) => unsubscribe());
+        });
+        unsubTodoAutoGoEntries = {};
+        todoAutoGoEntriesByPool = {};
+        myAutoGoPools = {};
+        myAutoGoEntries = [];
+      };
+      stopSubscriptions();
+      const refreshEntries = (poolId) => {
+        if (!currentUser || currentUser.uid !== uid || !todoAutoGoEntriesByPool[poolId]) return;
+        const entries = new Map();
+        (todoAutoGoEntriesByPool[poolId].queryEntries || []).forEach((entry) => entries.set(entry.id, entry));
+        const primaryEntry = todoAutoGoEntriesByPool[poolId].primaryEntry;
+        if (primaryEntry) entries.set(primaryEntry.id, primaryEntry);
+        todoAutoGoEntriesByPool[poolId].entries = Array.from(entries.values());
+        myAutoGoEntries = Object.values(todoAutoGoEntriesByPool).flatMap((poolEntries) => poolEntries.entries || []);
         updateBadge();
         renderTodoListIfOpen();
-      }, (err) => console.warn("Auto-GO entries snapshot error:", err?.code || err));
+      };
+      unsubAutoGoEntries = stopSubscriptions;
+      unsubTodoAutoGoPoolsList = onSnapshot(collection(db, "auto_go_pools"), (poolsSnap) => {
+        if (!currentUser || currentUser.uid !== uid) return;
+        const poolIds = new Set(poolsSnap.docs.map((poolDoc) => poolDoc.id));
+        Object.keys(unsubTodoAutoGoEntries).forEach((poolId) => {
+          if (poolIds.has(poolId)) return;
+          unsubTodoAutoGoEntries[poolId].forEach((unsubscribe) => unsubscribe());
+          delete unsubTodoAutoGoEntries[poolId];
+          delete todoAutoGoEntriesByPool[poolId];
+        });
+        myAutoGoPools = {};
+        poolsSnap.docs.forEach((poolDoc) => {
+          const poolId = poolDoc.id;
+          myAutoGoPools[poolId] = poolDoc.data() || {};
+          if (unsubTodoAutoGoEntries[poolId]) return;
+          todoAutoGoEntriesByPool[poolId] = { queryEntries: [], primaryEntry: null, entries: [] };
+          const entriesQuery = query(
+            collection(db, "auto_go_pools", poolId, "entries"),
+            where("uid", "==", uid)
+          );
+          const queryUnsubscribe = onSnapshot(entriesQuery, (entriesSnap) => {
+            if (!currentUser || currentUser.uid !== uid || !todoAutoGoEntriesByPool[poolId]) return;
+            todoAutoGoEntriesByPool[poolId].queryEntries = entriesSnap.docs.map((entryDoc) => ({
+              ...(entryDoc.data() || {}),
+              id: entryDoc.id,
+              uid: entryDoc.data().uid || entryDoc.id,
+              poolId
+            }));
+            refreshEntries(poolId);
+          }, (err) => console.warn("Auto-GO user entries snapshot error:", poolId, err?.code || err));
+          const primaryUnsubscribe = onSnapshot(doc(db, "auto_go_pools", poolId, "entries", uid), (entrySnap) => {
+            if (!currentUser || currentUser.uid !== uid || !todoAutoGoEntriesByPool[poolId]) return;
+            todoAutoGoEntriesByPool[poolId].primaryEntry = entrySnap.exists()
+              ? { ...(entrySnap.data() || {}), id: entrySnap.id, poolId, uid }
+              : null;
+            refreshEntries(poolId);
+          }, (err) => console.warn("Auto-GO primary entry snapshot error:", poolId, err?.code || err));
+          unsubTodoAutoGoEntries[poolId] = [queryUnsubscribe, primaryUnsubscribe];
+        });
+        updateBadge();
+        renderTodoListIfOpen();
+      }, (err) => console.warn("Auto-GO pools snapshot error:", err?.code || err));
     }
     function renderTodoListIfOpen() {
       const modal = document.getElementById("todo-modal");
@@ -7961,32 +8018,13 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         }, (err) => console.warn("Todo review snapshot error:", err?.code || err));
       });
     }
-    function syncTodoAutoGoPoolSubscriptions() {
-      const poolIds = new Set(myAutoGoEntries.map((entry) => entry.poolId).filter(Boolean));
-      Object.keys(unsubTodoAutoGoPools).forEach((poolId) => {
-        if (!poolIds.has(poolId)) {
-          unsubTodoAutoGoPools[poolId]();
-          delete unsubTodoAutoGoPools[poolId];
-          delete myAutoGoPools[poolId];
-        }
-      });
-      poolIds.forEach((poolId) => {
-        if (unsubTodoAutoGoPools[poolId]) return;
-        unsubTodoAutoGoPools[poolId] = onSnapshot(doc(db, "auto_go_pools", poolId), (snap) => {
-          myAutoGoPools[poolId] = snap.exists() ? (snap.data() || {}) : {};
-          updateBadge();
-          renderTodoListIfOpen();
-        }, (err) => console.warn("Todo Auto-GO pool snapshot error:", err?.code || err));
-      });
-    }
     function stopTodoSubscriptions() {
       if (unsubOwnedPosts) { unsubOwnedPosts(); unsubOwnedPosts = null; }
-      [unsubTodoTradeShipping, unsubTodoReviews, unsubTodoAutoGoPools].forEach((subscriptions) => {
+      [unsubTodoTradeShipping, unsubTodoReviews].forEach((subscriptions) => {
         Object.values(subscriptions).forEach((unsubscribe) => unsubscribe());
       });
       unsubTodoTradeShipping = {};
       unsubTodoReviews = {};
-      unsubTodoAutoGoPools = {};
       myOwnedPosts = [];
       myTradeShipping = {};
       myTodoReviews = {};
@@ -8093,7 +8131,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
           if (!due.at || due.at > Date.now()) {
             addTask("autogo", `Auto-GO ${member}の購入と入金を報告してください`, item, deadline, { poolId: entry.poolId, id: entry.id });
           }
-        } else if (entry.status === "purchased") {
+        } else if (entry.status === "purchased" || entry.status === "delayed") {
           addTask("autogo", `Auto-GO ${member}のアルバム到着を報告してください`, item, null, { poolId: entry.poolId, id: entry.id });
         } else if (entry.status === "arrived") {
           const deadline = pool.revealDeadlineAt || entry.revealDeadlineAt;
@@ -8118,6 +8156,12 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
             addTask("autogo", `Auto-GO ${member}のトレカ受取を報告してください`, item, null, { poolId: entry.poolId, id: entry.id });
           }
         }
+      });
+      Object.entries(myAutoGoPools).forEach(([poolId, pool]) => {
+        if (pool.createdBy !== uid || !["active", "activating"].includes(String(pool.status || "").toLowerCase()) ||
+            Number(pool.totalCount) <= 0) return;
+        addTask("autogo", "主催者：Auto-GOの参加者状況を確認してください",
+          pool.title || "Auto-GOの企画", null, { poolId, id: poolId });
       });
       if (userData.lastLoginBonusDate !== today) {
         addTask("points", "本日のログインボーナス（10pt）を受け取る", "", null);

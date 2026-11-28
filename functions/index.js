@@ -1227,7 +1227,17 @@ async function applyAutoGoArrivalRegistration(poolId, uid) {
   const entryRef = autoGoEntryRef(poolId, uid);
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(entryRef);
-    if (!snap.exists || !["purchased", "delayed"].includes(snap.data().status)) {
+    if (!snap.exists) {
+      throw new HttpsError("failed-precondition", "purchase must be registered before arrival");
+    }
+    const entry = snap.data() || {};
+    if (entry.status === "arrived") return;
+    const hasPurchaseRegistration = entry.status === "purchased" ||
+      ((entry.status === "delayed" || entry.isDelayed === true) &&
+        (!!entry.purchasedAt || entry.purchaseConfirmed === true ||
+          !!entry.purchaseConfirmedAt || !!entry.purchaseProofUrl ||
+          !!entry.purchaseProofSavedAt));
+    if (!hasPurchaseRegistration) {
       throw new HttpsError("failed-precondition", "purchase must be registered before arrival");
     }
     tx.update(entryRef, {
