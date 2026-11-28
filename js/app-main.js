@@ -338,7 +338,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       </div>`;
     }
     let myTrades = [], myAutoGoEntries = [], myOwnedPosts = [], myAutoGoPools = {}, myTradeShipping = {}, myTodoReviews = {};
-    let unsubTrades = null, unsubAutoGoEntries = null, unsubOwnedPosts = null, unsubTodoTradeShipping = {}, unsubTodoReviews = {}, unsubTodoAutoGoPools = {}, todoRefreshTimer = null;
+    let unsubTrades = null, unsubAutoGoEntries = null, unsubOwnedPosts = null, unsubTodoAutoGoPoolsList = null, unsubTodoAutoGoEntries = {}, todoAutoGoEntriesByPool = {}, unsubTodoTradeShipping = {}, unsubTodoReviews = {}, todoRefreshTimer = null;
     let groupJoins = {}, unsubJoins = null, currentTrade = null, roomMessages = [], unsubRoom = null, unsubMsgs = null, unsubTradeShipping = null, roomTradeShipping = {};
     let reviewState = { tradeId: null, done: null }, selectedRating = 0, sendingImage = false, roomBoxKey = null, userData = { profile: {}, blocked: [], likes: [], reads: {}, notifications: [], cancelHistory: [], myCards: {}, collectionPublic: false, customCards: [], cardWatch: {}, points: 0, pointHistory: [], inviteCode: "", loginStamps: [], lastLoginBonusDate: "", registrationBonusGranted: false, profileBonusGranted: false, referredBy: "" };
     let loginCalendarData = null;
@@ -7617,17 +7617,73 @@ window.renderHomeThemeSections = function(entries, cardHtmlById) {
     function subscribeAutoGoEntries() {
       if (unsubAutoGoEntries) unsubAutoGoEntries();
       myAutoGoEntries = [];
-      const entriesQuery = query(collectionGroup(db, "entries"), where("uid", "==", currentUser.uid));
-      unsubAutoGoEntries = onSnapshot(entriesQuery, (snap) => {
-        myAutoGoEntries = snap.docs.map((entryDoc) => ({
-          id: entryDoc.id,
-          poolId: entryDoc.ref.parent.parent && entryDoc.ref.parent.parent.id,
-          ...entryDoc.data()
-        }));
-        syncTodoAutoGoPoolSubscriptions();
+      const uid = currentUser.uid;
+      const stopSubscriptions = () => {
+        if (unsubTodoAutoGoPoolsList) {
+          unsubTodoAutoGoPoolsList();
+          unsubTodoAutoGoPoolsList = null;
+        }
+        Object.values(unsubTodoAutoGoEntries).forEach((subscriptions) => {
+          subscriptions.forEach((unsubscribe) => unsubscribe());
+        });
+        unsubTodoAutoGoEntries = {};
+        todoAutoGoEntriesByPool = {};
+      };
+      stopSubscriptions();
+      const refreshEntries = (poolId) => {
+        if (!currentUser || currentUser.uid !== uid) return;
+        const entries = new Map();
+        (todoAutoGoEntriesByPool[poolId]?.queryEntries || []).forEach((entry) => entries.set(entry.id, entry));
+        const primaryEntry = todoAutoGoEntriesByPool[poolId]?.primaryEntry;
+        if (primaryEntry) entries.set(primaryEntry.id, primaryEntry);
+        todoAutoGoEntriesByPool[poolId].entries = Array.from(entries.values());
+        myAutoGoEntries = Object.values(todoAutoGoEntriesByPool).flatMap((poolEntries) => poolEntries.entries || []);
         updateBadge();
         renderTodoListIfOpen();
-      }, (err) => console.warn("Auto-GO entries snapshot error:", err?.code || err));
+      };
+      unsubAutoGoEntries = stopSubscriptions;
+      unsubTodoAutoGoPoolsList = onSnapshot(collection(db, "auto_go_pools"), (poolsSnap) => {
+        if (!currentUser || currentUser.uid !== uid) return;
+        const poolIds = new Set(poolsSnap.docs.map((poolDoc) => poolDoc.id));
+        Object.keys(unsubTodoAutoGoEntries).forEach((poolId) => {
+          if (poolIds.has(poolId)) return;
+          unsubTodoAutoGoEntries[poolId].forEach((unsubscribe) => unsubscribe());
+          delete unsubTodoAutoGoEntries[poolId];
+          delete todoAutoGoEntriesByPool[poolId];
+        });
+        myAutoGoPools = {};
+        poolsSnap.docs.forEach((poolDoc) => {
+          const poolId = poolDoc.id;
+          myAutoGoPools[poolId] = poolDoc.data() || {};
+          if (unsubTodoAutoGoEntries[poolId]) return;
+
+          todoAutoGoEntriesByPool[poolId] = { queryEntries: [], primaryEntry: null, entries: [] };
+          const entriesQuery = query(
+            collection(db, "auto_go_pools", poolId, "entries"),
+            where("uid", "==", uid)
+          );
+          const queryUnsubscribe = onSnapshot(entriesQuery, (entriesSnap) => {
+            if (!currentUser || currentUser.uid !== uid || !todoAutoGoEntriesByPool[poolId]) return;
+            todoAutoGoEntriesByPool[poolId].queryEntries = entriesSnap.docs.map((entryDoc) => ({
+              ...entryDoc.data(),
+              id: entryDoc.id,
+              poolId
+            }));
+            refreshEntries(poolId);
+          }, (err) => console.warn("Todo Auto-GO entries snapshot error:", poolId, err?.code || err));
+          // Older single-slot entries may be keyed by UID without storing a uid field.
+          const primaryUnsubscribe = onSnapshot(doc(db, "auto_go_pools", poolId, "entries", uid), (entrySnap) => {
+            if (!currentUser || currentUser.uid !== uid || !todoAutoGoEntriesByPool[poolId]) return;
+            todoAutoGoEntriesByPool[poolId].primaryEntry = entrySnap.exists()
+              ? { ...(entrySnap.data() || {}), id: entrySnap.id, poolId, uid }
+              : null;
+            refreshEntries(poolId);
+          }, (err) => console.warn("Todo Auto-GO primary entry snapshot error:", poolId, err?.code || err));
+          unsubTodoAutoGoEntries[poolId] = [queryUnsubscribe, primaryUnsubscribe];
+        });
+        updateBadge();
+        renderTodoListIfOpen();
+      }, (err) => console.warn("Todo Auto-GO pools snapshot error:", err?.code || err));
     }
     function renderTodoListIfOpen() {
       const modal = document.getElementById("todo-modal");
@@ -7684,36 +7740,19 @@ window.renderHomeThemeSections = function(entries, cardHtmlById) {
         }, (err) => console.warn("Todo review snapshot error:", err?.code || err));
       });
     }
-    function syncTodoAutoGoPoolSubscriptions() {
-      const poolIds = new Set(myAutoGoEntries.map((entry) => entry.poolId).filter(Boolean));
-      Object.keys(unsubTodoAutoGoPools).forEach((poolId) => {
-        if (!poolIds.has(poolId)) {
-          unsubTodoAutoGoPools[poolId]();
-          delete unsubTodoAutoGoPools[poolId];
-          delete myAutoGoPools[poolId];
-        }
-      });
-      poolIds.forEach((poolId) => {
-        if (unsubTodoAutoGoPools[poolId]) return;
-        unsubTodoAutoGoPools[poolId] = onSnapshot(doc(db, "auto_go_pools", poolId), (snap) => {
-          myAutoGoPools[poolId] = snap.exists() ? (snap.data() || {}) : {};
-          updateBadge();
-          renderTodoListIfOpen();
-        }, (err) => console.warn("Todo Auto-GO pool snapshot error:", err?.code || err));
-      });
-    }
     function stopTodoSubscriptions() {
       if (unsubOwnedPosts) { unsubOwnedPosts(); unsubOwnedPosts = null; }
-      [unsubTodoTradeShipping, unsubTodoReviews, unsubTodoAutoGoPools].forEach((subscriptions) => {
+      [unsubTodoTradeShipping, unsubTodoReviews].forEach((subscriptions) => {
         Object.values(subscriptions).forEach((unsubscribe) => unsubscribe());
       });
       unsubTodoTradeShipping = {};
       unsubTodoReviews = {};
-      unsubTodoAutoGoPools = {};
       myOwnedPosts = [];
       myTradeShipping = {};
       myTodoReviews = {};
       myAutoGoPools = {};
+      myAutoGoEntries = [];
+      if (unsubAutoGoEntries) { unsubAutoGoEntries(); unsubAutoGoEntries = null; }
       if (todoRefreshTimer) { clearTimeout(todoRefreshTimer); todoRefreshTimer = null; }
     }
     function todoDeadlineInfo(value) {
@@ -7721,12 +7760,15 @@ window.renderHomeThemeSections = function(entries, cardHtmlById) {
       let at = 0;
       if (value && typeof value.toMillis === "function") at = value.toMillis();
       else if (value instanceof Date) at = value.getTime();
-      else if (typeof value === "number") at = value;
+      else if (typeof value === "number") at = value < 1e12 ? value * 1000 : value;
       else if (typeof value === "string") {
         const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value);
-        at = Date.parse(dateOnly ? value + "T23:59:59+09:00" : value);
-      } else if (typeof value === "object" && Number.isFinite(value._seconds)) {
-        at = value._seconds * 1000;
+        const numeric = Number(value);
+        at = Number.isFinite(numeric) && value.trim() !== ""
+          ? (numeric < 1e12 ? numeric * 1000 : numeric)
+          : Date.parse(dateOnly ? value + "T23:59:59+09:00" : value);
+      } else if (typeof value === "object" && Number.isFinite(value._seconds ?? value.seconds)) {
+        at = (value._seconds ?? value.seconds) * 1000;
       }
       if (!Number.isFinite(at) || at <= 0) return { label: "期限設定なし", at: 0 };
       const label = new Intl.DateTimeFormat("ja-JP", {
@@ -7806,32 +7848,29 @@ window.renderHomeThemeSections = function(entries, cardHtmlById) {
       myAutoGoEntries.forEach((entry) => {
         if (entry.uid !== uid || !entry.poolId || entry.isDummy === true) return;
         const pool = myAutoGoPools[entry.poolId] || {};
-        if (entry.status === "cancelled" || entry.status === "unshipped_penalty" || pool.status === "cancelled") return;
+        const entryStatus = String(entry.status || "").toLowerCase();
+        const poolStatus = String(pool.status || "").toLowerCase();
+        if (["cancelled", "canceled", "unshipped_penalty"].includes(entryStatus) ||
+            ["cancelled", "canceled"].includes(poolStatus)) return;
         const item = pool.title || entry.poolTitle || "Auto-GOのアルバム";
         const member = entry.wantedMember ? `「${entry.wantedMember}」` : "";
-        if (entry.status === "confirmed") {
+        if (entryStatus === "confirmed") {
           const deadline = entry.purchaseDeadlineAt || pool.purchaseDeadlineAt;
-          const due = todoDeadlineInfo(deadline);
-          if (!due.at || due.at > Date.now()) {
-            addTask("autogo", `Auto-GO ${member}の購入と入金を報告してください`, item, deadline, { poolId: entry.poolId, id: entry.id });
-          }
-        } else if (entry.status === "purchased") {
+          addTask("autogo", `Auto-GO ${member}の購入と入金を報告してください`, item, deadline, { poolId: entry.poolId, id: entry.id });
+        } else if (entryStatus === "purchased") {
           addTask("autogo", `Auto-GO ${member}のアルバム到着を報告してください`, item, null, { poolId: entry.poolId, id: entry.id });
-        } else if (entry.status === "arrived") {
+        } else if (entryStatus === "arrived") {
           const deadline = pool.revealDeadlineAt || entry.revealDeadlineAt;
-          const due = todoDeadlineInfo(deadline);
-          if (!due.at || due.at > Date.now()) {
-            addTask("autogo", `Auto-GO ${member}の開封結果を登録してください`, item, deadline, { poolId: entry.poolId, id: entry.id });
-          }
+          addTask("autogo", `Auto-GO ${member}の開封結果を登録してください`, item, deadline, { poolId: entry.poolId, id: entry.id });
         }
-        if (entry.status === "waiting_match" || entry.status === "arrived") {
+        if (entryStatus === "waiting_match" || entryStatus === "arrived") {
           const shipping = getMyShipping();
           if (!shipping.name || !shipping.zip || !shipping.address1) {
             addTask("profile", "Auto-GOのマッチング用配送先を登録してください", item,
               pool.revealDeadlineAt || entry.revealDeadlineAt, { section: "address" });
           }
         }
-        if (entry.status === "matched" && !entry.noMatchResult) {
+        if (entryStatus === "matched" && !entry.noMatchResult) {
           if (entry.shipToAddress && !entry.shippedDone && !entry.shippedAt && !entry.receivedDone) {
             const deadline = entry.shipDeadlineAt || entry.shippingDeadlineAt ||
               (entry.matchedAt ? todoDeadlineInfo(entry.matchedAt).at + 72 * 60 * 60 * 1000 : null);
