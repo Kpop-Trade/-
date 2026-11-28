@@ -692,14 +692,16 @@ window.triggerHeartPop = function(button) {
       icon.classList.add("bell-shake");
     };
 
-    function addNotification(text, type = "info", target = null, category = null) {
-      if (!currentUser) return;
-      const item = { id: "n_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7), text, type, read: false, createdAt: Date.now(), target: target || null };
+    function addNotification(text, type = "info", target = null, category = null, id = null) {
+      if (!currentUser) return false;
+      if (id && (userData.notifications || []).some(n => n.id === id)) return false;
+      const item = { id: id || ("n_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7)), text, type, read: false, createdAt: Date.now(), target: target || null };
       item.category = category || notifCategory(item);
       const list = trimNotifications([item, ...(userData.notifications || [])]);
       userData.notifications = list;
       saveUserData({ notifications: list }).catch(() => {});
       updateNotifBadge();
+      return true;
     }
 
     function inboxNotifications() {
@@ -7455,6 +7457,7 @@ window.renderHomeThemeSections = function(entries, cardHtmlById) {
       return clipNotice(t.postGive || "出品", 36) + member;
     }
     function tradeRequestCopy(t) {
+      if (!isActiveTradeStatus(t.status)) return null;
       const who = clipNotice(t.applicantName || "相手", 16);
       const item = tradeItemLabel(t);
       const price = Number(t.postPrice || 0);
@@ -7477,6 +7480,9 @@ window.renderHomeThemeSections = function(entries, cardHtmlById) {
         return { toast: "🔄 " + who + "さんから交換申請", note: who + "さんから交換申請：" + item + " → " + want, type: "success" };
       }
       return { toast: "📥 " + who + "さんから申し込み", note: who + "さんから申し込み：" + item + yen, type: "success" };
+    }
+    function isActiveTradeStatus(status) {
+      return ["pending", "requested", "negotiating", "shipping"].includes(String(status || "").toLowerCase());
     }
     function tradeWatchSnap(t) {
       return {
@@ -7529,9 +7535,9 @@ window.renderHomeThemeSections = function(entries, cardHtmlById) {
       }
       return null;
     }
-    function announceTrade(copy, tradeId) {
+    function announceTrade(copy, tradeId, notificationId = null) {
       if (!copy) return;
-      addNotification(copy.note, copy.type || "info", { type: "trade", id: tradeId });
+      if (!addNotification(copy.note, copy.type || "info", { type: "trade", id: tradeId }, null, notificationId)) return;
       if ((window._tradeToastLeft || 0) > 0) {
         window._tradeToastLeft -= 1;
         showToast(copy.toast, copy.type === "admin" ? "error" : (copy.type === "success" ? "success" : "info"));
@@ -7564,7 +7570,9 @@ window.renderHomeThemeSections = function(entries, cardHtmlById) {
           myTrades.forEach(t => {
             const prev = window._tradeWatch[t.id];
             if (!prev) {
-              if (t.ownerId === currentUser.uid && t.applicantId !== currentUser.uid) announceTrade(tradeRequestCopy(t), t.id);
+              if (t.ownerId === currentUser.uid && t.applicantId !== currentUser.uid) {
+                announceTrade(tradeRequestCopy(t), t.id, t.isSell ? "purchase_request_" + t.id : null);
+              }
             } else {
               announceTrade(tradeUpdateCopy(t, prev), t.id);
             }

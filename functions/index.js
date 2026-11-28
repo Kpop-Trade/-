@@ -160,14 +160,29 @@ exports.sendTestPush = onCall(async (request) => {
 });
 
 // アプリ内通知（サブコレクション）＋必要なら通知欄へコピー＋プッシュ
-async function notify(uid, { id, text, type = "info", link = null, title = "ILLIT Trade" }) {
+async function notify(uid, { id, text, type = "info", link = null, title = "ILLIT Trade", once = false, guardTradeId = null }) {
   if (!uid || isAutoGoDummyUid(uid)) return;
   const category = inboxCategory({ type, link, text, title });
   const col = db.collection("users").doc(uid).collection("notifications");
   const ref = id ? col.doc(id) : col.doc();
-  await ref.set({
+  const notification = {
     text, type, title, link, category, read: false, createdAt: FV.serverTimestamp(), expireAt: expireAt()
-  });
+  };
+  if (once) {
+    const created = await db.runTransaction(async (tx) => {
+      const [existing, tradeSnap] = await Promise.all([
+        tx.get(ref),
+        guardTradeId ? tx.get(db.collection("trades").doc(guardTradeId)) : Promise.resolve(null)
+      ]);
+      if (existing.exists) return false;
+      if (guardTradeId && (!tradeSnap.exists || !isActiveTradeStatus(tradeSnap.data().status))) return false;
+      tx.create(ref, notification);
+      return true;
+    });
+    if (!created) return;
+  } else {
+    await ref.set(notification);
+  }
   const shouldMirror = category === "autogo" || (category === "trade" && !(link && link.k));
   if (shouldMirror) {
     await mirrorInbox(uid, { id: id || ref.id, text, type, link, title, category }).catch((e) => console.warn("inbox mirror", e));
@@ -1742,14 +1757,23 @@ function tradePushCopy(t) {
   return { title: "新しい申し込み", text: `${who}さんから申し込み：${item}${yen}` };
 }
 
+function isActiveTradeStatus(status) {
+  return ["pending", "requested", "negotiating", "shipping"].includes(String(status || "").toLowerCase());
+}
+
 // ===== 新しい申し込み／参加 → 出品者へ =====
 exports.onTradeCreated = onDocumentCreated("trades/{tradeId}", async (event) => {
-  const t = event.data.data();
+  const tradeId = event.params.tradeId;
+  const tradeSnap = await db.collection("trades").doc(tradeId).get();
+  if (!tradeSnap.exists) return;
+  const t = tradeSnap.data();
+  if (!isActiveTradeStatus(t.status)) return;
   const copy = tradePushCopy(t);
   await notify(t.ownerId, {
+    ...(t.isSell ? { id: `purchase_request_${tradeId}`, once: true, guardTradeId: tradeId } : {}),
     text: copy.text,
     type: "success",
-    link: { k: "trade", id: event.params.tradeId },
+    link: { k: "trade", id: tradeId },
     title: copy.title
   });
 });
