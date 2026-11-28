@@ -294,11 +294,11 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
       }
     }
     function postsSkeletonHtml(gap = 3) {
-      return `<div class="posts-status col-span-full w-full" aria-busy="true" aria-label="読み込み中">
+      return `<div class="posts-status posts-loading-state col-span-full w-full" aria-busy="true" aria-label="読み込み中">
         <div style="display:grid;grid-template-columns:repeat(3, 1fr);grid-auto-flow:row;gap:${gap}px">
           ${Array.from({ length: 6 }).map((_, index) => `<div class="kp-skel aspect-square ${index === 0 ? "col-span-2 row-span-2" : ""}" style="border-radius:10px;overflow:hidden"></div>`).join("")}
         </div>
-        <p class="text-center text-[12px] text-gray-500 font-medium mt-3">募集一覧を読み込み中...</p>
+        <p class="posts-loading-label text-[12px] text-gray-500 font-medium mt-3">募集を読み込み中...</p>
       </div>`;
     }
     function homeFeedSkeletonHtml() {
@@ -312,7 +312,7 @@ window.ILLIT_CARD_ALBUMS = ILLIT_CARD_ALBUMS;
         </div>
         <div class="home-feed-skeleton-grid ${layout}">${Array.from({ length: 6 }, () => '<div class="kpop-skeleton-box"></div>').join("")}</div>
       </section>`;
-      return `<div class="home-feed-skeleton" aria-busy="true" aria-label="読み込み中">${section("is-odd")}${section("is-even")}</div>`;
+      return `<div class="home-feed-skeleton posts-loading-state" aria-busy="true" aria-label="読み込み中">${section("is-odd")}${section("is-even")}<p class="posts-loading-label">募集を読み込み中...</p></div>`;
     }
     function postsEmptyHtml(msg, hint) {
       return `<div class="posts-status kp-empty col-span-full">

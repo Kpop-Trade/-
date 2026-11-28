@@ -967,6 +967,28 @@ html, body {
   text-align: center !important;
 }
 
+.posts-loading-state,
+#posts-container > .posts-loading-state,
+#posts-container > .posts-loading-state:nth-child(6n+1) {
+  grid-column: 1 / -1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  width: 100% !important;
+  min-height: 200px !important;
+}
+
+.home-feed-skeleton > section {
+  width: 100%;
+}
+
+.posts-loading-label {
+  width: 100%;
+  text-align: center;
+}
+
 @keyframes aiScanBeam {
   0%   { top: 0%; opacity: 0.2; }
   10%  { opacity: 1; }
