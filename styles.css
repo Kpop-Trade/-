@@ -595,7 +595,15 @@
     body:has(#group-post-modal:not(.hidden)) > nav.lg-nav,
     body:has(#trades-modal:not(.hidden)) > nav.lg-nav,
     body:has(#autogo-modal:not(.hidden)) > nav.lg-nav,
-    body:has(#ag-person-modal:not(.hidden)) > nav.lg-nav {
+    body:has(#ag-person-modal:not(.hidden)) > nav.lg-nav,
+    body:has(#post-type-sheet:not(.hidden)) > nav.lg-nav,
+    body:has(#post-modal:not(.hidden)) > nav.lg-nav,
+    body:has(#serial-post-modal:not(.hidden)) > nav.lg-nav,
+    body:has(#edit-modal:not(.hidden)) > nav.lg-nav,
+    body:has(#listing-guide-modal:not(.hidden)) > nav.lg-nav,
+    body:has(#xtrade-create-modal:not(.hidden)) > nav.lg-nav,
+    body:has(#bulk-slot-editor-modal:not(.hidden)) > nav.lg-nav,
+    body:has(#bulk-select-modal:not(.hidden)) > nav.lg-nav {
       display: none !important;
     }
 
