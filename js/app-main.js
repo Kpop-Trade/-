@@ -199,6 +199,23 @@ getRedirectResult(auth)
       if (c && typeof c.seconds === "number") return c.seconds * 1000;
       return 0;
     }
+    function formatNotificationSummary(n) {
+      return String((n && (n.text || n.title)) || "")
+        .replace(/https?:\/\/\S+/gi, "")
+        .replace(/^\s*(?:\[運営\]|\[自動通知\]|\[お知らせ\])\s*/i, "")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+    function formatNotificationTime(ms) {
+      if (!ms) return "";
+      const age = Math.max(0, Date.now() - ms);
+      if (age < 60 * 1000) return "たった今";
+      if (age < 60 * 60 * 1000) return Math.floor(age / (60 * 1000)) + "分前";
+      if (age < 24 * 60 * 60 * 1000) return Math.floor(age / (60 * 60 * 1000)) + "時間前";
+      if (age < 7 * 24 * 60 * 60 * 1000) return Math.floor(age / (24 * 60 * 60 * 1000)) + "日前";
+      const date = new Date(ms);
+      return (date.getMonth() + 1) + "/" + date.getDate();
+    }
     function notifCategory(n) {
       if (!n) return "notice";
       const linkK = n.link && n.link.k;
@@ -774,12 +791,8 @@ window.triggerHeartPop = function(button) {
       el.innerHTML = list.map(n => {
         const ms = notifCreatedMs(n);
         const cat = notifCategory(n);
-        const age = ms ? Math.max(0, Date.now() - ms) : null;
-        const timeStr = age === null ? "" : age < 60 * 1000 ? "たった今"
-          : age < 60 * 60 * 1000 ? Math.floor(age / (60 * 1000)) + "分前"
-          : age < 24 * 60 * 60 * 1000 ? Math.floor(age / (60 * 60 * 1000)) + "時間前"
-          : age < 30 * 24 * 60 * 60 * 1000 ? Math.floor(age / (24 * 60 * 60 * 1000)) + "日前"
-          : Math.floor(age / (30 * 24 * 60 * 60 * 1000)) + "ヶ月前";
+        const timeStr = formatNotificationTime(ms);
+        const summary = formatNotificationSummary(n);
         const purchaseUrl = safeHttpUrl(n.purchaseUrl || (n.link && n.link.purchaseUrl));
         const target = n.target || (n.link && n.link.k ? { type: n.link.k, id: n.link.id } : null);
         const hasTarget = (target && target.type && target.id) || cat === "autogo";
@@ -804,7 +817,7 @@ window.triggerHeartPop = function(button) {
             ${badge ? `<span class="notification-type-badge ${badgeClass}" aria-hidden="true">${badge}</span>` : ""}
           </span>
           <span class="notification-copy">
-            <span class="notification-text">${escapeHtml(n.text || n.title || "")}</span>
+            <span class="notification-text">${escapeHtml(summary)}</span>
             <span class="notification-time">${timeStr}</span>
             ${urlBtn}
           </span>

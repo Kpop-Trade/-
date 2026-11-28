@@ -82,6 +82,7 @@
     #notifications-modal {
       background: #fff;
       box-shadow: none;
+      z-index: 1001;
     }
     .notifications-page {
       display: flex;
@@ -195,12 +196,13 @@
     .notification-row {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 0;
       padding: 14px 16px;
       border-bottom: 1px solid #f3f4f6;
       background: #fff;
       cursor: pointer;
       -webkit-tap-highlight-color: transparent;
+      box-sizing: border-box;
     }
     .notification-row:focus-visible {
       outline: 2px solid #0095f6;
@@ -251,12 +253,17 @@
     .notification-type-badge.is-trade { background: #0095f6; font-size: 8px; }
     .notification-type-badge.is-autogo { background: #f59e0b; }
     .notification-copy {
-      display: block;
+      display: flex;
       flex: 1 1 auto;
       min-width: 0;
+      flex-direction: column;
+      padding: 0 12px;
     }
     .notification-text {
-      display: block;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 3;
+      overflow: hidden;
       color: #1f2937;
       font-size: 14px;
       font-weight: 400;
@@ -271,11 +278,14 @@
       line-height: 1.35;
     }
     .notification-chevron {
-      flex: 0 0 auto;
-      margin-left: 8px;
+      display: inline-flex;
+      flex: 0 0 20px;
+      width: 20px;
+      align-items: center;
+      justify-content: center;
       color: #9ca3af;
-      font-size: 17px;
-      font-weight: 300;
+      font-size: 16px;
+      font-weight: 400;
       line-height: 1;
     }
     .notifications-purchase-link {
