@@ -8194,6 +8194,7 @@ window.openAzukariApp = function() {
 
     window.openTrade = function(id) {
       closeTradesModal(); closeDetailModal(); cleanupRoom();
+      document.body.classList.add("trade-room-open");
       document.getElementById("room-messages").innerHTML = ""; document.getElementById("room-modal").classList.remove("hidden");
       unsubRoom = onSnapshot(doc(db, "trades", id), (snap) => {
         if (!snap.exists()) { closeRoom(); return; }
@@ -8217,7 +8218,12 @@ window.openAzukariApp = function() {
         renderRoomAddressBox();
       }, (err) => console.warn("trade shipping snapshot:", err?.code || err));
     };
-    window.closeRoom = function() { document.getElementById("room-modal").classList.add("hidden"); closeImageViewer(); cleanupRoom(); };
+    window.closeRoom = function() {
+      document.getElementById("room-modal").classList.add("hidden");
+      document.body.classList.remove("trade-room-open");
+      closeImageViewer();
+      cleanupRoom();
+    };
 
     function flag(t, field, uid) { return !!(t[field] && t[field][uid]); }
     async function advanceIfNeeded() {
